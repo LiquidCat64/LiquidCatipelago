@@ -1,7 +1,7 @@
-from . import CV64TestBase
+from . import CVLoDTestBase
 
 
-class WarpTest(CV64TestBase):
+class WarpTest(CVLoDTestBase):
     options = {
         "special1s_per_warp": 3,
         "total_special1s": 21
@@ -16,7 +16,7 @@ class WarpTest(CV64TestBase):
             self.assertTrue(self.can_reach_entrance(f"Warp {i}"))
 
 
-class CastleWallTest(CV64TestBase):
+class CastleWallTest(CVLoDTestBase):
     options = {
         "stage_shuffle": True,
         "starting_stage": 1
@@ -28,7 +28,7 @@ class CastleWallTest(CV64TestBase):
         self.assertTrue(self.can_reach_entrance(f"Left Tower door"))
 
 
-class VillaTest(CV64TestBase):
+class VillaTest(CVLoDTestBase):
     options = {
         "stage_shuffle": True,
         "starting_stage": 2
@@ -50,7 +50,7 @@ class VillaTest(CV64TestBase):
         self.assertTrue(self.can_reach_entrance("Copper door"))
 
 
-class CastleCenterTest(CV64TestBase):
+class CastleCenterTest(CVLoDTestBase):
     options = {
         "stage_shuffle": True,
         "starting_stage": 5
@@ -74,7 +74,7 @@ class CastleCenterTest(CV64TestBase):
         self.assertTrue(self.can_reach_entrance("Upper cracked wall"))
 
 
-class ExecutionTest(CV64TestBase):
+class ExecutionTest(CVLoDTestBase):
     options = {
         "stage_shuffle": True,
         "starting_stage": 7
@@ -86,7 +86,7 @@ class ExecutionTest(CV64TestBase):
         self.assertTrue(self.can_reach_entrance("Execution gate"))
 
 
-class ScienceTest(CV64TestBase):
+class ScienceTest(CVLoDTestBase):
     options = {
         "stage_shuffle": True,
         "starting_stage": 8
@@ -105,7 +105,7 @@ class ScienceTest(CV64TestBase):
         self.assertTrue(self.can_reach_entrance("Science Door 3"))
 
 
-class ClocktowerTest(CV64TestBase):
+class ClocktowerTest(CVLoDTestBase):
     options = {
         "stage_shuffle": True,
         "starting_stage": 11
@@ -126,7 +126,7 @@ class ClocktowerTest(CV64TestBase):
         self.assertTrue(self.can_reach_entrance("Clocktower Door 3"))
 
 
-class DraculaNoneTest(CV64TestBase):
+class DraculaNoneTest(CVLoDTestBase):
     options = {
         "draculas_condition": 0,
         "stage_shuffle": True,
@@ -149,7 +149,7 @@ class DraculaNoneTest(CV64TestBase):
         self.assertTrue(self.can_reach_entrance("Dracula's door"))
 
 
-class DraculaSpecialTest(CV64TestBase):
+class DraculaSpecialTest(CVLoDTestBase):
     options = {
         "draculas_condition": 3
     }
@@ -172,7 +172,7 @@ class DraculaSpecialTest(CV64TestBase):
         self.assertTrue(self.can_reach_entrance("Dracula's door"))
 
 
-class DraculaCrystalTest(CV64TestBase):
+class DraculaCrystalTest(CVLoDTestBase):
     options = {
         "draculas_condition": 1,
         "stage_shuffle": True,
@@ -205,7 +205,7 @@ class DraculaCrystalTest(CV64TestBase):
         self.assertTrue(self.can_reach_entrance("Dracula's door"))
 
 
-class DraculaBossTest(CV64TestBase):
+class DraculaBossTest(CVLoDTestBase):
     options = {
         "draculas_condition": 2,
         "stage_shuffle": True,
@@ -239,7 +239,7 @@ class DraculaBossTest(CV64TestBase):
         self.assertTrue(self.can_reach_entrance("Dracula's door"))
 
 
-class LizardTest(CV64TestBase):
+class LizardTest(CVLoDTestBase):
     options = {
         "stage_shuffle": True,
         "draculas_condition": 2,

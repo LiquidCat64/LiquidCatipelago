@@ -1,6 +1,6 @@
 from test.bases import WorldTestBase
 
 
-class CV64TestBase(WorldTestBase):
-    game = "Castlevania 64"
+class CVLoDTestBase(WorldTestBase):
+    game = "Castlevania Legacy of Darkness"
     player: int = 1
