@@ -1,28 +1,10 @@
-normal_door_hook = [
-    0x00862021,  # ADDU  A0, A0, A2
-    0x80849C60,  # LB    A0, 0x9C60 (A0)
-    0x0C0FF174,  # JAL   0x803FC5D0
-    0x308900FF   # ANDI  T1, A0, 0x00FF
-]
-
-normal_door_code = [
-    0x00024080,  # SLL   T0, V0, 2
-    0x3C048039,  # LUI   A0, 0x8039
-    0x00882021,  # ADDU  A0, A0, T0
-    0x8C849BE4,  # LW    A0, 0x9BE4 (A0)
-    0x8C6A0008,  # LW    T2, 0x0008 (V1)
-    0x008A5824,  # AND   T3, A0, T2
-    0x11600003,  # BEQZ  T3,     [forward 0x03]
-    0x00000000,  # NOP
-    0x24020003,  # ADDIU V0, R0, 0x0003
-    0x27FF006C,  # ADDIU RA, RA, 0x006C
-    0x03E00008   # JR    RA
-]
-
-ct_door_hook = [
-    0x0C0FF182,  # JAL	 0x803FC608
-    0x00000000,  # NOP
-    0x315900FF   # ANDI  T9, T2, 0x00FF
+extras_unlocker = [
+    # Sets the appropriate flags in the save file to unlock all Henry child rewards from the start.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x3C0900FF,  # LUI   T1, 0x00FF
+    0x3529F000,  # ORI   T1, T1, 0xF000
+    0x03E00008,  # JR    RA
+    0xAD09AB18   # SW    T1, 0xAB18 (T0)
 ]
 
 ct_door_code = [

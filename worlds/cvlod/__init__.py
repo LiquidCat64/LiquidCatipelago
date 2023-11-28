@@ -271,9 +271,9 @@ class CVLoDWorld(World):
 
             rompath = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}.z64")
 
-            #patch_rom(self.multiworld, self.options, cvlod_rom, self.player, offset_data, self.active_stage_exits,
-            #          self.s1s_per_warp, self.active_warp_list, self.required_s2s, self.total_s2s, shop_name_list,
-            #          shop_desc_list, shop_colors_list, slot_name, active_locations)
+            patch_rom(self.multiworld, self.options, cvlod_rom, self.player, offset_data, self.active_stage_exits,
+                      self.s1s_per_warp, self.active_warp_list, self.required_s2s, self.total_s2s, shop_name_list,
+                      shop_desc_list, shop_colors_list, slot_name, active_locations)
 
             cvlod_rom.write_to_file(rompath)
 

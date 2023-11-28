@@ -92,8 +92,10 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     rom.write_int32(0x66C, 0x00000000)
     rom.write_int32(0x678, 0x00000000)
 
-    # Always offer Hard Mode on file creation
-    # #rom.write_int32(0xC8810, 0x240A0100)  # ADDIU	T2, R0, 0x0100
+    # Unlock Hard Mode and all characters and costumes from the start
+    rom.write_int32(0x145C, 0x08007872)  # J 0x8001E1C8
+    rom.write_int32(0x1D01C, 0x08007872)  # J 0x8001E1C8
+    rom.write_int32s(0x1EDC8, patches.extras_unlocker)
 
     # Disable the Forest, Castle Wall, and Villa intro cutscenes and make it possible to change the starting level
     # #rom.write_byte(0xB73308, 0x00)
