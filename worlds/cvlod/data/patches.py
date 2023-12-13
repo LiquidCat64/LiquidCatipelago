@@ -1,10 +1,10 @@
 extras_unlocker = [
     # Sets the appropriate flags in the save file to unlock all Henry child rewards from the start.
     0x3C08801D,  # LUI   T0, 0x801D
-    0x3C0900FF,  # LUI   T1, 0x00FF
-    0x3529F000,  # ORI   T1, T1, 0xF000
+    0x240900FF,  # ADDIU T1, 0x00FF
+    0xA109AB19,  # SB    T1, 0xAB19 (T0)
     0x03E00008,  # JR    RA
-    0xAD09AB18   # SW    T1, 0xAB18 (T0)
+    0xA109AB1A,  # SB    T1, 0xAB1A (T0)
 ]
 
 ct_door_code = [
@@ -68,23 +68,20 @@ stage_select_overwrite = [
 ]
 
 custom_code_loader = [
-    # On boot, when the company logos show up, this will trigger and load most of the custom ASM data in this module
-    # off from ROM offsets 0xBFC000-0xBFFFFF and into the 803FC000-803FFFFF range in RAM.
-    0x3C080C10,  # LUI   T0, 0x0C10
-    0x2508F1C0,  # ADDIU T0, T0, 0xF1C0
-    0x3C098000,  # LUI   T1, 0x8000
-    0xAD282438,  # SW    T0, 0x2438 (T1)
+    # On boot, when the company logos show up, this will trigger and load most of the custom ASM data
+    # from ROM offsets 0xFFC000-0xFFFFFF and into the 803FC000-803FFFFF range in RAM.
     0x3C088040,  # LUI   T0, 0x8040
-    0x9108C000,  # ADDIU T0, 0xC000 (T0)
+    0x9108C000,  # LBU   T0, 0xC000 (T0)
     0x15000007,  # BNEZ  T0,     [forward 0x07]
-    0x3C0400C0,  # LUI   A0, 0x00C0
-    0x2484C000,  # ADDIU A0, A0, 0xC000
+    0x3C0400FF,  # LUI   A0, 0x00FF
+    0x3484C000,  # ORI	A0, A0, 0xC000
     0x3C058040,  # LUI   A1, 0x8040
     0x24A5C000,  # ADDIU A1, A1, 0xC000
     0x24064000,  # ADDIU A2, R0, 0x4000
-    0x08005DFB,  # J     0x800177EC
+    0x0800690B,  # J     0x8001A42C
     0x00000000,  # NOP
-    0x03E00008   # JR    RA
+    0x03E00008,  # JR    RA
+    0x00000000,  # NOP
 ]
 
 remote_item_giver = [
@@ -93,72 +90,87 @@ remote_item_giver = [
     # functions accordingly to either reward items or kill the player.
 
     # Primary checks
-    0x3C088034,  # LUI   T0, 0x8034
-    0x9509244A,  # LHU   T1, 0x244A (T0)
-    0x3C088039,  # LUI   T0, 0x8039
-    0x910A9EFB,  # LBU   T2, 0x9EFF (T0)
+    # In a demo?
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9109AA4A,  # LBU   T1, 0xAE8B (T0)
+    # In a cutscene?
+    0x910AAE8B,  # LBU   T2, 0xAE8B (T0)
     0x012A4821,  # ADDU  T1, T1, T2
-    0x910A9EFF,  # LBU   T2, 0x9EFF (T0)
+    # Will be in a cutscene on next map transition?
+    0x910AAE8F,  # LBU   T2, 0xAE8F (T0)
     0x012A4821,  # ADDU  T1, T1, T2
-    0x910A9CCF,  # LBU   T2, 0x9CCF (T0)
+    # Reading text while frozen?
+    0x910AABCB,  # LBU   T2, 0xABCB (T0)
     0x012A4821,  # ADDU	 T1, T1, T2
-    0x910A9EEF,  # LBU	 T2, 0x9EEF (T0)
+    # Paused the game or in Renon's shop?
+    0x910AAE0F,  # LBU	 T2, 0xAE0F (T0)
     0x012A4821,  # ADDU	 T1, T1, T2
-    0x910A9CD3,  # LBU	 T2, 0x9CD3 (T0)
+    # In a fade transition?
+    0x910A8354,  # LBU	 T2, 0x8354 (T0)
     0x012A4821,  # ADDU	 T1, T1, T2
-    0x3C088038,  # LUI	 T0, 0x8038
-    0x910A7ADD,  # LBU	 T2, 0x7ADD (T0)
-    0x012A4821,  # ADDU	 T1, T1, T2
-    0x3C0B8039,  # LUI	 T3, 0x8039
-    0x916A9BE0,  # LBU	 T2, 0x9BE0 (T3)
+    # Timer till next item at 00?
+    0x3C0B801D,  # LUI	 T3, 0x801D
+    0x916AAA4E,  # LBU	 T2, 0xAA4E (T3)
     0x012A4821,  # ADDU  T1, T1, T2
     0x11200006,  # BEQZ	 T1,     [forward 0x06]
-    0x00000000,  # NOP
+    0x8D6CAC0C,  # LW    T4, 0xAC0C (T3)
     0x11400002,  # BEQZ  T2,     [forward 0x02]
     0x254AFFFF,  # ADDIU T2, T2, 0xFFFF
-    0xA16A9BE0,  # SB	 T2, 0x9BE0 (T3)
+    0xA16AAA4E,  # SB	 T2, 0xAA4E (T3)
     0x03E00008,  # JR    RA
     0x00000000,  # NOP
     # Item-specific checks
-    0x3C088034,  # LUI 	 T0, 0x8034
-    0x91082891,  # LBU	 T0, 0x2891 (T0)
-    0x24090002,  # ADDIU T1, R0, 0x0002
-    0x15090012,  # BNE	 T0, T1, [forward 0x12]
+    # Textbox in its "map text" state?
+    0x1180FFFD,  # BEQZ  T4,     [backward 0x03]
     0x00000000,  # NOP
-    0x256B9BDF,  # ADDIU T3, T3, 0x9BDF
-    0x91640000,  # LBU	 A0, 0x0000 (T3)
-    0x14800003,  # BNEZ	 A0, [forward 0x03]
+    0x11E0FFFA,  # BEQZ  T7,     [backward 0x05]
+    0x00000000,
+    0x8D8F005C,  # LW    T7, 0x005C (T4)
+    0x8DED0038,  # LW    T5, 0x0038 (T7)
+    0x91AE0026,  # LBU   T6, 0x0026 (T5)
+    # Non-multiworld item byte occupied?
+    0x9164AA4C,  # LBU	 A0, 0xAA4C (T3)
+    0x10800007,  # BEQZ	 A0,     [forward 0x07]
     0x00000000,  # NOP
-    0x10000005,  # B	         [forward 0x05]
-    0x256B0002,  # ADDIU T3, T3, 0x0002
-    0x2409000F,  # ADDIU T1, R0, 0x000F
-    0xA1690001,  # SB	 T1, 0x0001 (T3)
-    0x080FF8DD,  # J	 0x803FE374
-    0xA1600000,  # SB	 R0, 0x0000 (T3)
-    0x91640000,  # LBU	 A0, 0x0000 (T3)
-    0x14800002,  # BNEZ	 A0,     [forward 0x02]
+    # If the textbox state is not 0, don't set the timer nor clear the buffer.
+    0x15C00003,  # BNEZ  T6,     [forward 0x03]
+    0x24090090,  # ADDIU T1, R0, 0x0090
+    0xA169AA4E,  # SB	 T1, 0xAA4E (T3)
+    0xA160AA4C,  # SB	 R0, 0xAA4C (T3)
+    0x08021C1C,  # J     0x80087070
     0x00000000,  # NOP
-    0x10000003,  # B             [forward 0x03]
-    0x2409000F,  # ADDIU T1, R0, 0x000F
-    0x080FF864,  # J	 0x803FE190
-    0xA169FFFF,  # SB	 T1, 0xFFFF (T3)
+    # Multiworld item byte occupied?
+    0x9164AA4D,  # LBU	 A0, 0xAA4D (T3)
+    0x1080000A,  # BEQZ	 A0,     [forward 0x0A]
+    0x00000000,  # NOP
+    # If the textbox state is not 0, don't set the timer, clear the buffer, nor increment the multiworld item index.
+    0x15C00006,  # BNEZ  T6,     [forward 0x06]
+    0x24090090,  # ADDIU T1, R0, 0x0090
+    0xA169AA4E,  # SB	 T1, 0xAA4E (T3)
+    0xA160AA4D,  # SB	 R0, 0xAA4D (T3)
+    # Increment the multiworld received item index here
+    0x956AABBE,  # LHU   T2, 0xABBE (T3)
+    0x254A0001,  # ADDIU T2, T2, 0x0001
+    0xA56AABBE,  # SH    T2, 0xABBE (T3)
+    0x08021C1C,  # J     0x80087070 TODO: Detect the surface below the player for sub-weapon dropping.
+    0x00000000,  # NOP
     # DeathLink-specific checks
-    0x3C0B8039,  # LUI   T3, 0x8039
-    0x256B9BE1,  # ADDIU T3, T3, 0x9BE1
-    0x91640002,  # LBU   A0, 0x0002 (T3)
+    # Received any DeathLinks?
+    0x9164AA4F,  # LBU   A0, 0xAA4F (T3)
     0x14800002,  # BNEZ  A0,     [forward 0x02]
-    0x916900A7,  # LBU   T1, 0x00A7 (T3)
-    0x080FF076,  # J     0x803FC1D8
+    # Is the player dead?
+    0x9169AB84,  # LBU   T1, 0xAB84 (T3)
+    0x03E00008,  # JR    RA TODO: Ice Traps
     0x312A0080,  # ANDI  T2, T1, 0x0080
     0x11400002,  # BEQZ  T2,     [forward 0x02]
     0x00000000,  # NOP
     0x03E00008,  # JR    RA
     0x35290080,  # ORI   T1, T1, 0x0080
-    0xA16900A7,  # SB    T1, 0x00A7 (T3)
+    0xA169AB84,  # SB    T1, 0xAB84 (T3)
     0x2484FFFF,  # ADDIU A0, A0, 0xFFFF
     0x24080001,  # ADDIU T0, R0, 0x0001
     0x03E00008,  # JR    RA
-    0xA168FFFD,  # SB    T0, 0xFFFD (T3)
+    0xA168AA4B,  # SB    T0, 0xAA4B (T3)
 ]
 
 deathlink_nitro_edition = [

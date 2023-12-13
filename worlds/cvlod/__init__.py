@@ -61,7 +61,7 @@ class CVLoDWorld(World):
     options: CVLoDOptions
     settings: typing.ClassVar[CVLoDSettings]
     topology_present = True
-    data_version = 1
+    data_version = 0
     remote_items = False
 
     item_name_to_id = get_item_names_to_ids()

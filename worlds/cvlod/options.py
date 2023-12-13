@@ -380,7 +380,7 @@ class WindowColorR(Range):
     display_name = "Window Color R"
     range_start = 0
     range_end = 15
-    default = 1
+    default = 10
 
 
 class WindowColorG(Range):
@@ -388,7 +388,7 @@ class WindowColorG(Range):
     display_name = "Window Color G"
     range_start = 0
     range_end = 15
-    default = 5
+    default = 10
 
 
 class WindowColorB(Range):
@@ -396,7 +396,7 @@ class WindowColorB(Range):
     display_name = "Window Color B"
     range_start = 0
     range_end = 15
-    default = 15
+    default = 10
 
 
 class WindowColorA(Range):
@@ -404,7 +404,7 @@ class WindowColorA(Range):
     display_name = "Window Color A"
     range_start = 0
     range_end = 15
-    default = 8
+    default = 6
 
 
 class DeathLink(Choice):

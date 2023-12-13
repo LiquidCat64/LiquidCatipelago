@@ -97,6 +97,15 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     rom.write_int32(0x1D01C, 0x08007872)  # J 0x8001E1C8
     rom.write_int32s(0x1EDC8, patches.extras_unlocker)
 
+    # Custom data-loading code
+    rom.write_int32(0x7CE8, 0x08007877)  # J 0x8001E1DC
+    rom.write_int32s(0x1EDDC, patches.custom_code_loader)
+
+    # Custom remote item rewarding and DeathLink receiving code
+    rom.write_int32(0x1C854, 0x080FF000)  # J 0x803FC000
+    rom.write_int32s(0xFFC000, patches.remote_item_giver)
+    rom.write_int32s(0xFFE190, patches.subweapon_surface_checker)
+
     # Disable the Forest, Castle Wall, and Villa intro cutscenes and make it possible to change the starting level
     # #rom.write_byte(0xB73308, 0x00)
     # #rom.write_byte(0xB7331A, 0x40)
@@ -360,15 +369,6 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
         # Sun doors
         #rom.write_int32(0xDC410, 0x00000000)  # NOP
         #rom.write_int32(0xDC418, 0x00000000)  # NOP
-
-    # Custom data-loading code
-    #rom.write_int32(0x6B5028, 0x08060D70)  # J 0x801835D0
-    #rom.write_int32s(0x1067B0, patches.custom_code_loader)
-
-    # Custom remote item rewarding and DeathLink receiving code
-    #rom.write_int32(0x19B98, 0x080FF000)  # J 0x803FC000
-    #rom.write_int32s(0xBFC000, patches.remote_item_giver)
-    #rom.write_int32s(0xBFE190, patches.subweapon_surface_checker)
 
     # Make received DeathLinks blow you to smithereens instead of kill you normally.
     #if options.death_link.value == options.death_link.option_explosive:
@@ -837,10 +837,10 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     #rom.write_bytes(0xBFBFE0, slot_name)
 
     # Write the specified window colors
-    #rom.write_byte(0xAEC23, options.window_color_r.value << 4)
-    #rom.write_byte(0xAEC33, options.window_color_g.value << 4)
-    #rom.write_byte(0xAEC47, options.window_color_b.value << 4)
-    #rom.write_byte(0xAEC43, options.window_color_a.value << 4)
+    rom.write_byte(0x8881A, options.window_color_r.value << 4)
+    rom.write_byte(0x8881B, options.window_color_g.value << 4)
+    rom.write_byte(0x8881E, options.window_color_b.value << 4)
+    rom.write_byte(0x8881F, options.window_color_a.value << 4)
 
     # Write the item/player names for other game items
     #for loc in active_locations:
