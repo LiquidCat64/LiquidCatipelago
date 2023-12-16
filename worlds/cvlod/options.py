@@ -247,7 +247,7 @@ class BadEndingCondition(Choice):
 
 
 class IncreaseItemLimit(DefaultOnToggle):
-    """Increases the holding limit of usable items from 10 to 100 of each item."""
+    """Increases the holding limit of usable items from 10 to 99 of each item."""
     display_name = "Increase Item Limit"
 
 

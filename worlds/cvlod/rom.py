@@ -144,30 +144,47 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
         #rom.write_int32(0x6CEAA0, 0x240B0001)  # ADDIU T3, R0, 0x0001
         #rom.write_int32(0x6CEAA4, 0x240D0001)  # ADDIU T5, R0, 0x0001
 
-    # Were-bull arena flag hack
-    #rom.write_int32(0x6E38F0, 0x0C0FF157)  # JAL   0x803FC55C
-    #rom.write_int32s(0xBFC55C, patches.werebull_flag_unsetter)
-    #rom.write_int32(0xA949C, 0x0C0FF380)  # JAL   0x803FCE00
-    #rom.write_int32s(0xBFCE00, patches.werebull_flag_pickup_setter)
-
-    # Enable being able to carry multiple Special jewels, Nitros, and Mandragoras simultaneously
-    #rom.write_int32(0xBF1F4, 0x3C038039)  # LUI V1, 0x8039
+    # Enable being able to carry multiple Special jewels, Nitros, Mandragoras, and Key Items simultaneously
     # Special1
-    #rom.write_int32(0xBF210, 0x80659C4B)  # LB A1, 0x9C4B (V1)
-    #rom.write_int32(0xBF214, 0x24A50001)  # ADDIU A1, A1, 0x0001
-    #rom.write_int32(0xBF21C, 0xA0659C4B)  # SB A1, 0x9C4B (V1)
+    rom.write_int32s(0x904B8, [0x90C8AB47,   # LBU   T0, 0xAB47 (A2)
+                               0x00681821,   # ADDU  V1, V1, T0
+                               0xA0C3AB47])  # SB    V1, 0xAB47 (A2)
+    rom.write_int32(0x904C8, 0x24020001)     # ADDIU V0, R0, 0x0001
     # Special2
-    #rom.write_int32(0xBF230, 0x80659C4C)  # LB A1, 0x9C4C (V1)
-    #rom.write_int32(0xBF234, 0x24A50001)  # ADDIU A1, A1, 0x0001
-    #rom.write_int32(0xbf23C, 0xA0659C4C)  # SB A1, 0x9C4C (V1)
+    rom.write_int32s(0x904CC, [0x90C8AB48,   # LBU   T0, 0xAB48 (A2)
+                               0x00681821,   # ADDU  V1, V1, T0
+                               0xA0C3AB48])  # SB    V1, 0xAB48 (A2)
+    rom.write_int32(0x904DC, 0x24020001)     # ADDIU V0, R0, 0x0001
+    # Special3 (NOP this one for usage as the AP item)
+    rom.write_int32(0x904E8, 0x00000000)
     # Magical Nitro
-    #rom.write_int32(0xBF360, 0x10000004)  # B 0x8013C184
-    #rom.write_int32(0xBF378, 0x25E50001)  # ADDIU A1, T7, 0x0001
-    #rom.write_int32(0xBF37C, 0x10000003)  # B 0x8013C19C
+    rom.write_int32(0x9071C, 0x10000004)     # B [forward 0x04]
+    rom.write_int32s(0x90734, [0x25430001,   # ADDIU	V1, T2, 0x0001
+                               0x10000003])  # B [forward 0x03]
     # Mandragora
-    #rom.write_int32(0xBF3A8, 0x10000004)  # B 0x8013C1CC
-    #rom.write_int32(0xBF3C0, 0x25050001)  # ADDIU A1, T0, 0x0001
-    #rom.write_int32(0xBF3C4, 0x10000003)  # B 0x8013C1E4
+    rom.write_int32(0x906D4, 0x10000004)     # B [forward 0x04]
+    rom.write_int32s(0x906EC, [0x25030001,   # ADDIU	V1, T0, 0x0001
+                               0x10000003])  # B [forward 0x03]
+    # Key Items
+    rom.write_byte(0x906C7, 0x63)
+    # Increase Use Item capacity to 99 if "Increase Item Limit" is turned on
+    if options.increase_item_limit.value:
+        rom.write_byte(0x90617, 0x63)  # Most items
+        rom.write_byte(0x90767, 0x63)  # Sun/Moon cards
+
+    # Rename the Special3 to "AP Item"
+    rom.write_bytes(0xB89AA, cvlod_string_to_bytes("AP Item ", append_end=False))
+    # Change the Special3's appearance to that of a spinning contract
+    rom.write_int32s(0x11770A, [0x63583F80, 0x0000FFFF])
+    # Disable spinning on the Special1 and 2 pickup models so colorblind people can more easily identify them
+    rom.write_byte(0x1176F5, 0x00)  # Special1
+    rom.write_byte(0x117705, 0x00)  # Special2
+    # Make the Special2 the same size as a Red jewel(L) to further distinguish them
+    rom.write_int32(0x1176FC, 0x3FA66666)
+    # Capitalize the "k" in "Archives key" and "Rose Garden key" to be consistent with...literally every other key name!
+    rom.write_byte(0xB8AFF, 0x2B)
+    rom.write_byte(0xB8BCB, 0x2B)
+
 
     # Give PowerUps their Legacy of Darkness behavior when attempting to pick up more than two
     #rom.write_int32(0xA9730, 0x24090000)  # ADDIU	T1, R0, 0x0000
@@ -175,10 +192,6 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     #rom.write_int32(0xBF300, 0x00000000)  # NOP
     #rom.write_int32s(0xBFC5B4, patches.give_powerup_stopper)
 
-    # Rename the Wooden Stake and Rose to "You are a FOOL!"
-    #rom.write_bytes(0xEFE34, [0xFF, 0xFF, 0xA2, 0x0B] + cvlod_string_to_bytes("You are a FOOL!", append_end=False))
-    # Capitalize the "k" in "Archives key" to be consistent with...literally every other key name!
-    #rom.write_byte(0xEFF21, 0x2D)
 
     # Skip the "There is a white jewel" text so checking one saves the game instantly.
     #rom.write_int32s(0xEFC72, [0x00020002 for _ in range(37)])
@@ -276,12 +289,6 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     #rom.write_int32(0x6E937C, 0x080FF12E)  # J 0x803FC4B8
     #rom.write_int32s(0xBFC4B8, patches.ck_door_music_player)
 
-    # Increase item capacity to 100 if "Increase Item Limit" is turned on
-    #if options.increase_item_limit.value:
-        #rom.write_byte(0xBF30B, 0x64)  # Most items
-        #rom.write_byte(0xBF3F7, 0x64)  # Sun/Moon cards
-    #rom.write_byte(0xBF353, 0x64)  # Keys (increase regardless)
-
     # Change the item healing values if "Nerf Healing" is turned on
     #if options.nerf_healing_items.value:
         #rom.write_byte(0xB56371, 0x50)  # Healing kit   (100 -> 80)
@@ -292,12 +299,6 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     #if not options.loading_zone_heals.value:
         #rom.write_byte(0xD99A5, 0x00)  # Skip all loading zone checks
         #rom.write_byte(0xA9DFFB, 0x40)  # Disable free heal from King Skeleton by reading the unused magic meter value
-
-    # Disable spinning on the Special1 and 2 pickup models so colorblind people can more easily identify them
-    #rom.write_byte(0xEE4F5, 0x00)  # Special1
-    #rom.write_byte(0xEE505, 0x00)  # Special2
-    # Make the Special2 the same size as a Red jewel(L) to further distinguish them
-    #rom.write_int32(0xEE4FC, 0x3FA66666)
 
     # Prevent the vanilla Magical Nitro transport's "can explode" flag from setting
     #rom.write_int32(0xB5D7AA, 0x00000000)  # NOP

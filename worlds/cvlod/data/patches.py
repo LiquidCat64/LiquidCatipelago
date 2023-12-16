@@ -123,9 +123,11 @@ remote_item_giver = [
     # Textbox in its "map text" state?
     0x1180FFFD,  # BEQZ  T4,     [backward 0x03]
     0x00000000,  # NOP
-    0x11E0FFFA,  # BEQZ  T7,     [backward 0x05]
-    0x00000000,
     0x8D8F005C,  # LW    T7, 0x005C (T4)
+    0x11E0FFFA,  # BEQZ  T7,     [backward 0x06]
+    0x00000000,  # NOP
+    0x1DE0FFF8,  # BGTZ  T7,     [backward 0x08]
+    0x00000000,  # NOP
     0x8DED0038,  # LW    T5, 0x0038 (T7)
     0x91AE0026,  # LBU   T6, 0x0026 (T5)
     # Non-multiworld item byte occupied?
