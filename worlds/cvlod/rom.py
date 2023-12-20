@@ -185,6 +185,42 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     rom.write_byte(0xB8AFF, 0x2B)
     rom.write_byte(0xB8BCB, 0x2B)
 
+    # Enable storing item flags anywhere and changing the item model/visibility on any item instance.
+    rom.write_int32s(0x107740, [0x0C0FF0C0,   # JAL   0x803FC300
+                                0x25CFFFFF])  # ADDIU T7, T6, 0xFFFF
+    rom.write_int32s(0xFFC300, patches.item_customizer)
+    rom.write_int32(0x1078D0, 0x0C0FF0CB),  # JAL   0x803FC32C
+    rom.write_int32s(0xFFC32C, patches.item_appearance_switcher)
+
+    # Disable the 3HBs checking and setting flags when breaking them and enable their individual items checking and
+    # setting flags instead.
+    if options.multi_hit_breakables.value:
+        rom.write_int16(0xE3488, 0x1000)
+        rom.write_int32(0xE3800, 0x24050000)   # ADDIU	A1, R0, 0x0000
+        rom.write_byte(0xE39EB, 0x00)
+        rom.write_int32(0xE3A58, 0x0C0FF0D4),  # JAL   0x803FC350
+        rom.write_int32s(0xFFC350, patches.three_hit_item_flags_setter)
+        # Villa foyer chandelier-specific functions (yeah, KCEK was really insistent on having special handling just
+        # for this one)
+        rom.write_int32(0xE2F4C, 0x00000000)  # NOP
+        rom.write_int32(0xE3114, 0x0C0FF0DE),  # JAL   0x803FC378
+        rom.write_int32s(0xFFC378, patches.chandelier_item_flags_setter)
+
+        # New flag values to put in each 3HB vanilla flag's spot
+        rom.write_int16(0x7816F6, 0x02B8)  # CW upper rampart save nub
+        rom.write_int16(0x78171A, 0x02BD)  # CW Dracula switch slab
+        rom.write_int16(0x787F66, 0x0302)  # Villa foyer chandelier
+        rom.write_int16(0x79F19E, 0x0307)  # Tunnel twin arrows rock
+        rom.write_int16(0x79F1B6, 0x030C)  # Tunnel lonesome bucket pit rock
+        rom.write_int16(0x7A41B6, 0x030F)  # UW poison parkour ledge
+        rom.write_int16(0x7A41DA, 0x0315)  # UW skeleton crusher ledge
+        rom.write_int16(0x7A8AF6, 0x0318)  # CC Behemoth crate
+        rom.write_int16(0x7AD836, 0x031D)  # CC elevator pedestal
+        rom.write_int16(0x7B0592, 0x0320)  # CC lizard locker slab
+        rom.write_int16(0x7D0DDE, 0x0324)  # CT gear climb battery slab
+        rom.write_int16(0x7D0DC6, 0x032A)  # CT gear climb top corner slab
+        rom.write_int16(0x829A16, 0x032D)  # CT giant chasm farside climb
+        rom.write_int16(0x82CC8A, 0x0330)  # CT beneath final slide
 
     # Give PowerUps their Legacy of Darkness behavior when attempting to pick up more than two
     #rom.write_int32(0xA9730, 0x24090000)  # ADDIU	T1, R0, 0x0000
@@ -655,55 +691,6 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
         #rom.write_int32s(0x106770, patches.music_modifier)
         #rom.write_int32(0x15780, 0x0C0FF36E)  # JAL 0x803FCDB8
         #rom.write_int32s(0xBFCDB8, patches.music_comparer_modifier)
-
-    # Enable storing item flags anywhere and changing the item model/visibility on any item instance.
-    #rom.write_int32s(0xA857C, [0x080FF38F,  # J	    0x803FCE3C
-    #                           0x94D90038])  # LHU   T9, 0x0038 (A2)
-    #rom.write_int32s(0xBFCE3C, patches.item_customizer)
-    #rom.write_int32s(0xA86A0, [0x0C0FF3AF,  # JAL   0x803FCEBC
-    #                           0x95C40002])  # LHU   A0, 0x0002 (T6)
-    #rom.write_int32s(0xBFCEBC, patches.item_appearance_switcher)
-    #rom.write_int32s(0xA8728, [0x0C0FF3B8,  # JAL   0x803FCEE4
-    #                           0x01396021])  # ADDU  T4, T1, T9
-    #rom.write_int32s(0xBFCEE4, patches.item_model_visibility_switcher)
-    #rom.write_int32s(0xA8A04, [0x0C0FF3C2,  # JAL   0x803FCF08
-    #                           0x018B6021])  # ADDU  T4, T4, T3
-    #rom.write_int32s(0xBFCF08, patches.item_shine_visibility_switcher)
-
-    # Disable the 3HBs checking and setting flags when breaking them and enable their individual items checking and
-    # setting flags instead.
-    #if options.multi_hit_breakables.value:
-        #rom.write_int32(0xE87F8, 0x00000000)  # NOP
-        #rom.write_int16(0xE836C, 0x1000)
-        #rom.write_int32(0xE8B40, 0x0C0FF3CD)  # JAL 0x803FCF34
-        #rom.write_int32s(0xBFCF34, patches.three_hit_item_flags_setter)
-        # Villa foyer chandelier-specific functions (yeah, IDK why KCEK made different functions for this one)
-        #rom.write_int32(0xE7D54, 0x00000000)  # NOP
-        #rom.write_int16(0xE7908, 0x1000)
-        #rom.write_byte(0xE7A5C, 0x10)
-        #rom.write_int32(0xE7F08, 0x0C0FF3DF)  # JAL 0x803FCF7C
-        #rom.write_int32s(0xBFCF7C, patches.chandelier_item_flags_setter)
-
-        # New flag values to put in each 3HB vanilla flag's spot
-        #rom.write_int32(0x10C7C8, 0x8000FF48)  # FoS dirge maiden rock
-        #rom.write_int32(0x10C7B0, 0x0200FF48)  # FoS S1 bridge rock
-        #rom.write_int32(0x10C86C, 0x0010FF48)  # CW upper rampart save nub
-        #rom.write_int32(0x10C878, 0x4000FF49)  # CW Dracula switch slab
-        #rom.write_int32(0x10CAD8, 0x0100FF49)  # Tunnel twin arrows slab
-        #rom.write_int32(0x10CAE4, 0x0004FF49)  # Tunnel lonesome bucket pit rock
-        #rom.write_int32(0x10CB54, 0x4000FF4A)  # UW poison parkour ledge
-        #rom.write_int32(0x10CB60, 0x0080FF4A)  # UW skeleton crusher ledge
-        #rom.write_int32(0x10CBF0, 0x0008FF4A)  # CC Behemoth crate
-        #rom.write_int32(0x10CC2C, 0x2000FF4B)  # CC elevator pedestal
-        #rom.write_int32(0x10CC70, 0x0200FF4B)  # CC lizard locker slab
-        #rom.write_int32(0x10CD88, 0x0010FF4B)  # ToE pre-midsavepoint platforms ledge
-        #rom.write_int32(0x10CE6C, 0x4000FF4C)  # ToSci invisible bridge crate
-        #rom.write_int32(0x10CF20, 0x0080FF4C)  # CT inverted battery slab
-        #rom.write_int32(0x10CF2C, 0x0008FF4C)  # CT inverted door slab
-        #rom.write_int32(0x10CF38, 0x8000FF4D)  # CT final room door slab
-        #rom.write_int32(0x10CF44, 0x1000FF4D)  # CT Renon slab
-        #rom.write_int32(0x10C908, 0x0008FF4D)  # Villa foyer chandelier
-        #rom.write_byte(0x10CF37, 0x04)  # pointer for CT final room door slab item data
 
     # Once-per-frame gameplay checks
     #rom.write_int32(0x6C848, 0x080FF40D)  # J 0x803FD034

@@ -1297,44 +1297,26 @@ music_comparer_modifier = [
 ]
 
 item_customizer = [
-    # Allows changing an item's appearance settings and visibility independent of what it actually is as well as setting
-    # its bitflag literally anywhere in the save file by changing things in the item actor's data as it's being created
-    # for the below three functions to then utilize.
-    0x03205825,  # OR    T3, T9, R0
-    0x000B5A02,  # SRL   T3, T3, 8
-    0x316C0080,  # ANDI  T4, T3, 0x0080
-    0xA0CC0041,  # SB    T4, 0x0041 (A2)
-    0x016C5823,  # SUBU  T3, T3, T4
-    0xA0CB0040,  # SB    T3, 0x0040 (A2)
-    0x333900FF,  # ANDI  T9, T9, 0x00FF
-    0xA4D90038,  # SH    T9, 0x0038 (A2)
-    0x8CCD0058,  # LW    T5, 0x0058 (A2)
-    0x31ACFF00,  # ANDI  T4, T5, 0xFF00
-    0x340EFF00,  # ORI   T6, R0, 0xFF00
-    0x158E000A,  # BNE   T4, T6, [forward 0x0A]
-    0x31AC00FF,  # ANDI  T4, T5, 0x00FF
-    0x240E0002,  # ADDIU T6, R0, 0x0002
-    0x018E001B,  # DIVU  T4, T6
-    0x00006010,  # MFHI  T4
-    0x000D5C02,  # SRL   T3, T5, 16
-    0x51800001,  # BEQZL T4,     [forward 0x01]
-    0x000B5C00,  # SLL   T3, T3, 16
-    0x00006012,  # MFLO  T4
-    0xA0CC0055,  # SB    T4, 0x0055 (A2)
-    0xACCB0058,  # SW    T3, 0x0058 (A2)
-    0x080494E5,  # J     0x80125394
-    0x032A0019   # MULTU T9, T2
+    # Allows changing an item's appearance settings independent of what it actually is by changing things in the item
+    # actor's data as it's being created for some other custom functions to then utilize.
+    0x000F4202,  # SRL   T0, T7, 8
+    0x31090080,  # ANDI  T1, T0, 0x0080
+    0x01094023,  # SUBU  T0, T0, T1
+    0xA0C80044,  # SB    T0, 0x0044 (A2)
+    0xA0C90045,  # SB    T1, 0x0045 (A2)
+    0x31EF00FF,  # ANDI  T7, T7, 0x00FF
+    0x03E00008,  # JR    RA
+    0xA4CF0038   # SH    T7, 0x0038 (A2)
 ]
 
 item_appearance_switcher = [
     # Determines an item's model appearance by checking to see if a different item appearance ID was written in a
     # specific spot in the actor's data; if one wasn't, then the appearance value will be grabbed from the item's entry
     # in the item property table like normal instead.
-    0x92080040,  # LBU   T0, 0x0040 (S0)
+    0x92080044,  # LBU   T0, 0x0044 (S0)
     0x55000001,  # BNEZL T0, T1, [forward 0x01]
     0x01002025,  # OR    A0, T0, R0
     0x03E00008,  # JR    RA
-    0xAFA70024   # SW    A3, 0x0024 (SP)
 ]
 
 item_model_visibility_switcher = [
@@ -1365,46 +1347,31 @@ item_shine_visibility_switcher = [
 
 three_hit_item_flags_setter = [
     # As the function to create items from the 3HB item lists iterates through said item lists, this will pass unique
-    # flag values to each item when calling the "create item instance" function by right-shifting said flag by a number
-    # of bits depending on which item in the list it is. Unlike the vanilla game which always puts flags of 0x00000000
-    # on each of these.
-    0x8DC80008,  # LW    T0, 0x0008 (T6)
-    0x240A0000,  # ADDIU T2, R0, 0x0000
-    0x00084C02,  # SRL   T1, T0, 16
-    0x3108FFFF,  # ANDI  T0, T0, 0xFFFF
-    0x00094842,  # SRL   T1, T1, 1
-    0x15200003,  # BNEZ  T1,     [forward 0x03]
-    0x00000000,  # NOP
-    0x34098000,  # ORI   T1, R0, 0x8000
-    0x25080001,  # ADDIU T0, T0, 0x0001
-    0x0154582A,  # SLT   T3, T2, S4
-    0x1560FFF9,  # BNEZ  T3,     [backward 0x07]
-    0x254A0001,  # ADDIU T2, T2, 0x0001
-    0x00094C00,  # SLL   T1, T1, 16
-    0x01094025,  # OR    T0, T0, T1
-    0x0805971E,  # J     0x80165C78
-    0xAFA80010   # SW    T0, 0x0010 (SP)
+    # flag values to each item when calling the "create item instance" function by adding to the flag value the number
+    # of passed iterations so far.
+    0x96E8000A,  # LHU   T0, 0x000A (S7)
+    0x01124021,  # ADDU  T0, T0, S2
+    0xAFA80010,  # SW    T0, 0x0010
+    0x96E90008,  # LHU   T1, 0x0008 (S7)
+    0x02495006,  # SRLV  T2, T1, S2
+    0x314B0001,  # ANDI  T3, T2, 0x0001
+    0x55600001,  # BNEZL T3,     [forward 0x01]
+    0x34E70800,  # ORI   A3, A3, 0x0800
+    0x08058E56,  # J     0x80163958
 ]
 
 chandelier_item_flags_setter = [
     # Same as the above, but for the unique function made specifically and ONLY for the Villa foyer chandelier's item
-    # list. KCEK, why the heck did you have to do this!?
-    0x8F280014,  # LW    T0, 0x0014 (T9)
-    0x240A0000,  # ADDIU T2, R0, 0x0000
-    0x00084C02,  # SRL   T1, T0, 16
-    0x3108FFFF,  # ANDI  T0, T0, 0xFFFF
-    0x00094842,  # SRL   T1, T1, 1
-    0x15200003,  # BNEZ  T1,     [forward 0x03]
-    0x00000000,  # NOP
-    0x34098000,  # ORI   T1, R0, 0x8000
-    0x25080001,  # ADDIU T0, T0, 0x0001
-    0x0155582A,  # SLT   T3, T2, S5
-    0x1560FFF9,  # BNEZ  T3,     [backward 0x07]
-    0x254A0001,  # ADDIU T2, T2, 0x0001
-    0x00094C00,  # SLL   T1, T1, 16
-    0x01094025,  # OR    T0, T0, T1
-    0x0805971E,  # J     0x80165C78
-    0xAFA80010   # SW    T0, 0x0010 (SP)
+    # list. KCEK, why the heck did you have to do this to me!?
+    0x96C8000A,  # LHU   T0, 0x000A (S6)
+    0x01144021,  # ADDU  T0, T0, S4
+    0xAFA80010,  # SW    T0, 0x0010
+    0x96C90008,  # LHU   T1, 0x0008 (S6)
+    0x02895006,  # SRLV  T2, T1, S4
+    0x314B0001,  # ANDI  T3, T2, 0x0001
+    0x55600001,  # BNEZL T3,     [forward 0x01]
+    0x34E70800,  # ORI   A3, A3, 0x0800
+    0x08058E56,  # J     0x80163958
 ]
 
 prev_subweapon_spawn_checker = [
