@@ -197,16 +197,50 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     rom.write_int32(0x35A4, 0x00000000, 303)
 
     # Give the Gardener his Cornell behavior for everyone.
-    rom.write_int32(0x490, 0x24020002, 304)
+    rom.write_int32(0x490, 0x24020002, 304)  # ADDIU V0, R0, 0x0002
     rom.write_int32(0xD20, 0x00000000, 304)
     rom.write_int32(0x13CC, 0x00000000, 304)
 
     # Give Child Henry his Cornell behavior for everyone.
-    rom.write_int32(0x844, 0x240F0002, 275)
-    rom.write_int32(0x8B8, 0x240F0002, 275)
+    rom.write_int32(0x1B8, 0x24020002, 275)  # ADDIU V0, R0, 0x0002
+    rom.write_byte(0x613, 0x04, 275)
+    rom.write_int32(0x844, 0x240F0002, 275)  # ADDIU T7, R0, 0x0002
+    rom.write_int32(0x8B8, 0x240F0002, 275)  # ADDIU T7, R0, 0x0002
 
     # Make Gilles De Rais spawn in the Villa crypt for everyone.
     rom.write_byte(0x195, 0x00, 262)
+
+    # Lock the two doors dividing the front and rear Maze Garden with the Rose Garden Key
+    rom.write_byte(0x7983C1, 0x08)
+    rom.write_byte(0x7983E1, 0x09)
+    rom.write_int16(0x797F50, 0x5300)
+    rom.write_int16(0x797F58, 0x0293)
+    rom.write_byte(0x797F5F, 0x23)
+    rom.write_int16(0x797F62, 0x0405)
+    rom.write_int16(0x797F7C, 0x5300)
+    rom.write_int16(0x797F84, 0x0293)
+    rom.write_byte(0x797F8B, 0x23)
+    rom.write_int16(0x797F8E, 0x0405)
+    rom.write_bytes(0x797308, cvlod_string_to_bytes("\"Maze Gate\"\n"
+                                                    "\"One key unlocks both.\"", append_end=False))
+    rom.write_bytes(0x797294, cvlod_string_to_bytes("A click sounds from\n"
+                                                    "both Garden gates... ", append_end=False))
+    rom.write_bytes(0x78836E, cvlod_string_to_bytes("A door marked\n"
+                                                    " \"Rose Garden Door\"\n"
+                                                    "\"One key unlocks us all.\"", a_advance=True))
+    rom.write_bytes(0x7883E8, cvlod_string_to_bytes("A click sounds from\n"
+                                                    "all Rose Garden Key doors...", a_advance=True))
+    rom.write_bytes(0x796FD6, cvlod_string_to_bytes("A door marked\n"
+                                                    " \"Rose Garden Door\"\n"
+                                                    "\"One key unlocks us all.\"       ", append_end=False))
+    rom.write_bytes(0x79705E, cvlod_string_to_bytes("A click sounds from\n"
+                                                    "all Rose Garden Key doors...", append_end=False))
+
+    # Apply the child Henry gate checks to the two doors leading to the vampire crypt, so he can't be brought in there.
+    rom.write_byte(0x797BB4, 0x53)
+    rom.write_int32(0x797BB8, 0x802E4C34)
+    rom.write_byte(0x797D6C, 0x52)
+    rom.write_int32(0x797D70, 0x802E4C34)
 
     # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map came
     # before them
@@ -914,6 +948,17 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # Make the Villa coffin lid Henry checks never pass
     rom.write_byte(0x7D45FB, 0x04)
     rom.write_byte(0x7D4BFB, 0x04)
+    # Make the Villa coffin loading zone Henry check always pass
+    rom.write_int32(0xD3A78, 0x000C0821)  # ADDU  AT, R0, T4
+    # Make the Villa coffin lid Cornell attack collision check always pass
+    rom.write_int32(0x7D4D9C, 0x00000000)  # NOP
+    # Make the Villa coffin lid Cornell cutscene check never pass
+    rom.write_byte(0x7D518F, 0x04)
+    # Make the hardcoded Cornell check in the Villa crypt first vampire intro cutscene not pass. IDK what KCEK was high
+    # on here, since Cornell normally doesn't get this cutscene, but if it passes the game literally ceases functioning.
+    rom.write_int16(0x230, 0x1000, 427)
+    # Insert a special message over the "Found a hidden path" text.
+    rom.write_bytes(0xB30, cvlod_string_to_bytes("<To Be Continued|\\|/", append_end=False), 429)
 
     # for offset, item_id in offset_data.items():
     #    if item_id <= 0xFF:
