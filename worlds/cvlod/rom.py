@@ -26,6 +26,8 @@ file_buffers_start = 0x85C590
 
 warp_map_offsets = [0xADF67, 0xADF77, 0xADF87, 0xADF97, 0xADFA7, 0xADFBB, 0xADFCB, 0xADFDF]
 
+fountain_letters_to_numbers = {"O": 1, "M": 2, "H": 3, "V": 4}
+
 
 class LocalRom(object):
 
@@ -135,7 +137,7 @@ class LocalRom(object):
 
 def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, active_stage_exits, s1s_per_warp,
               active_warp_list, required_s2s, total_s2s, shop_name_list, shop_desc_list, shop_colors_list, slot_name,
-              active_locations):
+              active_locations, villa_fountain_order):
     w1 = str(s1s_per_warp).zfill(2)
     w2 = str(s1s_per_warp * 2).zfill(2)
     w3 = str(s1s_per_warp * 3).zfill(2)
@@ -156,6 +158,8 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # NOP the store instructions that clear fields 0x02 in the actor lists so the rando can use them to "delete" actors.
     rom.write_int32(0xC232C, 0x00000000)
     rom.write_int32(0xC236C, 0x00000000)
+    rom.write_int32(0xC300C, 0x00000000)
+    rom.write_int32(0xC3284, 0x00000000)
 
     # Custom data-loading code
     rom.write_int32(0x7CE8, 0x08007877)  # J 0x8001E1DC
@@ -937,11 +941,13 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     rom.write_int32(0xE7364, 0x24080002)  # ADDIU T0, R0, 0x0002
     rom.write_int32(0x109C10, 0x240E0002)  # ADDIU T6, R0, 0x0002
 
-    # Make the fountain pillar check for Cornell always pass
-    rom.write_int32(0xD7A60, 0x24030002)  # ADDIU V0, R0, 0x0002
+    # Make the fountain pillar checks for Cornell always pass
+    rom.write_int32(0xD77E0, 0x24030002)  # ADDIU V1, R0, 0x0002
+    rom.write_int32(0xD7A60, 0x24030002)  # ADDIU V1, R0, 0x0002
 
-    # Make the rose garden checks for Cornell always pass
-    rom.write_int32(0x786194, 0x24090002)  # ADDIU T1, R0, 0x0002
+    # Make only some rose garden checks for Cornell always pass
+    rom.write_byte(0x78619B, 0x24)
+    rom.write_int16(0x7861A0, 0x5423)
     rom.write_int32(0x786324, 0x240E0002)  # ADDIU T6, R0, 0x0002
     # Make the thirsty J. A. Oldrey cutscene check for Cornell always pass
     rom.write_byte(0x11831D, 0x00)
@@ -954,11 +960,28 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     rom.write_int32(0x7D4D9C, 0x00000000)  # NOP
     # Make the Villa coffin lid Cornell cutscene check never pass
     rom.write_byte(0x7D518F, 0x04)
-    # Make the hardcoded Cornell check in the Villa crypt first vampire intro cutscene not pass. IDK what KCEK was high
-    # on here, since Cornell normally doesn't get this cutscene, but if it passes the game literally ceases functioning.
+    # Make the hardcoded Cornell check in the Villa crypt Reinhardt/Carrie first vampire intro cutscene not pass.
+    # IDK what KCEK was smoking here, since Cornell normally doesn't get this cutscene, but if it passes the game
+    # literally ceases functioning.
     rom.write_int16(0x230, 0x1000, 427)
     # Insert a special message over the "Found a hidden path" text.
     rom.write_bytes(0xB30, cvlod_string_to_bytes("<To Be Continued|\\|/", append_end=False), 429)
+
+    # Change Oldrey's Diary into an item location
+    rom.write_int16(0x792A24, 0x0027)
+    rom.write_int16(0x792A28, 0x0084)
+    rom.write_byte(0x792A2D, 0x17)
+
+    # Write "Z + R + START" over the Special1 description.
+    rom.write_bytes(0x3B7C, cvlod_string_to_bytes("Z + R + START"), 327)
+    # Write the new Villa fountain puzzle order both in the code and Oldrey's Diary's description.
+    rom.write_bytes(0x4780, cvlod_string_to_bytes(f"{villa_fountain_order[0]} {villa_fountain_order[1]} "
+                                                  f"{villa_fountain_order[2]} {villa_fountain_order[3]}      "), 327)
+    rom.write_byte(0x173, fountain_letters_to_numbers[villa_fountain_order[0]], 373)
+    rom.write_byte(0x16B, fountain_letters_to_numbers[villa_fountain_order[1]], 373)
+    rom.write_byte(0x163, fountain_letters_to_numbers[villa_fountain_order[2]], 373)
+    rom.write_byte(0x143, fountain_letters_to_numbers[villa_fountain_order[3]], 373)
+
 
     # for offset, item_id in offset_data.items():
     #    if item_id <= 0xFF:

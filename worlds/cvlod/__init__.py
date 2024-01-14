@@ -79,6 +79,7 @@ class CVLoDWorld(World):
     s1s_per_warp: int = 0
     total_s2s: int = 0
     required_s2s: int = 0
+    villa_fountain_order: typing.List[str] = ["O", "M", "H", "V"]
     web = CVLoDWeb()
 
     def __init__(self, world: MultiWorld, player: int):
@@ -92,6 +93,8 @@ class CVLoDWorld(World):
             raise FileNotFoundError(rom_file)
 
     def generate_early(self) -> None:
+        self.random.shuffle(self.villa_fountain_order)
+
         self.total_s1s = self.options.total_special1s.value
         self.s1s_per_warp = self.options.special1s_per_warp.value
         self.total_s2s = self.options.total_special2s.value
@@ -273,7 +276,7 @@ class CVLoDWorld(World):
 
             patch_rom(self.multiworld, self.options, cvlod_rom, self.player, offset_data, self.active_stage_exits,
                       self.s1s_per_warp, self.active_warp_list, self.required_s2s, self.total_s2s, shop_name_list,
-                      shop_desc_list, shop_colors_list, slot_name, active_locations)
+                      shop_desc_list, shop_colors_list, slot_name, active_locations, self.villa_fountain_order)
 
             cvlod_rom.write_to_file(rompath)
 

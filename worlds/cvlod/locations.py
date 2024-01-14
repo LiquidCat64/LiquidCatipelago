@@ -199,7 +199,7 @@ location_info = {
                                          "hard item": iname.one_hundred_gold, "type": "inv"},
     lname.villala_archives_entrance:    {"code": 0x48,  "offset": 0x83A5E5, "normal item": iname.holy_water,
                                          "add conds": ["sub"]},
-    lname.villala_archives_table:       {"code": 0x29,  "offset": 0xBFC90F, "normal item": iname.purifying,
+    lname.villala_archives_table:       {"code": 0x84,  "offset": 0x792A2D, "normal item": iname.purifying,
                                          "type": "inv"},
     lname.villala_archives_rear:        {"code": 0x24,  "offset": 0x83A5B1, "normal item": iname.garden_key},
     lname.villam_malus_torch:           {"code": 0x173, "offset": 0x10C967, "normal item": iname.red_jewel_s,
