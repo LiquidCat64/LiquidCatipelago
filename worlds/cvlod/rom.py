@@ -8,7 +8,7 @@ import hashlib
 import os
 import pkgutil
 
-from .data import patches
+from .data import patches, lname
 from .stages import get_stage_info
 from .text import cvlod_string_to_bytes, cvlod_text_truncate, cvlod_text_wrap
 from .aesthetics import renon_item_dialogue, get_item_text_color
@@ -106,7 +106,7 @@ class LocalRom(object):
         if len(compressed_file) % 2:
             compressed_file.append(0x00)
         self.compressed_files[file_num] = bytearray((0x80000004 + len(compressed_file)).to_bytes(4, "big")) \
-            + bytearray(compressed_file)
+                                          + bytearray(compressed_file)
 
     def reinsert_all_files(self):
         displacement = 0
@@ -317,6 +317,8 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # Capitalize the "k" in "Archives key" and "Rose Garden key" to be consistent with...literally every other key name!
     rom.write_byte(0xB8AFF, 0x2B)
     rom.write_byte(0xB8BCB, 0x2B)
+    # Make the "PowerUp" textbox appear even if you already have two.
+    rom.write_int32(0x87E34, 0x00000000)  # NOP
 
     # Enable changing the item model/visibility on any item instance.
     rom.write_int32s(0x107740, [0x0C0FF0C0,  # JAL   0x803FC300
@@ -585,9 +587,37 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # rom.write_int32s(0xBFC264, patches.warp_menu_opener)
 
     # NPC item textbox hack
-    # rom.write_int32(0xBF1DC, 0x080FF904)  # J 0x803FE410
-    # rom.write_int32(0xBF1E0, 0x27BDFFE0)  # ADDIU SP, SP, -0x20
-    # rom.write_int32s(0xBFE410, patches.npc_item_hack)
+    rom.write_int32s(0xFFC6F0, patches.npc_item_hack)
+    # Change all the NPC item gives to run through the new function.
+    # Fountain Top Shine
+    rom.write_int16(0x35E, 0x8040, 371)
+    rom.write_int16(0x362, 0xC700, 371)
+    rom.write_byte(0x367, 0x00, 371)
+    rom.write_int16(0x36E, 0x0068, 371)
+    rom.write_bytes(0x720, cvlod_string_to_bytes("...", a_advance=True), 371)
+    # 6am Rose Patch
+    rom.write_int16(0x1E2, 0x8040, 370)
+    rom.write_int16(0x1E6, 0xC700, 370)
+    rom.write_byte(0x1EB, 0x01, 370)
+    rom.write_int16(0x1F2, 0x0078, 370)
+    rom.write_bytes(0x380, cvlod_string_to_bytes("...", a_advance=True), 370)
+    # Vincent
+    rom.write_int16(0x180E, 0x8040, 263)
+    rom.write_int16(0x1812, 0xC700, 263)
+    rom.write_byte(0x1817, 0x02, 263)
+    rom.write_int16(0x181E, 0x027F, 263)
+    rom.write_bytes(0x78E776, cvlod_string_to_bytes(" " * 173, append_end=False))
+    # Mary
+    rom.write_int16(0xB16, 0x8040, 280)
+    rom.write_int16(0xB1A, 0xC700, 280)
+    rom.write_byte(0xB1F, 0x03, 280)
+    rom.write_int16(0xB26, 0x0086, 280)
+    rom.write_bytes(0x78F40E, cvlod_string_to_bytes(" " * 295, append_end=False))
+    # Heinrich
+    rom.write_int16(0x962A, 0x8040, 252)
+    rom.write_int16(0x962E, 0xC700, 252)
+    rom.write_byte(0x9633, 0x04, 252)
+    rom.write_int16(0x963A, 0x0284, 252)
 
     # Sub-weapon check function hook
     # rom.write_int32(0xBF32C, 0x00000000)  # NOP
@@ -810,12 +840,6 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # if options.fall_guard.value:
     # rom.write_byte(0x27B23, 0x00)
 
-    # Enable the unused film reel effect on all cutscenes
-    # if options.cinematic_experience.value:
-    # rom.write_int32(0xAA33C, 0x240A0001)  # ADDIU T2, R0, 0x0001
-    # rom.write_byte(0xAA34B, 0x0C)
-    # rom.write_int32(0xAA4C4, 0x24090001)  # ADDIU T1, R0, 0x0001
-
     # Permanent PowerUp stuff
     # if options.permanent_powerups.value:
     # Make receiving PowerUps increase the unused menu PowerUp counter instead of the one outside the save struct
@@ -967,10 +991,16 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # Insert a special message over the "Found a hidden path" text.
     rom.write_bytes(0xB30, cvlod_string_to_bytes("<To Be Continued|\\|/", append_end=False), 429)
 
-    # Change Oldrey's Diary into an item location
+    # Change Oldrey's Diary into an item location.
     rom.write_int16(0x792A24, 0x0027)
     rom.write_int16(0x792A28, 0x0084)
     rom.write_byte(0x792A2D, 0x17)
+
+    # Move the following locations that have flags shared with other locations to their own flags.
+    rom.write_int16(0x792A48, 0x0085)  # Archives Garden Key
+    rom.write_int16(0xAAA, 0x0086, 280)  # Mary's Copper Key
+    rom.write_int16(0xAE2, 0x0086, 280)
+    rom.write_int16(0xB12, 0x0086, 280)
 
     # Write "Z + R + START" over the Special1 description.
     rom.write_bytes(0x3B7C, cvlod_string_to_bytes("Z + R + START"), 327)
@@ -982,16 +1012,15 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     rom.write_byte(0x163, fountain_letters_to_numbers[villa_fountain_order[2]], 373)
     rom.write_byte(0x143, fountain_letters_to_numbers[villa_fountain_order[3]], 373)
 
-
-    # for offset, item_id in offset_data.items():
-    #    if item_id <= 0xFF:
-    # rom.write_byte(offset, item_id)
-    #    elif item_id <= 0xFFFF:
-    # rom.write_int16(offset, item_id)
-    #    elif item_id <= 0xFFFFFF:
-    # rom.write_int24(offset, item_id)
-    #    else:
-    # rom.write_int32(offset, item_id)
+    for offset, item_id in offset_data.items():
+        if item_id <= 0xFF:
+            rom.write_byte(offset, item_id)
+        elif item_id <= 0xFFFF:
+            rom.write_int16(offset, item_id)
+        elif item_id <= 0xFFFFFF:
+            rom.write_int24(offset, item_id)
+        else:
+            rom.write_int32(offset, item_id)
 
     # Extract the item models file, decompress it, append the AP icons, compress it back, re-insert it.
     # items_file = lzkn64.decompress_buffer(rom.read_bytes(0x9C5310, 0x3D28))
@@ -1019,12 +1048,29 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     rom.write_byte(0x8881F, options.window_color_a.value << 4)
 
     # Write the item/player names for other game items
-    # for loc in active_locations:
-    #    if loc.address is not None and get_location_info(loc.name, "type") != "shop" and loc.item.player != player:
-    #        if len(loc.item.name) > 67:
-    #            item_name = loc.item.name[0x00:0x68]
-    #        else:
-    #            item_name = loc.item.name
+    for loc in active_locations:
+        if loc.address is not None and get_location_info(loc.name, "type") != "shop":
+            # Truncate the item name if it's above 67 characters in length.
+            item_name = loc.item.name
+            #if len(loc.item.name) > 67:
+            #    item_name = loc.item.name[0x00:0x68]
+
+            # Make Mary say what her item is so players can then decide if Henry is worth saving or not.
+            if loc.name == lname.villala_mary:
+
+                mary_text = "Save Henry, and I will "
+                if loc.item.player == player:
+                    mary_text += f"give you this {item_name}."
+                else:
+                    mary_text += f"send this {item_name} to {multiworld.get_player_name(loc.item.player)}."
+                mary_text += "\nGood luck out there!"
+
+                mary_text = cvlod_text_wrap(mary_text, 254)
+
+                rom.write_bytes(0x78EAE0, cvlod_string_to_bytes(mary_text[0] + " " * (598 - len(mary_text)),
+                                                                append_end=False))
+
+    # if loc.item.player != player:
     #        inject_address = 0xBB7164 + (256 * (loc.address & 0xFFF))
     #        wrapped_name, num_lines = cvlod_text_wrap(item_name + "\nfor " + multiworld.get_player_name(
     #            loc.item.player), 96)

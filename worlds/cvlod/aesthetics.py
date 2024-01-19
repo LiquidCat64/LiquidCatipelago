@@ -298,7 +298,7 @@ def randomize_music(world: "CVLoDWorld", options: CVLoDOptions) -> Dict[int, int
     music_list = [0] * 0x7A
     for number in music_sfx_ids:
         music_list[number] = number
-    if options.background_music.value == options.background_music.option_randomized:
+    #if options.background_music.value == options.background_music.option_randomized:
         looping_songs = []
         non_looping_songs = []
         fade_in_songs = {}
@@ -371,8 +371,8 @@ def get_countdown_numbers(options: CVLoDOptions, active_locations):
     If the parent region is not part of any stage (as is the case for Renon's shop), skip the location entirely."""
     countdown_list = [0 for _ in range(15)]
     for loc in active_locations:
-        if options.countdown.value == options.countdown.option_all_locations or \
-                (options.countdown.value == options.countdown.option_majors and loc.item.advancement):
+        #if options.countdown.value == options.countdown.option_all_locations or \
+        #        (options.countdown.value == options.countdown.option_majors and loc.item.advancement):
 
             countdown_number = get_location_info(loc.name, "countdown")
 
@@ -404,18 +404,18 @@ def get_location_data(world: "CVLoDWorld", options: CVLoDOptions, active_locatio
     regular data."""
 
     # Figure out the list of possible Ice Trap appearances to use based on the settings, first and foremost.
-    if options.ice_trap_appearance.value == options.ice_trap_appearance.option_major_only:
-        allowed_classifications = ["progression", "progression skip balancing"]
-    elif options.ice_trap_appearance.value == options.ice_trap_appearance.option_junk_only:
-        allowed_classifications = ["filler", "useful"]
-    else:
-        allowed_classifications = ["progression", "progression skip balancing", "filler", "useful"]
+    #if options.ice_trap_appearance.value == options.ice_trap_appearance.option_major_only:
+    #    allowed_classifications = ["progression", "progression skip balancing"]
+    #elif options.ice_trap_appearance.value == options.ice_trap_appearance.option_junk_only:
+    #    allowed_classifications = ["filler", "useful"]
+    #else:
+    #    allowed_classifications = ["progression", "progression skip balancing", "filler", "useful"]
 
-    trap_appearances = []
-    for item in item_info:
-        if item_info[item]["default classification"] in allowed_classifications and item != "Ice Trap" and \
-                get_item_info(item, "code") is not None:
-            trap_appearances.append(item)
+    #trap_appearances = []
+    #for item in item_info:
+    #    if item_info[item]["default classification"] in allowed_classifications and item != "Ice Trap" and \
+    #            get_item_info(item, "code") is not None:
+    #        trap_appearances.append(item)
 
     shop_name_list = []
     shop_desc_list = []
@@ -438,7 +438,7 @@ def get_location_data(world: "CVLoDWorld", options: CVLoDOptions, active_locatio
                 location_bytes[get_location_info(loc.name, "offset")] = get_item_info(loc.item.name, "code")
         else:
             # Make the item the unused Wooden Stake - our multiworld item.
-            location_bytes[get_location_info(loc.name, "offset")] = 0x11
+            location_bytes[get_location_info(loc.name, "offset")] = 0x06
 
         # Figure out the item's appearance. If it's a CV64/LoD player's item, change the multiworld item's model to
         # match what it is. Otherwise, change it to an Archipelago progress or not progress icon. The model "change"
@@ -446,29 +446,29 @@ def get_location_data(world: "CVLoDWorld", options: CVLoDOptions, active_locatio
         if loc.item.game == "Castlevania Legacy of Darkness":
             location_bytes[get_location_info(loc.name, "offset") - 1] = get_item_info(loc.item.name, "code")
         elif loc.item.advancement:
-            location_bytes[get_location_info(loc.name, "offset") - 1] = 0x11  # Wooden Stakes are majors
+            location_bytes[get_location_info(loc.name, "offset") - 1] = 0x06  # Special3 id
         else:
-            location_bytes[get_location_info(loc.name, "offset") - 1] = 0x12  # Roses are minors
+            location_bytes[get_location_info(loc.name, "offset") - 1] = 0x06
 
         # If it's a PermaUp, change the item's model to a big PowerUp no matter what.
         if loc.item.game == "Castlevania Legacy of Darkness" and loc.item.code == 0x10C + base_id:
             location_bytes[get_location_info(loc.name, "offset") - 1] = 0x0B
 
         # If it's an Ice Trap, change it's model to one of the appearances we determiend before.
-        if loc.item.game == "Castlevania Legacy of Darkness" and loc.item.code == 0x12 + base_id:
-            location_bytes[get_location_info(loc.name, "offset") - 1] = \
-                get_item_info(world.random.choice(trap_appearances), "code")
-            if location_bytes[get_location_info(loc.name, "offset") - 1] == 0x10C:
-                location_bytes[get_location_info(loc.name, "offset") - 1] = 0x0B
+        #if loc.item.game == "Castlevania Legacy of Darkness" and loc.item.code == 0x12 + base_id:
+        #    location_bytes[get_location_info(loc.name, "offset") - 1] = \
+        #        get_item_info(world.random.choice(trap_appearances), "code")
+        #    if location_bytes[get_location_info(loc.name, "offset") - 1] == 0x10C:
+        #        location_bytes[get_location_info(loc.name, "offset") - 1] = 0x0B
 
         # Apply the invisibility variable depending on the "invisible items" setting.
-        if (options.invisible_items.value == 0 and loc_type == "inv") or \
-                (options.invisible_items.value == 2 and loc_type not in ["npc", "shop"]):
-            location_bytes[get_location_info(loc.name, "offset") - 1] += 0x80
-        elif options.invisible_items.value == 3 and loc_type not in ["npc", "shop"]:
-            invisible = world.random.randint(0, 1)
-            if invisible:
-                location_bytes[get_location_info(loc.name, "offset") - 1] += 0x80
+        #if (options.invisible_items.value == 0 and loc_type == "inv") or \
+        #        (options.invisible_items.value == 2 and loc_type not in ["npc", "shop"]):
+        #    location_bytes[get_location_info(loc.name, "offset") - 1] += 0x80
+        #elif options.invisible_items.value == 3 and loc_type not in ["npc", "shop"]:
+        #    invisible = world.random.randint(0, 1)
+        #    if invisible:
+        #        location_bytes[get_location_info(loc.name, "offset") - 1] += 0x80
 
         # If it's an Axe or Cross in a higher freestanding location, lower it into grab range.
         # KCEK made these spawn 3.2 units higher for some reason.
@@ -533,10 +533,10 @@ def get_loading_zone_bytes(options: CVLoDOptions, starting_stage: str, active_st
                 get_stage_info(active_stage_exits[stage]["prev"], "end spawn id")
 
             # Change CC's end-spawn ID to put you at Carrie's exit if appropriate
-            if active_stage_exits[stage]["prev"] == rname.castle_center:
-                if options.character_stages.value == options.character_stages.option_carrie_only or \
-                        active_stage_exits[rname.castle_center]["alt"] == stage:
-                    loading_zone_bytes[get_stage_info(stage, "startzone spawn offset")] += 1
+            #if active_stage_exits[stage]["prev"] == rname.castle_center:
+            #    if options.character_stages.value == options.character_stages.option_carrie_only or \
+            #            active_stage_exits[rname.castle_center]["alt"] == stage:
+            #        loading_zone_bytes[get_stage_info(stage, "startzone spawn offset")] += 1
 
         # End loading zones
         if active_stage_exits[stage]["next"]:

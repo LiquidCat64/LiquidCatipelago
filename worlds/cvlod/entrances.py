@@ -1,81 +1,100 @@
-from .data import ename, iname, rname
+from .data import ename, iname, rname, lname
 from .stages import get_stage_info
 from .options import CVLoDOptions
 
 entrance_info = {
     # Forest of Silence
-    ename.forest_dbridge_gate: {"connection": rname.forest_mid},
-    ename.forest_werewolf_gate: {"connection": rname.forest_end},
-    ename.forest_end: {"connection": ["next", rname.forest_of_silence]},
+    #ename.forest_dbridge_gate: {"destination": rname.forest_mid},
+    #ename.forest_werewolf_gate: {"destination": rname.forest_end},
+    #ename.forest_end: {"destination": ["next", rname.forest_of_silence]},
+
     # Castle Wall
-    ename.cw_portcullis_c: {"connection": rname.cw_exit},
-    ename.cw_lt_skip: {"connection": ["next", rname.castle_wall], "add conds": ["hard"]},
-    ename.cw_lt_door: {"connection": rname.cw_ltower, "rule": iname.left_tower_key},
-    ename.cw_end: {"connection": ["next", rname.castle_wall]},
-    # Villa
-    ename.villa_dog_gates: {"connection": rname.villa_main},
-    ename.villa_snipe_dogs: {"connection": rname.villa_start, "add conds": ["carrie", "hard"]},
-    ename.villa_to_storeroom: {"connection": rname.villa_storeroom, "rule": iname.storeroom_key},
-    ename.villa_to_archives: {"connection": rname.villa_archives, "rule": iname.archives_key},
-    ename.villa_renon: {"connection": rname.renon, "add conds": ["shopsanity"]},
-    ename.villa_to_maze: {"connection": rname.villa_maze, "rule": iname.garden_key},
-    ename.villa_from_storeroom: {"connection": rname.villa_main, "rule": iname.storeroom_key},
-    ename.villa_from_maze: {"connection": rname.villa_servants, "rule": iname.garden_key},
-    ename.villa_servant_door: {"connection": rname.villa_main},
-    ename.villa_copper_door: {"connection": rname.villa_crypt, "rule": iname.copper_key,
-                              "add conds": ["not hard"]},
-    ename.villa_copper_skip: {"connection": rname.villa_crypt, "add conds": ["hard"]},
-    ename.villa_bridge_door: {"connection": rname.villa_maze},
-    ename.villa_end_r: {"connection": ["next", rname.villa]},
-    ename.villa_end_c: {"connection": ["alt", rname.villa]},
+    ename.cw_portcullis_c: {"destination": rname.cw_exit},
+    ename.cw_lt_door: {"destination": rname.cw_ltower, "rule": iname.lt_key},
+    ename.cw_end: {"destination": rname.villa_start, "rule": iname.winch},
+
+    # Villa start
+    ename.villa_dog_gates: {"destination": rname.villa_entrance},
+    # Villa front entrance
+    ename.villa_snipe_dogs: {"destination": rname.villa_start, "add conds": ["carrie", "hard"]},
+    ename.villa_fountain_pillar: {"destination": rname.villa_fountain, "rule": iname.diary},
+    ename.villa_into_servant_door: {"destination": rname.villa_servants},
+    ename.villa_to_rose_garden: {"destination": rname.villa_living, "rule": iname.rg_key},
+    # Villa fountain
+    ename.villa_fountain_shine: {"destination": rname.villa_fountain_top, "rule": iname.brooch},
+    # Villa living area
+    ename.villa_from_rose_garden: {"destination": rname.villa_entrance, "rule": iname.rg_key},
+    ename.villa_to_storeroom: {"destination": rname.villa_storeroom, "rule": iname.str_key},
+    ename.villa_to_archives: {"destination": rname.villa_archives, "rule": iname.arc_key},
+    ename.villa_rescue_henry: {"destination": rname.villa_mary_reward, "rule": "Mary"},
+    # ename.villa_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
+    ename.villa_to_main_maze_gate: {"destination": rname.villa_maze_f, "rule": iname.gdn_key},
+    # Villa storeroom
+    ename.villa_from_storeroom: {"destination": rname.villa_living, "rule": iname.str_key},
+    # Villa front maze
+    ename.villa_from_main_maze_gate: {"destination": rname.villa_living, "rule": iname.gdn_key},
+    ename.villa_copper_door: {"destination": rname.villa_crypt_e, "rule": iname.cu_key},
+    ename.villa_front_rose_doors: {"destination": rname.villa_maze_r, "rule": iname.rg_key},
+    # Villa rear maze
+    ename.villa_from_rear_maze_gate: {"destination": rname.villa_servants, "rule": iname.gdn_key},
+    ename.villa_thorn_fence: {"destination": rname.villa_fgarden, "rule": iname.tho_key},
+    ename.villa_copper_skip_e: {"destination": rname.villa_crypt_e, "add conds": ["hard"]},
+    ename.villa_copper_skip_i: {"destination": rname.villa_crypt_i, "add conds": ["hard"]},
+    ename.villa_rear_rose_doors: {"destination": rname.villa_maze_f, "rule": iname.rg_key},
+    # Villa servants' entrance
+    ename.villa_to_rear_maze_gate: {"destination": rname.villa_maze_r, "rule": iname.gdn_key},
+    ename.villa_out_of_servant_door: {"destination": rname.villa_entrance},
+    # Villa crypt exterior
+    ename.villa_bridge_door: {"destination": rname.villa_maze_f},
+    ename.villa_crest_door: {"destination": rname.villa_crypt_i, "rule": "crests"},
+    #ename.villa_end_r: {"destination": ["next", rname.villa]},
+    #ename.villa_end_c: {"destination": ["alt", rname.villa]},
+
     # Tunnel
-    ename.tunnel_start_renon: {"connection": rname.renon, "add conds": ["shopsanity"]},
-    ename.tunnel_gondolas: {"connection": rname.tunnel_end},
-    ename.tunnel_end_renon: {"connection": rname.renon, "add conds": ["shopsanity"]},
-    ename.tunnel_end: {"connection": ["next", rname.tunnel]},
+    #ename.tunnel_start_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
+    #ename.tunnel_gondolas: {"destination": rname.tunnel_end},
+    #ename.tunnel_end_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
+    #ename.tunnel_end: {"destination": ["next", rname.tunnel]},
     # Underground Waterway
-    ename.uw_renon: {"connection": rname.renon, "add conds": ["shopsanity"]},
-    ename.uw_final_waterfall: {"connection": rname.uw_end},
-    ename.uw_waterfall_skip: {"connection": rname.uw_main, "add conds": ["hard"]},
-    ename.uw_end: {"connection": ["next", rname.underground_waterway]},
+    #ename.uw_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
+    #ename.uw_final_waterfall: {"destination": rname.uw_end},
+    #ename.uw_waterfall_skip: {"destination": rname.uw_main, "add conds": ["hard"]},
+    #ename.uw_end: {"destination": ["next", rname.underground_waterway]},
     # Castle Center
-    ename.cc_tc_door: {"connection": rname.cc_torture_chamber, "rule": iname.chamber_key},
-    ename.cc_renon: {"connection": rname.renon, "add conds": ["shopsanity"]},
-    ename.cc_lower_wall: {"connection": rname.cc_crystal, "rule": "Bomb 2"},
-    ename.cc_upper_wall: {"connection": rname.cc_library, "rule": "Bomb 1"},
-    ename.cc_elevator: {"connection": rname.cc_elev_top},
-    ename.cc_exit_r: {"connection": ["next", rname.castle_center]},
-    ename.cc_exit_c: {"connection": ["alt", rname.castle_center]},
+    #ename.cc_tc_door: {"destination": rname.cc_torture_chamber, "rule": iname.chb_key},
+    #ename.cc_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
+    #ename.cc_lower_wall: {"destination": rname.cc_crystal, "rule": "Bomb 2"},
+    #ename.cc_upper_wall: {"destination": rname.cc_library, "rule": "Bomb 1"},
+    #ename.cc_elevator: {"destination": rname.cc_elev_top},
+    #ename.cc_exit_r: {"destination": ["next", rname.castle_center]},
+    #ename.cc_exit_c: {"destination": ["alt", rname.castle_center]},
     # Duel Tower
-    ename.dt_start: {"connection": ["prev", rname.duel_tower]},
-    ename.dt_end: {"connection": ["next", rname.duel_tower]},
+    #ename.dt_start: {"destination": ["prev", rname.duel_tower]},
+    #ename.dt_end: {"destination": ["next", rname.duel_tower]},
     # Tower of Execution
-    ename.toe_start: {"connection": ["prev", rname.tower_of_execution]},
-    ename.toe_gate: {"connection": rname.toe_ledge, "rule": iname.execution_key,
-                     "add conds": ["not hard"]},
-    ename.toe_gate_skip: {"connection": rname.toe_ledge, "add conds": ["hard"]},
-    ename.toe_end: {"connection": ["next", rname.tower_of_execution]},
+    #ename.toe_start: {"destination": ["prev", rname.tower_of_execution]},
+    #ename.toe_end: {"destination": ["next", rname.tower_of_execution]},
     # Tower of Science
-    ename.tosci_start: {"connection": ["prev", rname.tower_of_science]},
-    ename.tosci_key1_door: {"connection": rname.tosci_three_doors, "rule": iname.science_key1},
-    ename.tosci_to_key2_door: {"connection": rname.tosci_conveyors, "rule": iname.science_key2},
-    ename.tosci_from_key2_door: {"connection": rname.tosci_start, "rule": iname.science_key2},
-    ename.tosci_key3_door: {"connection": rname.tosci_key3, "rule": iname.science_key3},
-    ename.tosci_end: {"connection": ["next", rname.tower_of_science]},
+    #ename.tosci_start: {"destination": ["prev", rname.tower_of_science]},
+    #ename.tosci_key1_door: {"destination": rname.tosci_three_doors, "rule": iname.science_key1},
+    #ename.tosci_to_key2_door: {"destination": rname.tosci_conveyors, "rule": iname.science_key2},
+    #ename.tosci_from_key2_door: {"destination": rname.tosci_start, "rule": iname.science_key2},
+    #ename.tosci_key3_door: {"destination": rname.tosci_key3, "rule": iname.science_key3},
+    #ename.tosci_end: {"destination": ["next", rname.tower_of_science]},
     # Tower of Sorcery
-    ename.tosor_start: {"connection": ["prev", rname.tower_of_sorcery]},
-    ename.tosor_end: {"connection": ["next", rname.tower_of_sorcery]},
+    #ename.tosor_start: {"destination": ["prev", rname.tower_of_sorcery]},
+    #ename.tosor_end: {"destination": ["next", rname.tower_of_sorcery]},
     # Room of Clocks
-    ename.roc_gate: {"connection": ["next", rname.room_of_clocks]},
+    #ename.roc_gate: {"destination": ["next", rname.room_of_clocks]},
     # Clock Tower
-    ename.ct_to_door1: {"connection": rname.ct_middle, "rule": iname.clocktower_key1},
-    ename.ct_from_door1: {"connection": rname.ct_start, "rule": iname.clocktower_key1},
-    ename.ct_to_door2: {"connection": rname.ct_end, "rule": iname.clocktower_key2},
-    ename.ct_from_door2: {"connection": rname.ct_middle, "rule": iname.clocktower_key2},
-    ename.ct_renon: {"connection": rname.renon, "add conds": ["shopsanity"]},
-    ename.ct_door_3: {"connection": ["next", rname.clock_tower], "rule": iname.clocktower_key3},
+    #ename.ct_to_door1: {"destination": rname.ct_middle, "rule": iname.clocktower_key1},
+    #ename.ct_from_door1: {"destination": rname.ct_start, "rule": iname.clocktower_key1},
+    #ename.ct_to_door2: {"destination": rname.ct_end, "rule": iname.clocktower_key2},
+    #ename.ct_from_door2: {"destination": rname.ct_middle, "rule": iname.clocktower_key2},
+    #ename.ct_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
+    #ename.ct_door_3: {"destination": ["next", rname.clock_tower], "rule": iname.clocktower_key3},
     # Castle Keep
-    ename.ck_slope_jump: {"connection": rname.roc_main, "add conds": ["hard"]},
+    #ename.ck_slope_jump: {"destination": rname.roc_main, "add conds": ["hard"]},
 }
 
 add_conds = {"carrie": ("carrie_logic", True, True),
@@ -90,21 +109,22 @@ stage_connection_types = {"prev": "end region",
 
 def lookup_rule(rule: str, player: int):
     rules = {
-        iname.left_tower_key: lambda state: state.has(iname.left_tower_key, player),
-        iname.storeroom_key: lambda state: state.has(iname.storeroom_key, player),
-        iname.archives_key: lambda state: state.has(iname.archives_key, player),
-        iname.garden_key: lambda state: state.has(iname.garden_key, player),
-        iname.copper_key: lambda state: state.has(iname.copper_key, player),
-        iname.chamber_key: lambda state: state.has(iname.chamber_key, player),
-        "Bomb 1": lambda state: state.has(iname.magical_nitro, player) and state.has(iname.mandragora, player),
-        "Bomb 2": lambda state: state.has(iname.magical_nitro, player, 2) and state.has(iname.mandragora, player, 2),
-        iname.execution_key: lambda state: state.has(iname.execution_key, player),
-        iname.science_key1: lambda state: state.has(iname.science_key1, player),
-        iname.science_key2: lambda state: state.has(iname.science_key2, player),
-        iname.science_key3: lambda state: state.has(iname.science_key3, player),
-        iname.clocktower_key1: lambda state: state.has(iname.clocktower_key1, player),
-        iname.clocktower_key2: lambda state: state.has(iname.clocktower_key2, player),
-        iname.clocktower_key3: lambda state: state.has(iname.clocktower_key3, player),
+        iname.lt_key: lambda state: state.has(iname.lt_key, player),
+        iname.winch: lambda state: state.has(iname.winch, player),
+        iname.diary: lambda state: state.has(iname.diary, player),
+        iname.brooch: lambda state: state.has(iname.brooch, player),
+        iname.rg_key: lambda state: state.has(iname.rg_key, player),
+        iname.str_key: lambda state: state.has(iname.str_key, player),
+        iname.arc_key: lambda state: state.has(iname.arc_key, player),
+        iname.gdn_key: lambda state: state.has(iname.gdn_key, player),
+        iname.tho_key: lambda state: state.has(iname.tho_key, player),
+        iname.cu_key: lambda state: state.has(iname.cu_key, player),
+        "Mary": lambda state: state.has(iname.rg_key, player) and state.can_reach(lname.villam_malus_torch,
+                                                                                  "Location", player),
+        "crests": lambda state: state.has(iname.crest_a, player) and state.has(iname.crest_b, player),
+        iname.chb_key: lambda state: state.has(iname.chb_key, player),
+        "Bomb 1": lambda state: state.has(iname.nitro, player) and state.has(iname.mandrag, player),
+        "Bomb 2": lambda state: state.has(iname.nitro, player, 2) and state.has(iname.mandrag, player, 2),
     }
     return rules[rule]
 
@@ -123,7 +143,7 @@ def get_warp_entrances(options: CVLoDOptions, active_warp_list: list, player: in
     for i in range(1, len(active_warp_list)):
         mid_stage_region = get_stage_info(active_warp_list[i], "mid region")
         warp_entrances.update({mid_stage_region: f"Warp {i}"})
-        warp_rules.update({mid_stage_region: lambda state, needed=i: state.has(iname.special_one, player,
+        warp_rules.update({mid_stage_region: lambda state, needed=i: state.has(iname.s1, player,
                                                                                options.special1s_per_warp * needed)})
 
     return warp_entrances, warp_rules
@@ -163,7 +183,7 @@ def verify_entrances(options: CVLoDOptions, entrances: list, active_stage_exits:
 
         # Add the entrance to the verified entrances if the above check passes.
         # If the entrance is a stage connection, get the corresponding other stage region.
-        connection = get_entrance_info(ent, "connection")
+        connection = get_entrance_info(ent, "destination")
 
         if type(connection) == list:
             connecting_stage = active_stage_exits[connection[1]][connection[0]]

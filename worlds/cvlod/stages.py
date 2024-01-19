@@ -34,17 +34,24 @@ stage_info = {
     "Villa": {
         "start region": rname.villa_start, "start map id": 0x03, "start spawn id": 0x00,
         "mid region": rname.villa_storeroom, "mid map id": 0x05, "mid spawn id": 0x04,
-        "end region": rname.villa_crypt, "end map id": 0x1A, "end spawn id": 0x03,
+        "end region": rname.villa_crypt_i, "end map id": 0x1A, "end spawn id": 0x03,
         "endzone map offset": 0xD9DA3, "endzone spawn offset": 0x109E81,
         "altzone map offset": 0xD9DAB, "altzone spawn offset": 0x109E81,
         "save number offsets": [0x1049F5, 0x1049FD, 0x104A05, 0x104A0D],
         "regions": [rname.villa_start,
-                    rname.villa_main,
+                    rname.villa_entrance,
+                    rname.villa_fountain,
+                    rname.villa_fountain_top,
+                    rname.villa_living,
                     rname.villa_storeroom,
                     rname.villa_archives,
-                    rname.villa_maze,
+                    rname.villa_mary_reward,
+                    rname.villa_maze_f,
+                    rname.villa_maze_r,
+                    rname.villa_fgarden,
                     rname.villa_servants,
-                    rname.villa_crypt]
+                    rname.villa_crypt_e,
+                    rname.villa_crypt_i]
     },
 
     "Tunnel": {
@@ -154,36 +161,35 @@ stage_info = {
     },
 }
 
-vanilla_stage_order = ["Forest of Silence", "Castle Wall", "Villa", "Tunnel", "Underground Waterway", "Castle Center",
-                       "Duel Tower", "Tower of Execution", "Tower of Science", "Tower of Sorcery", "Room of Clocks",
-                       "Clock Tower", "Castle Keep"]
+vanilla_stage_order = ["Castle Wall", "Villa"]
 
-vanilla_stage_exits = {rname.forest_of_silence: {"prev": None, "next": rname.castle_wall,
-                                                 "alt": None, "position": 1, "path": " "},
+vanilla_stage_exits = {
+                       #rname.forest_of_silence: {"prev": None, "next": rname.castle_wall,
+                       #                          "alt": None, "position": 1, "path": " "},
                        rname.castle_wall: {"prev": None, "next": rname.villa,
                                            "alt": None, "position": 2, "path": " "},
                        rname.villa: {"prev": None, "next": rname.tunnel,
-                                     "alt": rname.underground_waterway, "position": 3, "path": " "},
-                       rname.tunnel: {"prev": None, "next": rname.castle_center,
-                                      "alt": None, "position": 4, "path": " "},
-                       rname.underground_waterway: {"prev": None, "next": rname.castle_center,
-                                                    "alt": None, "position": 4, "path": "'"},
-                       rname.castle_center: {"prev": None, "next": rname.duel_tower,
-                                             "alt": rname.tower_of_science, "position": 5, "path": " "},
-                       rname.duel_tower: {"prev": rname.castle_center, "next": rname.tower_of_execution,
-                                          "alt": None, "position": 6, "path": " "},
-                       rname.tower_of_execution: {"prev": rname.duel_tower, "next": rname.room_of_clocks,
-                                                  "alt": None, "position": 7, "path": " "},
-                       rname.tower_of_science: {"prev": rname.castle_center, "next": rname.tower_of_sorcery,
-                                                "alt": None, "position": 6, "path": "'"},
-                       rname.tower_of_sorcery: {"prev": rname.tower_of_science, "next": rname.room_of_clocks,
-                                                "alt": None, "position": 7, "path": "'"},
-                       rname.room_of_clocks: {"prev": None, "next": rname.clock_tower,
-                                              "alt": None, "position": 8, "path": " "},
-                       rname.clock_tower: {"prev": None, "next": rname.castle_keep,
-                                           "alt": None, "position": 9, "path": " "},
-                       rname.castle_keep: {"prev": None, "next": None,
-                                           "alt": None, "position": 10, "path": " "}}
+                                     "alt": rname.underground_waterway, "position": 3, "path": " "}}
+                       #rname.tunnel: {"prev": None, "next": rname.castle_center,
+                       #               "alt": None, "position": 4, "path": " "},
+                       #rname.underground_waterway: {"prev": None, "next": rname.castle_center,
+                       #                             "alt": None, "position": 4, "path": "'"},
+                       #rname.castle_center: {"prev": None, "next": rname.duel_tower,
+                       #                      "alt": rname.tower_of_science, "position": 5, "path": " "},
+                       #rname.duel_tower: {"prev": rname.castle_center, "next": rname.tower_of_execution,
+                       #                   "alt": None, "position": 6, "path": " "},
+                       #rname.tower_of_execution: {"prev": rname.duel_tower, "next": rname.room_of_clocks,
+                       #                           "alt": None, "position": 7, "path": " "},
+                       #rname.tower_of_science: {"prev": rname.castle_center, "next": rname.tower_of_sorcery,
+                       #                         "alt": None, "position": 6, "path": "'"},
+                       #rname.tower_of_sorcery: {"prev": rname.tower_of_science, "next": rname.room_of_clocks,
+                       #                         "alt": None, "position": 7, "path": "'"},
+                       #rname.room_of_clocks: {"prev": None, "next": rname.clock_tower,
+                       #                       "alt": None, "position": 8, "path": " "},
+                       #rname.clock_tower: {"prev": None, "next": rname.castle_keep,
+                       #                    "alt": None, "position": 9, "path": " "},
+                       #rname.castle_keep: {"prev": None, "next": None,
+                       #                    "alt": None, "position": 10, "path": " "}}
 
 
 def get_stage_info(stage: str, info: str):
@@ -223,22 +229,22 @@ def get_normal_stage_exits(world: "CVLoDWorld") -> Dict[str, dict]:
     exits = {name: vanilla_stage_exits[name].copy() for name in vanilla_stage_exits}
     non_branching_pos = 1
 
-    for stage in stage_info:
+    #for stage in stage_info:
         # Remove character stages that are not enabled.
-        if not verify_character_stage(world, stage):
-            del exits[stage]
-            continue
+    #    if not verify_character_stage(world, stage):
+    #        del exits[stage]
+    #        continue
 
         # If branching pathways are not enabled, update the exit info to converge said stages on a single path.
-        if not world.branching_stages:
-            if world.carrie_stages and not world.reinhardt_stages and exits[stage]["alt"] is not None:
-                exits[stage]["next"] = exits[stage]["alt"]
-            elif world.carrie_stages and world.reinhardt_stages and stage != rname.castle_keep:
-                exits[stage]["next"] = vanilla_stage_order[vanilla_stage_order.index(stage) + 1]
-            exits[stage]["alt"] = None
-            exits[stage]["position"] = non_branching_pos
-            exits[stage]["path"] = " "
-            non_branching_pos += 1
+    #    if not world.branching_stages:
+    #        if world.carrie_stages and not world.reinhardt_stages and exits[stage]["alt"] is not None:
+    #            exits[stage]["next"] = exits[stage]["alt"]
+    #        elif world.carrie_stages and world.reinhardt_stages and stage != rname.castle_keep:
+    #            exits[stage]["next"] = vanilla_stage_order[vanilla_stage_order.index(stage) + 1]
+    #        exits[stage]["alt"] = None
+    #        exits[stage]["position"] = non_branching_pos
+    #        exits[stage]["path"] = " "
+    #        non_branching_pos += 1
 
     return exits
 

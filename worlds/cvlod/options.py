@@ -370,11 +370,6 @@ class MapLighting(Choice):
     default = 0
 
 
-class CinematicExperience(Toggle):
-    """Enables an unused film reel effect on every cutscene in the game. Purely cosmetic."""
-    display_name = "Cinematic Experience"
-
-
 class WindowColorR(Range):
     """The red color value for the text windows during gameplay."""
     display_name = "Window Color R"
@@ -422,54 +417,53 @@ class DeathLink(Choice):
 
 @dataclass
 class CVLoDOptions(PerGameCommonOptions):
-    character_stages: CharacterStages
-    stage_shuffle: StageShuffle
-    starting_stage: StartingStage
+    # character_stages: CharacterStages
+    # stage_shuffle: StageShuffle
+    # starting_stage: StartingStage
     # custom_stage_order: CustomStageOrder
-    warp_order: WarpOrder
+    # warp_order: WarpOrder
     sub_weapon_shuffle: SubWeaponShuffle
     spare_keys: SpareKeys
-    hard_item_pool: HardItemPool
-    special1s_per_warp: Special1sPerWarp
-    total_special1s: TotalSpecial1s
-    draculas_condition: DraculasCondition
-    percent_special2s_required: PercentSpecial2sRequired
-    total_special2s: TotalSpecial2s
-    bosses_required: BossesRequired
+    # hard_item_pool: HardItemPool
+    # special1s_per_warp: Special1sPerWarp
+    # total_special1s: TotalSpecial1s
+    # draculas_condition: DraculasCondition
+    # percent_special2s_required: PercentSpecial2sRequired
+    # total_special2s: TotalSpecial2s
+    # bosses_required: BossesRequired
     carrie_logic: CarrieLogic
     hard_logic: HardLogic
     multi_hit_breakables: MultiHitBreakables
-    empty_breakables: EmptyBreakables
-    lizard_locker_items: LizardLockerItems
-    shopsanity: Shopsanity
-    shop_prices: ShopPrices
-    minimum_gold_price: MinimumGoldPrice
-    maximum_gold_price: MaximumGoldPrice
-    post_behemoth_boss: PostBehemothBoss
-    room_of_clocks_boss: RoomOfClocksBoss
-    renon_fight_condition: RenonFightCondition
-    vincent_fight_condition: VincentFightCondition
-    bad_ending_condition: BadEndingCondition
+    # empty_breakables: EmptyBreakables
+    # lizard_locker_items: LizardLockerItems
+    # shopsanity: Shopsanity
+    # shop_prices: ShopPrices
+    # minimum_gold_price: MinimumGoldPrice
+    # maximum_gold_price: MaximumGoldPrice
+    # post_behemoth_boss: PostBehemothBoss
+    # room_of_clocks_boss: RoomOfClocksBoss
+    # renon_fight_condition: RenonFightCondition
+    # vincent_fight_condition: VincentFightCondition
+    # bad_ending_condition: BadEndingCondition
     increase_item_limit: IncreaseItemLimit
-    nerf_healing_items: NerfHealingItems
-    loading_zone_heals: LoadingZoneHeals
-    invisible_items: InvisibleItems
-    drop_previous_sub_weapon: DropPreviousSubWeapon
-    permanent_powerups: PermanentPowerUps
-    ice_trap_percentage: IceTrapPercentage
-    ice_trap_appearance: IceTrapAppearance
-    disable_time_restrictions: DisableTimeRestrictions
-    skip_gondolas: SkipGondolas
-    skip_waterway_blocks: SkipWaterwayBlocks
-    countdown: Countdown
-    panther_dash: PantherDash
-    increase_shimmy_speed: IncreaseShimmySpeed
-    background_music: BackgroundMusic
-    map_lighting: MapLighting
-    fall_guard: FallGuard
-    cinematic_experience: CinematicExperience
+    # nerf_healing_items: NerfHealingItems
+    # loading_zone_heals: LoadingZoneHeals
+    # invisible_items: InvisibleItems
+    # drop_previous_sub_weapon: DropPreviousSubWeapon
+    # permanent_powerups: PermanentPowerUps
+    # ice_trap_percentage: IceTrapPercentage
+    # ice_trap_appearance: IceTrapAppearance
+    # disable_time_restrictions: DisableTimeRestrictions
+    # skip_gondolas: SkipGondolas
+    # skip_waterway_blocks: SkipWaterwayBlocks
+    # countdown: Countdown
+    # panther_dash: PantherDash
+    # increase_shimmy_speed: IncreaseShimmySpeed
+    # background_music: BackgroundMusic
+    # map_lighting: MapLighting
+    # fall_guard: FallGuard
     window_color_r: WindowColorR
     window_color_g: WindowColorG
     window_color_b: WindowColorB
     window_color_a: WindowColorA
-    death_link: DeathLink
+    # death_link: DeathLink
