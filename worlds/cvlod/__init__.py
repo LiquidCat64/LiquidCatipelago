@@ -163,7 +163,7 @@ class CVLoDWorld(World):
         if force_classification is not None:
             classification = getattr(ItemClassification, force_classification)
         else:
-            classification = getattr(ItemClassification, get_item_info(name, "default classification"))
+            classification = getattr(ItemClassification, get_item_info(name, "default class"))
 
         code = get_item_info(name, "code")
         if code is not None:
