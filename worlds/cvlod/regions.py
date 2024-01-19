@@ -186,6 +186,7 @@ region_info = {
 
     rname.villa_maze_r: {"stage": rname.villa,
                          "locations": [lname.villam_hole_de,
+                                       lname.villam_child_de,
                                        lname.villam_rplatform_f,
                                        lname.villam_rplatform_r,
                                        lname.villam_rplatform_de,

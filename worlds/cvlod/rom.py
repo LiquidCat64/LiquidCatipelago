@@ -995,6 +995,9 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     rom.write_int16(0x792A24, 0x0027)
     rom.write_int16(0x792A28, 0x0084)
     rom.write_byte(0x792A2D, 0x17)
+    # Change the Maze Henry Mode kid into a location.
+    rom.write_int32s(0x798CF8, [0x01D90000, 0x00000000, 0x000C0000])
+    rom.write_byte(0x796D4F, 0x87)
 
     # Move the following locations that have flags shared with other locations to their own flags.
     rom.write_int16(0x792A48, 0x0085)  # Archives Garden Key

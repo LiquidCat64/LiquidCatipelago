@@ -128,6 +128,8 @@ location_info = {
                                          "countdown": 13},
     lname.villam_fgarden_r:             {"code": 0xA6,  "offset": 0x796D57, "normal item": iname.jewel_l,
                                          "countdown": 13},
+    lname.villam_child_de:              {"code": 0x87,  "offset": 0x796D4B, "normal item": iname.gold_100,
+                                         "countdown": 13},
     lname.villam_rplatform_f:           {"code": 0xA9,  "offset": 0x796D7B, "normal item": iname.axe,
                                          "add conds": ["sub"], "countdown": 13},
     lname.villam_rplatform_r:           {"code": 0x9C,  "offset": 0x796CD3, "normal item": iname.crest_b,
