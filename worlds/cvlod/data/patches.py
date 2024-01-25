@@ -92,7 +92,7 @@ remote_item_giver = [
     # Primary checks
     # In a demo?
     0x3C08801D,  # LUI   T0, 0x801D
-    0x9109AA4A,  # LBU   T1, 0xAE8B (T0)
+    0x9109AA4A,  # LBU   T1, 0xAA4A (T0)
     # In a cutscene?
     0x910AAE8B,  # LBU   T2, 0xAE8B (T0)
     0x012A4821,  # ADDU  T1, T1, T2
@@ -305,7 +305,7 @@ give_powerup_stopper = [
 ]
 
 npc_item_hack = [
-    # Hack to make NPC items show item textboxes when received (and decrease the Countdown if applicable).
+    # Hack to make NPC items show item textboxes when received.
     0x00180024,  # Item values
     0x001B001F,
     0x00200000,
@@ -316,8 +316,19 @@ npc_item_hack = [
     0x950AC6F0,  # LHU   T2, 0xC6F0 (T0)
     0x314B00FF,  # ANDI  T3, T2, 0x00FF
     0x3C0C801D,  # LUI   T4, 0x801D
-    0x03E00008,  # JR    RA
     0xA18BAA4C,  # SB    T3, 0xAA4C (T4)
+    # Decrement the Countdown if applicable.
+    0x314D8000,  # ANDI  T5, T2, 0x8000
+    0x11000008,  # BEQZ  T0,     [forward 0x08]
+    0x918AAE79,  # LBU   T2, 0xAE79 (T4)
+    0x3C088040,  # LUI   T0, 0x8040
+    0x010A5821,  # ADDU  T3, T0, T2
+    0x916EC4D0,  # LBU   T6, 0xC4D0 (T3)
+    0x018E7821,  # ADDU  T7, T4, T6
+    0x91F8ABA0,  # LBU   T8, 0xABA0 (T7)
+    0x2718FFFF,  # ADDIU T8, T8, 0xFFFF
+    0xA1F8ABA0,  # SB    T8, 0xABA0 (T7)
+    0x03E00008,  # JR    RA
 ]
 
 overlay_modifiers = [
@@ -587,58 +598,6 @@ coffin_time_checker = [
     0x08055AED   # J     0x80156BB4
 ]
 
-werebull_flag_unsetter = [
-    # This will un-set Were-bull's defeat flag in Duel Tower after beating him so that the check above his arena can
-    # still be acquired later, if it hasn't been acquired already. This is the only check in the entire game that can be
-    # permanently missed even with the ability to return to levels.
-    0x3C0E0400,  # LUI   T6, 0x0400
-    0x15CF0006,  # BNE   T6, T7, [forward 0x06]
-    0x00187402,  # SRL   T6, T8, 16
-    0x31CE2000,  # ANDI  T6, T6, 0x2000
-    0x15C00003,  # BNEZ  T6,     [forward 0x03]
-    0x3C0E0020,  # LUI   T6, 0x0020
-    0x014E5025,  # OR    T2, T2, T6
-    0xAC4A613C,  # SW    T2, 0x613C (V0)
-    0x03200008   # JR    T9
-]
-
-werebull_flag_unsetter_special2_electric_boogaloo = [
-    # Like werebull_flag_unsetter, but with the added feature of awarding a Special2 after determining the player isn't
-    # trying to beat Were-bull twice! This will be inserted over the former if the goal is set to boss hunt.
-    0x3C0E0400,  # LUI   T6, 0x0400
-    0x15CF0008,  # BNE   T6, T7, [forward 0x06]
-    0x00187402,  # SRL   T6, T8, 16
-    0x31CE2000,  # ANDI  T6, T6, 0x2000
-    0x15C00005,  # BNEZ  T6,     [forward 0x05]
-    0x3C0E0020,  # LUI   T6, 0x0020
-    0x014EC024,  # AND   T8, T2, T6
-    0x014E5025,  # OR    T2, T2, T6
-    0xAC4A613C,  # SW    T2, 0x613C (V0)
-    0x17000003,  # BNEZ  T8,     [forward 0x03]
-    0x3C188039,  # LUI   T8, 0x8039
-    0x240E0005,  # ADDIU T6, R0, 0x0005
-    0xA30E9BDF,  # SB    T6, 0x9BDF (T8)
-    0x03200008   # JR    T9
-]
-
-werebull_flag_pickup_setter = [
-    # Checks to see if an item being picked up is the one on top of Were-bull's arena. If it is, then it'll check to see
-    # if our makeshift "Were-bull defeated once" flag and, if it is, set Were-bull's arena flag proper, so it'll
-    # permanently stay down.
-    0x3C088038,  # LUI   T0, 0x8038
-    0x25083AC8,  # ADDIU T0, T0, 0x3AC8
-    0x15020007,  # BNE   T0, V0, [forward 0x07]
-    0x3C082000,  # LUI   T0, 0x2000
-    0x15040005,  # BNE   T0, A0, [forward 0x05]
-    0x9449612C,  # LHU   T1, 0x612C (V0)
-    0x31290020,  # ANDI  T1, T1, 0x0020
-    0x11200002,  # BEQZ  T1,     [forward 0x02]
-    0x3C0A0400,  # LUI   T2, 0x0400
-    0x014D6825,  # OR    T5, T2, T5
-    0xAC4D612C,  # SW    T5, 0x612C (V0)
-    0x03E00008   # JR    RA
-]
-
 boss_special2_giver = [
     # Enables the rewarding of Special2s upon the vanishing of a boss's health bar when defeating it.
 
@@ -799,108 +758,6 @@ warp_pointer_table = [
     0x8012ADC8,
     0x8012ADD8,
     0x8012ADEC,
-]
-
-spawn_coordinates_extension = [
-    # Checks if the 0x10 bit is set in the spawn ID and references the below list of custom spawn coordinates if it is.
-    0x316A0010,  # ANDI  T2, T3, 0x0010
-    0x11400003,  # BEQZ  T2,     [forward 0x03]
-    0x8CD90008,  # LW    T9, 0x0008 (A2)
-    0x3C198040,  # LUI   T9, 0x8040
-    0x2739C2CC,  # ADDIU T9, T9, 0xC2CC
-    0x08054A83,  # J 0x80152A0C
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-
-    # Castle Wall end: 10
-    #     player    camera    focus point
-    # x = 0xFFFF    0xFFFF    0xFFFF
-    # y = 0x0003    0x0012    0x000D
-    # z = 0xFFF3    0xEDFF    0xFFF3
-    # r = 0xC000
-    0x0000FFFF,
-    0x0003FFF3,
-    0xC000FFFF,
-    0x0012FFED,
-    0xFFFF000D,
-    0xFFF30000,
-
-    # Tunnel end: 11
-    #     player    camera    focus point
-    # x = 0x0088    0x0087    0x0088
-    # y = 0x01D6    0x01F1    0x01E5
-    # z = 0xF803    0xF7D2    0xF803
-    # r = 0xC000
-    0x008801D6,
-    0xF803C000,
-    0x008701F1,
-    0xF7D20088,
-    0x01E5F803,
-
-    # Tower of Execution end: 12
-    #     player    camera    focus point
-    # x = 0x00AC    0x00EC    0x00AC
-    # y = 0x0154    0x0183    0x0160
-    # z = 0xFE8F    0xFE8F    0xFE8F
-    # r = 0x8000
-    0x000000AC,
-    0x0154FE8F,
-    0x800000EC,
-    0x0183FE8F,
-    0x00AC0160,
-    0xFE8F0000,
-
-    # Tower of Sorcery end: 13
-    #     player    camera    focus point
-    # x = 0xFEB0    0xFE60    0xFEB0
-    # y = 0x0348    0x036D    0x0358
-    # z = 0xFEFB    0xFEFB    0xFEFB
-    # r = 0x0000
-    0xFEB00348,
-    0xFEFB0000,
-    0xFE60036D,
-    0xFEFBFEB0,
-    0x0358FEFB,
-
-    # Room of Clocks end: 14
-    #     player    camera    focus point
-    # x = 0x01B1    0x01BE    0x01B1
-    # y = 0x0006    0x001B    0x0015
-    # z = 0xFFCD    0xFFCD    0xFFCD
-    # r = 0x8000
-    0x000001B1,
-    0x0006FFCD,
-    0x800001BE,
-    0x001BFFCD,
-    0x01B10015,
-    0xFFCD0000,
-
-    # Duel Tower savepoint: 15
-    #     player    camera    focus point
-    # x = 0x00B9    0x00B9    0x00B9
-    # y = 0x012B    0x0150    0x0138
-    # z = 0xFE20    0xFE92    0xFE20
-    # r = 0xC000
-    0x00B9012B,
-    0xFE20C000,
-    0x00B90150,
-    0xFE9200B9,
-    0x0138FE20
-]
-
-waterway_end_coordinates = [
-    # Underground Waterway end: 01
-    #     player    camera    focus point
-    # x = 0x0397    0x03A1    0x0397
-    # y = 0xFFC4    0xFFDC    0xFFD3
-    # z = 0xFDB9    0xFDB8    0xFDB9
-    # r = 0x8000
-    0x00000397,
-    0xFFC4FDB9,
-    0x800003A1,
-    0xFFDCFDB8,
-    0x0397FFD3,
-    0xFDB90000
 ]
 
 continue_cursor_start_checker = [
@@ -1354,8 +1211,10 @@ countdown_number_displayer = [
     # Courtesy of Moisés; see print_text_ovl.c in the src folder for the C source code.
     0x27BDFFE8,
     0xAFBF0014,
+    0x0C000958,
+    0x24040007,
     0x0C020BF8,
-    0x00000000,
+    0x00402025,
     0x8FBF0014,
     0x27BD0018,
     0x03E00008,
@@ -1364,15 +1223,18 @@ countdown_number_displayer = [
     0x03E00008,
     0x0002102B,
     0x27BDFFD8,
+    0xAFA5002C,
+    0x00A07025,
     0x3C018040,
-    0xC424C4B4,
-    0xAFBF0024,
+    0xC424C4C4,
     0x3C05801D,
+    0xAFBF0024,
+    0x00AE2821,
     0x3C078040,
-    0x240E0002,
-    0xAFAE0014,
-    0x8CE7C4B0,
-    0x8CA5ABA0,
+    0x240F0002,
+    0xAFAF0014,
+    0x8CE7C4C0,
+    0x90A5ABA0,
     0xAFA00018,
     0x00003025,
     0x0C020D74,
@@ -1381,11 +1243,13 @@ countdown_number_displayer = [
     0x27BD0028,
     0x03E00008,
     0x00000000,
+    0x00A03025,
     0x27BDFFE8,
-    0xAFBF0014,
     0x3C05801D,
+    0xAFBF0014,
+    0x00A62821,
     0x0C020E69,
-    0x8CA5ABA0,
+    0x90A5ABA0,
     0x8FBF0014,
     0x27BD0018,
     0x03E00008,
@@ -1394,9 +1258,9 @@ countdown_number_displayer = [
     0xAFBF0014,
     0x3C058040,
     0x3C068040,
-    0x8CC6C4B4,
+    0x8CC6C4C4,
     0x0C020ECF,
-    0x8CA5C4B0,
+    0x8CA5C4C0,
     0x8FBF0014,
     0x27BD0018,
     0x03E00008,
@@ -1409,39 +1273,37 @@ countdown_number_displayer = [
     0x27BD0018,
     0x03E00008,
     0x00000000,
-    0x00000000,
-    0x00000000,
-    0x00000000,
-    0x3F800000,
-    0x40000000,
+    0xC2D90000,
+    0x42B10000,
     0x00000000,
     0x00000000]
 
 countdown_number_manager = [
     # Updates the Countdown number every frame. Which number in the save file it refers to depends on the map ID.
     0x01020203,  # Map ID offset table start
-    0x03030405,
-    0x060A0A0A,
-    0x0B0B0B0A,
+    0x03031104,
+    0x05090909,
+    0x12121209,
     0x00000013,
-    0x12121311,
-    0x120A0B10,
-    0x130F0D0D,
-    0x0D0E0E09,
-    0x0908080C,
-    0x11110713,
-    0x13131213,
+    0x1010130F,
+    0x1009110E,
+    0x130D0B0B,
+    0x0B0C0C08,
+    0x0807070A,
+    0x0F0F0613,
+    0x13131013,
     0x13130000,  # Table end
     # Creates the textbox object and saves the pointer to it.
     0x0C0FF0F0,  # JAL   0x803FC3C0
     0x00000000,  # NOP
     0x3C08801D,  # LUI   T0, 0x801D
+    0xA100AA44,  # SB    R0, 0xAA44 (T0)
     0x08006E99,  # J     0x8001BA64
     0xAD02AA40,  # SW    V0, 0xAA40 (T0)
     # Initializes the countdown number after checking if the textbox data is created.
     0x3C08801D,  # LUI   T0, 0x801D
     0x9109AA44,  # LBU   T1, 0xAA44 (T0)
-    0x1520000E,  # BNEZ  T1,     [forward 0x0E]
+    0x15200010,  # BNEZ  T1,     [forward 0x10]
     0x8D04AA40,  # LW    A0, 0xAA40 (T0)
     0x1080000C,  # BEQZ  A0,     [forward 0x0C]
     0x00000000,  # NOP
@@ -1455,52 +1317,139 @@ countdown_number_manager = [
     0x3C0A8040,  # LUI   T2, 0x8040
     0x01495021,  # ADDU  T2, T2, T1
     0x0C0FF0FD,  # JAL   0x803FC3F4
-    0x9144C4D0,  # LBU   A0, 0xC4D0 (T2)
-    0x0805DE2E,  # J     0x801778B8
-    # Kills the last map's pointer to the Countdown stuff.
-    0x3C088040,  # LUI   T0, 0x8040
-    0xFD00D6D0,  # SD    R0, 0xD6D0 (T0)
-    0x03E00008   # JR    RA
+    0x9145C4D0,  # LBU   A1, 0xC4D0 (T2)
+    0x08005F33,  # J     0x80017CCC
+    0x00000000,  # NOP
+    # Updates the color of the number depending on what it currently is.
+    # 0 = Dark brown    Same as the initial count = Green     Otherwise = Light brown
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9109AE79,  # LBU   T1, 0xAE79 (T0)
+    0x3C0A8040,  # LUI   T2, 0x8040
+    0x01495021,  # ADDU  T2, T2, T1
+    0x914BC4D0,  # LBU   T3, 0xC4D0 (T2)
+    0x010B6821,  # ADDU  T5, T0, T3
+    0x91ACABA0,  # LBU   T4, 0xABA0 (T5)
+    0x3C0A8040,  # LUI   T2, 0x8040
+    0x016A5021,  # ADDU  T2, T3, T2
+    0x914EC7D0,  # LBU   T6, 0xC7D0 (T2)
+    0x11800009,  # BEQZ  T4,     [forward 0x09]
+    0x24050007,  # ADDIU A1, R0, 0x0007
+    0x118E0007,  # BEQ   T4, T6, [forward 0x07]
+    0x24050002,  # ADDIU A1, R0, 0x0002
+    0x24050006,  # ADDIU A1, R0, 0x0006
+    0x00000000,  # NOP
+    0x00000000,
+    0x00000000,
+    0x00000000,
+    0x00000000,
+    0x0C0FF128,  # JAL   0x803FC4A0
+    0x8D04AA40,  # LW    A0, 0xAA40 (T0)
+    # Updates the number being displayed.
+    0x3C04801D,  # LUI   A0, 0x801D
+    0x8C84AA40,  # LW    A0, 0xAA40 (A0)
+    0x0C0FF112,  # JAL   0x803FC448
+    0x000B2821,  # ADDU  A1, R0, T3
+    # Updates the position of the number depending on what our "demo number" currently is.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x8D04AA40,  # LW    A0, 0xAA40 (T0)
+    0x9109AA4A,  # LBU   T1, 0xAA4A (T0)
+    0x340AC2D9,  # ORI   T2, R0, 0xC2D9
+    0x11200009,  # BEQZ  T1,     [forward 0x09]
+    0x340B42B1,  # ORI   T3, R0, 0x42B1
+    0x312C0001,  # ANDI  T4, T1, 0x0001
+    0x55800006,  # BNEZL T4,     [forward 0x06]
+    0x340B43B1,  # ORI   T3, R0, 0x43B1
+    0x312C0002,  # ANDI  T4, T1, 0x0002
+    0x11800003,  # BEQZ  T4,     [forward 0x02]
+    0x00000000,  # NOP
+    0x340A42E1,  # ORI   T2, R0, 0x42E1
+    0x340B42CC,  # ORI   T3, R0, 0x42CC
+    0x3C0D8040,  # LUI   T5, 0x8040
+    0xA5AAC4C0,  # SH    T2, 0xC4C0 (T5)
+    0x0C0FF11D,  # JAL   0x803FC474
+    0xA5ABC4C4,  # SH    T3, 0xC4C4 (T5)
+    0x08005F33,  # J     0x80017CCC
+    0x00000000,  # NOP
+    # Changes the number's position when pausing.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9109AA4A,  # LBU   T1, 0xAA4A (T0)
+    0x35290002,  # ORI   T1, T1, 0x0002
+    0x08021BA6,  # J     0x80086E98
+    0xA109AA4A,  # SB    T1, 0xAA4A (T0)
+    # Changes the number's position when un-pausing.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9109AA4A,  # LBU   T1, 0xAA4A (T0)
+    0x312900FD,  # ANDI  T1, T1, 0x00FD
+    0x08021B0A,  # J     0x80086C28
+    0xA109AA4A,  # SB    T1, 0xAA4A (T0)
+    # Hides the number whenever the HUD vanishes (during cutscenes, etc.)
+    0xA20A0001,  # SB    T2, 0x0001 (S0)
+    0x3C0B801D,  # LUI   T3, 0x801D
+    0x916CAA4A,  # LBU   T4, 0xAA4A (T3)
+    0x358C0001,  # ORI   T4, T4, 0x0001
+    0x03E00008,  # JR    RA
+    0xA16CAA4A,  # SB    T4, 0xAA4A (T3)
+    0x00000000,  # NOP
+    # Un-hides the number whenever the HUD re-appears (after a cutscene ends, etc.)
+    0xA2000001,  # SB    R0, 0x0001 (S0)
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9109AA4A,  # LBU   T1, 0xAA4A (T0)
+    0x312900FE,  # ANDI  T1, T1, 0x00FE
+    0x03E00008,  # JR    RA
+    0xA109AA4A,  # SB    T1, 0xAA4A (T0)
+    0x00000000,  # NOP
+    # Decrements the Countdown number if the item picked up has a non-zero set in its field 0x45.
+    0x92080045,  # LBU   T0, 0x0045 (S0)
+    0x11000009,  # BEQZ  T0,     [forward 0x09]
+    0x3C09801D,  # LUI   T1, 0x801D
+    0x912AAE79,  # LBU   T2, 0xAE79 (T1)
+    0x3C0B8040,  # LUI   T3, 0x8040
+    0x016A5821,  # ADDU  T3, T3, T2
+    0x916CC4D0,  # LBU   T4, 0xC4D0 (T3)
+    0x01896821,  # ADDU  T5, T4, T1
+    0x91AEABA0,  # LBU   T6, 0xABA0 (T5)
+    0x25CEFFFF,  # ADDIU T6, T6, 0xFFFF
+    0xA1AEABA0,  # SB    T6, 0xABA0 (T5)
+    0x03200008   # JR    T9
 ]
 
 new_game_extras = [
     # Upon starting a new game, this will write anything extra to the save file data that the run should have at the
     # start. The initial Countdown numbers begin here.
     0x24080000,  # ADDIU T0, R0, 0x0000
-    0x24090010,  # ADDIU T1, R0, 0x0010
+    0x24090014,  # ADDIU T1, R0, 0x0014
     0x11090008,  # BEQ   T0, T1, [forward 0x08]
     0x3C0A8040,  # LUI   T2, 0x8040
     0x01485021,  # ADDU  T2, T2, T0
-    0x8D4AD818,  # LW    T2, 0xD818 (T2)
-    0x3C0B8039,  # LUI   T3, 0x8039
+    0x8D4AC7D0,  # LW    T2, 0xC7D0 (T2)
+    0x3C0B801D,  # LUI   T3, 0x801D
     0x01685821,  # ADDU  T3, T3, T0
-    0xAD6A9CA4,  # SW    T2, 0x9CA4 (T3)
+    0xAD6AABA0,  # SW    T2, 0xABA0 (T3)
     0x1000FFF8,  # B             [backward 0x08]
     0x25080004,  # ADDIU T0, T0, 0x0004
     # start_inventory begins here
-    0x3C088039,  # LUI   T0, 0x8039
-    0x91099C27,  # LBU   T1, 0x9C27 (T0)
-    0x31290010,  # ANDI  T1, T1, 0x0010
-    0x15200005,  # BNEZ  T1,     [forward 0x05]
+    0x3C08801D,  # LUI   T0, 0x801D
     0x24090000,  # ADDIU T1, R0, 0x0000  <- Starting jewels
-    0xA1099C49,  # SB    T1, 0x9C49
+    0xA109AB45,  # SB    T1, 0xAB45
     0x3C0A8040,  # LUI   T2, 0x8040
-    0x8D4BE514,  # LW    T3, 0xE514 (T2) <- Starting money
-    0xAD0B9C44,  # SW    T3, 0x9C44 (T0)
+    0x8D4BC7EC,  # LW    T3, 0xC7EC (T2) <- Starting money
+    0xAD0BAB40,  # SW    T3, 0xAB40 (T0)
     0x24090000,  # ADDIU T1, R0, 0x0000  <- Starting PowerUps
-    0xA1099CED,  # SB    T1, 0x9CED (T0)
+    0xA109AE23,  # SB    T1, 0xAE23 (T0)
     0x24090000,  # ADDIU T1, R0, 0x0000  <- Starting sub-weapon
-    0xA1099C43,  # SB    T1, 0x9C43 (T0)
+    0xA109AB3F,  # SB    T1, 0xAB3F (T0)
+    0x24090000,  # ADDIU T1, R0, 0x0000  <- Starting sub-weapon level
+    0xA109AE27,  # SB    T1, 0xAE27 (T0)
     0x24090000,  # ADDIU T1, R0, 0x0000  <- Starting Ice Traps
-    0xA1099BE2,  # SB    T1, 0x9BE2 (T0)
+    0xA109AA49,  # SB    T1, 0xAA49 (T0)
     0x240C0000,  # ADDIU T4, R0, 0x0000
-    0x240D0022,  # ADDIU T5, R0, 0x0022
+    0x240D002A,  # ADDIU T5, R0, 0x002A
     0x11AC0007,  # BEQ   T5, T4, [forward 0x07]
     0x3C0A8040,  # LUI   T2, 0x8040
     0x014C5021,  # ADDU  T2, T2, T4
-    0x814AE518,  # LB    T2, 0xE518      <- Starting inventory items
+    0x814AC7A0,  # LB    T2, 0xC7A0      <- Starting inventory items
     0x25080001,  # ADDIU T0, T0, 0x0001
-    0xA10A9C4A,  # SB    T2, 0x9C4A (T0)
+    0xA10AAB46,  # SB    T2, 0xAB46 (T0)
     0x1000FFF9,  # B             [backward 0x07]
     0x258C0001,  # ADDIU T4, T4, 0x0001
     0x03E00008   # JR    RA
@@ -2189,18 +2138,6 @@ freeze_verifier = [
     0x03200008,  # JR    T9
 ]
 
-countdown_extra_safety_check = [
-    # Checks to see if the multiworld message is a red flashing trap before then truly deciding to decrement the
-    # Countdown number. This was a VERY last minute thing I caught, since Ice Traps for other CV64 players can take the
-    # appearance of majors with no other way of the game knowing.
-    0x3C0B8019,  # LUI   T3, 0x8019
-    0x956BBF98,  # LHU   T3, 0xBF98 (T3)
-    0x240C0000,  # ADDIU T4, R0, 0x0000
-    0x358CA20B,  # ORI   T4, T4, 0xA20B
-    0x556C0001,  # BNEL  T3, T4, [forward 0x01]
-    0xA1099CA4,  # SB    T1, 0x9CA4 (T0)
-    0x03E00008   # JR    RA
-]
 
 always_actor_edits = {
     # Castle Wall Main

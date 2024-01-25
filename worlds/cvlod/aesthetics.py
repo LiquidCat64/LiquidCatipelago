@@ -12,95 +12,46 @@ if TYPE_CHECKING:
     from . import CVLoDWorld
 
 rom_sub_weapon_offsets = {
-    0x10C6EB: [0x10, rname.forest_of_silence],  # Forest
-    0x10C6F3: [0x0F, rname.forest_of_silence],
-    0x10C6FB: [0x0E, rname.forest_of_silence],
-    0x10C703: [0x0D, rname.forest_of_silence],
+    # 0x10C6EB: [0x10, rname.forest_of_silence],  # Forest
+    # 0x10C6F3: [0x0F, rname.forest_of_silence],
+    # 0x10C6FB: [0x0E, rname.forest_of_silence],
+    # 0x10C703: [0x0D, rname.forest_of_silence],
 
-    0x10C81F: [0x0F, rname.castle_wall],  # Castle Wall
-    0x10C827: [0x10, rname.castle_wall],
-    0x10C82F: [0x0E, rname.castle_wall],
-    0x7F9A0F: [0x0D, rname.castle_wall],
+    0x78165F: [0x0E, rname.castle_wall],  # Castle Wall
+    0x781683: [0x0F, rname.castle_wall],
 
-    0x83A5D9: [0x0E, rname.villa],  # Villa
-    0x83A5E5: [0x0D, rname.villa],
-    0x83A5F1: [0x0F, rname.villa],
-    0xBFC903: [0x10, rname.villa],
-    0x10C987: [0x10, rname.villa],
-    0x10C98F: [0x0D, rname.villa],
-    0x10C997: [0x0F, rname.villa],
-    0x10CF73: [0x10, rname.villa],
+    0x78DE0F: [0x10, rname.villa],  # Villa
+    0x78DE03: [0x0F, rname.villa],
+    0x78DE1B: [0x0E, rname.villa],
+    0x796DAB: [0x0F, rname.villa],
+    0x796D6F: [0x0D, rname.villa],
+    0x796D7B: [0x0F, rname.villa],
+    0x7D63C3: [0x0E, rname.villa],
 
-    0x10CA57: [0x0D, rname.tunnel],  # Tunnel
-    0x10CA5F: [0x0E, rname.tunnel],
-    0x10CA67: [0x10, rname.tunnel],
-    0x10CA6F: [0x0D, rname.tunnel],
-    0x10CA77: [0x0F, rname.tunnel],
-    0x10CA7F: [0x0E, rname.tunnel],
+    # 0x10CA57: [0x0D, rname.tunnel],  # Tunnel
+    # 0x10CA5F: [0x0E, rname.tunnel],
+    # 0x10CA67: [0x10, rname.tunnel],
+    # 0x10CA6F: [0x0D, rname.tunnel],
+    # 0x10CA77: [0x0F, rname.tunnel],
+    # 0x10CA7F: [0x0E, rname.tunnel],
 
-    0x10CBC7: [0x0E, rname.castle_center],  # Castle Center
-    0x10CC0F: [0x0D, rname.castle_center],
-    0x10CC5B: [0x0F, rname.castle_center],
+    # 0x10CBC7: [0x0E, rname.castle_center],  # Castle Center
+    # 0x10CC0F: [0x0D, rname.castle_center],
+    # 0x10CC5B: [0x0F, rname.castle_center],
 
-    0x10CD3F: [0x0E, rname.tower_of_execution],  # Character towers
-    0x10CD65: [0x0D, rname.tower_of_execution],
-    0x10CE2B: [0x0E, rname.tower_of_science],
-    0x10CE83: [0x10, rname.duel_tower],
+    # 0x10CD3F: [0x0E, rname.tower_of_execution],  # Character towers
+    # 0x10CD65: [0x0D, rname.tower_of_execution],
+    # 0x10CE2B: [0x0E, rname.tower_of_science],
+    # 0x10CE83: [0x10, rname.duel_tower],
 
-    0x10CF8B: [0x0F, rname.room_of_clocks],  # Room of Clocks
-    0x10CF93: [0x0D, rname.room_of_clocks],
+    # 0x10CF8B: [0x0F, rname.room_of_clocks],  # Room of Clocks
+    # 0x10CF93: [0x0D, rname.room_of_clocks],
 
-    0x99BC5A: [0x0D, rname.clock_tower],  # Clock Tower
-    0x10CECB: [0x10, rname.clock_tower],
-    0x10CED3: [0x0F, rname.clock_tower],
-    0x10CEDB: [0x0E, rname.clock_tower],
-    0x10CEE3: [0x0D, rname.clock_tower],
-}
-
-rom_sub_weapon_flags = {
-    0x10C6EC: 0x0200FF04,  # Forest of Silence
-    0x10C6FC: 0x0400FF04,
-    0x10C6F4: 0x0800FF04,
-    0x10C704: 0x4000FF04,
-
-    0x10C831: 0x08,  # Castle Wall
-    0x10C829: 0x10,
-    0x10C821: 0x20,
-    0xBFCA97: 0x04,
-
-    # Villa
-    0xBFC926: 0xFF04,
-    0xBFC93A: 0x80,
-    0xBFC93F: 0x01,
-    0xBFC943: 0x40,
-    0xBFC947: 0x80,
-    0x10C989: 0x10,
-    0x10C991: 0x20,
-    0x10C999: 0x40,
-    0x10CF77: 0x80,
-
-    0x10CA58: 0x4000FF0E,  # Tunnel
-    0x10CA6B: 0x80,
-    0x10CA60: 0x1000FF05,
-    0x10CA70: 0x2000FF05,
-    0x10CA78: 0x4000FF05,
-    0x10CA80: 0x8000FF05,
-
-    0x10CBCA: 0x02,  # Castle Center
-    0x10CC10: 0x80,
-    0x10CC5C: 0x40,
-
-    0x10CE86: 0x01,  # Duel Tower
-    0x10CD43: 0x02,  # Tower of Execution
-    0x10CE2E: 0x20,  # Tower of Science
-
-    0x10CF8E: 0x04,  # Room of Clocks
-    0x10CF96: 0x08,
-
-    0x10CECE: 0x08,  # Clock Tower
-    0x10CED6: 0x10,
-    0x10CEE6: 0x20,
-    0x10CEDE: 0x80,
+    # 0x99BC5A: [0x0D, rname.clock_tower],  # Clock Tower
+    # 0x10CECB: [0x10, rname.clock_tower],
+    # 0x10CED3: [0x0F, rname.clock_tower],
+    # 0x10CEDB: [0x0E, rname.clock_tower],
+    # 0x10CEE3: [0x0D, rname.clock_tower],
 }
 
 rom_empty_breakables_flags = {
@@ -298,7 +249,7 @@ def randomize_music(world: "CVLoDWorld", options: CVLoDOptions) -> Dict[int, int
     music_list = [0] * 0x7A
     for number in music_sfx_ids:
         music_list[number] = number
-    #if options.background_music.value == options.background_music.option_randomized:
+        # if options.background_music.value == options.background_music.option_randomized:
         looping_songs = []
         non_looping_songs = []
         fade_in_songs = {}
@@ -357,7 +308,7 @@ def randomize_shop_prices(world: "CVLoDWorld", min_price: int, max_price: int) -
     # Convert the price list into a data dict
     price_dict = {}
     for i in range(len(shop_price_list)):
-        price_dict[0x103D6E + (i*12)] = shop_price_list[i]
+        price_dict[0x103D6E + (i * 12)] = shop_price_list[i]
 
     return price_dict
 
@@ -369,10 +320,11 @@ def get_countdown_numbers(options: CVLoDOptions, active_locations):
     First, check the location's info to see if it has a countdown number override.
     If not, then figure it out based on the parent region's stage's position in the vanilla stage order.
     If the parent region is not part of any stage (as is the case for Renon's shop), skip the location entirely."""
-    countdown_list = [0 for _ in range(15)]
+    countdown_list = [0 for _ in range(19)]
     for loc in active_locations:
-        #if options.countdown.value == options.countdown.option_all_locations or \
-        #        (options.countdown.value == options.countdown.option_majors and loc.item.advancement):
+        if loc.item.code is not None and (options.countdown.value == options.countdown.option_all_locations or
+                                          (options.countdown.value == options.countdown.option_majors and
+                                           loc.item.advancement)):
 
             countdown_number = get_location_info(loc.name, "countdown")
 
@@ -387,7 +339,7 @@ def get_countdown_numbers(options: CVLoDOptions, active_locations):
     # Convert the Countdown list into a data dict
     countdown_dict = {}
     for i in range(len(countdown_list)):
-        countdown_dict[0xBFD818 + i] = countdown_list[i]
+        countdown_dict[0xFFC7D0 + i] = countdown_list[i]
 
     return countdown_dict
 
@@ -404,15 +356,15 @@ def get_location_data(world: "CVLoDWorld", options: CVLoDOptions, active_locatio
     regular data."""
 
     # Figure out the list of possible Ice Trap appearances to use based on the settings, first and foremost.
-    #if options.ice_trap_appearance.value == options.ice_trap_appearance.option_major_only:
+    # if options.ice_trap_appearance.value == options.ice_trap_appearance.option_major_only:
     #    allowed_classifications = ["progression", "progression skip balancing"]
-    #elif options.ice_trap_appearance.value == options.ice_trap_appearance.option_junk_only:
+    # elif options.ice_trap_appearance.value == options.ice_trap_appearance.option_junk_only:
     #    allowed_classifications = ["filler", "useful"]
-    #else:
+    # else:
     #    allowed_classifications = ["progression", "progression skip balancing", "filler", "useful"]
 
-    #trap_appearances = []
-    #for item in item_info:
+    # trap_appearances = []
+    # for item in item_info:
     #    if item_info[item]["default classification"] in allowed_classifications and item != "Ice Trap" and \
     #            get_item_info(item, "code") is not None:
     #        trap_appearances.append(item)
@@ -455,20 +407,25 @@ def get_location_data(world: "CVLoDWorld", options: CVLoDOptions, active_locatio
             location_bytes[get_location_info(loc.name, "offset") - 1] = 0x0B
 
         # If it's an Ice Trap, change it's model to one of the appearances we determiend before.
-        #if loc.item.game == "Castlevania Legacy of Darkness" and loc.item.code == 0x12 + base_id:
+        # if loc.item.game == "Castlevania Legacy of Darkness" and loc.item.code == 0x12 + base_id:
         #    location_bytes[get_location_info(loc.name, "offset") - 1] = \
         #        get_item_info(world.random.choice(trap_appearances), "code")
         #    if location_bytes[get_location_info(loc.name, "offset") - 1] == 0x10C:
         #        location_bytes[get_location_info(loc.name, "offset") - 1] = 0x0B
 
         # Apply the invisibility variable depending on the "invisible items" setting.
-        #if (options.invisible_items.value == 0 and loc_type == "inv") or \
+        # if (options.invisible_items.value == 0 and loc_type == "inv") or \
         #        (options.invisible_items.value == 2 and loc_type not in ["npc", "shop"]):
         #    location_bytes[get_location_info(loc.name, "offset") - 1] += 0x80
-        #elif options.invisible_items.value == 3 and loc_type not in ["npc", "shop"]:
+        # elif options.invisible_items.value == 3 and loc_type not in ["npc", "shop"]:
         #    invisible = world.random.randint(0, 1)
         #    if invisible:
         #        location_bytes[get_location_info(loc.name, "offset") - 1] += 0x80
+
+        # Set the 0x80 flag in the appearance byte to flag the item as something that should decrement the Countdown
+        # when picked up, if applicable.
+        if loc.item.advancement or options.countdown.value == options.countdown.option_all_locations:
+            location_bytes[get_location_info(loc.name, "offset") - 1] |= 0x80
 
         # If it's an Axe or Cross in a higher freestanding location, lower it into grab range.
         # KCEK made these spawn 3.2 units higher for some reason.
@@ -533,7 +490,7 @@ def get_loading_zone_bytes(options: CVLoDOptions, starting_stage: str, active_st
                 get_stage_info(active_stage_exits[stage]["prev"], "end spawn id")
 
             # Change CC's end-spawn ID to put you at Carrie's exit if appropriate
-            #if active_stage_exits[stage]["prev"] == rname.castle_center:
+            # if active_stage_exits[stage]["prev"] == rname.castle_center:
             #    if options.character_stages.value == options.character_stages.option_carrie_only or \
             #            active_stage_exits[rname.castle_center]["alt"] == stage:
             #        loading_zone_bytes[get_stage_info(stage, "startzone spawn offset")] += 1
@@ -558,13 +515,14 @@ def get_loading_zone_bytes(options: CVLoDOptions, starting_stage: str, active_st
 def get_start_inventory_data(options: CVLoDOptions, start_inventory: dict) -> Dict[int, int]:
     """Calculate and return the starting inventory values. Not every Item goes into the menu inventory, so everything
     has to be handled appropriately."""
-    start_inventory_data = {0xBFD867: 0,  # Jewels
-                            0xBFD87B: 0,  # PowerUps
-                            0xBFE514: 0,  # Money
-                            0xBFD883: 0,  # Sub-weapon
-                            0xBFD88B: 0}  # Ice Traps
+    start_inventory_data = {0xFFC833: 0,  # Jewels
+                            0xFFC847: 0,  # PowerUps
+                            0xFFC7EE: 0,  # Money
+                            0xFFC84F: 0,  # Sub-weapon
+                            0xFFC857: 0,  # Sub-weapon level
+                            0xFFC85F: 0}  # Ice Traps
 
-    inventory_items_array = [0 for _ in range(35)]
+    inventory_items_array = [0 for _ in range(42)]
 
     items_max = 10
 
@@ -573,7 +531,7 @@ def get_start_inventory_data(options: CVLoDOptions, start_inventory: dict) -> Di
         items_max = 100
 
     for item in start_inventory:
-        inventory_offset = get_item_info(item, "inventory offset")
+        inventory_offset = get_item_info(item, "inv offset")
         sub_equip_id = get_item_info(item, "sub equip id")
         # Starting inventory items
         if inventory_offset is not None:
@@ -585,34 +543,40 @@ def get_start_inventory_data(options: CVLoDOptions, start_inventory: dict) -> Di
                     inventory_items_array[inventory_offset] = 2
         # Starting sub-weapon
         elif sub_equip_id is not None:
-            start_inventory_data[0xBFD883] = sub_equip_id
+            start_inventory_data[0xFFC84F] = sub_equip_id
+            start_inventory_data[0xFFC857] = start_inventory[item] - 1
         # Starting PowerUps
         elif item == iname.powerup:
-            start_inventory_data[0xBFD87B] += start_inventory[item]
-            if start_inventory_data[0xBFD87B] > 2:
-                start_inventory_data[0xBFD87B] = 2
+            start_inventory_data[0xFFC847] += start_inventory[item]
+            if start_inventory_data[0xFFC847] > 2:
+                start_inventory_data[0xFFC847] = 2
         # Starting Gold
         elif "GOLD" in item:
-            start_inventory_data[0xBFE514] += int(item[0:4]) * start_inventory[item]
-            if start_inventory_data[0xBFE514] > 99999:
-                start_inventory_data[0xBFE514] = 99999
+            start_inventory_data[0xFFC7EE] += int(item[0:4]) * start_inventory[item]
+            if start_inventory_data[0xFFC7EE] > 99999:
+                start_inventory_data[0xFFC7EE] = 99999
         # Starting Jewels
         elif "jewel" in item:
             if "L" in item:
-                start_inventory_data[0xBFD867] += 10 * start_inventory[item]
+                start_inventory_data[0xFFC833] += 10 * start_inventory[item]
             else:
-                start_inventory_data[0xBFD867] += 5 * start_inventory[item]
-            if start_inventory_data[0xBFD867] > 99:
-                start_inventory_data[0xBFD867] = 99
+                start_inventory_data[0xFFC833] += 5 * start_inventory[item]
+            if start_inventory_data[0xFFC833] > 99:
+                start_inventory_data[0xFFC833] = 99
         # Starting Ice Traps
         else:
-            start_inventory_data[0xBFD88B] += start_inventory[item]
-            if start_inventory_data[0xBFD88B] > 0xFF:
-                start_inventory_data[0xBFD88B] = 0xFF
+            start_inventory_data[0xFFC85F] += start_inventory[item]
+            if start_inventory_data[0xFFC85F] > 0xFF:
+                start_inventory_data[0xFFC85F] = 0xFF
+
+    # Set the higher byte if our starting gold is higher than 65535.
+    if start_inventory_data[0xFFC7EE] > 0xFFFF:
+        start_inventory_data[0xFFC7EE] &= 0xFFFF
+        start_inventory_data[0xFFC7ED] = 1
 
     # Convert the inventory items into data
     for i in range(len(inventory_items_array)):
-        start_inventory_data[0xBFE518 + i] = inventory_items_array[i]
+        start_inventory_data[0xFFC7A0 + i] = inventory_items_array[i]
 
     return start_inventory_data
 

@@ -456,7 +456,7 @@ class CVLoDOptions(PerGameCommonOptions):
     # disable_time_restrictions: DisableTimeRestrictions
     # skip_gondolas: SkipGondolas
     # skip_waterway_blocks: SkipWaterwayBlocks
-    # countdown: Countdown
+    countdown: Countdown
     # panther_dash: PantherDash
     # increase_shimmy_speed: IncreaseShimmySpeed
     # background_music: BackgroundMusic

@@ -14,9 +14,8 @@ from .stages import get_stage_info, get_locations_from_stage, get_normal_stage_e
 from .regions import get_region_info
 from .data import iname, lname, rname, ename
 from ..AutoWorld import WebWorld, World
-from .aesthetics import randomize_lighting, shuffle_sub_weapons, rom_empty_breakables_flags, rom_sub_weapon_flags,\
-    randomize_music, get_start_inventory_data, get_location_data, randomize_shop_prices, get_loading_zone_bytes,\
-    get_countdown_numbers
+from .aesthetics import randomize_lighting, shuffle_sub_weapons, rom_empty_breakables_flags, randomize_music, \
+    get_start_inventory_data, get_location_data, randomize_shop_prices, get_loading_zone_bytes, get_countdown_numbers
 from .rom import LocalRom, patch_rom, get_base_rom_path, get_item_text_color, CVLoDDeltaPatch
 from .client import CastlevaniaLoDClient
 
@@ -240,8 +239,6 @@ class CVLoDWorld(World):
             # Sub-weapons
             if self.options.sub_weapon_shuffle.value == self.options.sub_weapon_shuffle.option_own_pool:
                 offset_data.update(shuffle_sub_weapons(self))
-            elif self.options.sub_weapon_shuffle.value == self.options.sub_weapon_shuffle.option_anywhere:
-                offset_data.update(rom_sub_weapon_flags)
             # Empty breakables
             #if self.options.empty_breakables.value:
             #    offset_data.update(rom_empty_breakables_flags)
@@ -251,8 +248,8 @@ class CVLoDWorld(World):
             # Loading zones
             #offset_data.update(get_loading_zone_bytes(self.options, self.starting_stage, self.active_stage_exits))
             # Countdown
-            #if self.options.countdown.value:
-            #    offset_data.update(get_countdown_numbers(self.options, active_locations))
+            if self.options.countdown.value:
+                offset_data.update(get_countdown_numbers(self.options, active_locations))
             # Start Inventory
             offset_data.update(get_start_inventory_data(self.options, self.options.start_inventory.value))
 

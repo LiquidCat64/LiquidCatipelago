@@ -162,8 +162,8 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     rom.write_int32(0xC3284, 0x00000000)
 
     # Custom data-loading code
-    rom.write_int32(0x7CE8, 0x08007877)  # J 0x8001E1DC
-    rom.write_int32s(0x1EDDC, patches.custom_code_loader)
+    rom.write_int32(0x18A94, 0x0800793C)  # J 0x8001E4F0
+    rom.write_int32s(0x1F0F0, patches.custom_code_loader)
 
     # Custom remote item rewarding and DeathLink receiving code
     rom.write_int32(0x1C854, 0x080FF000)  # J 0x803FC000
@@ -357,37 +357,27 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
         rom.write_int16(0x829A16, 0x032D)  # CT giant chasm farside climb
         rom.write_int16(0x82CC8A, 0x0330)  # CT beneath final slide
 
-    # Everything related to the Countdown counter
-    # if options.countdown.value:
-    #    rom.write_int32(0x1C734, 0x080FF141)  # J 0x803FC504
-    #    rom.write_int32(0xF83F4, 0x080FF147)  # J 0x803FC51C
-    #    rom.write_int32s(0xFFC3C0, patches.countdown_number_displayer)
-    #    rom.write_int32s(0xFFC4D0, patches.countdown_number_manager)
-    # rom.write_int32(0xBFCE2C, 0x080FF5D2)  # J 0x803FD748
-    # rom.write_int32s(0xBB168, [0x080FF5F4,  # J 0x803FD7D0
-    #                               0x8E020028])  # LW	V0, 0x0028 (S0)
-    # rom.write_int32s(0xBB1D0, [0x080FF5FB,  # J 0x803FD7EC
-    #                               0x8E020028])  # LW	V0, 0x0028 (S0)
-    # rom.write_int32(0xBC4A0, 0x080FF5E6)  # J 0x803FD798
-    # rom.write_int32(0xBC4C4, 0x080FF5E6)  # J 0x803FD798
-    # rom.write_int32(0x19844, 0x080FF602)  # J 0x803FD808
-    # If the option is set to "all locations", count it down no matter what the item is.
-    #    if options.countdown.value == options.countdown.option_all_locations:
-    # rom.write_int32s(0xBFD71C, [0x01010101, 0x01010101, 0x01010101, 0x01010101, 0x01010101, 0x01010101,
-    #                                    0x01010101, 0x01010101, 0x01010101, 0x01010101, 0x01010101])
-    #    else:
-    # If it's majors, then insert this last minute check I threw together for the weird edge case of a cvlod ice
-    # trap for another cvlod player taking the form of a major.
-    # rom.write_int32s(0xBFD788, [0x080FF717,  # J 0x803FDC5C
-    #                                    0x2529FFFF])  # ADDIU T1, T1, 0xFFFF
-    # rom.write_int32s(0xBFDC5C, patches.countdown_extra_safety_check)
-    # rom.write_int32(0xA9ECC, 0x00000000)  # NOP the pointless overwrite of the item actor appearance custom value.
+        # Kills the pointer to the Countdown number and resets the "in a demo?" value whenever changing/reloading the
+        # game state.
+        rom.write_int32(0x1168, 0x08007938)  # J 0x8001E4E0
+        rom.write_int32s(0x1F0E0, [0x3C08801D,   # LUI   T0, 0x801D
+                                   0xA100AA4A,   # SB    R0, 0xAA4A (T0)
+                                   0x03E00008,   # JR    RA
+                                   0xFD00AA40])  # SD    R0, 0xAA40 (T0)
 
-    # Give PowerUps their Legacy of Darkness behavior when attempting to pick up more than two
-    # rom.write_int32(0xA9730, 0x24090000)  # ADDIU	T1, R0, 0x0000
-    # rom.write_int32(0xBF2FC, 0x080FF16D)  # J	0x803FC5B4
-    # rom.write_int32(0xBF300, 0x00000000)  # NOP
-    # rom.write_int32s(0xBFC5B4, patches.give_powerup_stopper)
+    # Everything related to the Countdown counter
+    if options.countdown.value:
+        rom.write_int32(0x1C734, 0x080FF141)  # J 0x803FC504
+        rom.write_int32(0x1F118, 0x080FF147)  # J 0x803FC51C
+        rom.write_int32s(0xFFC3C0, patches.countdown_number_displayer)
+        rom.write_int32s(0xFFC4D0, patches.countdown_number_manager)
+        rom.write_int32(0x877E0, 0x080FF18D)  # J 0x803FC634
+        rom.write_int32(0x878F0, 0x080FF188)  # J 0x803FC620
+        rom.write_int32s(0x8BFF0, [0x0C0FF192,   # JAL 0x803FC648
+                                   0xA2090000])  # SB  T1, 0x0000 (S0)
+        rom.write_int32s(0x8C028, [0x0C0FF199,   # JAL 0x803FC664
+                                   0xA20E0000])  # SB  T6, 0x0000 (S0)
+        rom.write_int32(0x108D80, 0x0C0FF1A0)  # JAL 0x803FC680
 
     # Skip the "There is a white jewel" text so checking one saves the game instantly.
     # rom.write_int32s(0xEFC72, [0x00020002 for _ in range(37)])
@@ -521,14 +511,6 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # rom.write_int16s(0x104AC8, [0x0000, 0x0006,
     #                            0x0013, 0x0015])
 
-    # Take the contract in Waterway off of its 00400000 bitflag.
-    # rom.write_byte(0x87E3DA, 0x00)
-
-    # Spawn coordinates list extension
-    # rom.write_int32(0xD5BF4, 0x080FF103)  # J	0x803FC40C
-    # rom.write_int32s(0xBFC40C, patches.spawn_coordinates_extension)
-    # rom.write_int32s(0x108A5E, patches.waterway_end_coordinates)
-
     # Change the File Select stage numbers to match the new stage order. Also fix a vanilla issue wherein saving in a
     # character-exclusive stage as the other character would incorrectly display the name of that character's equivalent
     # stage on the save file instead of the one they're actually in.
@@ -653,7 +635,6 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # elif options.draculas_condition.value == options.draculas_condition.option_bosses:
     # rom.write_int32(0xBBD50, 0x080FF18C)  # J	0x803FC630
     # rom.write_int32s(0xBFC630, patches.boss_special2_giver)
-    # rom.write_int32s(0xBFC55C, patches.werebull_flag_unsetter_special2_electric_boogaloo)
     # rom.write_bytes(0xBFCC6E, cvlod_string_to_bytes(f"It won't budge!\n"
     #                                                   f"You'll need to defeat\n"
     #                                                   f"{required_s2s} powerful monsters\n"
@@ -896,9 +877,9 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     #                            0x00000000])  # NOP
     # rom.write_int32s(0xBFE4C0, patches.freeze_verifier)
 
-    # Initial Countdown numbers
-    # rom.write_int32(0xAD6A8, 0x080FF60A)  # J	0x803FD828
-    # rom.write_int32s(0xBFD828, patches.new_game_extras)
+    # Initial Countdown numbers and Start Inventory
+    rom.write_int32(0x90DBC, 0x080FF200)  # J	0x803FC800
+    rom.write_int32s(0xFFC800, patches.new_game_extras)
 
     # Everything related to shopsanity
     # if options.shopsanity.value:
@@ -1070,7 +1051,7 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
 
                 mary_text = cvlod_text_wrap(mary_text, 254)
 
-                rom.write_bytes(0x78EAE0, cvlod_string_to_bytes(mary_text[0] + " " * (598 - len(mary_text)),
+                rom.write_bytes(0x78EAE0, cvlod_string_to_bytes(mary_text[0] + (" " * (598 - len(mary_text))),
                                                                 append_end=False))
 
     # if loc.item.player != player:
