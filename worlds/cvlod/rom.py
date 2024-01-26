@@ -367,7 +367,7 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
 
     # Everything related to the Countdown counter
     if options.countdown.value:
-        rom.write_int32(0x1C734, 0x080FF141)  # J 0x803FC504
+        rom.write_int32(0x1C670, 0x080FF141)  # J 0x803FC504
         rom.write_int32(0x1F118, 0x080FF147)  # J 0x803FC51C
         rom.write_int32s(0xFFC3C0, patches.countdown_number_displayer)
         rom.write_int32s(0xFFC4D0, patches.countdown_number_manager)
@@ -565,8 +565,8 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # rom.write_int32s(0xBFC11C, patches.death_flag_unsetter)
 
     # Warp menu-opening code
-    # rom.write_int32(0xB9BA8, 0x080FF099)  # J	0x803FC264
-    # rom.write_int32s(0xBFC264, patches.warp_menu_opener)
+    rom.write_int32(0x86FE4, 0x0C0FF254)  # JAL	0x803FC950
+    rom.write_int32s(0xFFC950, patches.warp_menu_opener)
 
     # NPC item textbox hack
     rom.write_int32s(0xFFC6F0, patches.npc_item_hack)

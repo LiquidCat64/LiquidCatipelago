@@ -13,6 +13,8 @@ entrance_info = {
     ename.cw_lt_door: {"destination": rname.cw_ltower, "rule": iname.lt_key},
     ename.cw_end: {"destination": rname.villa_start, "rule": iname.winch},
 
+    ename.villa_warp: {"destination": rname.villa_storeroom, "rule": iname.s1},
+
     # Villa start
     ename.villa_dog_gates: {"destination": rname.villa_entrance},
     # Villa front entrance
@@ -109,6 +111,7 @@ stage_connection_types = {"prev": "end region",
 
 def lookup_rule(rule: str, player: int):
     rules = {
+        iname.s1: lambda state: state.has(iname.s1, player),
         iname.lt_key: lambda state: state.has(iname.lt_key, player),
         iname.winch: lambda state: state.has(iname.winch, player),
         iname.diary: lambda state: state.has(iname.diary, player),

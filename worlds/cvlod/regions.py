@@ -72,7 +72,8 @@ region_info = {
                                    lname.cw_pillar,
                                    lname.cw_shelf,
                                    lname.cw_shelf_torch],
-                     "entrances": [ename.cw_lt_door]},
+                     "entrances": [ename.cw_lt_door,
+                                   ename.villa_warp]},
 
     rname.cw_exit: {"stage": rname.castle_wall,
                     "locations": [lname.cw_ground_left,

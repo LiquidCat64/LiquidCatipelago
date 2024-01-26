@@ -6,6 +6,8 @@ cw_portcullis_c = "Central portcullis"
 cw_lt_door = "Left Tower door"
 cw_end = "End portcullis"
 
+villa_warp = "Warp into the Storeroom"
+
 villa_dog_gates = "Front dog gates"
 villa_snipe_dogs = "Orb snipe the dogs"
 villa_fountain_pillar = "Fountain pillar"

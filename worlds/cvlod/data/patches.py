@@ -253,30 +253,33 @@ death_flag_unsetter = [
 ]
 
 warp_menu_opener = [
-    # Enables opening the Stage Select menu by pausing while holding Z + R when not in a boss fight, the castle
-    # crumbling sequence following Fake Dracula, or Renon's arena (in the few seconds after his health bar vanishes).
-    0x3C08800D,  # LUI   T0, 0x800D
-    0x85095E20,  # LH    T1, 0x5E20 (T0)
-    0x24083010,  # ADDIU T0, R0, 0x3010
-    0x15090010,  # BNE   T0, T1, [forward 0x10]
-    0x3C088035,  # LUI   T0, 0x8035
-    0x9108F7D8,  # LBU   T0, 0xF7D8 (T0)
-    0x24090020,  # ADDIU T1, R0, 0x0020
-    0x1109000C,  # BEQ   T0, T1, [forward 0x0C]
-    0x3C088039,  # LUI   T0, 0x8039
-    0x91099BFA,  # LBU   T1, 0x9BFA (T0)
-    0x31290001,  # ANDI  T1, T1, 0x0001
-    0x15200008,  # BNEZ  T1, [forward 0x08]
-    0x8D099EE0,  # LW    T1, 0x9EE0
-    0x3C0A001B,  # LUI   T2, 0x001B
-    0x254A0003,  # ADDIU T2, T2, 0x0003
-    0x112A0004,  # BEQ   T1, T2, [forward 0x04]
-    0x2408FFFC,  # ADDIU T0, R0, 0xFFFC
-    0x3C098034,  # LUI   T1, 0x8034
-    0x0804DA70,  # J     0x80136960
-    0xAD282084,  # SW    T0, 0x2084 (T1)
-    0x0804DA70,  # J     0x80136960
-    0xA44E6436   # SH    T6, 0x6436 (V0)
+    # Enables warping by pausing while holding Z + R. Un-sets the Henry escort begins flag if you warp during it.
+    # TODO: Restrict this to not work when not in a boss fight, the castle crumbling sequence following Fake Dracula, or Renon's arena (in the few seconds after his health bar vanishes).
+    0x3C08800F,  # LUI   T0, 0x800F
+    0x9508FBA0,  # LHU   T0, 0xFBA0 (T0)
+    0x24093010,  # ADDIU T1, R0, 0x3010
+    0x15090013,  # BNE   T0, T1, [forward 0x13]
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9109AB47,  # LBU   T1, 0xAB47 (T0)
+    0x11200006,  # BEQZ  T1,     [forward 0x06]
+    0x910AAA48,  # LBU   T2, 0xAA48 (T0)
+    0x15400004,  # BNEZ  T2,     [forward 0x04]
+    0x3C0B0005,  # LUI   T3, 0x0005
+    0x256B0004,  # ADDIU T3, T3, 0x0004
+    0x10000003,  # B             [forward 0x03]
+    0x240C0001,  # ADDIU T4, R0, 0x0001
+    0x3C0B0002,  # LUI   T3, 0x0002
+    0x240C0000,  # ADDIU T4, R0, 0x0000
+    0xAD0BAE78,  # SW    T3, 0xAE78 (T0)
+    0x910DAA72,  # LBU   T5, 0xAA72 (T0)
+    0x31AE0008,  # ANDI  T6, T5, 0x0008
+    0x15C00002,  # BNEZ  T6,     [forward 0x02]
+    0x31AE00EF,  # ANDI  T6, T5, 0x00EF
+    0xA10EAA72,  # SB    T6, 0xAA72 (T0)
+    0x03E00008,  # JR    RA
+    0xA10CAA48,  # SB    T4, 0xAA48 (T0)
+    0x03E00008,  # JR    RA
+    0xA4782B4E   # SH    T8, 0x2B4E (V1)
 ]
 
 give_subweapon_stopper = [
@@ -669,95 +672,6 @@ special_goal_checker = [
     0x55400001,  # BNEZL T2, 0x8012AC8C
     0x24020001,  # ADDIU V0, R0, 0x0001
     0x03E00008   # JR    RA
-]
-
-warp_menu_rewrite = [
-    # Rewrite to the warp menu code to ensure each option can have its own scene ID, spawn ID, and fade color.
-    # Start Warp
-    0x3C0E0000,  # LUI   T6, 0x0000
-    0x25CE0000,  # ADDIU T6, T6, 0x0000
-    0x1000001F,  # B         [forward 0x1F]
-    0x3C0F8000,  # LUI   T7, 0x8000
-    # Warp 1
-    0x3C0E0000,  # LUI   T6, 0x0000
-    0x25CE0000,  # ADDIU T6, T6, 0x0000
-    0x1000001B,  # B         [forward 0x1B]
-    0x3C0F8040,  # LUI   T7, 0x8040
-    # Warp 2
-    0x3C0E0000,  # LUI   T6, 0x0000
-    0x25CE0000,  # ADDIU T6, T6, 0x0000
-    0x10000017,  # B         [forward 0x17]
-    0x3C0F8080,  # LUI   T7, 0x8080
-    # Warp 3
-    0x3C0E0000,  # LUI   T6, 0x0000
-    0x25CE0000,  # ADDIU T6, T6, 0x0000
-    0x10000013,  # B         [forward 0x13]
-    0x3C0F0080,  # LUI   T7, 0x0080
-    # Warp 4
-    0x3C0E0000,  # LUI   T6, 0x0000
-    0x25CE0000,  # ADDIU T6, T6, 0x0000
-    0x3C0F0080,  # LUI   T7, 0x0080
-    0x1000000E,  # B         [forward 0x0E]
-    0x25EF8000,  # ADDIU T7, T7, 0x8000
-    # Warp 5
-    0x3C0E0000,  # LUI   T6, 0x0000
-    0x25CE0000,  # ADDIU T6, T6, 0x0000
-    0x1000000A,  # B         [forward 0x0A]
-    0x340F8000,  # ORI   T7, R0, 0x8000
-    # Warp 6
-    0x3C0E0000,  # LUI   T6, 0x0000
-    0x25CE0000,  # ADDIU T6, T6, 0x0000
-    0x3C0F8000,  # LUI   T7, 0x8000
-    0x10000005,  # B         [forward 0x05]
-    0x35EF8000,  # ORI   T7, T7, 0x8000
-    # Warp 7
-    0x3C0E0000,  # LUI   T6, 0x0000
-    0x25CE0000,  # ADDIU T6, T6, 0x0000
-    0x3C0F8040,  # LUI   T7, 0x8040
-    0x35EF8000,  # ORI   T7, T7, 0x8000
-    # Warp Crypt
-    0x3C18800D,  # LUI   T8, 0x800D
-    0x97185E20,  # LHU   T8, 0x5E20 (T8)
-    0x24192000,  # ADDIU T9, R0, 0x2000
-    0x17190009,  # BNE   T8, T9, [forward 0x09]
-    0x3C088039,  # LUI   T0, 0x8039
-    0x91089C1C,  # LBU   T0, 0x9C1C (T0)
-    0x31080001,  # ANDI  T0, T0, 0x0001
-    0x1100000F,  # BEQZ  T0,     [forward 0x0F]
-    0x00000000,  # NOP
-    0x3C0E001A,  # LUI   T6, 0x001A
-    0x25CE0003,  # ADDIU T6, T6, 0x0003
-    0x1000000B,  # B     [forward 0x0B]
-    0x240F0000,  # ADDIU T7, R0, 0x0000
-    # Warp Elevator
-    0x24190010,  # ADDIU T9, R0, 0x0010
-    0x17190008,  # BNE   T8, T9, [forward 0x08]
-    0x91089C1C,  # LBU   T0, 0x9C1C (T0)
-    0x31080002,  # ANDI  T0, T0, 0x0002
-    0x11000005,  # BEQZ  T0,     [forward 0x05]
-    0x00000000,  # NOP
-    0x3C0E000F,  # LUI   T6, 0x000F
-    0x25CE0001,  # ADDIU T6, T6, 0x0001
-    0x3C0F8080,  # LUI   T7, 0x8080
-    0x35EF8000,  # ORI   T7, T7, 0x8000
-    # All
-    0xAC6E6428,  # SW    T6, 0x6428 (V1)
-    0xAC6F642C,  # SW    T7, 0x642C (V1)
-    0x2402001E,  # ADDIU V0, R0, 0x001E
-    0xA4626430,  # SH	 V0, 0x6430 (V1)
-    0xA4626432,  # SH	 V0, 0x6432 (V1)
-]
-
-warp_pointer_table = [
-    # Changed pointer table addresses to go with the warp menu rewrite
-    0x8012AD74,
-    0x8012AD84,
-    0x8012AD94,
-    0x8012ADA4,
-    0x8012ADB4,
-    0x8012ADC8,
-    0x8012ADD8,
-    0x8012ADEC,
 ]
 
 continue_cursor_start_checker = [
@@ -1298,7 +1212,7 @@ countdown_number_manager = [
     0x00000000,  # NOP
     0x3C08801D,  # LUI   T0, 0x801D
     0xA100AA44,  # SB    R0, 0xAA44 (T0)
-    0x08006E99,  # J     0x8001BA64
+    0x08006DDA,  # J     0x8001B768
     0xAD02AA40,  # SW    V0, 0xAA40 (T0)
     # Initializes the countdown number after checking if the textbox data is created.
     0x3C08801D,  # LUI   T0, 0x801D
