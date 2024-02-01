@@ -291,8 +291,8 @@ class CVLoDWorld(World):
         #for i in range(1, len(self.active_warp_list)):
         #    spoiler_handle.writelines(f"Warp {i}:\t{self.active_warp_list[i]}\n")
 
-    def fill_slot_data(self) -> typing.Dict[str, typing.Any]:
-        pass
+    #def fill_slot_data(self) -> typing.Dict[str, typing.Any]:
+    #    pass
         # return {"death_link": self.options.death_link.value}
 
     def modify_multidata(self, multidata: dict):
