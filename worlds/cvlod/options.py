@@ -466,4 +466,4 @@ class CVLoDOptions(PerGameCommonOptions):
     window_color_g: WindowColorG
     window_color_b: WindowColorB
     window_color_a: WindowColorA
-    death_link: DeathLink
+    # death_link: DeathLink

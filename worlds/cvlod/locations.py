@@ -33,7 +33,7 @@ location_info = {
     lname.cw_shelf:          {"code": 0x42,  "offset": 0x782735, "normal item": iname.winch,  "countdown": 2},
     lname.cw_shelf_torch:    {"code": 0x4C,  "offset": 0x78165F, "normal item": iname.cross,  "countdown": 2,
                               "add conds": ["sub"]},
-    lname.cw_ground_left:    {"code": 0x14B, "offset": 0x781623, "normal item": iname.purify,  "countdown": 2},
+    lname.cw_ground_left:    {"code": 0x48, "offset": 0x781623, "normal item": iname.purify,  "countdown": 2},
     lname.cw_ground_middle:  {"code": 0x27D, "offset": 0x7815FF, "normal item": iname.lt_key,  "countdown": 2},
     lname.cw_ground_right:   {"code": 0x4D,  "offset": 0x781683, "normal item": iname.axe,  "countdown": 2,
                               "add conds": ["sub"]},

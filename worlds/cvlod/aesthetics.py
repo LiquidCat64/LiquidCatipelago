@@ -351,7 +351,7 @@ def get_location_data(world: "CVLoDWorld", options: CVLoDOptions, active_locatio
     another CV64 or LoD player's item and, if so, what item it is in their game. Ice Traps can assume the form of any
     item that is progression, non-progression, or either depending on the player's settings.
 
-    Appearance does not matter if it's one of the two NPC-given items (from either Vincent or Heinrich Meyer). For
+    Appearance does not matter if it's one of the five NPC-given items (from Vincent, Heinrich Meyer, Mary, etc.). For
     Renon's shop items, a list containing the shop item names, descriptions, and colors will be returned alongside the
     regular data."""
 
@@ -393,14 +393,17 @@ def get_location_data(world: "CVLoDWorld", options: CVLoDOptions, active_locatio
             location_bytes[get_location_info(loc.name, "offset")] = 0x06
 
         # Figure out the item's appearance. If it's a CV64/LoD player's item, change the multiworld item's model to
-        # match what it is. Otherwise, change it to an Archipelago progress or not progress icon. The model "change"
-        # has to be applied to even local items because this is how the game knows to count it on the Countdown.
-        if loc.item.game == "Castlevania Legacy of Darkness":
-            location_bytes[get_location_info(loc.name, "offset") - 1] = get_item_info(loc.item.name, "code")
-        elif loc.item.advancement:
-            location_bytes[get_location_info(loc.name, "offset") - 1] = 0x06  # Special3 id
+        # match what it is. Otherwise, change it to an Archipelago progress or not progress icon. Do not write this if
+        # it's an NPC item, as that will tell the majors only Countdown to decrease even if it's not a major.
+        if loc_type != "npc":
+            if loc.item.game == "Castlevania Legacy of Darkness":
+                location_bytes[get_location_info(loc.name, "offset") - 1] = get_item_info(loc.item.name, "code")
+            elif loc.item.advancement:
+                location_bytes[get_location_info(loc.name, "offset") - 1] = 0x06  # Special3 id
+            else:
+                location_bytes[get_location_info(loc.name, "offset") - 1] = 0x06
         else:
-            location_bytes[get_location_info(loc.name, "offset") - 1] = 0x06
+            location_bytes[get_location_info(loc.name, "offset") - 1] = 0x00
 
         # If it's a PermaUp, change the item's model to a big PowerUp no matter what.
         if loc.item.game == "Castlevania Legacy of Darkness" and loc.item.code == 0x10C + base_id:

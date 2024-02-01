@@ -162,8 +162,8 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     rom.write_int32(0xC3284, 0x00000000)
 
     # Custom data-loading code
-    rom.write_int32(0x18A94, 0x0800793C)  # J 0x8001E4F0
-    rom.write_int32s(0x1F0F0, patches.custom_code_loader)
+    rom.write_int32(0x18A94, 0x0800793D)  # J 0x8001E4F4
+    rom.write_int32s(0x1F0F4, patches.custom_code_loader)
 
     # Custom remote item rewarding and DeathLink receiving code
     rom.write_int32(0x1C854, 0x080FF000)  # J 0x803FC000
@@ -357,10 +357,11 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
         rom.write_int16(0x829A16, 0x032D)  # CT giant chasm farside climb
         rom.write_int16(0x82CC8A, 0x0330)  # CT beneath final slide
 
-        # Kills the pointer to the Countdown number and resets the "in a demo?" value whenever changing/reloading the
-        # game state.
+        # Kills the pointer to the Countdown number, resets the "in a demo?" value whenever changing/reloading the
+        # game state, and mirrors the current game state value in a spot that's easily readable.
         rom.write_int32(0x1168, 0x08007938)  # J 0x8001E4E0
         rom.write_int32s(0x1F0E0, [0x3C08801D,   # LUI   T0, 0x801D
+                                   0xA104AA30,   # SB    A0, 0xAA30 (T0)
                                    0xA100AA4A,   # SB    R0, 0xAA4A (T0)
                                    0x03E00008,   # JR    RA
                                    0xFD00AA40])  # SD    R0, 0xAA40 (T0)
@@ -368,7 +369,7 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # Everything related to the Countdown counter
     if options.countdown.value:
         rom.write_int32(0x1C670, 0x080FF141)  # J 0x803FC504
-        rom.write_int32(0x1F118, 0x080FF147)  # J 0x803FC51C
+        rom.write_int32(0x1F11C, 0x080FF147)  # J 0x803FC51C
         rom.write_int32s(0xFFC3C0, patches.countdown_number_displayer)
         rom.write_int32s(0xFFC4D0, patches.countdown_number_manager)
         rom.write_int32(0x877E0, 0x080FF18D)  # J 0x803FC634
@@ -809,10 +810,6 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # Fan meeting room ambience fix
     # rom.write_int32(0x109964, 0x803FE13C)
 
-    # Make the Villa coffin cutscene skippable
-    # rom.write_int32(0xAA530, 0x080FF880)  # J 0x803FE200
-    # rom.write_int32s(0xBFE200, patches.coffin_cutscene_skipper)
-
     # Increase shimmy speed
     # if options.increase_shimmy_speed.value:
     # rom.write_byte(0xA4241, 0x5A)
@@ -1023,7 +1020,7 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # rom.write_int32(0xEE5CC, 0x3FA00000)
 
     # Write the slot name
-    # rom.write_bytes(0xBFBFE0, slot_name)
+    rom.write_bytes(0xFFBFE0, slot_name)
 
     # Write the specified window colors
     rom.write_byte(0x8881A, options.window_color_r.value << 4)
@@ -1051,7 +1048,7 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
 
                 mary_text = cvlod_text_wrap(mary_text, 254)
 
-                rom.write_bytes(0x78EAE0, cvlod_string_to_bytes(mary_text[0] + (" " * (598 - len(mary_text))),
+                rom.write_bytes(0x78EAE0, cvlod_string_to_bytes(mary_text[0] + (" " * (866 - len(mary_text[0]))),
                                                                 append_end=False))
 
     # if loc.item.player != player:

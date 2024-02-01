@@ -292,7 +292,8 @@ class CVLoDWorld(World):
         #    spoiler_handle.writelines(f"Warp {i}:\t{self.active_warp_list[i]}\n")
 
     def fill_slot_data(self) -> typing.Dict[str, typing.Any]:
-        return {"death_link": self.options.death_link.value}
+        pass
+        # return {"death_link": self.options.death_link.value}
 
     def modify_multidata(self, multidata: dict):
         # wait for self.rom_name to be available.

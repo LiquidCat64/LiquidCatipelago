@@ -39,7 +39,7 @@ class CastlevaniaLoDClient(BizHawkClient):
             # Check if we can read the slot name. Doing this here instead of set_auth as a protection against
             # validating a ROM where there's no slot name to read.
             try:
-                slot_name_bytes = (await bizhawk.read(ctx.bizhawk_ctx, [(0xBFBFE0, 0x10, "ROM")]))[0]
+                slot_name_bytes = (await bizhawk.read(ctx.bizhawk_ctx, [(0xFFBFE0, 0x10, "ROM")]))[0]
                 self.rom_slot_name = bytes([byte for byte in slot_name_bytes if byte != 0]).decode("utf-8")
             except UnicodeDecodeError:
                 logger.info("Could not read slot name from ROM. Are you sure this ROM matches this client version?")
@@ -67,22 +67,22 @@ class CastlevaniaLoDClient(BizHawkClient):
     async def game_watcher(self, ctx: BizHawkClientContext) -> None:
 
         try:
-            read_state = await bizhawk.read(ctx.bizhawk_ctx, [(0x342084, 4, "RDRAM"),
-                                                              (0x389BDE, 6, "RDRAM"),
-                                                              (0x389BE4, 224, "RDRAM"),
-                                                              (0x389EFB, 1, "RDRAM")])
+            read_state = await bizhawk.read(ctx.bizhawk_ctx, [(0x1CAA30, 1, "RDRAM"),
+                                                              (0x1CAA4B, 5, "RDRAM"),
+                                                              (0x1CAA60, 356, "RDRAM"),
+                                                              (0x1CAE8B, 1, "RDRAM")])
 
             game_state = int.from_bytes(read_state[0], "big")
             save_struct = read_state[2]
-            written_deathlinks = int.from_bytes(bytearray(read_state[1][4:6]), "big")
+            written_deathlinks = int.from_bytes(bytearray(read_state[1][5:]), "big")
             deathlink_induced_death = int.from_bytes(bytearray(read_state[1][0:1]), "big")
             cutscene_value = int.from_bytes(read_state[3], "big")
-            num_received_items = int.from_bytes(bytearray(save_struct[0xDA:0xDC]), "big")
+            num_received_items = int.from_bytes(bytearray(save_struct[0x15E:0x160]), "big")
 
             # Make sure we are in the Gameplay or Credits states before detecting sent locations and/or DeathLinks.
             # If we are in any other state, such as the Game Over state, set currently_dead to false, so we can once
             # again send a DeathLink once we are back in the Gameplay state.
-            if game_state not in [0x00000002 or 0x0000000B]:
+            if game_state not in [0x3 or 0xA]:
                 self.self_induced_death = False
                 return
 
@@ -94,7 +94,7 @@ class CastlevaniaLoDClient(BizHawkClient):
                         await ctx.update_death_link(self.death_link)
 
             # Send a DeathLink if we died on our own independently of receiving another one.
-            if "DeathLink" in ctx.tags and save_struct[0xA4] & 0x80 and not self.self_induced_death and not \
+            if "DeathLink" in ctx.tags and save_struct[0x124] & 0x80 and not self.self_induced_death and not \
                     deathlink_induced_death:
                 self.self_induced_death = True
                 await ctx.send_death("Dracula wins!")
@@ -104,8 +104,7 @@ class CastlevaniaLoDClient(BizHawkClient):
             if self.received_deathlinks and not self.self_induced_death:
                 written_deathlinks += self.received_deathlinks
                 self.received_deathlinks = 0
-                await bizhawk.write(ctx.bizhawk_ctx,
-                                    [(0x389BE2, [written_deathlinks >> 8, written_deathlinks], "RDRAM")])
+                await bizhawk.write(ctx.bizhawk_ctx, [(0x1CAA4F, [written_deathlinks], "RDRAM")])
             else:
                 # If the game hasn't received all items yet, the received item struct doesn't contain an item, the
                 # current number of received items still matches what we read before, and there are no open text boxes,
@@ -122,25 +121,29 @@ class CastlevaniaLoDClient(BizHawkClient):
                     else:
                         text_color = [0xA2, 0x02]
                     received_text, num_lines = cvlod_text_wrap(f"{ctx.item_names[next_item.item]}\n"
-                                                              f"from {ctx.player_names[next_item.player]}", 96)
+                                                               f"from {ctx.player_names[next_item.player]}", 96)
                     await bizhawk.guarded_write(ctx.bizhawk_ctx,
-                                                [(0x389BE1, (next_item.item & 0xFF).to_bytes(1, "big"), "RDRAM"),
-                                                 (0x18C0A8, text_color + cvlod_string_to_bytes(received_text, False),
-                                                  "RDRAM"),
-                                                 (0x18C1A7, [num_lines], "RDRAM")],
-                                                [(0x389BE1, [0x00], "RDRAM"),   # Remote item reward buffer
-                                                 (0x389CBE, save_struct[0xDA:0xDC], "RDRAM"),  # Received items
-                                                 (0x342891, [0x02], "RDRAM")])   # Textbox state
+                                                [(0x1CAA4D, (next_item.item & 0xFF).to_bytes(1, "big"), "RDRAM")],
+                                                 #(0x18C0A8, text_color + cvlod_string_to_bytes(received_text, False),
+                                                 # "RDRAM"),
+                                                 #(0x18C1A7, [num_lines], "RDRAM")],
+                                                [(0x1CAA4D, [0x00], "RDRAM"),   # Remote item reward buffer
+                                                 (0x1CABBE, save_struct[0x15E:0x160], "RDRAM"),  # Received items
+                                                 (0x1CAA4E, [0x00], "RDRAM")])   # Timer till next remote item textbox
 
-            flag_bytes = bytearray(save_struct[0x00:0x44]) + bytearray(save_struct[0x90:0x9F])
+            flag_bytes = bytearray(save_struct[0x00:0xB8])
             locs_to_send = set()
 
             # Check for set location flags.
+            found_a_hidden_path = False
             for byte_i, byte in enumerate(flag_bytes):
                 for i in range(8):
                     and_value = 0x80 >> i
                     if byte & and_value != 0:
                         flag_id = byte_i * 8 + i
+
+                        if flag_id == 0x18D:  # The "found a hidden path" cutscene flag
+                            found_a_hidden_path = True
 
                         location_id = flag_id + base_id
                         if location_id in ctx.server_locations:
@@ -157,7 +160,7 @@ class CastlevaniaLoDClient(BizHawkClient):
                     }])
 
             # Send game clear if we're in either any ending cutscene or the credits state.
-            if not ctx.finished_game and (0x26 <= int(cutscene_value) <= 0x2E or game_state == 0x0000000B):
+            if not ctx.finished_game and (found_a_hidden_path or game_state == 0xA):
                 await ctx.send_msgs([{
                     "cmd": "StatusUpdate",
                     "status": ClientStatus.CLIENT_GOAL
