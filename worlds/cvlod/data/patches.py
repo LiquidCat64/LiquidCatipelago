@@ -1836,38 +1836,37 @@ ambience_silencer = [
     # Silences all map-specific ambience when loading into a different map, so we don't have to live with, say, Tower of
     # Science/Clock Tower machinery noises everywhere until either resetting, dying, or going into a map that is
     # normally set up to disable said noises.
-    0x3C088039,  # LUI   T0, 0x8039
-    0x91089EE1,  # LBU   T0, 0x9EE1 (T0)
-    0x24090012,  # ADDIU T1, R0, 0x0012
-    0x11090003,  # BEQ   T0, T1, [forward 0x03]
+    0x0C004156,  # JAL   0x80010558
     0x00000000,  # NOP
-    0x0C004FAB,  # JAL   0x80013EAC
-    0x3404818C,  # ORI   A0, R0, 0x818C
-    0x0C004FAB,  # JAL   0x80013EAC
-    0x34048134,  # ORI   A0, R0, 0x8134
-    0x0C004FAB,  # JAL   0x80013EAC
-    0x34048135,  # ORI   A0, R0, 0x8135
-    0x0C004FAB,  # JAL   0x80013EAC
-    0x34048136,  # ORI   A0, R0, 0x8136
-    0x08054987,  # J     0x8015261C
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9109AB91,  # LBU   T1, 0xAB91 (T0)
+    0x240A0010,  # ADDIU T2, R0, 0x0010
+    0x112A0003,  # BEQ   T1, T2, [forward 0x03]
+    0x240A0011,  # ADDIU T2, R0, 0x0011
+    0x152A0007,  # BNE   T1, T2, [froward 0x07]
     0x00000000,  # NOP
-    # Plays the fan ambience when loading into the fan meeting room if this detects the active character's cutscene flag
-    # here already being set.
-    0x3C088039,  # LUI   T0, 0x8039
-    0x91099EE1,  # LBU   T1, 0x9EE1 (T0)
-    0x240A0019,  # ADDIU T2, R0, 0x0019
-    0x152A000A,  # BNE   T1, T2, [forward 0x0A]
-    0x910B9BFE,  # LBU   T3, 0x9BFE (T0)
-    0x910C9C3D,  # LBU   T4, 0x9C3D (T0)
-    0x240D0001,  # ADDIU T5, R0, 0x0001
-    0x55800001,  # BNEZL T4,     [forward 0x01]
-    0x240D0002,  # ADDIU T5, R0, 0x0002
-    0x016D7024,  # AND   T6, T3, T5
-    0x11C00003,  # BEQZ  T6,     [forward 0x03]
+    0x0C0059BE,  # JAL   0x800166F8
+    0x340481A0,  # ORI   A0, R0, 0x81A0
+    0x0C0059BE,  # JAL   0x800166F8
+    0x340481A1,  # ORI   A0, R0, 0x81A1
+    0x08006BCA,  # J     0x8001AF28
     0x00000000,  # NOP
-    0x0C0052B4,  # JAL   0x80014AD0
-    0x34040169,  # ORI   A0, R0, 0x0169
-    0x0805581C   # J     0x80156070
+    0x240A0006,  # ADDIU T2, R0, 0x0006
+    0x152A0009,  # BNE   T1, T2, [forward 0x09]
+    0x00000000,  # NOP
+    0x0C0059BE,  # JAL   0x800166F8
+    0x34048371,  # ORI   A0, R0, 0x8371
+    0x0C0059BE,  # JAL   0x800166F8
+    0x34048372,  # ORI   A0, R0, 0x8372
+    0x0C0059BE,  # JAL   0x800166F8
+    0x34048358,  # ORI   A0, R0, 0x8358
+    0x08006BCA,  # J     0x8001AF28
+    0x00000000,  # NOP
+    0x0C0059BE,  # JAL   0x800166F8
+    0x34048188,  # ORI   A0, R0, 0x8188
+    0x0C0059BE,  # JAL   0x800166F8
+    0x34048368,  # ORI   A0, R0, 0x8368
+    0x08006BCA   # J     0x8001AF28
 ]
 
 multiworld_item_name_loader = [

@@ -799,8 +799,8 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # rom.write_int32(0x6C7E2C, 0x00000000)  # NOP
 
     # Ambience silencing fix
-    # rom.write_int32(0xD9270, 0x080FF840)  # J 0x803FE100
-    # rom.write_int32s(0xBFE100, patches.ambience_silencer)
+    rom.write_int32(0x1BB20, 0x080FF280)  # J 0x803FCA00
+    rom.write_int32s(0xFFCA00, patches.ambience_silencer)
     # Fix for the door sliding sound playing infinitely if leaving the fan meeting room before the door closes entirely.
     # Hooking this in the ambience silencer code does nothing for some reason.
     # rom.write_int32s(0xAE10C, [0x08004FAB,  # J   0x80013EAC
