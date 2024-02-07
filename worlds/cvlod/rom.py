@@ -494,14 +494,20 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # rom.write_byte(0xA6253D, 0x03)
 
     # Enable the Game Over's "Continue" menu starting the cursor on whichever checkpoint is most recent
-    # rom.write_int32(0xB4DDC, 0x0C060D58)  # JAL 0x80183560
-    # rom.write_int32s(0x106750, patches.continue_cursor_start_checker)
-    # rom.write_int32(0x1C444, 0x080FF08A)  # J   0x803FC228
-    # rom.write_int32(0x1C2A0, 0x080FF08A)  # J   0x803FC228
-    # rom.write_int32s(0xBFC228, patches.savepoint_cursor_updater)
-    # rom.write_int32(0x1C2D0, 0x080FF094)  # J   0x803FC250
-    # rom.write_int32s(0xBFC250, patches.stage_start_cursor_updater)
-    # rom.write_byte(0xB585C8, 0xFF)
+    rom.write_int32s(0x82120, [0x0C0FF2B4,   # JAL 0x803FCAD0
+                               0x91830024])  # LBU V1, 0x0024 (T4)
+    rom.write_int32s(0xFFCAD0, patches.continue_cursor_start_checker)
+    rom.write_int32(0x1D4A8, 0x080FF2C5)  # J   0x803FCB14
+    rom.write_int32s(0xFFCB14, patches.savepoint_cursor_updater)
+    rom.write_int32(0x1D344, 0x080FF2C0)  # J   0x803FCB00
+    rom.write_int32s(0xFFCB00, patches.stage_start_cursor_updater)
+    rom.write_byte(0x21C7, 0xFF, 339)
+    # Multiworld buffer clearer/"death on load" safety checks.
+    rom.write_int32s(0x1D314, [0x080FF2D0,   # J   0x803FCB40
+                               0x24040000])  # ADDIU A0, R0, 0x0000
+    rom.write_int32s(0x1D3B4, [0x080FF2D0,   # J   0x803FCB40
+                               0x24040001])  # ADDIU A0, R0, 0x0001
+    rom.write_int32s(0xFFCB40, patches.load_clearer)
 
     # Make the Special1 and 2 play sounds when you reach milestones with them.
     # rom.write_int32s(0xBFDA50, patches.special_sound_notifs)
@@ -554,16 +560,6 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     # if options.death_link.value == options.death_link.option_explosive:
     # rom.write_int32(0x27A70, 0x10000008)  # B [forward 0x08]
     # rom.write_int32s(0xBFC0D0, patches.deathlink_nitro_edition)
-
-    # DeathLink counter decrementer code
-    # rom.write_int32(0x1C340, 0x080FF8F0)  # J 0x803FE3C0
-    # rom.write_int32s(0xBFE3C0, patches.deathlink_counter_decrementer)
-    # rom.write_int32(0x25B6C, 0x0080FF052)  # J 0x803FC148
-    # rom.write_int32s(0xBFC148, patches.nitro_fall_killer)
-
-    # Death flag un-setter on "Beginning of stage" state overwrite code
-    # rom.write_int32(0x1C2B0, 0x080FF047)  # J 0x803FC11C
-    # rom.write_int32s(0xBFC11C, patches.death_flag_unsetter)
 
     # Warp menu-opening code
     rom.write_int32(0x86FE4, 0x0C0FF254)  # JAL	0x803FC950

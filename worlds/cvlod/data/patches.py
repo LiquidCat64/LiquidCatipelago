@@ -210,48 +210,6 @@ nitro_fall_killer = [
     0x03E00008   # JR    RA
 ]
 
-deathlink_counter_decrementer = [
-    # Decrements the DeathLink counter if it's above zero upon loading a previous state. Checking this number will be
-    # how the client will tell if a player's cause of death was something in-game or a DeathLink (and send a DeathLink
-    # to the server if it was the former). Also resets the remote item values to 00 so the player's received items don't
-    # get mucked up in-game.
-    0x3C088039,  # LUI   T0, 0x8039
-    0x91099BE3,  # LBU   T1, 0x9BE3 (T0)
-    0x11200002,  # BEQZ  T1, 0x803FC154
-    0x2529FFFF,  # ADDIU T1, T1, 0xFFFF
-    0xA1099BE3,  # SB    T1, 0x9BE3
-    0x240900FF,  # ADDIU T1, R0, 0x00FF
-    0xA1099BE0,  # SB    T1, 0x9BE0 (T0)
-    0xA1009BDF,  # SB	 R0, 0x9BDF (T0)
-    0xA1009BE1,  # SB	 R0, 0x9BE1 (T0)
-    0x91099BDE,  # LBU   T1, 0x9BDE (T0)
-    0x55200001,  # BNEZL T1,     [forward 0x01]
-    0x24090000,  # ADDIU T1, R0, 0x0000
-    0xA1099BDE,  # SB    T1, 0x9BDE (T0)
-    0x91099C24,  # LBU   T1, 0x9C24 (T0)
-    0x312A0080,  # ANDI  T2, T1, 0x0080
-    0x55400001,  # BNEZL T2,     [forward 0x01]
-    0x3129007F,  # ANDI  T1, T1, 0x007F
-    0x03E00008,  # JR    RA
-    0xA1099C24   # SB    T1, 0x9C24 (T0)
-]
-
-death_flag_unsetter = [
-    # Un-sets the Death status bitflag when overwriting the "Restart this stage" state and sets health to full if it's
-    # empty. This is to ensure DeathLinked players won't get trapped in a perpetual death loop for eternity should they
-    # receive one right before transitioning to a different stage.
-    0x3C048039,  # LUI   A0, 0x8039
-    0x90889C88,  # LBU   T0, 0x9C88 (A0)
-    0x31090080,  # ANDI  T1, T0, 0x0080
-    0x01094023,  # SUBU  T0, T0, T1
-    0x908A9C3F,  # LBU   T2, 0x9C3F (A0)
-    0x24090064,  # ADDIU T1, R0, 0x0064
-    0x51400001,  # BEQZL T2,     [forward 0x01]
-    0xA0899C3F,  # SB    T1, 0x9C3F (A0)
-    0x08006DAE,  # J     0x8001B6B8
-    0xA0889C88   # SB    T0, 0x9C88 (A0)
-]
-
 warp_menu_opener = [
     # Enables warping by pausing while holding Z + R. Un-sets the Henry escort begins flag if you warp during it.
     # TODO: Restrict this to not work when not in a boss fight, the castle crumbling sequence following Fake Dracula, or Renon's arena (in the few seconds after his health bar vanishes).
@@ -677,37 +635,86 @@ special_goal_checker = [
 continue_cursor_start_checker = [
     # This is used to improve the Game Over screen's "Continue" menu by starting the cursor on whichever checkpoint
     # is most recent instead of always on "Previously saved". If a menu has a cursor start value of 0xFF in its text
-    # data, this will read the byte at 0x80389BC0 to determine which option to start the cursor on.
-    0x8208001C,  # LB    T0, 0x001C(S0)
-    0x05010003,  # BGEZ  T0,     [forward 0x03]
-    0x3C098039,  # LUI   T1, 0x8039
-    0x81289BC0,  # LB    T0, 0x9BC0 (T1)
-    0xA208001C,  # SB    T0, 0x001C (S0)
-    0x03E00008   # JR    RA
+    # data, this will read the byte at 0x801CAA31 to determine which option to start the cursor on.
+    0x240A00FF,  # ADDIU T2, R0, 0x00FF
+    0x15480008,  # BNE   T2, T0, [forward 0x08]
+    0x286B0002,  # SLTI  T3, V1, 0x0002
+    0x15600006,  # BNEZ  T3,     [forward 0x05]
+    0x8CAA0014,  # LW    T2, 0x0014 (A1)
+    0x8D4B0014,  # LW    T3, 0x0014 (T2)
+    0x3C0A801D,  # LUI   T2, 0x801D
+    0x9148AA31,  # LBU   T0, 0xAA31 (T2)
+    0x01003021,  # ADDU  A2, T0, R0
+    0xA1680073,  # SB    T0, 0x0073 (T3)
+    0x03E00008,  # JR    RA
+    0x30CF00FF   # ANDI  T7, A2, 0x00FF
 ]
 
 savepoint_cursor_updater = [
-    # Sets the value at 0x80389BC0 to 0x00 after saving to let the Game Over screen's "Continue" menu know to start the
-    # cursor on "Previously saved" as well as updates the entrance variable for B warping. It then jumps to
-    # deathlink_counter_decrementer in the event we're loading a save from the Game Over screen.
-    0x3C088039,  # LUI    T0, 0x8039
-    0x91099C95,  # LBU    T1, 0x9C95 (T0)
+    # Sets the value at 0x801CAA31 to 0x00 after saving to let the Game Over screen's "Continue" menu know to start the
+    # cursor on "Previously saved" as well as updates the entrance variable for B warping.
+    0x3C08801D,  # LUI    T0, 0x801D
+    0x9109AB95,  # LBU    T1, 0xAB95 (T0)
     0x000948C0,  # SLL    T1, T1, 3
-    0x3C0A8018,  # LUI    T2, 0x8018
+    0x3C0A800C,  # LUI    T2, 0x800C
     0x01495021,  # ADDU   T2, T2, T1
-    0x914B17CF,  # LBU    T3, 0x17CF (T2)
-    0xA10B9EE3,  # SB     T3, 0x9EE3 (T0)
-    0xA1009BC0,  # SB     R0, 0x9BC0 (T0)
-    0x080FF8F0   # J 0x803FE3C0
+    0x914B82EF,  # LBU    T3, 0x82EF (T2)
+    0xA10BAB93,  # SB     T3, 0xAB93 (T0)
+    0xA10BAE7B,  # SB     T3, 0xAE7B (T0)
+    0xA100AA31,  # SB     R0, 0xAA31 (T0)
+    0x03E00008,  # JR    RA
 ]
 
 stage_start_cursor_updater = [
-    # Sets the value at 0x80389BC0 to 0x01 after entering a stage to let the Game Over screen's "Continue" menu know to
+    # Sets the value at 0x801CAA31 to 0x01 after entering a stage to let the Game Over screen's "Continue" menu know to
     # start the cursor on "Restart this stage".
-    0x3C088039,  # LUI    T0, 0x8039
+    0x3C08801D,  # LUI    T0, 0x801D
     0x24090001,  # ADDIU  T1, R0, 0x0001
-    0xA1099BC0,  # SB     T1, 0x9BC0 (T0)
+    0xA109AA31,  # SB     T1, 0xAA31 (T0)
     0x03E00008   # JR     RA
+]
+
+deathlink_counter_decrementer = [
+    # Decrements the DeathLink counter if it's above zero upon loading a previous state. Checking this number will be
+    # how the client will tell if a player's cause of death was something in-game or a DeathLink (and send a DeathLink
+    # to the server if it was the former). Also resets the remote item values to 00 so the player's received items don't
+    # get mucked up in-game.
+    0x3C088039,  # LUI   T0, 0x8039
+    0x91099BE3,  # LBU   T1, 0x9BE3 (T0)
+    0x11200002,  # BEQZ  T1, 0x803FC154
+    0x2529FFFF,  # ADDIU T1, T1, 0xFFFF
+    0xA1099BE3,  # SB    T1, 0x9BE3
+    0x240900FF,  # ADDIU T1, R0, 0x00FF
+    0xA1099BE0,  # SB    T1, 0x9BE0 (T0)
+    0xA1009BDF,  # SB	 R0, 0x9BDF (T0)
+    0xA1009BE1,  # SB	 R0, 0x9BE1 (T0)
+    0x91099BDE,  # LBU   T1, 0x9BDE (T0)
+    0x55200001,  # BNEZL T1,     [forward 0x01]
+    0x24090000,  # ADDIU T1, R0, 0x0000
+    0xA1099BDE,  # SB    T1, 0x9BDE (T0)
+    0x91099C24,  # LBU   T1, 0x9C24 (T0)
+    0x312A0080,  # ANDI  T2, T1, 0x0080
+    0x55400001,  # BNEZL T2,     [forward 0x01]
+    0x3129007F,  # ANDI  T1, T1, 0x007F
+    0x03E00008,  # JR    RA
+    0xA1099C24   # SB    T1, 0x9C24 (T0)
+]
+
+load_clearer = [
+    # Un-sets the Death status bitflag when loading either a save or stage beginning state and sets health to full if
+    # it's empty, as well as clearing the multiworld buffers so things don't get mucked up on that front. Also updates
+    # the "Continue" menu cursor depending on which state was loaded.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0xFD00AA48,  # SD    R0, 0xAA48 (T0)
+    0xA104AA31,  # SB    A0, 0xAA31 (T0)
+    0x9109ABA4,  # LBU   T1, 0xABA4 (T0)
+    0x3129007F,  # ANDI  T1, T1, 0x007F
+    0xA109ABA4,  # SB    T1, 0xABA4 (T0)
+    0x950AAB42,  # LHU   T2, 0xAB42 (T0)
+    0x51400001,  # BEQZL T2,     [forward 0x01]
+    0x240A2710,  # ADDIU T2, R0, 0x2710
+    0x03E00008,  # JR    RA
+    0xA50AAB42   # SH    T2, 0xAB42 (T0)
 ]
 
 elevator_flag_checker = [
@@ -1833,13 +1840,15 @@ mandragora_with_nitro_setter = [
 ]
 
 ambience_silencer = [
-    # Silences all map-specific ambience when loading into a different map, so we don't have to live with, say, Tower of
+    # Silences map-specific ambience when loading into a different map, so we don't have to live with, say, Tower of
     # Science/Clock Tower machinery noises everywhere until either resetting, dying, or going into a map that is
-    # normally set up to disable said noises.
+    # normally set up to disable said noises. We can only silence three sounds at a time, so we will silence different
+    # things depending on which map we're leaving.
     0x0C004156,  # JAL   0x80010558
     0x00000000,  # NOP
     0x3C08801D,  # LUI   T0, 0x801D
     0x9109AB91,  # LBU   T1, 0xAB91 (T0)
+    # Foggy Lake ship noises
     0x240A0010,  # ADDIU T2, R0, 0x0010
     0x112A0003,  # BEQ   T1, T2, [forward 0x03]
     0x240A0011,  # ADDIU T2, R0, 0x0011
@@ -1851,6 +1860,7 @@ ambience_silencer = [
     0x340481A1,  # ORI   A0, R0, 0x81A1
     0x08006BCA,  # J     0x8001AF28
     0x00000000,  # NOP
+    # Child Henry escort noises
     0x240A0006,  # ADDIU T2, R0, 0x0006
     0x152A0009,  # BNE   T1, T2, [forward 0x09]
     0x00000000,  # NOP
@@ -1862,6 +1872,7 @@ ambience_silencer = [
     0x34048358,  # ORI   A0, R0, 0x8358
     0x08006BCA,  # J     0x8001AF28
     0x00000000,  # NOP
+    # Clock Tower/Tower of Science machinery
     0x0C0059BE,  # JAL   0x800166F8
     0x34048188,  # ORI   A0, R0, 0x8188
     0x0C0059BE,  # JAL   0x800166F8
