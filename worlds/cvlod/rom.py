@@ -151,9 +151,20 @@ def patch_rom(multiworld, options: CVLoDOptions, rom, player, offset_data, activ
     rom.write_int32(0x678, 0x00000000)
 
     # Unlock Hard Mode and all characters and costumes from the start
-    rom.write_int32(0x145C, 0x08007872)  # J 0x8001E1C8
-    rom.write_int32(0x1D01C, 0x08007872)  # J 0x8001E1C8
-    rom.write_int32s(0x1EDC8, patches.extras_unlocker)
+    rom.write_int32(0x244, 0x00000000, 344)
+    rom.write_int32(0x1DE4, 0x00000000, 343)
+    rom.write_int32(0x1FF8, 0x00000000, 340)
+    rom.write_int32(0x2000, 0x00000000, 340)
+    rom.write_int32(0x2008, 0x00000000, 340)
+    rom.write_int32(0x96C, 0x240D4000, 344)
+    rom.write_int32(0x994, 0x00000000, 344)
+    rom.write_int32(0x9C0, 0x00000000, 344)
+    rom.write_int32s(0x18E8, [0x3C0400FF,
+                              0x3484FF00,
+                              0x00045025], 340)
+    rom.write_int32s(0x19A0, [0x3C0400FF,
+                              0x3484FF00,
+                              0x00044025], 340)
 
     # NOP the store instructions that clear fields 0x02 in the actor lists so the rando can use them to "delete" actors.
     rom.write_int32(0xC232C, 0x00000000)

@@ -1,72 +1,3 @@
-extras_unlocker = [
-    # Sets the appropriate flags in the save file to unlock all Henry child rewards from the start.
-    0x3C08801D,  # LUI   T0, 0x801D
-    0x240900FF,  # ADDIU T1, 0x00FF
-    0xA109AB19,  # SB    T1, 0xAB19 (T0)
-    0x03E00008,  # JR    RA
-    0xA109AB1A,  # SB    T1, 0xAB1A (T0)
-]
-
-ct_door_code = [
-    0x3C0A8039,  # LUI   T2, 0x8039
-    0x8D429BF8,  # LW    V0, 0x9BF8 (T2)
-    0x01465021,  # ADDU  T2, T2, A2
-    0x814A9C60,  # LB    T2, 0x9C60 (T2)
-    0x00495824,  # AND   T3, V0, T1
-    0x55600001,  # BNEZL T3,     [forward 0x01]
-    0x27FF0010,  # ADDIU RA, RA, 0x0010
-    0x03E00008   # JR    RA
-]
-
-stage_select_overwrite = [
-    # Replacement for the "wipe world state" function when using the warp menu. Now it's the "Special1 jewel checker"
-    # to see how many destinations can be selected on it with the current count.
-    0x8FA60018,  # LW	 A2, 0x0018 (SP)
-    0xA0606437,  # SB	 R0, 0x6437 (V1)
-    0x10000029,  # B	         [forward 0x29]
-    0x00000000,  # NOP
-    0x3C0A8039,  # LUI	 T2, 0x8039
-    0x254A9C4B,  # ADDIU T2, T2, 0x9C4B
-    0x814B0000,  # LB	 T3, 0x0000 (T2)
-    0x240C000A,  # ADDIU T4, R0, 0x000A
-    0x016C001B,  # DIVU	 T3, T4
-    0x00003012,  # MFLO	 A2
-    0x24C60001,  # ADDIU A2, A2, 0x0001
-    0x28CA0009,  # SLTI	 T2, A2, 0x0009
-    0x51400001,  # BEQZL T2, 0x8012AC7C
-    0x24060008,  # ADDIU A2, R0, 0x0008
-    0x3C0A800D,  # LUI   T2, 0x800D
-    0x914A5E20,  # LBU   T2, 0x5E20 (T2)
-    0x314A0040,  # ANDI  T2, T2, 0x0040
-    0x11400003,  # BEQZ  T2,     [forward 0x03]
-    0x240BFFFE,  # ADDIU T3, R0, 0xFFFE
-    0x3C0C8034,  # LUI   T4, 0x8034
-    0xAD8B2084,  # SW    T3, 0x2084 (T4)
-    0x03200008,  # JR    T9
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-]
-
 custom_code_loader = [
     # On boot, when the company logos show up, this will trigger and load most of the custom ASM data
     # from ROM offsets 0xFFC000-0xFFFFFF and into the 803FC000-803FFFFF range in RAM.
@@ -672,32 +603,6 @@ stage_start_cursor_updater = [
     0x24090001,  # ADDIU  T1, R0, 0x0001
     0xA109AA31,  # SB     T1, 0xAA31 (T0)
     0x03E00008   # JR     RA
-]
-
-deathlink_counter_decrementer = [
-    # Decrements the DeathLink counter if it's above zero upon loading a previous state. Checking this number will be
-    # how the client will tell if a player's cause of death was something in-game or a DeathLink (and send a DeathLink
-    # to the server if it was the former). Also resets the remote item values to 00 so the player's received items don't
-    # get mucked up in-game.
-    0x3C088039,  # LUI   T0, 0x8039
-    0x91099BE3,  # LBU   T1, 0x9BE3 (T0)
-    0x11200002,  # BEQZ  T1, 0x803FC154
-    0x2529FFFF,  # ADDIU T1, T1, 0xFFFF
-    0xA1099BE3,  # SB    T1, 0x9BE3
-    0x240900FF,  # ADDIU T1, R0, 0x00FF
-    0xA1099BE0,  # SB    T1, 0x9BE0 (T0)
-    0xA1009BDF,  # SB	 R0, 0x9BDF (T0)
-    0xA1009BE1,  # SB	 R0, 0x9BE1 (T0)
-    0x91099BDE,  # LBU   T1, 0x9BDE (T0)
-    0x55200001,  # BNEZL T1,     [forward 0x01]
-    0x24090000,  # ADDIU T1, R0, 0x0000
-    0xA1099BDE,  # SB    T1, 0x9BDE (T0)
-    0x91099C24,  # LBU   T1, 0x9C24 (T0)
-    0x312A0080,  # ANDI  T2, T1, 0x0080
-    0x55400001,  # BNEZL T2,     [forward 0x01]
-    0x3129007F,  # ANDI  T1, T1, 0x007F
-    0x03E00008,  # JR    RA
-    0xA1099C24   # SB    T1, 0x9C24 (T0)
 ]
 
 load_clearer = [
