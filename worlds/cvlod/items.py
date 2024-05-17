@@ -12,7 +12,7 @@ import math
 
 
 class CVLoDItem(Item):
-    game: str = "Castlevania Legacy of Darkness"
+    game: str = "Castlevania - Legacy of Darkness"
 
 
 # The inventory array starts at 0x801CAB47. "inv offset" and "sub equip id" are used for start inventory purposes.

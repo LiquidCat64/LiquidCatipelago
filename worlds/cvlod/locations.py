@@ -8,7 +8,7 @@ base_id = 0xC10D_000
 
 
 class CVLoDLocation(Location):
-    game: str = "Castlevania Legacy of Darkness"
+    game: str = "Castlevania - Legacy of Darkness"
 
 
 location_info = {

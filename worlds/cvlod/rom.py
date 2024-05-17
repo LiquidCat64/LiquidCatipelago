@@ -1082,7 +1082,7 @@ class CVLoDDeltaPatch(APDeltaPatch):
     patch_file_ending: str = ".apcvlod"
     result_file_ending: str = ".z64"
 
-    game = "Castlevania Legacy of Darkness"
+    game = "Castlevania - Legacy of Darkness"
 
     @classmethod
     def get_source_data(cls) -> bytes:

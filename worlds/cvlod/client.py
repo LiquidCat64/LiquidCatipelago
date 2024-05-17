@@ -13,7 +13,7 @@ else:
 
 
 class CastlevaniaLoDClient(BizHawkClient):
-    game = "Castlevania Legacy of Darkness"
+    game = "Castlevania - Legacy of Darkness"
     system = "N64"
     patch_suffix = ".apcvlod"
     self_induced_death = False

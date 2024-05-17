@@ -50,7 +50,7 @@ class CVLoDWorld(World):
     can now play as Cornell, a man-beast who sets out on a quest to rescue his sister, and Henry, a gun-toting knight
     tasked by the church to rescue kidnapped children.
     """
-    game = "Castlevania Legacy of Darkness"
+    game = "Castlevania - Legacy of Darkness"
     item_name_groups = {
         "Bomb": {iname.nitro, iname.mandrag},
         "Ingredient": {iname.nitro, iname.mandrag},
