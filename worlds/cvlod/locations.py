@@ -1,8 +1,8 @@
 from BaseClasses import Location
 from .data import lname, iname
-from .options import CVLoDOptions
+from .options import CVLoDOptions, SubWeaponShuffle, DraculasCondition, RenonFightCondition, VincentFightCondition
 
-from typing import Dict
+from typing import Dict, Optional, Union, List, Tuple
 
 base_id = 0xC10D_000
 
@@ -11,6 +11,24 @@ class CVLoDLocation(Location):
     game: str = "Castlevania - Legacy of Darkness"
 
 
+# # #    KEY    # # #
+# "code" = The unique part of the Location's AP code attribute, as well as the in-game bitflag index starting from
+#          0x80389BE4 that indicates the Location has been checked. Add this + base_id to get the actual AP code.
+# "offset" = The offset in the ROM to overwrite to change the Item on that Location.
+# "normal item" = The Item normally there in vanilla on most difficulties in most versions of the game. Used to
+#                 determine the World's Item counts by checking what Locations are active.
+# "hard item" = The Item normally there in Hard Mode in the PAL version of CV64 specifically. Used instead of the
+#               normal Item when the hard Item pool is enabled if it's in the Location's data dict.
+# "add conds" = A list of player options conditions that must be satisfied for the Location to be added. Can be of
+#               varying length depending on how many conditions need to be satisfied. In the add_conds dict's tuples,
+#               the first element is the name of the option, the second is the option value to check for, and the third
+#               is a boolean for whether we are evaluating for the option value or not.
+# "event" = What event Item to place on that Location, for Locations that are events specifically.
+# "countdown" = What Countdown number in the array of Countdown numbers that Location contributes to. For the most part,
+#               this is figured out by taking that Location's corresponding stage's postion in the vanilla stage order,
+#               but there are some exceptions made for Locations in parts of Villa and Castle Center that split off into
+#               their own numbers.
+# "type" = Anything special about this Location in-game, whether it be NPC-given, invisible, etc.
 location_info = {
     # Castle Wall
     lname.cwr_bottom:        {"code": 0x2D,  "offset": 0x77BD93, "normal item": iname.s_card, "countdown": 2},
@@ -216,10 +234,8 @@ add_conds = {"carrie":  ("carrie_logic", True, True),
              "vincent": ("vincent_fight_condition", 0, False)}
 
 
-def get_location_info(location: str, info: str):
-    if info in location_info[location]:
-        return location_info[location][info]
-    return None
+def get_location_info(location: str, info: str) -> Union[int, str, List[str], None]:
+    return location_info[location].get(info, None)
 
 
 def get_location_names_to_ids() -> Dict[str, int]:
@@ -227,9 +243,10 @@ def get_location_names_to_ids() -> Dict[str, int]:
             is not None}
 
 
-def verify_locations(options: CVLoDOptions, locations: list) -> Dict[Location, any]:
+def verify_locations(options: CVLoDOptions, locations: List[str]) -> Tuple[Dict[str, Optional[int]], Dict[str, str]]:
 
     verified_locations = {}
+    locked_pairs = {}
 
     for loc in locations:
         loc_add_conds = get_location_info(loc, "add conds")
@@ -237,7 +254,7 @@ def verify_locations(options: CVLoDOptions, locations: list) -> Dict[Location, a
 
         # Check any options that might be associated with the Location before adding it.
         add_it = True
-        if loc_add_conds is not None:
+        if isinstance(loc_add_conds, list):
             for cond in loc_add_conds:
                 if not ((getattr(options, add_conds[cond][0]).value == add_conds[cond][1]) == add_conds[cond][2]):
                     add_it = False
@@ -245,9 +262,13 @@ def verify_locations(options: CVLoDOptions, locations: list) -> Dict[Location, a
         if not add_it:
             continue
 
-        # Add the location to the verified locations if the above check passes.
-        if loc_code is not None:
+        # Add the location to the verified Locations if the above check passes.
+        # If we are looking at an event Location, add its associated event Item to the events' dict.
+        # Otherwise, add the base_id to the Location's code.
+        if loc_code is None:
+            locked_pairs[loc] = get_location_info(loc, "event")
+        else:
             loc_code += base_id
         verified_locations.update({loc: loc_code})
 
-    return verified_locations
+    return verified_locations, locked_pairs

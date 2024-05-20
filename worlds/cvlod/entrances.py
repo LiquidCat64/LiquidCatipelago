@@ -1,7 +1,19 @@
-from .data import ename, iname, rname, lname
+from .data import ename, iname, rname
 from .stages import get_stage_info
 from .options import CVLoDOptions
 
+from typing import Dict, List, Tuple, Union
+
+# # #    KEY    # # #
+# "connection" = The name of the Region the Entrance connects into. If it's a Tuple[str, str], we take the stage in
+#                active_stage_exits given in the second string and then the stage given in that stage's slot given in
+#                the first string, and take the start or end Region of that stage.
+# "rule" = What rule should be applied to the Entrance during set_rules, as defined in self.rules in the CV64Rules class
+#          definition in rules.py.
+# "add conds" = A list of player options conditions that must be satisfied for the Entrance to be added. Can be of
+#               varying length depending on how many conditions need to be satisfied. In the add_conds dict's tuples,
+#               the first element is the name of the option, the second is the option value to check for, and the third
+#               is a boolean for whether we are evaluating for the option value or not.
 entrance_info = {
     # Forest of Silence
     #ename.forest_dbridge_gate: {"destination": rname.forest_mid},
@@ -48,7 +60,7 @@ entrance_info = {
     ename.villa_out_of_servant_door: {"destination": rname.villa_entrance},
     # Villa crypt exterior
     ename.villa_bridge_door: {"destination": rname.villa_maze_f},
-    ename.villa_crest_door: {"destination": rname.villa_crypt_i, "rule": "crests"},
+    ename.villa_crest_door: {"destination": rname.villa_crypt_i, "rule": "Crests"},
     #ename.villa_end_r: {"destination": ["next", rname.villa]},
     #ename.villa_end_c: {"destination": ["alt", rname.villa]},
 
@@ -109,72 +121,30 @@ stage_connection_types = {"prev": "end region",
                           "alt": "start region"}
 
 
-def lookup_rule(rule: str, player: int):
-    rules = {
-        iname.s1: lambda state: state.has(iname.s1, player),
-        iname.lt_key: lambda state: state.has(iname.lt_key, player),
-        iname.winch: lambda state: state.has(iname.winch, player),
-        iname.diary: lambda state: state.has(iname.diary, player),
-        iname.brooch: lambda state: state.has(iname.brooch, player),
-        iname.rg_key: lambda state: state.has(iname.rg_key, player),
-        iname.str_key: lambda state: state.has(iname.str_key, player),
-        iname.arc_key: lambda state: state.has(iname.arc_key, player),
-        iname.gdn_key: lambda state: state.has(iname.gdn_key, player),
-        iname.tho_key: lambda state: state.has(iname.tho_key, player),
-        iname.cu_key: lambda state: state.has(iname.cu_key, player),
-        "Mary": lambda state: state.has(iname.rg_key, player) and state.can_reach(lname.villam_malus_torch,
-                                                                                  "Location", player),
-        "crests": lambda state: state.has(iname.crest_a, player) and state.has(iname.crest_b, player),
-        iname.chb_key: lambda state: state.has(iname.chb_key, player),
-        "Bomb 1": lambda state: state.has(iname.nitro, player) and state.has(iname.mandrag, player),
-        "Bomb 2": lambda state: state.has(iname.nitro, player, 2) and state.has(iname.mandrag, player, 2),
-    }
-    return rules[rule]
+def get_entrance_info(entrance: str, info: str) -> Union[str, Tuple[str, str], List[str], None]:
+    return entrance_info[entrance].get(info, None)
 
 
-def get_entrance_info(entrance: str, info: str):
-    if info in entrance_info[entrance]:
-        return entrance_info[entrance][info]
-    return None
-
-
-def get_warp_entrances(options: CVLoDOptions, active_warp_list: list, player: int):
+def get_warp_entrances(active_warp_list: List[str]) -> Dict[str, str]:
+    # Create the starting stage Entrance.
     warp_entrances = {get_stage_info(active_warp_list[0], "start region"): "Start stage"}
-    warp_rules = {}
 
-    # Create the warp entrances and Special1 rules.
+    # Create the warp Entrances.
     for i in range(1, len(active_warp_list)):
         mid_stage_region = get_stage_info(active_warp_list[i], "mid region")
         warp_entrances.update({mid_stage_region: f"Warp {i}"})
-        warp_rules.update({mid_stage_region: lambda state, needed=i: state.has(iname.s1, player,
-                                                                               options.special1s_per_warp * needed)})
 
-    return warp_entrances, warp_rules
+    return warp_entrances
 
 
-def get_drac_rule(options: CVLoDOptions, player: int, required_s2s: int):
-    drac_object_name = None
-    if options.draculas_condition.value == options.draculas_condition.option_crystal:
-        drac_object_name = "Crystal"
-    elif options.draculas_condition.value == options.draculas_condition.option_bosses:
-        drac_object_name = "Trophy"
-    elif options.draculas_condition.value == options.draculas_condition.option_specials:
-        drac_object_name = "Special2"
-
-    if drac_object_name is not None:
-        return {rname.ck_drac_chamber: lambda state: state.has(drac_object_name, player, required_s2s)}
-    else:
-        return None
-
-
-def verify_entrances(options: CVLoDOptions, entrances: list, active_stage_exits: dict, player: int):
+def verify_entrances(options: CVLoDOptions, entrances: List[str],
+                     active_stage_exits: Dict[str, Dict[str, Union[str, int, None]]]) -> Dict[str, str]:
     verified_entrances = {}
-    verified_rules = {}
 
-    for ent in entrances:
-        ent_add_conds = get_entrance_info(ent, "add conds")
+    for ent_name in entrances:
+        ent_add_conds = get_entrance_info(ent_name, "add conds")
 
-        # Check any options that might be associated with the Location before adding it.
+        # Check any options that might be associated with the Entrance before adding it.
         add_it = True
         if ent_add_conds is not None:
             for cond in ent_add_conds:
@@ -184,20 +154,16 @@ def verify_entrances(options: CVLoDOptions, entrances: list, active_stage_exits:
         if not add_it:
             continue
 
-        # Add the entrance to the verified entrances if the above check passes.
-        # If the entrance is a stage connection, get the corresponding other stage region.
-        connection = get_entrance_info(ent, "destination")
+        # Add the Entrance to the verified Entrances if the above check passes.
+        destination = get_entrance_info(ent_name, "destination")
 
-        if type(connection) == list:
-            connecting_stage = active_stage_exits[connection[1]][connection[0]]
+        # If the Entrance is a connection to a different stage, get the corresponding other stage Region.
+        if isinstance(destination, tuple):
+            connecting_stage = active_stage_exits[destination[1]][destination[0]]
+            # Stages that lead backwards at the beginning of the line will appear leading to "Menu".
             if connecting_stage in ["Menu", None]:
                 continue
-            connection = get_stage_info(connecting_stage, stage_connection_types[connection[0]])
-        verified_entrances.update({connection: ent})
+            destination = get_stage_info(connecting_stage, stage_connection_types[destination[0]])
+        verified_entrances.update({destination: ent_name})
 
-        # If the entrance has item rules, add them to the rules' dict.
-        rule = get_entrance_info(ent, "rule")
-        if rule is not None:
-            verified_rules.update({connection: lookup_rule(rule, player)})
-
-    return verified_entrances, verified_rules
+    return verified_entrances

@@ -1,5 +1,12 @@
 from .data import lname, rname, ename
+from typing import List, Union
 
+
+# # #    KEY    # # #
+# "stage" = What stage the Region is a part of. The Region and its corresponding Locations and Entrances will only be
+#           put in if its stage is active.
+# "locations" = The Locations to add to that Region when putting in said Region (provided their add conditions pass).
+# "entrances" = The Entrances to add to that Region when putting in said Region (provided their add conditions pass).
 region_info = {
     "Menu": {},
 
@@ -533,7 +540,5 @@ region_info = {
 }
 
 
-def get_region_info(region: str, info: str):
-    if info in region_info[region]:
-        return region_info[region][info]
-    return None
+def get_region_info(region: str, info: str) -> Union[str, List[str], None]:
+    return region_info[region].get(info, None)

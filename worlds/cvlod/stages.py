@@ -1,13 +1,50 @@
+import logging
+
 from .data import rname
-from .options import CVLoDOptions
 from .regions import get_region_info
 from .locations import get_location_info
+from .options import WarpOrder
 
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, List, Tuple, Union
 
 if TYPE_CHECKING:
     from . import CVLoDWorld
 
+
+# # #    KEY    # # #
+# "start region" = The Region that the start of the stage is in. Used for connecting the previous stage's end and
+#                  alternate end (if it exists) Entrances to the start of the next one.
+# "start map id" = The map ID that the start of the stage is in.
+# "start spawn id" = The player spawn location ID for the start of the stage. This and "start map id" are both written
+#                    to the previous stage's end loading zone to make it send the player to the next stage in the
+#                    world's determined stage order.
+# "mid region" = The Region that the stage's middle warp point is in. Used for connecting the warp Entrances after the
+#                starting stage to where they should be connecting to.
+# "mid map id" = The map ID that the stage's middle warp point is in.
+# "mid spawn id" = The player spawn location ID for the stage's middle warp point. This and "mid map id" are both
+#                  written to the warp menu code to make it send the player to where it should be sending them.
+# "end region" = The Region that the end of the stage is in. Used for connecting the next stage's beginning Entrance
+#                (if it exists) to the end of the previous one.
+# "end map id" = The map ID that the end of the stage is in.
+# "end spawn id" = The player spawn location ID for the end of the stage. This and "end map id" are both written to the
+#                  next stage's beginning loading zone (if it exists) to make it send the player to the previous stage
+#                  in the world's determined stage order.
+# startzone map offset = The offset in the ROM to overwrite to change where the start of the stage leads.
+# startzone spawn offset = The offset in the ROM to overwrite to change what spawn location in the previous map the
+#                          start of the stage puts the player at.
+# endzone map offset = The offset in the ROM to overwrite to change where the end of the stage leads.
+# endzone spawn offset = The offset in the ROM to overwrite to change what spawn location in the next map the end of
+#                        the stage puts the player at.
+# altzone map offset = The offset in the ROM to overwrite to change where the alternate end of the stage leads
+#                      (if it exists).
+# altzone spawn offset = The offset in the ROM to overwrite to change what spawn location in the next map the alternate
+#                        end of the stage puts the player at.
+# character = What character that stage is exclusively meant for normally. Used in determining what stages to leave out
+#             depending on what character stage setting was chosen in the player options.
+# save number offsets = The offsets to overwrite to change what stage number is displayed on the save file when saving
+#                       at the stage's White Jewels.
+# regions = All Regions that make up the stage. If the stage is in the world's active stages, its Regions and their
+#           corresponding Locations and Entrances will all be created.
 stage_info = {
     "Forest of Silence": {
         "start region": rname.forest_start, "start map id": 0x00, "start spawn id": 0x00,
@@ -249,7 +286,8 @@ def get_normal_stage_exits(world: "CVLoDWorld") -> Dict[str, dict]:
     return exits
 
 
-def shuffle_stages(world: "CVLoDWorld", stage_1_blacklist: list, starting_stage_value: int, active_stage_exits: dict):
+def shuffle_stages(world: "CVLoDWorld", stage_1_blacklist: List[str]) \
+        -> Tuple[Dict[str, Dict[str, Union[str, int, None]]], str, List[str]]:
     """Woah, this is a lot! I should probably summarize what's happening in here, huh?
 
     So, in the vanilla game, all the stages are basically laid out on a linear "timeline" with some stages being
@@ -288,19 +326,24 @@ def shuffle_stages(world: "CVLoDWorld", stage_1_blacklist: list, starting_stage_
     uglier come Legacy of Darkness and Cornell's funny side route later on.
     """
 
-    # Verify the starting stage is valid. If it isn't, or if the mystery setting is being used, pick a stage at random.
-    if starting_stage_value < len(vanilla_stage_order)-1 and vanilla_stage_order[starting_stage_value] not in \
-            stage_1_blacklist and verify_character_stage(world, vanilla_stage_order[starting_stage_value]):
+    starting_stage_value = world.options.starting_stage.value
+
+    # Verify the starting stage is valid. If it isn't, pick a stage at random.
+    if vanilla_stage_order[starting_stage_value] not in stage_1_blacklist and \
+            verify_character_stage(world, vanilla_stage_order[starting_stage_value]):
         starting_stage = vanilla_stage_order[starting_stage_value]
     else:
+        logging.warning(f"[{world.multiworld.player_name[world.player]}] {vanilla_stage_order[starting_stage_value]} "
+                        f"cannot be the starting stage with the chosen settings. Picking a different stage instead...")
         possible_stages = []
         for stage in vanilla_stage_order:
-            if stage in active_stage_exits and stage != rname.castle_keep:
+            if stage in world.active_stage_exits and stage != rname.castle_keep:
                 possible_stages.append(stage)
-        starting_stage = possible_stages[world.random.randrange(0, len(possible_stages) - 1)]
+        starting_stage = world.random.choice(possible_stages)
+        world.options.starting_stage.value = vanilla_stage_order.index(starting_stage)
 
-    remaining_stage_pool = [stage for stage in active_stage_exits]
-    remaining_stage_pool.remove(rname.castle_keep)
+    remaining_stage_pool = [stage for stage in world.active_stage_exits]
+    # remaining_stage_pool.remove(rname.castle_keep)
 
     total_stages = len(remaining_stage_pool)
 
@@ -341,20 +384,21 @@ def shuffle_stages(world: "CVLoDWorld", stage_1_blacklist: list, starting_stage_
             if i == 0:
                 new_stage_order.append(starting_stage)
             else:
-                new_stage_order.append(remaining_stage_pool[world.random.randrange(0, len(remaining_stage_pool))])
+                new_stage_order.append(world.random.choice(remaining_stage_pool))
                 remaining_stage_pool.remove(new_stage_order[i])
 
         # If we're looking at an alternate stage slot, put the stage in one of these lists to indicate it as such
-        if world.branching_stages:
-            if i - 2 >= 0:
-                if new_stage_order[i - 2] == rname.villa:
-                    alt_villa_stage.append(new_stage_order[i])
-            if i - 3 >= 0:
-                if new_stage_order[i - 3] == rname.castle_center:
-                    alt_cc_stages.append(new_stage_order[i])
-            if i - 4 >= 0:
-                if new_stage_order[i - 4] == rname.castle_center:
-                    alt_cc_stages.append(new_stage_order[i])
+        if not world.branching_stages:
+            continue
+        if i - 2 >= 0:
+            if new_stage_order[i - 2] == rname.villa:
+                alt_villa_stage.append(new_stage_order[i])
+        if i - 3 >= 0:
+            if new_stage_order[i - 3] == rname.castle_center:
+                alt_cc_stages.append(new_stage_order[i])
+        if i - 4 >= 0:
+            if new_stage_order[i - 4] == rname.castle_center:
+                alt_cc_stages.append(new_stage_order[i])
 
     new_stage_order.append(rname.castle_keep)
 
@@ -362,87 +406,87 @@ def shuffle_stages(world: "CVLoDWorld", stage_1_blacklist: list, starting_stage_
     current_stage_number = 1
     for i in range(len(new_stage_order)):
         # Stage position number and alternate path indicator
-        active_stage_exits[new_stage_order[i]]["position"] = current_stage_number
+        world.active_stage_exits[new_stage_order[i]]["position"] = current_stage_number
         if new_stage_order[i] in alt_villa_stage + alt_cc_stages:
-            active_stage_exits[new_stage_order[i]]["path"] = "'"
+            world.active_stage_exits[new_stage_order[i]]["path"] = "'"
         else:
-            active_stage_exits[new_stage_order[i]]["path"] = " "
+            world.active_stage_exits[new_stage_order[i]]["path"] = " "
 
         # Previous stage
-        if active_stage_exits[new_stage_order[i]]["prev"]:
+        if world.active_stage_exits[new_stage_order[i]]["prev"]:
             if i - 1 < 0:
-                active_stage_exits[new_stage_order[i]]["prev"] = "Menu"
+                world.active_stage_exits[new_stage_order[i]]["prev"] = "Menu"
             elif world.branching_stages:
                 if new_stage_order[i - 1] == alt_villa_stage[0] or new_stage_order[i] == alt_villa_stage[0]:
-                    active_stage_exits[new_stage_order[i]]["prev"] = new_stage_order[i - 2]
+                    world.active_stage_exits[new_stage_order[i]]["prev"] = new_stage_order[i - 2]
                 elif new_stage_order[i - 1] == alt_cc_stages[1] or new_stage_order[i] == alt_cc_stages[0]:
-                    active_stage_exits[new_stage_order[i]]["prev"] = new_stage_order[i - 3]
+                    world.active_stage_exits[new_stage_order[i]]["prev"] = new_stage_order[i - 3]
                 else:
-                    active_stage_exits[new_stage_order[i]]["prev"] = new_stage_order[i - 1]
+                    world.active_stage_exits[new_stage_order[i]]["prev"] = new_stage_order[i - 1]
             else:
-                active_stage_exits[new_stage_order[i]]["prev"] = new_stage_order[i - 1]
+                world.active_stage_exits[new_stage_order[i]]["prev"] = new_stage_order[i - 1]
 
         # Next stage
-        if active_stage_exits[new_stage_order[i]]["next"]:
+        if world.active_stage_exits[new_stage_order[i]]["next"]:
             if world.branching_stages:
                 if new_stage_order[i + 1] == alt_villa_stage[0]:
-                    active_stage_exits[new_stage_order[i]]["next"] = new_stage_order[i + 2]
+                    world.active_stage_exits[new_stage_order[i]]["next"] = new_stage_order[i + 2]
                     current_stage_number -= 1
                 elif new_stage_order[i + 1] == alt_cc_stages[0]:
-                    active_stage_exits[new_stage_order[i]]["next"] = new_stage_order[i + 3]
+                    world.active_stage_exits[new_stage_order[i]]["next"] = new_stage_order[i + 3]
                     current_stage_number -= 2
                 else:
-                    active_stage_exits[new_stage_order[i]]["next"] = new_stage_order[i + 1]
+                    world.active_stage_exits[new_stage_order[i]]["next"] = new_stage_order[i + 1]
             else:
-                active_stage_exits[new_stage_order[i]]["next"] = new_stage_order[i + 1]
+                world.active_stage_exits[new_stage_order[i]]["next"] = new_stage_order[i + 1]
 
         # Alternate next stage
-        if active_stage_exits[new_stage_order[i]]["alt"]:
+        if world.active_stage_exits[new_stage_order[i]]["alt"]:
             if world.branching_stages:
                 if new_stage_order[i] == rname.villa:
-                    active_stage_exits[new_stage_order[i]]["alt"] = alt_villa_stage[0]
+                    world.active_stage_exits[new_stage_order[i]]["alt"] = alt_villa_stage[0]
                 else:
-                    active_stage_exits[new_stage_order[i]]["alt"] = alt_cc_stages[0]
+                    world.active_stage_exits[new_stage_order[i]]["alt"] = alt_cc_stages[0]
             else:
-                active_stage_exits[new_stage_order[i]]["alt"] = None
+                world.active_stage_exits[new_stage_order[i]]["alt"] = None
 
         current_stage_number += 1
 
-    return active_stage_exits, starting_stage, new_stage_order
+    return world.active_stage_exits, starting_stage, new_stage_order
 
 
-def generate_warps(world: "CVLoDWorld", options: CVLoDOptions, active_stage_list: list) -> list:
+def generate_warps(world: "CVLoDWorld") -> List[str]:
     # Create a list of warps from the active stage list. They are in a random order by default and will never
     # include the starting stage.
-    possible_warps = [stage for stage in active_stage_list]
+    possible_warps = [stage for stage in world.active_stage_list]
 
     # Remove the starting stage from the possible warps.
     del (possible_warps[0])
 
     active_warp_list = world.random.sample(possible_warps, 7)
 
-    if options.warp_order.value == options.warp_order.option_seed_stage_order:
+    if world.options.warp_order == WarpOrder.option_seed_stage_order:
         # Arrange the warps to be in the seed's stage order
-        new_list = active_stage_list.copy()
-        for warp in active_stage_list:
+        new_list = world.active_stage_list.copy()
+        for warp in world.active_stage_list:
             if warp not in active_warp_list:
                 new_list.remove(warp)
         active_warp_list = new_list
-    elif options.warp_order.value == options.warp_order.option_vanilla_stage_order:
+    elif world.options.warp_order == WarpOrder.option_vanilla_stage_order:
         # Arrange the warps to be in the vanilla game's stage order
-        new_list = vanilla_stage_order.copy()
+        new_list = list(vanilla_stage_order)
         for warp in vanilla_stage_order:
             if warp not in active_warp_list:
                 new_list.remove(warp)
         active_warp_list = new_list
 
     # Insert the starting stage at the start of the warp list
-    active_warp_list.insert(0, active_stage_list[0])
+    active_warp_list.insert(0, world.active_stage_list[0])
 
     return active_warp_list
 
 
-def get_region_names(active_stage_exits: dict) -> list:
+def get_region_names(active_stage_exits: Dict[str, Dict[str, Union[str, int, None]]]) -> List[str]:
     region_names = []
     for stage in active_stage_exits:
         stage_regions = get_stage_info(stage, "regions")
