@@ -355,14 +355,14 @@ class CVLoDPatchExtensions(APPatchExtension):
             rom_data.write_int16(0x829A16, 0x032D)  # CT giant chasm farside climb
             rom_data.write_int16(0x82CC8A, 0x0330)  # CT beneath final slide
 
-            # Kills the pointer to the Countdown number, resets the "in a demo?" value whenever changing/reloading the
-            # game state, and mirrors the current game state value in a spot that's easily readable.
-            rom_data.write_int32(0x1168, 0x08007938)  # J 0x8001E4E0
-            rom_data.write_int32s(0x1F0E0, [0x3C08801D,  # LUI   T0, 0x801D
-                                            0xA104AA30,  # SB    A0, 0xAA30 (T0)
-                                            0xA100AA4A,  # SB    R0, 0xAA4A (T0)
-                                            0x03E00008,  # JR    RA
-                                            0xFD00AA40])  # SD    R0, 0xAA40 (T0)
+        # Kills the pointer to the Countdown number, resets the "in a demo?" value whenever changing/reloading the
+        # game state, and mirrors the current game state value in a spot that's easily readable.
+        rom_data.write_int32(0x1168, 0x08007938)  # J 0x8001E4E0
+        rom_data.write_int32s(0x1F0E0, [0x3C08801D,  # LUI   T0, 0x801D
+                                        0xA104AA30,  # SB    A0, 0xAA30 (T0)
+                                        0xA100AA4A,  # SB    R0, 0xAA4A (T0)
+                                        0x03E00008,  # JR    RA
+                                        0xFD00AA40])  # SD    R0, 0xAA40 (T0)
 
         # Everything related to the Countdown counter.
         if options["countdown"]:
