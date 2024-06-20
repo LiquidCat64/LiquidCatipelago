@@ -11,6 +11,29 @@ if TYPE_CHECKING:
     from worlds._bizhawk.context import BizHawkClientContext
 
 
+# These flags are communicated to the tracker as a bitfield using this order.
+# Modifying this here without also modifying the tracker will cause autotracking issues.
+EVENT_FLAG_MAP = {
+    0x1BF: "FLAG_ACTIVATE_CRYSTAL",
+    0xD2: "FLAG_DEFEATED_KING_SKELETON_1",
+    0xD3: "FLAG_DEFEATED_FOREST_WERE_TIGER",
+    0xD1: "FLAG_DEFEATED_KING_SKELETON_2",
+    #0xB3: "FLAG_DEFEATED_WHITE_DRAGONS",
+    #0xB3: "FLAG_DEFEATED_JA_OLDREY",
+    #0xB3: "FLAG_DEFEATED_UNDEAD_MAIDEN",
+    #0xB3: "FLAG_DEFEATED_LIZARD_MEN_TRIO",
+    #0xB3: "FLAG_DEFEATED_BEHEMOTH",
+    #0xB3: "FLAG_DEFEATED_ROSA_CAMILLA",
+    #0xB3: "FLAG_DEFEATED_WERE_JAGUAR",
+    #0xB3: "FLAG_DEFEATED_WEREWOLF",
+    #0xB3: "FLAG_DEFEATED_WERE_BULL",
+    #0xB3: "FLAG_DEFEATED_DUEL_TOWER_WERE_TIGER",
+    #0xB3: "FLAG_DEFEATED_DEATH_ACTRISE",
+    #0xB3: "FLAG_DEFEATED_RENON",
+    #0xB3: "FLAG_DEFEATED_VINCENT",
+}
+
+
 class Castlevania64Client(BizHawkClient):
     game = "Castlevania 64"
     system = "N64"
