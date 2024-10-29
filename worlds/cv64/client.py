@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 # These flags are communicated to the tracker as a bitfield using this order.
 # Modifying this here without also modifying the tracker will cause autotracking issues.
+# TODO: Add the rest of the boss kill flags
 EVENT_FLAG_MAP = {
     0x1BF: "FLAG_ACTIVATE_CRYSTAL",
     0xD2: "FLAG_DEFEATED_KING_SKELETON_1",

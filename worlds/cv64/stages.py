@@ -1,6 +1,6 @@
 import logging
 
-from .data import rname
+from .data import rname, ni_files
 from .regions import get_region_info
 from .locations import get_location_info
 from .options import WarpOrder
@@ -50,7 +50,8 @@ stage_info = {
         "start region": rname.forest_start, "start map id": b"\x00", "start spawn id": b"\x00",
         "mid region": rname.forest_mid, "mid map id": b"\x00", "mid spawn id": b"\x04",
         "end region": rname.forest_end, "end map id": b"\x00", "end spawn id": b"\x01",
-        "endzone map offset": 0xB6302F, "endzone spawn offset": 0xB6302B,
+        "endzone map offset": (0xD73, ni_files.OVL_DRAWBRIDGE_LOWERS_CS),
+        "endzone spawn offset": (0xD6F, ni_files.OVL_DRAWBRIDGE_LOWERS_CS),
         "save number offsets": [0x1049C5, 0x1049CD, 0x1049D5],
         "regions": [rname.forest_start,
                     rname.forest_mid,

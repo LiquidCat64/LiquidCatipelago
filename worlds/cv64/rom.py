@@ -1,16 +1,17 @@
 import json
+import base64
 import Utils
 
 from BaseClasses import Location
 from worlds.Files import APProcedurePatch, APTokenMixin, APTokenTypes, APPatchExtension
-from typing import List, Dict, Union, Iterable, Collection, Optional, TYPE_CHECKING
+from typing import List, Dict, Tuple, Union, Iterable, Collection, TYPE_CHECKING
 
 import hashlib
 import os
 import pkgutil
 
 from . import lzkn64
-from .data import patches
+from .data import patches, ni_files
 from .stages import get_stage_info
 from .text import cv64_string_to_bytearray, cv64_text_truncate, cv64_text_wrap
 from .aesthetics import renon_item_dialogue, get_item_text_color
@@ -28,87 +29,169 @@ warp_map_offsets = [0xADF67, 0xADF77, 0xADF87, 0xADF97, 0xADFA7, 0xADFBB, 0xADFC
 
 
 class RomData:
-    orig_buffer: None
-    buffer: bytearray
+    main_file: bytearray
+    decompressed_files: Dict[int, bytearray]
+    compressed_files: Dict[int, bytearray]
 
-    def __init__(self, file: bytes, name: Optional[str] = None) -> None:
-        self.file = bytearray(file)
-        self.name = name
+    ni_table_start: int
+    ni_file_buffers_start: int
+    decomp_file_sizes_table_start: int
+    number_of_ni_files: int
 
-    def read_bit(self, address: int, bit_number: int) -> bool:
-        bitflag = (1 << bit_number)
-        return (self.buffer[address] & bitflag) != 0
+    def __init__(self, file: bytes) -> None:
+        self.main_file = bytearray(file)
+
+        self.decompressed_files = {}
+        self.compressed_files = {}
+
+        # Seek the "Nisitenma-Ichigo" string in the ROM indicating where the table containing the compressed file start
+        # and end offsets begins.
+        nisitenma_ichigo_start = self.main_file.find("Nisitenma-Ichigo".encode("utf-8"))
+        # If the "Nisitenma-Ichigo" string is nowhere to be found, raise an exception.
+        if nisitenma_ichigo_start == -1:
+            raise Exception("Nisitenma-Ichigo string not found.")
+
+        self.ni_table_start = nisitenma_ichigo_start + 16
+        self.ni_file_buffers_start = int.from_bytes(self.main_file[self.ni_table_start: self.ni_table_start + 4],
+                                                    "big") & 0xFFFFFFF
+
+        # Figure out how many Nisitenma-Ichigo files there are alongside grabbing them out of the ROM.
+        self.number_of_ni_files = 1
+        while True:
+            ni_table_entry_start = self.ni_table_start + ((self.number_of_ni_files - 1) * 8)
+            file_start_addr = int.from_bytes(self.read_bytes(ni_table_entry_start, 4), "big") & 0xFFFFFFF
+            # If the file start address is 0, we've reached the end of the NI table. In which case, end the loop.
+            if not file_start_addr:
+                break
+            # Calculate the compressed file's size and use that to read it out of the ROM.
+            file_size = (int.from_bytes(self.read_bytes(ni_table_entry_start + 4, 4), "big") & 0xFFFFFFF) - \
+                file_start_addr
+            self.compressed_files[self.number_of_ni_files] = self.read_bytes(file_start_addr, file_size)
+            self.number_of_ni_files += 1
+
+        # Figure out where the decompressed file sizes table starts by going backwards the number of NI files from the
+        # start of "Nisitenma-Ichigo".
+        self.decomp_file_sizes_table_start = nisitenma_ichigo_start - 4 - (8 * self.number_of_ni_files)
 
     def read_byte(self, address: int) -> int:
-        return self.file[address]
+        return self.main_file[address]
 
     def read_bytes(self, start_address: int, length: int) -> bytearray:
-        return self.file[start_address:start_address + length]
+        return self.main_file[start_address:start_address + length]
 
-    def write_byte(self, address: int, value: int) -> None:
-        self.file[address] = value
+    def write_byte(self, address: int, value: int, file_num: int = 0) -> None:
+        if file_num == 0:
+            self.main_file[address] = value
+        else:
+            if file_num not in self.decompressed_files:
+                self.decompress_file(file_num)
+            self.decompressed_files[file_num][address] = value
 
-    def write_bytes(self, start_address: int, values: Collection[int]) -> None:
-        self.file[start_address:start_address + len(values)] = values
+    def write_bytes(self, start_address: int, values: Collection[int], file_num: int = 0) -> None:
+        if file_num == 0:
+            self.main_file[start_address:start_address + len(values)] = values
+        else:
+            if file_num not in self.decompressed_files:
+                self.decompress_file(file_num)
+            self.decompressed_files[file_num][start_address:start_address + len(values)] = values
 
-    def write_int16(self, address: int, value: int) -> None:
+    def write_int16(self, address: int, value: int, file_num: int = 0) -> None:
         value = value & 0xFFFF
-        self.write_bytes(address, [(value >> 8) & 0xFF, value & 0xFF])
+        self.write_bytes(address, [(value >> 8) & 0xFF, value & 0xFF], file_num)
 
-    def write_int16s(self, start_address: int, values: List[int]) -> None:
+    def write_int16s(self, start_address: int, values: List[int], file_num: int = 0) -> None:
         for i, value in enumerate(values):
-            self.write_int16(start_address + (i * 2), value)
+            self.write_int16(start_address + (i * 2), value, file_num)
 
-    def write_int24(self, address: int, value: int) -> None:
+    def write_int24(self, address: int, value: int, file_num: int = 0) -> None:
         value = value & 0xFFFFFF
-        self.write_bytes(address, [(value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF])
+        self.write_bytes(address, [(value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF], file_num)
 
-    def write_int24s(self, start_address: int, values: List[int]) -> None:
+    def write_int24s(self, start_address: int, values: List[int], file_num: int = 0) -> None:
         for i, value in enumerate(values):
-            self.write_int24(start_address + (i * 3), value)
+            self.write_int24(start_address + (i * 3), value, file_num)
 
-    def write_int32(self, address, value: int) -> None:
+    def write_int32(self, address: int, value: int, file_num: int = 0) -> None:
         value = value & 0xFFFFFFFF
-        self.write_bytes(address, [(value >> 24) & 0xFF, (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF])
+        self.write_bytes(address, [(value >> 24) & 0xFF, (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF],
+                         file_num)
 
-    def write_int32s(self, start_address: int, values: list) -> None:
+    def write_int32s(self, start_address: int, values: List[int], file_num: int = 0) -> None:
         for i, value in enumerate(values):
-            self.write_int32(start_address + (i * 4), value)
+            self.write_int32(start_address + (i * 4), value, file_num)
+
+    def decompress_file(self, file_num: int) -> None:
+        self.decompressed_files[file_num] = lzkn64.decompress_buffer(self.compressed_files[file_num])
+
+    def compress_file(self, file_num: int) -> None:
+        self.compressed_files[file_num] = bytearray(lzkn64.compress_buffer(self.decompressed_files[file_num]))
 
     def get_bytes(self) -> bytes:
-        return bytes(self.file)
+        # Reinsert all Nisitenma-Ichigo files, both modified and unmodified, in the order they should be.
+        displacement = 0
+        for i in range(1, self.number_of_ni_files):
+            # Re-compress the file if decompressed and update the decompressed sizes table
+            if i in self.decompressed_files:
+                self.compress_file(i)
+                self.write_int24(self.decomp_file_sizes_table_start + (i * 8) + 5, len(self.decompressed_files[i]))
+
+            start_addr = self.ni_file_buffers_start + displacement
+            end_addr = start_addr + len(self.compressed_files[i])
+            displacement += len(self.compressed_files[i])
+
+            self.write_bytes(start_addr, self.compressed_files[i])
+
+            # Update the Nisitenma-Ichigo table
+            self.write_int24(self.ni_table_start + ((i - 1) * 8) + 1, start_addr)
+            self.write_int24(self.ni_table_start + ((i - 1) * 8) + 5, end_addr)
+
+        return bytes(self.main_file)
 
 
 class CV64PatchExtensions(APPatchExtension):
     game = "Castlevania 64"
 
     @staticmethod
-    def apply_patches(caller: APProcedurePatch, rom: bytes, options_file: str) -> bytes:
+    def apply_patches(caller: APProcedurePatch, rom: bytes, options_file: str, ni_edits: str) -> bytes:
         rom_data = RomData(rom)
         options = json.loads(caller.get_file(options_file).decode("utf-8"))
+        ni_edits = json.loads(caller.get_file(ni_edits).decode("utf-8"))
 
-        # NOP out the CRC BNEs
+        # NOP out the CRC BNEs.
         rom_data.write_int32(0x66C, 0x00000000)
         rom_data.write_int32(0x678, 0x00000000)
 
-        # Always offer Hard Mode on file creation
+        # Always offer Hard Mode on file creation.
         rom_data.write_int32(0xC8810, 0x240A0100)  # ADDIU	T2, R0, 0x0100
+
+        # Allow using the alternate costumes from the start.
+        rom_data.write_int32(0xC78, 0x3C0A8000, ni_files.OVL_PLAYER_SELECT)  # LUI  T2, 0x8000
+        rom_data.write_int16(0xCA0, 0x240E, ni_files.OVL_PLAYER_SELECT)
+        rom_data.write_int16(0xCDC, 0x240F, ni_files.OVL_PLAYER_SELECT)
+        # Allow Hard Mode from the start without a controller pak.
+        rom_data.write_int16(0x168, 0x24, ni_files.OVL_PLAYER_SELECT)
 
         # Disable the Easy Mode cutoff point at Castle Center's elevator.
         rom_data.write_int32(0xD9E18, 0x240D0000)  # ADDIU	T5, R0, 0x0000
 
-        # Disable the Forest, Castle Wall, and Villa intro cutscenes and make it possible to change the starting level
-        rom_data.write_byte(0xB73308, 0x00)
-        rom_data.write_byte(0xB7331A, 0x40)
-        rom_data.write_byte(0xB7332B, 0x4C)
-        rom_data.write_byte(0xB6302B, 0x00)
+        # Disable the Forest intro cutscene being played by the intro narration cutscene
+        # and make it possible to change what starting map the intro narration cutscene sends you to.
+        rom_data.write_byte(0x11B7, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x11C9, 0x40, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x11D9, 0x4C, ni_files.OVL_INTRO_NARRATION_CS)
+        # Disable the Castle Wall intro cutscene being played by the Forest ending cutscene and have it store a spawn
+        # position ID instead.
+        rom_data.write_byte(0xD6F, 0x00, ni_files.OVL_DRAWBRIDGE_LOWERS_CS)
+        rom_data.write_int32(0xD88, 0xA058642B, ni_files.OVL_DRAWBRIDGE_LOWERS_CS)  # SB T8, 0x642B (V0)
+        rom_data.write_int32(0xD98, 0x00000000, ni_files.OVL_DRAWBRIDGE_LOWERS_CS)  # NOP
+        # Disable the Villa intro cutscene being set to play upon touching the Castle Wall end loading zone.
         rom_data.write_byte(0x109F8F, 0x00)
 
-        # Prevent Forest end cutscene flag from setting so it can be triggered infinitely.
+        # Prevent the Forest end cutscene flag from setting, so it can be triggered indefinitely.
         rom_data.write_byte(0xEEA51, 0x01)
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
-        # came before them.
+        # the player came in from.
         rom_data.write_int32(0x97244, 0x803FDD60)
         rom_data.write_int32s(0xBFDD60, patches.forest_cw_villa_intro_cs_player)
 
@@ -144,7 +227,7 @@ class CV64PatchExtensions(APPatchExtension):
         rom_data.write_int32(0xA949C, 0x0C0FF380)  # JAL   0x803FCE00
         rom_data.write_int32s(0xBFCE00, patches.werebull_flag_pickup_setter)
 
-        # Enable being able to carry multiple Special jewels, Nitros, and Mandragoras simultaneously
+        # Enable being able to carry multiple Special jewels, Nitros, and Mandragoras simultaneously.
         rom_data.write_int32(0xBF1F4, 0x3C038039)  # LUI V1, 0x8039
         # Special1
         rom_data.write_int32(0xBF210, 0x80659C4B)  # LB A1, 0x9C4B (V1)
@@ -164,6 +247,7 @@ class CV64PatchExtensions(APPatchExtension):
         rom_data.write_int32(0xBF3C4, 0x10000003)  # B 0x8013C1E4
 
         # Give PowerUps their Legacy of Darkness behavior when attempting to pick up more than two
+        # (it won't power you up further, but it will clear it and set the pickup flag).
         rom_data.write_int16(0xA9624, 0x1000)
         rom_data.write_int32(0xA9730, 0x24090000)  # ADDIU	T1, R0, 0x0000
         rom_data.write_int32(0xBF2FC, 0x080FF16D)  # J	0x803FC5B4
@@ -187,11 +271,11 @@ class CV64PatchExtensions(APPatchExtension):
         # Skip Vincent and Heinrich's mandatory-for-a-check dialogue
         rom_data.write_int32(0xBED9C, 0x0C0FF6DA)  # JAL   0x803FDB68
         # Skip the long yes/no prompt in the CC planetarium to set the pieces.
-        rom_data.write_int32(0xB5C5DF, 0x24030001)  # ADDIU  V1, R0, 0x0001
+        rom_data.write_int32(0x1F4, 0x24030001, ni_files.OVL_CC_LIBRARY_PUZZLE_TEXTBOX)  # ADDIU  V1, R0, 0x0001
         # Skip the yes/no prompt to activate the CC elevator.
-        rom_data.write_int32(0xB5E3FB, 0x24020001)  # ADDIU  V0, R0, 0x0001
+        rom_data.write_int32(0x294, 0x24020001, ni_files.OVL_CC_ELEVATOR_TEXTBOX)  # ADDIU  V0, R0, 0x0001
         # Skip the yes/no prompts to set Nitro/Mandragora at both walls.
-        rom_data.write_int32(0xB5DF3E, 0x24030001)  # ADDIU  V1, R0, 0x0001
+        rom_data.write_int32(0x4A0, 0x24030001, ni_files.OVL_INGREDIENT_SET_TEXTBOX)  # ADDIU  V1, R0, 0x0001
 
         # Custom message if you try checking the downstairs CC crack before removing the seal.
         rom_data.write_bytes(0xBFDBAC, cv64_string_to_bytearray("The Furious Nerd Curse\n"
@@ -199,21 +283,25 @@ class CV64PatchExtensions(APPatchExtension):
                                                                 "anything until the seal\n"
                                                                 "is removed!", True))
 
+        # Special1/2 descriptions redirection.
+        rom_data.write_int16(0x1D1E, 0x8040, ni_files.OVL_PAUSE_MENU)
+        rom_data.write_int16(0x1D22, 0xDD20, ni_files.OVL_PAUSE_MENU)
         rom_data.write_int32s(0xBFDD20, patches.special_descriptions_redirector)
 
-        # Change the Stage Select menu options
+        # Change the Stage Select menu options.
         rom_data.write_int32s(0xADF64, patches.warp_menu_rewrite)
         rom_data.write_int32s(0x10E0C8, patches.warp_pointer_table)
 
-        # Play the "teleportation" sound effect when teleporting
+        # Play the "teleportation" sound effect when teleporting.
         rom_data.write_int32s(0xAE088, [0x08004FAB,  # J 0x80013EAC
                                         0x2404019E])  # ADDIU A0, R0, 0x019E
 
-        # Lizard-man save proofing
+        # Prevent saving the game when there's a boss health bar on-screen (possible in Underground Waterway if you turn
+        # the first waterfall off before triggering the triple lizard fight).
         rom_data.write_int32(0xA99AC, 0x080FF0B8)  # J 0x803FC2E0
         rom_data.write_int32s(0xBFC2E0, patches.boss_save_stopper)
 
-        # Disable or guarantee vampire Vincent's fight
+        # Disable or guarantee vampire Vincent's fight.
         if options["vincent_fight_condition"] == VincentFightCondition.option_never:
             rom_data.write_int32(0xAACC0, 0x24010001)  # ADDIU AT, R0, 0x0001
             rom_data.write_int32(0xAACE0, 0x24180000)  # ADDIU T8, R0, 0x0000
@@ -222,23 +310,23 @@ class CV64PatchExtensions(APPatchExtension):
         else:
             rom_data.write_int32(0xAACE0, 0x24180000)  # ADDIU T8, R0, 0x0000
 
-        # Disable or guarantee Renon's fight
+        # Disable or guarantee Renon's fight.
         rom_data.write_int32(0xAACB4, 0x080FF1A4)  # J 0x803FC690
         if options["renon_fight_condition"] == RenonFightCondition.option_never:
-            rom_data.write_byte(0xB804F0, 0x00)
-            rom_data.write_byte(0xB80632, 0x00)
-            rom_data.write_byte(0xB807E3, 0x00)
-            rom_data.write_byte(0xB80988, 0xB8)
-            rom_data.write_byte(0xB816BD, 0xB8)
-            rom_data.write_byte(0xB817CF, 0x00)
+            rom_data.write_byte(0x223, 0x00, ni_files.OVL_RENONS_DEPARTURE_CS)
+            rom_data.write_byte(0x3C7, 0x00, ni_files.OVL_RENONS_DEPARTURE_CS)
+            rom_data.write_byte(0x5AB, 0x00, ni_files.OVL_RENONS_DEPARTURE_CS)
+            rom_data.write_byte(0x813, 0xB8, ni_files.OVL_RENONS_DEPARTURE_CS)
+            rom_data.write_byte(0x18C7, 0xB8, ni_files.OVL_RENONS_DEPARTURE_CS)
+            rom_data.write_byte(0x1A43, 0x00, ni_files.OVL_RENONS_DEPARTURE_CS)
             rom_data.write_int32s(0xBFC690, patches.renon_cutscene_checker_jr)
         elif options["renon_fight_condition"] == RenonFightCondition.option_always:
-            rom_data.write_byte(0xB804F0, 0x0C)
-            rom_data.write_byte(0xB80632, 0x0C)
-            rom_data.write_byte(0xB807E3, 0x0C)
-            rom_data.write_byte(0xB80988, 0xC4)
-            rom_data.write_byte(0xB816BD, 0xC4)
-            rom_data.write_byte(0xB817CF, 0x0C)
+            rom_data.write_byte(0x223, 0x0C, ni_files.OVL_RENONS_DEPARTURE_CS)
+            rom_data.write_byte(0x3C7, 0x0C, ni_files.OVL_RENONS_DEPARTURE_CS)
+            rom_data.write_byte(0x5AB, 0x0C, ni_files.OVL_RENONS_DEPARTURE_CS)
+            rom_data.write_byte(0x813, 0xC4, ni_files.OVL_RENONS_DEPARTURE_CS)
+            rom_data.write_byte(0x18C7, 0xC4, ni_files.OVL_RENONS_DEPARTURE_CS)
+            rom_data.write_byte(0x1A43, 0x0C, ni_files.OVL_RENONS_DEPARTURE_CS)
             rom_data.write_int32s(0xBFC690, patches.renon_cutscene_checker_jr)
         else:
             rom_data.write_int32s(0xBFC690, patches.renon_cutscene_checker)
@@ -246,47 +334,95 @@ class CV64PatchExtensions(APPatchExtension):
         # NOP the Easy Mode check when buying a thing from Renon, so his fight can be triggered even on this mode.
         rom_data.write_int32(0xBD8B4, 0x00000000)
 
-        # Disable or guarantee the Bad Ending
+        # Disable or guarantee the Bad Ending.
         if options["bad_ending_condition"] == BadEndingCondition.option_never:
-            rom_data.write_int32(0xAEE5C6, 0x3C0A0000)  # LUI  T2, 0x0000
+            rom_data.write_int32(0xB7D8, 0x3C0A0000, ni_files.OVL_FAKE_DRACULA)  # LUI  T2, 0x0000
         elif options["bad_ending_condition"] == BadEndingCondition.option_always:
-            rom_data.write_int32(0xAEE5C6, 0x3C0A0040)  # LUI  T2, 0x0040
+            rom_data.write_int32(0xB7D8, 0x3C0A0040, ni_files.OVL_FAKE_DRACULA)  # LUI  T2, 0x0040
 
-        # Play Castle Keep's song if teleporting in front of Dracula's door outside the escape sequence
+        # Play Castle Keep's song if teleporting in front of Dracula's door outside the escape sequence.
         rom_data.write_int32(0x6E937C, 0x080FF12E)  # J 0x803FC4B8
         rom_data.write_int32s(0xBFC4B8, patches.ck_door_music_player)
 
-        # Increase item capacity to 100 if "Increase Item Limit" is turned on
+        # Increase the item capacity to 100 if "Increase Item Limit" is turned on.
         if options["increase_item_limit"]:
             rom_data.write_byte(0xBF30B, 0x63)  # Most items
             rom_data.write_byte(0xBF3F7, 0x63)  # Sun/Moon cards
         rom_data.write_byte(0xBF353, 0x64)  # Keys (increase regardless)
 
-        # Change the item healing values if "Nerf Healing" is turned on
+        # Change the item healing values if "Nerf Healing" is turned on.
         if options["nerf_healing_items"]:
-            rom_data.write_byte(0xB56371, 0x50)  # Healing kit   (100 -> 80)
-            rom_data.write_byte(0xB56374, 0x32)  # Roast beef    ( 80 -> 50)
-            rom_data.write_byte(0xB56377, 0x19)  # Roast chicken ( 50 -> 25)
+            rom_data.write_byte(0x2F72, 0x50, ni_files.OVL_PAUSE_MENU)  # Healing kit   (100 -> 80)
+            rom_data.write_byte(0x2F75, 0x32, ni_files.OVL_PAUSE_MENU)  # Roast beef    ( 80 -> 50)
+            rom_data.write_byte(0x2F78, 0x19, ni_files.OVL_PAUSE_MENU)  # Roast chicken ( 50 -> 25)
 
-        # Disable loading zone healing if turned off
+        # Disable loading zone healing if it was turned off.
         if not options["loading_zone_heals"]:
-            rom_data.write_byte(0xD99A5, 0x00)  # Skip all loading zone checks
-            rom_data.write_byte(0xA9DFFB,
-                                0x40)  # Disable free heal from King Skeleton by reading the unused magic meter value
+            # Skip all loading zone checks.
+            rom_data.write_byte(0xD99A5, 0x00)
+            # Disable the free heal from King Skeleton by reading the unused magic meter value.
+            rom_data.write_byte(0x34DF, 0x40, ni_files.OVL_KING_SKELETON)
 
-        # Disable spinning on the Special1 and 2 pickup models so colorblind people can more easily identify them
+        # Disable spinning on the Special1 and 2 pickup models so colorblind people can more easily distinguish them
+        # from the other jewels.
         rom_data.write_byte(0xEE4F5, 0x00)  # Special1
         rom_data.write_byte(0xEE505, 0x00)  # Special2
-        # Make the Special2 the same size as a Red jewel(L) to further distinguish them
+        # Make the Special2 the same size as a Red jewel(L) to further distinguish it from the Special1.
         rom_data.write_int32(0xEE4FC, 0x3FA66666)
 
-        # Prevent the vanilla Magical Nitro transport's "can explode" flag from setting
-        rom_data.write_int32(0xB5D7AA, 0x00000000)  # NOP
+        # Change some shelf decoration Nitros and Mandragoras into actual items.
+        rom_data.write_int16(0x26980, 0xFFFC, ni_files.MAP_CC_BASEMENT)
+        rom_data.write_int16(0x26990, 0xFFFC, ni_files.MAP_CC_BASEMENT)
+        rom_data.write_int16s(0x26986, [0x0027, 0x0001, 0x4000], ni_files.MAP_CC_BASEMENT)
+        rom_data.write_int16s(0x26996, [0x0027, 0x0001, 0x8000], ni_files.MAP_CC_BASEMENT)
+        rom_data.write_byte(0x306F1, 0xC0, ni_files.MAP_CC_INVENTIONS)
+        rom_data.write_byte(0x30721, 0xCE, ni_files.MAP_CC_INVENTIONS)
+        rom_data.write_int16s(0x306F6, [0x0027, 0x0001, 0x8000, 0x0000], ni_files.MAP_CC_INVENTIONS)
+        rom_data.write_int16s(0x30726, [0x0027, 0x0001, 0x0400, 0xFF05], ni_files.MAP_CC_INVENTIONS)
 
-        # Ensure the vampire Nitro check will always pass, so they'll never not spawn and crash the Villa cutscenes
-        rom_data.write_byte(0xA6253D, 0x03)
+        # Prevent taking Nitro or Mandragora through their shelf text.
+        rom_data.write_int32(0x194, 0x24020000, ni_files.OVL_TAKE_NITRO_TEXTBOX)  # ADDIU V0, R0, 0x0000
+        rom_data.write_int32(0x194, 0x24020000, ni_files.OVL_TAKE_MANDRAGORA_TEXTBOX)  # ADDIU V0, R0, 0x0000
 
-        # Enable the Game Over's "Continue" menu starting the cursor on whichever checkpoint is most recent
+        # Ensure the vampire Nitro check will always pass, so they'll never not spawn and crash the Villa cutscenes.
+        rom_data.write_byte(0xBF, 0x03, ni_files.OVL_VAMPIRES)
+
+        # Prevent throwing Nitro in the Hazardous Materials Disposals.
+        rom_data.write_int32(0x1D4, 0x24020001, ni_files.OVL_NITRO_DISPOSAL_TEXTBOX)  # ADDIU V0, R0, 0x0001
+
+        # Allow placing both bomb components at a cracked wall at once while having multiple copies of each, prevent
+        # placing them at the downstairs crack altogether until the seal is removed, and enable placing both in one
+        # interaction.
+        rom_data.write_byte(0x30F, 0x40, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x312, 0xC338, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_byte(0x33F, 0x40, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x342, 0xC338, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_byte(0x3E3, 0x40, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x3E6, 0xC3D4, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_byte(0x39F, 0x40, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x3A2, 0xC38C, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_byte(0x3CB, 0x40, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x3CE, 0xC38C, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_byte(0x5CF, 0x40, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x5D2, 0xE074, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int32s(0xBFC338, patches.double_component_checker)
+        rom_data.write_int32s(0xBFC3D4, patches.downstairs_seal_checker)
+        rom_data.write_int32s(0xBFE074, patches.mandragora_with_nitro_setter)
+
+        # Disable the rapid flashing effect in the CC planetarium cutscene to ensure it won't trigger seizures.
+        # TODO: Make this an option.
+        rom_data.write_int32(0xC5C, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        rom_data.write_int32(0xCD0, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        rom_data.write_int32(0xC64, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        rom_data.write_int32(0xC74, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        rom_data.write_int32(0xC80, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        rom_data.write_int32(0xC88, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        rom_data.write_int32(0xC90, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        rom_data.write_int32(0xC9C, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        rom_data.write_int32(0xCB4, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        rom_data.write_int32(0xCC8, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+
+        # Enable the Game Over screen's "Continue" menu starting the cursor on whichever checkpoint is more recent.
         rom_data.write_int32(0xB4DDC, 0x0C060D58)  # JAL 0x80183560
         rom_data.write_int32s(0x106750, patches.continue_cursor_start_checker)
         rom_data.write_int32(0x1C444, 0x080FF08A)  # J   0x803FC228
@@ -294,24 +430,37 @@ class CV64PatchExtensions(APPatchExtension):
         rom_data.write_int32s(0xBFC228, patches.savepoint_cursor_updater)
         rom_data.write_int32(0x1C2D0, 0x080FF094)  # J   0x803FC250
         rom_data.write_int32s(0xBFC250, patches.stage_start_cursor_updater)
-        rom_data.write_byte(0xB585C8, 0xFF)
+        rom_data.write_byte(0x1DE9, 0xFF, ni_files.OVL_GAME_OVER_SCREEN)
 
-        # Make the Special1 and 2 play sounds when you reach milestones with them.
+        # Make the Special1 and 2 play sounds when you reach milestones in collecting them.
         rom_data.write_int32s(0xBFDA50, patches.special_sound_notifs)
         rom_data.write_int32(0xBF240, 0x080FF694)  # J 0x803FDA50
         rom_data.write_int32(0xBF220, 0x080FF69E)  # J 0x803FDA78
 
-        # Add data for White Jewel #22 (the new Duel Tower savepoint) at the end of the White Jewel ID data list
+        # Add data for White Jewel #22 (the new Duel Tower savepoint) at the end of the White Jewel ID data list.
         rom_data.write_int16s(0x104AC8, [0x0000, 0x0006,
                                          0x0013, 0x0015])
 
-        # Take the contract in Waterway off of its 00400000 bitflag.
-        rom_data.write_byte(0x87E3DA, 0x00)
+        # Take the Contract in Waterway off of its 00400000 bitflag.
+        rom_data.write_byte(0x1CC5B, 0x00, ni_files.MAP_WATERWAY)
 
-        # Spawn coordinates list extension
+        # Put each Lizard Locker item on its own flag.
+        rom_data.write_int16(0x2BA7A, 0x1000, ni_files.MAP_CC_FACTORY_FLOOR)
+        rom_data.write_int16(0x2BA8A, 0x2000, ni_files.MAP_CC_FACTORY_FLOOR)
+        rom_data.write_int16(0x2BAAA, 0x0400, ni_files.MAP_CC_FACTORY_FLOOR)
+        rom_data.write_int16(0x2BA9A, 0x0800, ni_files.MAP_CC_FACTORY_FLOOR)
+        rom_data.write_int16(0x2BABA, 0x0200, ni_files.MAP_CC_FACTORY_FLOOR)
+        rom_data.write_int16(0x2BACA, 0x0100, ni_files.MAP_CC_FACTORY_FLOOR)
+
+        # Spawn coordinates list extension.
         rom_data.write_int32(0xD5BF4, 0x080FF103)  # J	0x803FC40C
         rom_data.write_int32s(0xBFC40C, patches.spawn_coordinates_extension)
         rom_data.write_int32s(0x108A5E, patches.waterway_end_coordinates)
+
+        # Add an actor in Duel Tower (replaces one of the flames on one of the billboarding pillars) for
+        # White Jewel number 0x22.
+        rom_data.write_int16s(0x15EA0, [0x00B9, 0x012B, 0xFE2A, 0x0027, 0x0001, 0x0000, 0x0022, 0x0100],
+                              ni_files.MAP_DUEL)
 
         # Fix a vanilla issue wherein saving in a character-exclusive stage as the other character would incorrectly
         # display the name of that character's equivalent stage on the save file instead of the one they're actually in.
@@ -327,11 +476,11 @@ class CV64PatchExtensions(APPatchExtension):
         rom_data.write_byte(0x104A99, 0x01)
         rom_data.write_byte(0x104AA1, 0x01)
 
-        # CC top elevator switch check
+        # Make the Castle Center top elevator check for the bottom elevator switch being active before activating.
         rom_data.write_int32(0x6CF0A0, 0x0C0FF0B0)  # JAL 0x803FC2C0
         rom_data.write_int32s(0xBFC2C0, patches.elevator_flag_checker)
 
-        # Disable time restrictions
+        # Disable time restrictions.
         if options["disable_time_restrictions"]:
             # Fountain
             rom_data.write_int32(0x6C2340, 0x00000000)  # NOP
@@ -346,11 +495,11 @@ class CV64PatchExtensions(APPatchExtension):
             rom_data.write_int32(0xDC410, 0x00000000)  # NOP
             rom_data.write_int32(0xDC418, 0x00000000)  # NOP
 
-        # Custom data-loading code
+        # Custom data-loading code.
         rom_data.write_int32(0x6B5028, 0x08060D70)  # J 0x801835D0
         rom_data.write_int32s(0x1067B0, patches.custom_code_loader)
 
-        # Custom remote item rewarding and DeathLink receiving code
+        # Custom remote item rewarding and DeathLink receiving code.
         rom_data.write_int32(0x19B98, 0x080FF000)  # J 0x803FC000
         rom_data.write_int32s(0xBFC000, patches.remote_item_giver)
         rom_data.write_int32s(0xBFE190, patches.subweapon_surface_checker)
@@ -361,43 +510,43 @@ class CV64PatchExtensions(APPatchExtension):
             rom_data.write_int32s(0xBFC0D0, patches.deathlink_nitro_edition)
 
         # Set the DeathLink ROM flag if it's on at all.
-        if options["death_link"] != DeathLink.option_off:
+        if options["death_link"]:
             rom_data.write_byte(0xBFBFDE, 0x01)
 
-        # DeathLink counter decrementer code
+        # DeathLink counter decrementer code.
         rom_data.write_int32(0x1C340, 0x080FF8F0)  # J 0x803FE3C0
         rom_data.write_int32s(0xBFE3C0, patches.deathlink_counter_decrementer)
         rom_data.write_int32(0x25B6C, 0x080FFA5E)  # J 0x803FE978
         rom_data.write_int32s(0xBFE978, patches.launch_fall_killer)
 
-        # Death flag un-setter on "Beginning of stage" state overwrite code
+        # Death flag un-setter on "Beginning of stage" state overwrite code.
         rom_data.write_int32(0x1C2B0, 0x080FF047)  # J 0x803FC11C
         rom_data.write_int32s(0xBFC11C, patches.death_flag_unsetter)
 
-        # Warp menu-opening code
+        # Warp menu-opening code.
         rom_data.write_int32(0xB9BA8, 0x080FF099)  # J	0x803FC264
         rom_data.write_int32s(0xBFC264, patches.warp_menu_opener)
 
-        # NPC item textbox hack
+        # NPC item textbox hack. TODO: Make this not jank
         rom_data.write_int32(0xBF1DC, 0x080FF904)  # J 0x803FE410
         rom_data.write_int32(0xBF1E0, 0x27BDFFE0)  # ADDIU SP, SP, -0x20
         rom_data.write_int32s(0xBFE410, patches.npc_item_hack)
 
-        # Sub-weapon check function hook
+        # Sub-weapon check function hook.
         rom_data.write_int32(0xBF32C, 0x00000000)  # NOP
         rom_data.write_int32(0xBF330, 0x080FF05E)  # J	0x803FC178
         rom_data.write_int32s(0xBFC178, patches.give_subweapon_stopper)
 
-        # Warp menu Special1 restriction
+        # Warp menu Special1 restriction.
         rom_data.write_int32(0xADD68, 0x0C04AB12)  # JAL 0x8012AC48
         rom_data.write_int32s(0xADE28, patches.stage_select_overwrite)
         rom_data.write_byte(0xADE47, options["s1s_per_warp"])
 
-        # Dracula's door text pointer hijack
+        # Dracula's door text pointer hijack.
         rom_data.write_int32(0xD69F0, 0x080FF141)  # J 0x803FC504
         rom_data.write_int32s(0xBFC504, patches.dracula_door_text_redirector)
 
-        # Dracula's chamber condition
+        # Dracula's chamber condition.
         rom_data.write_int32(0xE2FDC, 0x0804AB25)  # J 0x8012AC78
         rom_data.write_int32s(0xADE84, patches.special_goal_checker)
         rom_data.write_bytes(0xBFCC48,
@@ -452,17 +601,11 @@ class CV64PatchExtensions(APPatchExtension):
             special2_text)
         rom_data.write_bytes(0xBFE53C, special_text_bytes)
 
-        # On-the-fly overlay modifier
-        rom_data.write_int32s(0xBFC338, patches.double_component_checker)
-        rom_data.write_int32s(0xBFC3D4, patches.downstairs_seal_checker)
-        rom_data.write_int32s(0xBFE074, patches.mandragora_with_nitro_setter)
-        rom_data.write_int32s(0xBFC700, patches.overlay_modifiers)
+        # On-the-fly actor data modifier hook TODO: Scrap every last bit of this, too!
+        #rom_data.write_int32(0xEAB04, 0x080FF21E)  # J 0x803FC878
+        #rom_data.write_int32s(0xBFC870, patches.map_data_modifiers)
 
-        # On-the-fly actor data modifier hook
-        rom_data.write_int32(0xEAB04, 0x080FF21E)  # J 0x803FC878
-        rom_data.write_int32s(0xBFC870, patches.map_data_modifiers)
-
-        # Fix to make flags apply to freestanding invisible items properly
+        # Fix to make flags apply to freestanding invisible items properly.
         rom_data.write_int32(0xA84F8, 0x90CC0039)  # LBU T4, 0x0039 (A2)
 
         # Fix locked doors to check the key counters instead of their vanilla key locations' bitflags
@@ -495,10 +638,10 @@ class CV64PatchExtensions(APPatchExtension):
         rom_data.write_int32(0xEDADC, 0x0000000C)  # CT Door 2
         rom_data.write_int32(0xEDAE4, 0x0000000D)  # CT Door 3
 
-        # Fix ToE gate's "unlocked" flag in the locked door flags table
+        # Fix ToE gate's "unlocked" flag in the locked door flags table.
         rom_data.write_int16(0x10B3B6, 0x0001)
 
-        rom_data.write_int32(0x10AB2C, 0x8015FBD4)  # Maze Gates' check code pointer adjustments
+        rom_data.write_int32(0x10AB2C, 0x8015FBD4)  # Maze Gates' check code pointer adjustments.
         rom_data.write_int32(0x10AB40, 0x8015FBD4)
         rom_data.write_int32s(0x10AB50, [0x0D0C0000,
                                          0x8015FBD4])
@@ -508,27 +651,27 @@ class CV64PatchExtensions(APPatchExtension):
         rom_data.write_int32s(0xBFC5D0, patches.normal_door_code)
         rom_data.write_int32s(0x6EF298, patches.ct_door_hook)
         rom_data.write_int32s(0xBFC608, patches.ct_door_code)
-        # Fix key counter not decrementing if 2 or above
+        # Fix key counter not decrementing if 2 or above.
         rom_data.write_int32(0xAA0E0, 0x24020000)  # ADDIU	V0, R0, 0x0000
 
-        # Make the Easy-only candle drops in Room of Clocks appear on any difficulty
-        rom_data.write_byte(0x9B518F, 0x01)
+        # Make the Easy-only candle drops in Room of Clocks appear on any difficulty.
+        rom_data.write_byte(0xBF7E, 0x01, ni_files.MAP_ROOM_OF_CLOCKS)
+        rom_data.write_byte(0xBF8E, 0x01, ni_files.MAP_ROOM_OF_CLOCKS)
 
-        # Slightly move some once-invisible freestanding items to be more visible
+        # Slightly move some once-invisible freestanding items to be more visible.
         if options["invisible_items"] == InvisibleItems.option_reveal_all:
-            rom_data.write_byte(0x7C7F95, 0xEF)  # Forest dirge maiden statue
-            rom_data.write_byte(0x7C7FA8, 0xAB)  # Forest werewolf statue
-            rom_data.write_byte(0x8099C4, 0x8C)  # Villa courtyard tombstone
-            rom_data.write_byte(0x83A626, 0xC2)  # Villa living room painting
-            # rom_data.write_byte(0x83A62F, 0x64)  # Villa Mary's room table
-            rom_data.write_byte(0xBFCB97, 0xF5)  # CC torture instrument rack
-            rom_data.write_byte(0x8C44D5, 0x22)  # CC red carpet hallway knight
-            rom_data.write_byte(0x8DF57C, 0xF1)  # CC cracked wall hallway flamethrower
-            rom_data.write_byte(0x90FCD6, 0xA5)  # CC nitro hallway flamethrower
-            rom_data.write_byte(0x90FB9F, 0x9A)  # CC invention room round machine
-            rom_data.write_byte(0x90FBAF, 0x03)  # CC invention room giant famicart
-            rom_data.write_byte(0x90FE54, 0x97)  # CC staircase knight (x)
-            rom_data.write_byte(0x90FE58, 0xFB)  # CC staircase knight (z)
+            rom_data.write_byte(0x3D0F1, 0xEF, ni_files.MAP_FOREST)  # Forest dirge maiden statue
+            rom_data.write_byte(0x3D105, 0xAB, ni_files.MAP_FOREST)  # Forest werewolf statue
+            rom_data.write_byte(0x1AA71, 0x8C, ni_files.MAP_VILLA_FRONT_YARD)  # Villa courtyard tombstone
+            rom_data.write_byte(0x2C735, 0xC2, ni_files.MAP_VILLA_LIVING_AREA)  # Villa living room painting
+            rom_data.write_byte(0x26891, 0xF5, ni_files.MAP_CC_BASEMENT)  # CC torture instrument rack
+            rom_data.write_byte(0x2BA55, 0x22, ni_files.MAP_CC_FACTORY_FLOOR)  # CC red carpet hallway knight
+            rom_data.write_byte(0x292A5, 0xF1, ni_files.MAP_CC_LIZARD_LAB)  # CC cracked wall flamethrower
+            rom_data.write_byte(0x30675, 0xA5, ni_files.MAP_CC_INVENTIONS)  # CC nitro hallway flamethrower
+            rom_data.write_byte(0x30471, 0x9A, ni_files.MAP_CC_INVENTIONS)  # CC invention room round machine
+            rom_data.write_byte(0x30485, 0x03, ni_files.MAP_CC_INVENTIONS)  # CC invention room giant famicart
+            rom_data.write_byte(0x30931, 0x97, ni_files.MAP_CC_INVENTIONS)  # CC staircase knight (x)
+            rom_data.write_byte(0x30935, 0xFB, ni_files.MAP_CC_INVENTIONS)  # CC staircase knight (z)
 
         # Change the bitflag on the item in upper coffin in Forest final switch gate tomb to one that's not used by
         # something else.
@@ -537,6 +680,9 @@ class CV64PatchExtensions(APPatchExtension):
         # Make the torch directly behind Dracula's chamber that normally doesn't set a flag set bitflag 0x08 in
         # 0x80389BFA.
         rom_data.write_byte(0x10CE9F, 0x01)
+        # Make the two flame invisible items set unique flags as well.
+        rom_data.write_byte(0x1F58B, 0x01, ni_files.MAP_CK_EXTERIOR)
+        rom_data.write_byte(0x1F59B, 0x02, ni_files.MAP_CK_EXTERIOR)
 
         # Change the CC post-Behemoth boss depending on the option for Post-Behemoth Boss
         if options["post_behemoth_boss"] == PostBehemothBoss.option_inverted:
@@ -571,17 +717,16 @@ class CV64PatchExtensions(APPatchExtension):
             rom_data.write_byte(0x109FB7, 0x90)
             rom_data.write_byte(0x109FC3, 0x90)
 
-        # Un-nerf Actrise when playing as Reinhardt.
-        # This is likely a leftover TGS demo feature in which players could battle Actrise as Reinhardt.
-        rom_data.write_int32(0xB318B4, 0x240E0001)  # ADDIU	T6, R0, 0x0001
+        # Un-nerf Actrise when playing as Reinhardt. This is likely a leftover feature from the Tokyo Game Show 1998
+        # demo wherein players could battle Actrise as Reinhardt.
+        rom_data.write_int32(0x79C, 0x240E0001, ni_files.OVL_ACTRISE)  # ADDIU	T6, R0, 0x0001
 
-        # Tunnel gondola skip
+        # Tunnel gondola skip stuff.
         if options["skip_gondolas"]:
             rom_data.write_int32(0x6C5F58, 0x080FF7D0)  # J 0x803FDF40
             rom_data.write_int32s(0xBFDF40, patches.gondola_skipper)
             # New gondola transfer point candle coordinates
-            rom_data.write_byte(0xBFC9A3, 0x04)
-            rom_data.write_bytes(0x86D824, [0x27, 0x01, 0x10, 0xF7, 0xA0])
+            rom_data.write_int16s(0x323D0, [0x0427, 0x0110, 0xF7A0], ni_files.MAP_TUNNEL)
 
         # Waterway brick platforms skip
         if options["skip_waterway_blocks"]:
@@ -633,13 +778,15 @@ class CV64PatchExtensions(APPatchExtension):
             rom_data.write_int32(0x6AC99C, 0x810E619B)  # LB	T6, 0x619B (T0)
             rom_data.write_int32(0x5AFA0, 0x80639C53)  # LB	V1, 0x9C53 (V1)
             rom_data.write_int32(0x5B0A0, 0x81089C53)  # LB	T0, 0x9C53 (T0)
-            rom_data.write_byte(0x391C7, 0x00)  # Prevent PowerUps from dropping from regular enemies
-            rom_data.write_byte(0xEDEDF, 0x03)  # Make any vanishing PowerUps that do show up L jewels instead
+            rom_data.write_byte(0x391C7, 0x00)  # Prevent PowerUps from dropping from regular enemies.
+            rom_data.write_byte(0xEDEDF, 0x03)  # Make any vanishing PowerUps that do show up L jewels instead.
             # Rename the PowerUp to "PermaUp"
             rom_data.write_bytes(0xEFDEE, cv64_string_to_bytearray("PermaUp"))
             # Replace the PowerUp in the Forest Special1 Bridge 3HB rock with an L jewel if 3HBs aren't randomized
             if not options["multi_hit_breakables"]:
                 rom_data.write_byte(0x10C7A1, 0x03)
+            # Remove the PowerUp in one of the Lizard Lockers if they are off.
+            rom_data.write_byte(0x2BAC9, 0x03, ni_files.MAP_CC_FACTORY_FLOOR)
         # Change the appearance of the Pot-Pourri to that of a larger PowerUp regardless of the above setting, so other
         # game PermaUps are distinguishable.
         rom_data.write_int32s(0xEE558, [0x06005F08, 0x3FB00000, 0xFFFFFF00])
@@ -685,14 +832,14 @@ class CV64PatchExtensions(APPatchExtension):
             rom_data.write_int16(0xE836C, 0x1000)
             rom_data.write_int32(0xE8B40, 0x0C0FF3CD)  # JAL 0x803FCF34
             rom_data.write_int32s(0xBFCF34, patches.three_hit_item_flags_setter)
-            # Villa foyer chandelier-specific functions (yeah, IDK why KCEK made different functions for this one)
+            # Villa foyer chandelier-specific functions (yeah, IDK why KCEK made different functions for this one).
             rom_data.write_int32(0xE7D54, 0x00000000)  # NOP
             rom_data.write_int16(0xE7908, 0x1000)
             rom_data.write_byte(0xE7A5C, 0x10)
             rom_data.write_int32(0xE7F08, 0x0C0FF3DF)  # JAL 0x803FCF7C
             rom_data.write_int32s(0xBFCF7C, patches.chandelier_item_flags_setter)
 
-            # New flag values to put in each 3HB vanilla flag's spot
+            # New flag values to put in each 3HB vanilla flag's spot.
             rom_data.write_int32(0x10C7C8, 0x8000FF48)  # FoS dirge maiden rock
             rom_data.write_int32(0x10C7B0, 0x0200FF48)  # FoS S1 bridge rock
             rom_data.write_int32(0x10C86C, 0x0010FF48)  # CW upper rampart save nub
@@ -753,25 +900,28 @@ class CV64PatchExtensions(APPatchExtension):
             rom_data.write_int32(0xA9ECC,
                                  0x00000000)  # NOP the pointless overwrite of the item actor appearance custom value.
 
-        # Ice Trap stuff
+        # Ice Trap stuff.
         rom_data.write_int32(0x697C60, 0x080FF06B)  # J 0x803FC18C
         rom_data.write_int32(0x6A5160, 0x080FF06B)  # J 0x803FC18C
         rom_data.write_int32s(0xBFC1AC, patches.ice_trap_initializer)
         rom_data.write_int32s(0xBFE700, patches.the_deep_freezer)
-        rom_data.write_int32s(0xB2F354, [0x3739E4C0,  # ORI T9, T9, 0xE4C0
-                                         0x03200008,  # JR  T9
-                                         0x00000000])  # NOP
+        rom_data.write_int32s(0x9630, [0x3C19803F,  # LUI T9, 0x803F
+                                       0x3739E4C0,  # ORI T9, T9, 0xE4C0
+                                       0x03200008,  # JR  T9
+                                       0x00000000],  # NOP
+                              ni_files.OVL_CAMILLA)  # NOP
         rom_data.write_int32s(0xBFE4C0, patches.freeze_verifier)
 
-        # Fix for the ice chunk model staying when getting bitten by the maze garden dogs
-        rom_data.write_int32(0xA2DC48, 0x803FE9C0)
+        # Fix for the ice chunk model staying when getting bitten by the maze garden dogs.
+        rom_data.write_int32(0x6338, 0x803FE9C0, ni_files.OVL_STONE_DOG)
         rom_data.write_int32s(0xBFE9C0, patches.dog_bite_ice_trap_fix)
+        # TODO: Fix this in more places
 
-        # Initial Countdown numbers
+        # Initial Countdown numbers.
         rom_data.write_int32(0xAD6A8, 0x080FF60A)  # J	0x803FD828
         rom_data.write_int32s(0xBFD828, patches.new_game_extras)
 
-        # Everything related to shopsanity
+        # Everything related to shopsanity.
         if options["shopsanity"]:
             rom_data.write_byte(0xBFBFDF, 0x01)
             rom_data.write_bytes(0x103868, cv64_string_to_bytearray("Not obtained. "))
@@ -783,7 +933,7 @@ class CV64PatchExtensions(APPatchExtension):
                                             0x00000000])  # NOP
             rom_data.write_int32(0xBD618, 0x0C0FF684)  # JAL	0x803FDA10
 
-        # Panther Dash running
+        # Panther Dash running.
         if options["panther_dash"]:
             rom_data.write_int32(0x69C8C4, 0x0C0FF77E)  # JAL   0x803FDDF8
             rom_data.write_int32(0x6AA228, 0x0C0FF77E)  # JAL   0x803FDDF8
@@ -794,7 +944,7 @@ class CV64PatchExtensions(APPatchExtension):
             rom_data.write_int32(0x69D37C, 0x0C0FF79E)  # JAL   0x803FDE78
             rom_data.write_int32(0x6AACE0, 0x0C0FF79E)  # JAL   0x803FDE78
             rom_data.write_int32s(0xBFDDF8, patches.panther_dash)
-            # Jump prevention
+            # Jump prevention.
             if options["panther_dash"] == PantherDash.option_jumpless:
                 rom_data.write_int32(0xBFDE2C, 0x080FF7BB)  # J     0x803FDEEC
                 rom_data.write_int32(0xBFD044, 0x080FF7B1)  # J     0x803FDEC4
@@ -802,7 +952,7 @@ class CV64PatchExtensions(APPatchExtension):
                                                  0x8CCD0000])  # LW    T5, 0x0000 (A2)
                 rom_data.write_int32s(0x6A8EC0, [0x0C0FF7C6,  # JAL   0x803FDF18
                                                  0x8CCC0000])  # LW    T4, 0x0000 (A2)
-                # Fun fact: KCEK put separate code to handle coyote time jumping
+                # Fun fact: KCEK put separate code to handle coyote time jumping.
                 rom_data.write_int32s(0x69910C, [0x0C0FF7C6,  # JAL   0x803FDF18
                                                  0x8C4E0000])  # LW    T6, 0x0000 (V0)
                 rom_data.write_int32s(0x6A6718, [0x0C0FF7C6,  # JAL   0x803FDF18
@@ -816,13 +966,13 @@ class CV64PatchExtensions(APPatchExtension):
             rom_data.write_int32(0x26F54, 0x0C0FFA4D)  # JAL 0x803FE934
             rom_data.write_int32s(0xBFE8E0, patches.big_tosser)
 
-        # Write the specified window colors
+        # Write the specified window colors.
         rom_data.write_byte(0xAEC23, options["window_color_r"] << 4)
         rom_data.write_byte(0xAEC33, options["window_color_g"] << 4)
         rom_data.write_byte(0xAEC47, options["window_color_b"] << 4)
         rom_data.write_byte(0xAEC43, options["window_color_a"] << 4)
 
-        # Everything relating to loading the other game items text
+        # Everything relating to loading the other game items text.
         rom_data.write_int32(0xA8D8C, 0x080FF88F)  # J   0x803FE23C
         rom_data.write_int32(0xBEA98, 0x0C0FF8B4)  # JAL 0x803FE2D0
         rom_data.write_int32(0xBEAB0, 0x0C0FF8BD)  # JAL 0x803FE2F8
@@ -834,33 +984,28 @@ class CV64PatchExtensions(APPatchExtension):
         # When the game normally JALs to the item prepare textbox function after the player picks up an item, set the
         # "no receiving" timer to ensure the item textbox doesn't freak out if you pick something up while there's a
         # queue of unreceived items.
+        # TODO: The textbox can still freak out in other interact spots.
         rom_data.write_int32(0xA8D94, 0x0C0FF9F0)  # JAL	0x803FE7C0
         rom_data.write_int32s(0xBFE7C0, [0x3C088039,  # LUI   T0, 0x8039
                                          0x24090020,  # ADDIU T1, R0, 0x0020
                                          0x0804EDCE,  # J     0x8013B738
                                          0xA1099BE0])  # SB    T1, 0x9BE0 (T0)
 
-        return rom_data.get_bytes()
-
-    @staticmethod
-    def patch_ap_graphics(caller: APProcedurePatch, rom: bytes) -> bytes:
-        rom_data = RomData(rom)
-
-        # Extract the item models file, decompress it, append the AP icons, compress it back, re-insert it.
-        items_file = lzkn64.decompress_buffer(rom_data.read_bytes(0x9C5310, 0x3D28))
-        compressed_file = lzkn64.compress_buffer(items_file[0:0x69B6] + pkgutil.get_data(__name__, "data/ap_icons.bin"))
-        rom_data.write_bytes(0xBB2D88, compressed_file)
-        # Update the items' Nisitenma-Ichigo table entry to point to the new file's start and end addresses in the rom.
-        rom_data.write_int32s(0x95F04, [0x80BB2D88, 0x00BB2D88 + len(compressed_file)])
-        # Update the items' decompressed file size tables with the new file's decompressed file size.
-        rom_data.write_int16(0x95706, 0x7BF0)
-        rom_data.write_int16(0x104CCE, 0x7BF0)
+        # Append the AP icons to the pickable items assets file.
+        rom_data.write_bytes(0x69B6, pkgutil.get_data(__name__, "data/ap_icons.bin"), ni_files.ASSETS_ITEMS)
+        # Update the map files' sizes table with the new pickable items assets file size.
+        rom_data.write_int16(0x104CCE, len(rom_data.decompressed_files[ni_files.ASSETS_ITEMS]))
         # Update the Wooden Stake and Roses' item appearance settings table to point to the Archipelago item graphics.
         rom_data.write_int16(0xEE5BA, 0x7B38)
         rom_data.write_int16(0xEE5CA, 0x7280)
         # Change the items' sizes. The progression one will be larger than the non-progression one.
         rom_data.write_int32(0xEE5BC, 0x3FF00000)
         rom_data.write_int32(0xEE5CC, 0x3FA00000)
+
+        # Write all the edits to the Nisitenma-Ichigo files decided during generation.
+        for file in ni_edits:
+            for offset in ni_edits[file]:
+                rom_data.write_bytes(int(offset), base64.b64decode(ni_edits[file][offset].encode()), int(file))
 
         return rom_data.get_bytes()
 
@@ -873,9 +1018,8 @@ class CV64ProcedurePatch(APProcedurePatch, APTokenMixin):
     game = "Castlevania 64"
 
     procedure = [
-        ("apply_patches", ["options.json"]),
-        ("apply_tokens", ["token_data.bin"]),
-        ("patch_ap_graphics", [])
+        ("apply_patches", ["options.json", "ni_edits.json"]),
+        ("apply_tokens", ["token_data.bin"])
     ]
 
     @classmethod
@@ -883,15 +1027,28 @@ class CV64ProcedurePatch(APProcedurePatch, APTokenMixin):
         return get_base_rom_bytes()
 
 
-def write_patch(world: "CV64World", patch: CV64ProcedurePatch, offset_data: Dict[int, bytes], shop_name_list: List[str],
-                shop_desc_list: List[List[Union[int, str, None]]], shop_colors_list: List[bytearray],
-                active_locations: Iterable[Location]) -> None:
+def write_patch(world: "CV64World", patch: CV64ProcedurePatch, offset_data: Dict[Union[int, Tuple[int, int]], bytes],
+                shop_name_list: List[str], shop_desc_list: List[List[Union[int, str, None]]],
+                shop_colors_list: List[bytearray], active_locations: Iterable[Location]) -> None:
     active_warp_list = world.active_warp_list
     s1s_per_warp = world.s1s_per_warp
 
+    # Compressed Nisitenma-Ichigo file edits.
+    ni_edits: Dict[int, Dict[int, str]] = {}
+
     # Write all the new item/loading zone/shop/lighting/music/etc. values.
     for offset, data in offset_data.items():
-        patch.write_token(APTokenTypes.WRITE, offset, data)
+        # If the offset is an int, write the data as a token to the main buffer.
+        if isinstance(offset, int):
+            patch.write_token(APTokenTypes.WRITE, offset, data)
+        # If the offset is a tuple, the second element in said tuple will be the compressed NI file number to write to
+        # and the first will be the offset in said file. Add the edit to the NI edits dict under the specified file
+        # number.
+        elif isinstance(offset, tuple):
+            if offset[1] not in ni_edits:
+                ni_edits[offset[1]] = {offset[0]: base64.b64encode(data).decode()}
+            else:
+                ni_edits[offset[1]].update({offset[0]: base64.b64encode(data).decode()})
 
     # Write the new Stage Select menu destinations.
     for i in range(len(active_warp_list)):
@@ -1001,6 +1158,9 @@ def write_patch(world: "CV64World", patch: CV64ProcedurePatch, offset_data: Dict
     }
 
     patch.write_file("options.json", json.dumps(options_dict).encode('utf-8'))
+
+    # Write all of our Nisitenma-Ichigo file edits to another JSON.
+    patch.write_file("ni_edits.json", json.dumps(ni_edits).encode('utf-8'))
 
 
 def get_base_rom_bytes(file_name: str = "") -> bytes:

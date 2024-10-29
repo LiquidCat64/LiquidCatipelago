@@ -1,7 +1,7 @@
 import logging
 
 from BaseClasses import ItemClassification, Location, Item
-from .data import iname, rname
+from .data import iname, rname, ni_files
 from .options import CV64Options, BackgroundMusic, Countdown, IceTrapAppearance, InvisibleItems, CharacterStages
 from .stages import vanilla_stage_order, get_stage_info
 from .locations import get_location_info, base_id
@@ -22,12 +22,12 @@ rom_sub_weapon_offsets = {
     0x10C81F: (b"\x0F", rname.castle_wall),  # Castle Wall
     0x10C827: (b"\x10", rname.castle_wall),
     0x10C82F: (b"\x0E", rname.castle_wall),
-    0x7F9A0F: (b"\x0D", rname.castle_wall),
+    (0x24D09, ni_files.MAP_CW_MAIN): (b"\x0D", rname.castle_wall),
 
-    0x83A5D9: (b"\x0E", rname.villa),  # Villa
-    0x83A5E5: (b"\x0D", rname.villa),
-    0x83A5F1: (b"\x0F", rname.villa),
-    0xBFC903: (b"\x10", rname.villa),
+    (0x2C6F9, ni_files.MAP_VILLA_LIVING_AREA): (b"\x0E", rname.villa),  # Villa
+    (0x2C6E9, ni_files.MAP_VILLA_LIVING_AREA): (b"\x0D", rname.villa),
+    (0x2C6C9, ni_files.MAP_VILLA_LIVING_AREA): (b"\x0F", rname.villa),
+    (0x2C6D9, ni_files.MAP_VILLA_LIVING_AREA): (b"\x10", rname.villa),
     0x10C987: (b"\x10", rname.villa),
     0x10C98F: (b"\x0D", rname.villa),
     0x10C997: (b"\x0F", rname.villa),
@@ -68,14 +68,13 @@ rom_sub_weapon_flags = {
     0x10C831: b"\x08",  # Castle Wall
     0x10C829: b"\x10",
     0x10C821: b"\x20",
-    0xBFCA97: b"\x04",
+    (0x24D0B, ni_files.MAP_CW_MAIN): b"\x04",
 
     # Villa
-    0xBFC926: b"\xFF\x04",
-    0xBFC93A: b"\x80",
-    0xBFC93F: b"\x01",
-    0xBFC943: b"\x40",
-    0xBFC947: b"\x80",
+    (0x2C6FA, ni_files.MAP_VILLA_LIVING_AREA): b"\x80\x00\xFF\x04",
+    (0x2C6EA, ni_files.MAP_VILLA_LIVING_AREA): b"\x00\x01\xFF\x04",
+    (0x2C6CA, ni_files.MAP_VILLA_LIVING_AREA): b"\x00\x40\xFF\x04",
+    (0x2C6DA, ni_files.MAP_VILLA_LIVING_AREA): b"\x00\x80\xFF\x04",
     0x10C989: b"\x10",
     0x10C991: b"\x20",
     0x10C999: b"\x40",
@@ -106,10 +105,10 @@ rom_sub_weapon_flags = {
 }
 
 rom_empty_breakables_flags = {
-    0x10C74D: b"\x40\xFF\x05",  # Forest of Silence
-    0x10C765: b"\x20\xFF\x0E",
+    0x10C74C: b"\x00\x40\xFF\x05",  # Forest of Silence
+    0x10C764: b"\x00\x20\xFF\x0E",
     0x10C774: b"\x08\x00\xFF\x0E",
-    0x10C755: b"\x80\xFF\x05",
+    0x10C754: b"\x00\x80\xFF\x05",
     0x10C784: b"\x01\x00\xFF\x0E",
     0x10C73C: b"\x02\x00\xFF\x0E",
 
@@ -117,29 +116,30 @@ rom_empty_breakables_flags = {
 
     0x10CF9F: b"\x08",  # Room of Clocks flags
     0x10CFA7: b"\x01",
-    0xBFCB6F: b"\x04",  # Room of Clocks candle property IDs
-    0xBFCB73: b"\x05",
+    (0xBF39, ni_files.MAP_ROOM_OF_CLOCKS): b"\x04",  # Room of Clocks candles' IDs
+    (0xBF49, ni_files.MAP_ROOM_OF_CLOCKS): b"\x05",
 }
 
 rom_axe_cross_lower_values = {
-    0x6: [0x7C7F97, 0x07],  # Forest
-    0x8: [0x7C7FA6, 0xF9],
+    0x6: [(0x3D0F2, ni_files.MAP_FOREST), 0x0007],  # Forest
+    0x8: [(0x3D102, ni_files.MAP_FOREST), 0xFFF9],
 
-    0x30: [0x83A60A, 0x71],  # Villa hallway
-    0x27: [0x83A617, 0x26],
-    0x2C: [0x83A624, 0x6E],
+    0x30: [(0x2C712, ni_files.MAP_VILLA_LIVING_AREA), 0x0071],  # Villa living area
+    0x27: [(0x2C722, ni_files.MAP_VILLA_LIVING_AREA), 0x0026],
+    0x2C: [(0x2C732, ni_files.MAP_VILLA_LIVING_AREA), 0x006E],
 
-    0x16C: [0x850FE6, 0x07],  # Villa maze
+    0x16C: [(0x24D22, ni_files.MAP_VILLA_MAZE), 0x0007],  # Villa maze
 
-    0x10A: [0x8C44D3, 0x08],  # CC factory floor
-    0x109: [0x8C44E1, 0x08],
+    0x10A: [(0x2BA52, ni_files.MAP_CC_FACTORY_FLOOR), 0x0008],  # CC factory floor
+    0x109: [(0x2BA62, ni_files.MAP_CC_FACTORY_FLOOR), 0x0008],
 
-    0x74: [0x8DF77C, 0x07],  # CC invention area
-    0x60: [0x90FD37, 0x43],
-    0x55: [0xBFCC2B, 0x43],
-    0x65: [0x90FBA1, 0x51],
-    0x64: [0x90FBAD, 0x50],
-    0x61: [0x90FE56, 0x43]
+    0x74: [(0x296B2, ni_files.MAP_CC_LIZARD_LAB), 0x0007],  # CC lizard lab
+
+    0x60: [(0x306F2, ni_files.MAP_CC_INVENTIONS), 0x0043],  # CC invention area
+    0x55: [(0x30722, ni_files.MAP_CC_INVENTIONS), 0x0043],
+    0x65: [(0x30472, ni_files.MAP_CC_INVENTIONS), 0x0051],
+    0x64: [(0x30482, ni_files.MAP_CC_INVENTIONS), 0x0050],
+    0x61: [(0x30932, ni_files.MAP_CC_INVENTIONS), 0x0043]
 }
 
 rom_looping_music_fade_ins = {
@@ -401,9 +401,9 @@ def get_location_data(world: "CV64World", active_locations: Iterable[Location]) 
 
     Appearance does not matter if it's one of the two NPC-given items (from either Vincent or Heinrich Meyer). For
     Renon's shop items, a list containing the shop item names, descriptions, and colors will be returned alongside the
-    regular data."""
+    item byte data."""
 
-    # Figure out the list of possible Ice Trap appearances to use based on the settings, first and foremost.
+    # Figure out the list of possible Ice Trap appearances to use based on the player options, first and foremost.
     if world.options.ice_trap_appearance == IceTrapAppearance.option_major_only:
         allowed_classifications = ["progression", "progression skip balancing"]
     elif world.options.ice_trap_appearance == IceTrapAppearance.option_junk_only:
@@ -430,52 +430,65 @@ def get_location_data(world: "CV64World", active_locations: Iterable[Location]) 
 
         loc_type = get_location_info(loc.name, "type")
 
-        # Figure out the item ID bytes to put in each Location here. Write the item itself if either it's the player's
-        # very own, or it belongs to an Item Link that the player is a part of.
+        # Figure out the Item's primary byte (that controls what Item to give the player when they pick it up) to put in
+        # the Location here. If it's the player's very own Item, it should actually be that Item. Otherwise, it should
+        # be an Archipelago Item.
         if loc.item.player == world.player:
             if loc_type not in ["npc", "shop"] and get_item_info(loc.item.name, "pickup actor id") is not None:
-                location_bytes[get_location_info(loc.name, "offset")] = get_item_info(loc.item.name, "pickup actor id")
+                item_byte = get_item_info(loc.item.name, "pickup actor id")
             else:
-                location_bytes[get_location_info(loc.name, "offset")] = get_item_info(loc.item.name, "code") & 0xFF
+                item_byte = get_item_info(loc.item.name, "code") & 0xFF
         else:
-            # Make the item the unused Wooden Stake - our multiworld item.
-            location_bytes[get_location_info(loc.name, "offset")] = 0x11
+            # Make the Item the unused Wooden Stake - our multiworld item.
+            item_byte = 0x11
 
-        # Figure out the item's appearance. If it's a CV64 player's item, change the multiworld item's model to
-        # match what it is. Otherwise, change it to an Archipelago progress or not progress icon. The model "change"
-        # has to be applied to even local items because this is how the game knows to count it on the Countdown.
+        # Figure out the Item's appearance byte. If it's a CV64 player's Item, change the multiworld Item's model to
+        # match what it is. Otherwise, change it to an Archipelago progress or non-progress icon. The model "change"
+        # has to be applied to even local Items because this is how the game knows to count it on the Countdown.
         if loc.item.game == "Castlevania 64":
-            location_bytes[get_location_info(loc.name, "offset") - 1] = get_item_info(loc.item.name, "code")
-        elif loc.item.advancement:
-            location_bytes[get_location_info(loc.name, "offset") - 1] = 0x11  # Wooden Stakes are majors
-        else:
-            location_bytes[get_location_info(loc.name, "offset") - 1] = 0x12  # Roses are minors
-
-        # If it's a PermaUp, change the item's model to a big PowerUp no matter what.
-        if loc.item.game == "Castlevania 64" and loc.item.code == 0x10C + base_id:
-            location_bytes[get_location_info(loc.name, "offset") - 1] = 0x0B
-
-        # If it's an Ice Trap, change its model to one of the appearances we determined before.
-        # Unless it's an NPC item, in which case use the Ice Trap's regular ID so that it won't decrement the majors
-        # Countdown due to how I set up the NPC items to work.
-        if loc.item.game == "Castlevania 64" and loc.item.code == 0x12 + base_id:
-            if loc_type == "npc":
-                location_bytes[get_location_info(loc.name, "offset") - 1] = 0x12
+            # If it's a PermaUp, change the Item's model to a big PowerUp.
+            if loc.item.code == 0x10C + base_id:
+                appearance_byte = 0x0B
+            # If it's an Ice Trap, change its model to one of the appearances we determined before.
+            # Unless it's an NPC item, in which case use the Ice Trap's regular ID so that it won't decrement the majors
+            # Countdown due to how I set up the NPC items to work.
+            elif loc.item.code == 0x12 + base_id:
+                if loc_type == "npc":
+                    appearance_byte = 0x12
+                else:
+                    appearance_byte = get_item_info(world.random.choice(trap_appearances), "code")
+                    # If we chose a PermaUp as our trap appearance, change it to its actual in-game ID of 0x0B.
+                    if appearance_byte == 0x10C:
+                        appearance_byte = 0x0B
+            # If it's none of the above exceptions, make the appearance whatever it should be as per the Item's code.
             else:
-                location_bytes[get_location_info(loc.name, "offset") - 1] = \
-                    get_item_info(world.random.choice(trap_appearances), "code")
-                # If we chose a PermaUp as our trap appearance, change it to its actual in-game ID of 0x0B.
-                if location_bytes[get_location_info(loc.name, "offset") - 1] == 0x10C:
-                    location_bytes[get_location_info(loc.name, "offset") - 1] = 0x0B
+                appearance_byte = get_item_info(loc.item.name, "code")
+        elif loc.item.advancement:
+            appearance_byte = 0x11  # Wooden Stakes are majors
+        else:
+            appearance_byte = 0x12  # Roses are minors
 
-        # Apply the invisibility variable depending on the "invisible items" setting.
+        # Apply the invisibility bit on the appearance byte depending on the "invisible items" setting.
         if (world.options.invisible_items == InvisibleItems.option_vanilla and loc_type == "inv") or \
                 (world.options.invisible_items == InvisibleItems.option_hide_all and loc_type not in ["npc", "shop"]):
-            location_bytes[get_location_info(loc.name, "offset") - 1] += 0x80
+            appearance_byte += 0x80
         elif world.options.invisible_items == InvisibleItems.option_chance and loc_type not in ["npc", "shop"]:
             invisible = world.random.randint(0, 1)
             if invisible:
-                location_bytes[get_location_info(loc.name, "offset") - 1] += 0x80
+                appearance_byte += 0x80
+
+        # Put the appearance and item bytes together to get the final item value to write in the ROM.
+        item_value = (appearance_byte << 8) + item_byte
+
+        # Get the offset to write the value to. If it's to be written into a compressed Nisitenma-Ichigo file, instead
+        # of just the offset int, it should be formatted as a tuple consisting of the offset and the file number.
+        item_offset = get_location_info(loc.name, "offset")
+        item_file_num = get_location_info(loc.name, "ni file")
+        if item_file_num is not None:
+            item_offset = (item_offset, item_file_num)
+
+        # Add the item value to the dict of writes by its offset.
+        location_bytes[item_offset] = item_value
 
         # If it's an Axe or Cross in a higher freestanding location, lower it into grab range.
         # KCEK made these spawn 3.2 units higher for some reason.
@@ -516,7 +529,7 @@ def get_location_data(world: "CV64World", active_locations: Iterable[Location]) 
 
         shop_colors_list.append(get_item_text_color(loc))
 
-    return {offset: int.to_bytes(byte, 1, "big") for offset, byte in location_bytes.items()}, shop_name_list,\
+    return {offset: int.to_bytes(byte, 2, "big") for offset, byte in location_bytes.items()}, shop_name_list,\
         shop_colors_list, shop_desc_list
 
 
@@ -527,7 +540,7 @@ def get_loading_zone_bytes(options: CV64Options, starting_stage: str,
     to send the player to, and which spot within the map to spawn the player at."""
 
     # Write the byte for the starting stage to send the player to after the intro narration.
-    loading_zone_bytes = {0xB73308: get_stage_info(starting_stage, "start map id")}
+    loading_zone_bytes = {(0x11B7, ni_files.OVL_INTRO_NARRATION_CS): get_stage_info(starting_stage, "start map id")}
 
     for stage in active_stage_exits:
 
