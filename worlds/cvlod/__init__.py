@@ -17,7 +17,7 @@ from .data import iname, rname, ename
 from worlds.AutoWorld import WebWorld, World
 from .aesthetics import randomize_lighting, shuffle_sub_weapons, rom_empty_breakables_flags, \
     randomize_music, get_start_inventory_data, get_location_data, randomize_shop_prices, get_loading_zone_bytes, \
-    get_countdown_numbers
+    get_countdown_numbers, randomize_fountain_puzzle
 from .rom import RomData, write_patch, get_base_rom_path, CVLoDProcedurePatch, CVLOD_US_HASH
 from .client import CastlevaniaLoDClient
 
@@ -71,7 +71,6 @@ class CVLoDWorld(World):
     active_stage_exits: typing.Dict[str, typing.Dict]
     active_stage_list: typing.List[str]
     active_warp_list: typing.List[str]
-    villa_fountain_order: typing.List[str]
 
     # Default values to possibly be updated in generate_early
     reinhardt_stages: bool = True
@@ -90,11 +89,7 @@ class CVLoDWorld(World):
 
     def generate_early(self) -> None:
         # Generate the player's unique authentication
-        self.auth = bytearray(self.multiworld.random.getrandbits(8) for _ in range(16))
-
-        # Generate the slot's randomized Villa fountain combination.
-        self.villa_fountain_order = ["O", "M", "H", "V"]
-        self.random.shuffle(self.villa_fountain_order)
+        self.auth = bytearray(self.random.getrandbits(8) for _ in range(16))
 
         # If there are more S1s needed to unlock the whole warp menu than there are S1s in total, drop S1s per warp to
         # something manageable.
@@ -253,6 +248,8 @@ class CVLoDWorld(World):
         # Start Inventory
         offset_data.update(get_start_inventory_data(self.player, self.options,
                                                     self.multiworld.precollected_items[self.player]))
+        # Villa fountain puzzle
+        offset_data.update(randomize_fountain_puzzle(self))
 
         patch = CVLoDProcedurePatch(player=self.player, player_name=self.multiworld.player_name[self.player])
         write_patch(self, patch, offset_data, shop_name_list, shop_desc_list, shop_colors_list, active_locations)

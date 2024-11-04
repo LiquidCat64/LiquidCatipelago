@@ -1,5 +1,6 @@
 import zlib
 import json
+import base64
 import Utils
 
 from BaseClasses import Location
@@ -10,7 +11,7 @@ import hashlib
 import os
 import pkgutil
 
-from .data import patches, lname
+from .data import patches, lname, ni_files
 from .stages import get_stage_info
 from .text import cvlod_string_to_bytearray, cvlod_text_truncate, cvlod_text_wrap
 from .aesthetics import renon_item_dialogue, get_item_text_color
@@ -24,37 +25,53 @@ if TYPE_CHECKING:
 
 CVLOD_US_HASH = '25258460f98f567497b24844abe3a05b'
 
-NISITENMA_ICHIGO_TABLE_START = 0xB1B90
-DECOMP_FILE_SIZE_TABLE_START = 0xB0CBC
-NUMBER_OF_NI_FILES = 473
-FILE_BUFFERS_START = 0x85C590
-
 WARP_MAP_OFFSETS = [0xADF67, 0xADF77, 0xADF87, 0xADF97, 0xADFA7, 0xADFBB, 0xADFCB, 0xADFDF]
-
-FOUNTAIN_LETTERS_TO_NUMBERS = {"O": 1, "M": 2, "H": 3, "V": 4}
 
 
 class RomData:
-    orig_buffer: None
-    buffer: bytearray
+    main_file: bytearray
+    decompressed_files: Dict[int, bytearray]
+    compressed_files: Dict[int, bytearray]
 
-    def __init__(self, file: bytes, name: Optional[str] = None) -> None:
+    ni_table_start: int
+    ni_file_buffers_start: int
+    decomp_file_sizes_table_start: int
+    number_of_ni_files: int
+
+    def __init__(self, file: bytes) -> None:
         self.main_file = bytearray(file)
-        self.name = name
 
         self.decompressed_files = {}
         self.compressed_files = {}
 
-        # Grab all the compressed files out of the ROM based on the Nisitenma-Ichigo table addresses.
-        for i in range(1, NUMBER_OF_NI_FILES):
-            ni_table_entry_start = NISITENMA_ICHIGO_TABLE_START + (i * 8)
-            file_start_addr = int.from_bytes(self.read_bytes(ni_table_entry_start + 1, 3), "big")
-            file_size = int.from_bytes(self.read_bytes(ni_table_entry_start + 5, 3), "big") - file_start_addr
-            self.compressed_files[i] = self.read_bytes(file_start_addr, file_size)
+        # Seek the "Nisitenma-Ichigo" string in the ROM indicating where the table containing the compressed file start
+        # and end offsets begins.
+        nisitenma_ichigo_start = self.main_file.find("Nisitenma-Ichigo".encode("utf-8"))
+        # If the "Nisitenma-Ichigo" string is nowhere to be found, raise an exception.
+        if nisitenma_ichigo_start == -1:
+            raise Exception("Nisitenma-Ichigo string not found.")
 
-    def read_bit(self, address: int, bit_number: int) -> bool:
-        bitflag = (1 << bit_number)
-        return (self.buffer[address] & bitflag) != 0
+        self.ni_table_start = nisitenma_ichigo_start + 16
+        self.ni_file_buffers_start = int.from_bytes(self.main_file[self.ni_table_start: self.ni_table_start + 4],
+                                                    "big") & 0xFFFFFFF
+
+        # Figure out how many Nisitenma-Ichigo files there are alongside grabbing them out of the ROM.
+        self.number_of_ni_files = 1
+        while True:
+            ni_table_entry_start = self.ni_table_start + ((self.number_of_ni_files - 1) * 8)
+            file_start_addr = int.from_bytes(self.read_bytes(ni_table_entry_start, 4), "big") & 0xFFFFFFF
+            # If the file start address is 0, we've reached the end of the NI table. In which case, end the loop.
+            if not file_start_addr:
+                break
+            # Calculate the compressed file's size and use that to read it out of the ROM.
+            file_size = (int.from_bytes(self.read_bytes(ni_table_entry_start + 4, 4), "big") & 0xFFFFFFF) - \
+                file_start_addr
+            self.compressed_files[self.number_of_ni_files] = self.read_bytes(file_start_addr, file_size)
+            self.number_of_ni_files += 1
+
+        # Figure out where the decompressed file sizes table starts by going backwards the number of NI files from the
+        # start of "Nisitenma-Ichigo".
+        self.decomp_file_sizes_table_start = nisitenma_ichigo_start - 4 - (8 * self.number_of_ni_files)
 
     def read_byte(self, address: int) -> int:
         return self.main_file[address]
@@ -108,30 +125,31 @@ class RomData:
 
     def compress_file(self, file_num: int) -> None:
         compressed_file = bytearray(zlib.compress(self.decompressed_files[file_num], level=zlib.Z_BEST_COMPRESSION))
-        # Pad the file to 0x02
+        # Pad the buffer to 0x02.
         if len(compressed_file) % 2:
             compressed_file.append(0x00)
+        # Add the length header at the beginning.
         self.compressed_files[file_num] = bytearray((0x80000004 + len(compressed_file)).to_bytes(4, "big")) \
             + bytearray(compressed_file)
 
     def get_bytes(self) -> bytes:
-        # Reinsert all modified Nisitenma-Ichigo files
+        # Reinsert all Nisitenma-Ichigo files, both modified and unmodified, in the order they should be.
         displacement = 0
-        for i in range(1, NUMBER_OF_NI_FILES):
+        for i in range(1, self.number_of_ni_files):
             # Re-compress the file if decompressed and update the decompressed sizes table
             if i in self.decompressed_files:
                 self.compress_file(i)
-                self.write_int24(DECOMP_FILE_SIZE_TABLE_START + (i * 8) + 5, len(self.decompressed_files[i]))
+                self.write_int24(self.decomp_file_sizes_table_start + (i * 8) + 5, len(self.decompressed_files[i]))
 
-            start_addr = FILE_BUFFERS_START + displacement
+            start_addr = self.ni_file_buffers_start + displacement
             end_addr = start_addr + len(self.compressed_files[i])
             displacement += len(self.compressed_files[i])
 
             self.write_bytes(start_addr, self.compressed_files[i])
 
             # Update the Nisitenma-Ichigo table
-            self.write_int24(NISITENMA_ICHIGO_TABLE_START + (i * 8) + 1, start_addr)
-            self.write_int24(NISITENMA_ICHIGO_TABLE_START + (i * 8) + 5, end_addr)
+            self.write_int24(self.ni_table_start + ((i - 1) * 8) + 1, start_addr)
+            self.write_int24(self.ni_table_start + ((i - 1) * 8) + 5, end_addr)
 
         return bytes(self.main_file)
 
@@ -140,29 +158,30 @@ class CVLoDPatchExtensions(APPatchExtension):
     game = "Castlevania - Legacy of Darkness"
 
     @staticmethod
-    def apply_patches(caller: APProcedurePatch, rom: bytes, options_file: str) -> bytes:
+    def apply_patches(caller: APProcedurePatch, rom: bytes, options_file: str, ni_edits: str) -> bytes:
         rom_data = RomData(rom)
         options = json.loads(caller.get_file(options_file).decode("utf-8"))
+        ni_edits = json.loads(caller.get_file(ni_edits).decode("utf-8"))
 
         # NOP out the CRC BNEs
         rom_data.write_int32(0x66C, 0x00000000)
         rom_data.write_int32(0x678, 0x00000000)
 
         # Unlock Hard Mode and all characters and costumes from the start
-        rom_data.write_int32(0x244, 0x00000000, 344)
-        rom_data.write_int32(0x1DE4, 0x00000000, 343)
-        rom_data.write_int32(0x1FF8, 0x00000000, 340)
-        rom_data.write_int32(0x2000, 0x00000000, 340)
-        rom_data.write_int32(0x2008, 0x00000000, 340)
-        rom_data.write_int32(0x96C, 0x240D4000, 344)
-        rom_data.write_int32(0x994, 0x00000000, 344)
-        rom_data.write_int32(0x9C0, 0x00000000, 344)
+        rom_data.write_int32(0x244, 0x00000000, ni_files.OVL_CHARACTER_SELECT)
+        rom_data.write_int32(0x1DE4, 0x00000000, ni_files.OVL_NECRONOMICON)
+        rom_data.write_int32(0x1FF8, 0x00000000, ni_files.OVL_FILE_SELECT_CONTROLLER)
+        rom_data.write_int32(0x2000, 0x00000000, ni_files.OVL_FILE_SELECT_CONTROLLER)
+        rom_data.write_int32(0x2008, 0x00000000, ni_files.OVL_FILE_SELECT_CONTROLLER)
+        rom_data.write_int32(0x96C, 0x240D4000, ni_files.OVL_CHARACTER_SELECT)
+        rom_data.write_int32(0x994, 0x00000000, ni_files.OVL_CHARACTER_SELECT)
+        rom_data.write_int32(0x9C0, 0x00000000, ni_files.OVL_CHARACTER_SELECT)
         rom_data.write_int32s(0x18E8, [0x3C0400FF,
                                        0x3484FF00,
-                                       0x00045025], 340)
+                                       0x00045025], ni_files.OVL_FILE_SELECT_CONTROLLER)
         rom_data.write_int32s(0x19A0, [0x3C0400FF,
                                        0x3484FF00,
-                                       0x00044025], 340)
+                                       0x00044025], ni_files.OVL_FILE_SELECT_CONTROLLER)
 
         # NOP the store instructions that clear fields 0x02 in the actor entries
         # so the rando can use field 0x02 to "delete" actors.
@@ -181,35 +200,35 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int32s(0xFFE190, patches.subweapon_surface_checker)
 
         # Make it possible to change the starting level.
-        rom_data.write_byte(0x15D3, 0x46, 468)
-        rom_data.write_byte(0x15D5, 0x00, 468)
-        rom_data.write_byte(0x15DB, 0x02, 468)
+        rom_data.write_byte(0x15D3, 0x46, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15DB, 0x02, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
-        rom_data.write_byte(0x22F, 0x04, 335)
+        rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
 
         # Give Henry all the time in the world just like everyone else.
         rom_data.write_byte(0x86DDF, 0x04)
 
         # Make the final Cerberus in Villa Front Yard
-        # un-set the Villa entrance portcullis closed flag for all characters.
-        rom_data.write_int32(0x35A4, 0x00000000, 303)
+        # un-set the Villa entrance portcullis closed flag for all characters (not just Henry).
+        rom_data.write_int32(0x35A4, 0x00000000, ni_files.OVL_CERBERUS)
 
         # Give the Gardener his Cornell behavior for everyone.
-        rom_data.write_int32(0x490, 0x24020002, 304)  # ADDIU V0, R0, 0x0002
-        rom_data.write_int32(0xD20, 0x00000000, 304)
-        rom_data.write_int32(0x13CC, 0x00000000, 304)
+        rom_data.write_int32(0x490, 0x24020002, ni_files.OVL_GARDENER)  # ADDIU V0, R0, 0x0002
+        rom_data.write_int32(0xD20, 0x00000000, ni_files.OVL_GARDENER)
+        rom_data.write_int32(0x13CC, 0x00000000, ni_files.OVL_GARDENER)
 
         # Give Child Henry his Cornell behavior for everyone.
-        rom_data.write_int32(0x1B8, 0x24020002, 275)  # ADDIU V0, R0, 0x0002
-        rom_data.write_byte(0x613, 0x04, 275)
-        rom_data.write_int32(0x844, 0x240F0002, 275)  # ADDIU T7, R0, 0x0002
-        rom_data.write_int32(0x8B8, 0x240F0002, 275)  # ADDIU T7, R0, 0x0002
+        rom_data.write_int32(0x1B8, 0x24020002, ni_files.OVL_CHILD_HENRY)  # ADDIU V0, R0, 0x0002
+        rom_data.write_byte(0x613, 0x04, ni_files.OVL_CHILD_HENRY)
+        rom_data.write_int32(0x844, 0x240F0002, ni_files.OVL_CHILD_HENRY)  # ADDIU T7, R0, 0x0002
+        rom_data.write_int32(0x8B8, 0x240F0002, ni_files.OVL_CHILD_HENRY)  # ADDIU T7, R0, 0x0002
 
-        # Make Gilles De Rais spawn in the Villa crypt for everyone.
-        rom_data.write_byte(0x195, 0x00, 262)
+        # Make Gilles De Rais spawn in the Villa crypt for everyone (not just Cornell).
+        rom_data.write_byte(0x195, 0x00, ni_files.OVL_GILLES_DE_RAIS)
 
-        # Lock the two doors dividing the front and rear Maze Garden with the Rose Garden Key
+        # Lock the two doors dividing the front and rear Maze Garden with the Rose Garden Key.
         rom_data.write_byte(0x7983C1, 0x08)
         rom_data.write_byte(0x7983E1, 0x09)
         rom_data.write_int16(0x797F50, 0x5300)
@@ -498,7 +517,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int32s(0xFFCB14, patches.savepoint_cursor_updater)
         rom_data.write_int32(0x1D344, 0x080FF2C0)  # J   0x803FCB00
         rom_data.write_int32s(0xFFCB00, patches.stage_start_cursor_updater)
-        rom_data.write_byte(0x21C7, 0xFF, 339)
+        rom_data.write_byte(0x21C7, 0xFF, ni_files.OVL_GAME_OVER_SCREEN)
         # Multiworld buffer clearer/"death on load" safety checks.
         rom_data.write_int32s(0x1D314, [0x080FF2D0,  # J   0x803FCB40
                                         0x24040000])  # ADDIU A0, R0, 0x0000
@@ -565,34 +584,34 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int32s(0xFFC6F0, patches.npc_item_hack)
         # Change all the NPC item gives to run through the new function.
         # Fountain Top Shine
-        rom_data.write_int16(0x35E, 0x8040, 371)
-        rom_data.write_int16(0x362, 0xC700, 371)
-        rom_data.write_byte(0x367, 0x00, 371)
-        rom_data.write_int16(0x36E, 0x0068, 371)
+        rom_data.write_int16(0x35E, 0x8040, ni_files.OVL_FOUNTAIN_TOP_SHINE_TEXTBOX)
+        rom_data.write_int16(0x362, 0xC700, ni_files.OVL_FOUNTAIN_TOP_SHINE_TEXTBOX)
+        rom_data.write_byte(0x367, 0x00, ni_files.OVL_FOUNTAIN_TOP_SHINE_TEXTBOX)
+        rom_data.write_int16(0x36E, 0x0068, ni_files.OVL_FOUNTAIN_TOP_SHINE_TEXTBOX)
         rom_data.write_bytes(0x720, cvlod_string_to_bytearray("...", a_advance=True), 371)
         # 6am Rose Patch
-        rom_data.write_int16(0x1E2, 0x8040, 370)
-        rom_data.write_int16(0x1E6, 0xC700, 370)
-        rom_data.write_byte(0x1EB, 0x01, 370)
-        rom_data.write_int16(0x1F2, 0x0078, 370)
+        rom_data.write_int16(0x1E2, 0x8040, ni_files.OVL_6AM_ROSE_PATCH_TEXTBOX)
+        rom_data.write_int16(0x1E6, 0xC700, ni_files.OVL_6AM_ROSE_PATCH_TEXTBOX)
+        rom_data.write_byte(0x1EB, 0x01, ni_files.OVL_6AM_ROSE_PATCH_TEXTBOX)
+        rom_data.write_int16(0x1F2, 0x0078, ni_files.OVL_6AM_ROSE_PATCH_TEXTBOX)
         rom_data.write_bytes(0x380, cvlod_string_to_bytearray("...", a_advance=True), 370)
         # Vincent
-        rom_data.write_int16(0x180E, 0x8040, 263)
-        rom_data.write_int16(0x1812, 0xC700, 263)
-        rom_data.write_byte(0x1817, 0x02, 263)
-        rom_data.write_int16(0x181E, 0x027F, 263)
+        rom_data.write_int16(0x180E, 0x8040, ni_files.OVL_VINCENT)
+        rom_data.write_int16(0x1812, 0xC700, ni_files.OVL_VINCENT)
+        rom_data.write_byte(0x1817, 0x02, ni_files.OVL_VINCENT)
+        rom_data.write_int16(0x181E, 0x027F, ni_files.OVL_VINCENT)
         rom_data.write_bytes(0x78E776, cvlod_string_to_bytearray(" " * 173, append_end=False))
         # Mary
-        rom_data.write_int16(0xB16, 0x8040, 280)
-        rom_data.write_int16(0xB1A, 0xC700, 280)
-        rom_data.write_byte(0xB1F, 0x03, 280)
-        rom_data.write_int16(0xB26, 0x0086, 280)
+        rom_data.write_int16(0xB16, 0x8040, ni_files.OVL_MARY)
+        rom_data.write_int16(0xB1A, 0xC700, ni_files.OVL_MARY)
+        rom_data.write_byte(0xB1F, 0x03, ni_files.OVL_MARY)
+        rom_data.write_int16(0xB26, 0x0086, ni_files.OVL_MARY)
         rom_data.write_bytes(0x78F40E, cvlod_string_to_bytearray(" " * 295, append_end=False))
         # Heinrich
-        rom_data.write_int16(0x962A, 0x8040, 252)
-        rom_data.write_int16(0x962E, 0xC700, 252)
-        rom_data.write_byte(0x9633, 0x04, 252)
-        rom_data.write_int16(0x963A, 0x0284, 252)
+        rom_data.write_int16(0x962A, 0x8040, ni_files.OVL_LIZARD_MEN)
+        rom_data.write_int16(0x962E, 0xC700, ni_files.OVL_LIZARD_MEN)
+        rom_data.write_byte(0x9633, 0x04, ni_files.OVL_LIZARD_MEN)
+        rom_data.write_int16(0x963A, 0x0284, ni_files.OVL_LIZARD_MEN)
 
         # Sub-weapon check function hook
         # rom_data.write_int32(0xBF32C, 0x00000000)  # NOP
@@ -939,11 +958,12 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Make the Villa coffin lid Cornell cutscene check never pass
         rom_data.write_byte(0x7D518F, 0x04)
         # Make the hardcoded Cornell check in the Villa crypt Reinhardt/Carrie first vampire intro cutscene not pass.
-        # IDK what KCEK was smoking here, since Cornell normally doesn't get this cutscene, but if it passes the game
-        # literally ceases functioning.
-        rom_data.write_int16(0x230, 0x1000, 427)
+        # IDK what KCEK was planning here, since Cornell normally doesn't get this cutscene, but if it passes the game
+        # completely ceases functioning.
+        rom_data.write_int16(0x230, 0x1000, ni_files.OVL_1ST_REIN_CARRIE_CRYPT_VAMPIRE_CS)
         # Insert a special message over the "Found a hidden path" text.
-        rom_data.write_bytes(0xB30, cvlod_string_to_bytearray("<To Be Continued|\\|/", append_end=False), 429)
+        rom_data.write_bytes(0xB30, cvlod_string_to_bytearray("<To Be Continued|\\|/", append_end=False),
+                             ni_files.OVL_FOUND_A_HIDDEN_PATH_CS)
 
         # Change Oldrey's Diary into an item location.
         rom_data.write_int16(0x792A24, 0x0027)
@@ -953,23 +973,14 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int32s(0x798CF8, [0x01D90000, 0x00000000, 0x000C0000])
         rom_data.write_byte(0x796D4F, 0x87)
 
-        # Move the following locations that have flags shared with other locations to their own flags.
+        # Move the following Locations that have flags shared with other Locations to their own flags.
         rom_data.write_int16(0x792A48, 0x0085)  # Archives Garden Key
-        rom_data.write_int16(0xAAA, 0x0086, 280)  # Mary's Copper Key
-        rom_data.write_int16(0xAE2, 0x0086, 280)
-        rom_data.write_int16(0xB12, 0x0086, 280)
+        rom_data.write_int16(0xAAA, 0x0086, ni_files.OVL_MARY)  # Mary's Copper Key
+        rom_data.write_int16(0xAE2, 0x0086, ni_files.OVL_MARY)
+        rom_data.write_int16(0xB12, 0x0086, ni_files.OVL_MARY)
 
         # Write "Z + R + START" over the Special1 description.
-        rom_data.write_bytes(0x3B7C, cvlod_string_to_bytearray("Z + R + START"), 327)
-        # Write the new Villa fountain puzzle order both in the code and Oldrey's Diary's description.
-        rom_data.write_bytes(0x4780, cvlod_string_to_bytearray(f"{options['villa_fountain_order'][0]} "
-                                                               f"{options['villa_fountain_order'][1]} "
-                                                               f"{options['villa_fountain_order'][2]} "
-                                                               f"{options['villa_fountain_order'][3]}      "), 327)
-        rom_data.write_byte(0x173, FOUNTAIN_LETTERS_TO_NUMBERS[options["villa_fountain_order"][0]], 373)
-        rom_data.write_byte(0x16B, FOUNTAIN_LETTERS_TO_NUMBERS[options["villa_fountain_order"][1]], 373)
-        rom_data.write_byte(0x163, FOUNTAIN_LETTERS_TO_NUMBERS[options["villa_fountain_order"][2]], 373)
-        rom_data.write_byte(0x143, FOUNTAIN_LETTERS_TO_NUMBERS[options["villa_fountain_order"][3]], 373)
+        rom_data.write_bytes(0x3B7C, cvlod_string_to_bytearray("Z + R + START"), ni_files.OVL_PAUSE_MENU)
 
         # Write the specified window colors
         rom_data.write_byte(0x8881A, options["window_color_r"] << 4)
@@ -993,6 +1004,11 @@ class CVLoDPatchExtensions(APPatchExtension):
         # rom_data.write_bytes(0x10F188, [0x00 for _ in range(264)])
         # rom_data.write_bytes(0x10F298, [0x00 for _ in range(264)])
 
+        # Write all the edits to the Nisitenma-Ichigo files decided during generation.
+        for file in ni_edits:
+            for offset in ni_edits[file]:
+                rom_data.write_bytes(int(offset), base64.b64decode(ni_edits[file][offset].encode()), int(file))
+
         return rom_data.get_bytes()
 
 
@@ -1004,8 +1020,8 @@ class CVLoDProcedurePatch(APProcedurePatch, APTokenMixin):
     game = "Castlevania - Legacy of Darkness"
 
     procedure = [
-        ("apply_patches", ["options.json"]),
-        ("apply_tokens", ["token_data.bin"]),
+        ("apply_patches", ["options.json", "ni_edits.json"]),
+        ("apply_tokens", ["token_data.bin"])
     ]
 
     @classmethod
@@ -1020,9 +1036,22 @@ def write_patch(world: "CVLoDWorld", patch: CVLoDProcedurePatch, offset_data: Di
     #active_warp_list = world.active_warp_list
     #s1s_per_warp = world.s1s_per_warp
 
+    # Compressed Nisitenma-Ichigo file edits.
+    ni_edits: Dict[int, Dict[int, str]] = {}
+
     # Write all the new item/loading zone/shop/lighting/music/etc. values.
     for offset, data in offset_data.items():
-        patch.write_token(APTokenTypes.WRITE, offset, data)
+        # If the offset is an int, write the data as a token to the main buffer.
+        if isinstance(offset, int):
+            patch.write_token(APTokenTypes.WRITE, offset, data)
+        # If the offset is a tuple, the second element in said tuple will be the compressed NI file number to write to
+        # and the first will be the offset in said file. Add the edit to the NI edits dict under the specified file
+        # number.
+        elif isinstance(offset, tuple):
+            if offset[1] not in ni_edits:
+                ni_edits[offset[1]] = {offset[0]: base64.b64encode(data).decode()}
+            else:
+                ni_edits[offset[1]].update({offset[0]: base64.b64encode(data).decode()})
 
     # Write the seed's warp destination IDs.
     # for i in range(len(active_warp_list)):
@@ -1084,7 +1113,6 @@ def write_patch(world: "CVLoDWorld", patch: CVLoDProcedurePatch, offset_data: Di
 
     # Write these slot options to a JSON.
     options_dict = {
-        "villa_fountain_order": world.villa_fountain_order,
         # "character_stages": world.options.character_stages.value,
         # "vincent_fight_condition": world.options.vincent_fight_condition.value,
         # "renon_fight_condition": world.options.renon_fight_condition.value,
@@ -1121,6 +1149,9 @@ def write_patch(world: "CVLoDWorld", patch: CVLoDProcedurePatch, offset_data: Di
     }
 
     patch.write_file("options.json", json.dumps(options_dict).encode('utf-8'))
+
+    # Write all of our Nisitenma-Ichigo file edits to another JSON.
+    patch.write_file("ni_edits.json", json.dumps(ni_edits).encode('utf-8'))
 
 
 def get_base_rom_bytes(file_name: str = "") -> bytes:

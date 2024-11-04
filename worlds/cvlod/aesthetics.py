@@ -1,17 +1,20 @@
 import logging
 
 from BaseClasses import ItemClassification, Location, Item
-from .data import iname, rname
+from .data import iname, rname, ni_files
 from .options import CVLoDOptions, BackgroundMusic, Countdown, IceTrapAppearance, InvisibleItems, CharacterStages
 from .stages import vanilla_stage_order, get_stage_info
 from .locations import get_location_info, base_id
 from .regions import get_region_info
 from .items import get_item_info, item_info
+from .text import cvlod_string_to_bytearray
 
 from typing import TYPE_CHECKING, Dict, List, Tuple, Union, Iterable
 
 if TYPE_CHECKING:
     from . import CVLoDWorld
+
+FOUNTAIN_LETTERS_TO_BYTES = {"O": b"\x01", "M": b"\x02", "H": b"\x03", "V": b"\x04"}
 
 rom_sub_weapon_offsets = {
     # 0x10C6EB: [0x10, rname.forest_of_silence],  # Forest
@@ -74,21 +77,21 @@ rom_empty_breakables_flags = {
 
 # TODO: Find and lower all the problematic freestanding sub-weapon spots.
 rom_axe_cross_lower_values = {
-    #0x30: [0x83A60A, 0x71],  # Villa hallway
-    #0x27: [0x83A617, 0x26],
-    #0x2C: [0x83A624, 0x6E],
+    # 0x30: [0x83A60A, 0x71],  # Villa hallway
+    # 0x27: [0x83A617, 0x26],
+    # 0x2C: [0x83A624, 0x6E],
 
-    #0x16C: [0x850FE6, 0x07],  # Villa maze
+    # 0x16C: [0x850FE6, 0x07],  # Villa maze
 
-    #0x10A: [0x8C44D3, 0x08],  # CC factory floor
-    #0x109: [0x8C44E1, 0x08],
+    # 0x10A: [0x8C44D3, 0x08],  # CC factory floor
+    # 0x109: [0x8C44E1, 0x08],
 
-    #0x74: [0x8DF77C, 0x07],  # CC invention area
-    #0x60: [0x90FD37, 0x43],
-    #0x55: [0xBFCC2B, 0x43],
-    #0x65: [0x90FBA1, 0x51],
-    #0x64: [0x90FBAD, 0x50],
-    #0x61: [0x90FE56, 0x43]
+    # 0x74: [0x8DF77C, 0x07],  # CC invention area
+    # 0x60: [0x90FD37, 0x43],
+    # 0x55: [0xBFCC2B, 0x43],
+    # 0x65: [0x90FBA1, 0x51],
+    # 0x64: [0x90FBAD, 0x50],
+    # 0x61: [0x90FE56, 0x43]
 }
 
 rom_looping_music_fade_ins = {
@@ -248,7 +251,7 @@ def randomize_music(world: "CVLoDWorld") -> Dict[int, bytes]:
     music_array = bytearray(0x7A)
     for number in music_sfx_ids:
         music_array[number] = number
-    # if world.options.background_music == BackgroundMusic.option_randomized:
+        # if world.options.background_music == BackgroundMusic.option_randomized:
         looping_songs = []
         non_looping_songs = []
         fade_in_songs = {}
@@ -295,24 +298,41 @@ def randomize_shop_prices(world: "CVLoDWorld") -> Dict[int, bytes]:
     """Randomize the shop prices based on the minimum and maximum values chosen.
     The minimum price will adjust if it's higher than the max."""
     pass
-    #min_price = world.options.minimum_gold_price.value
-    #max_price = world.options.maximum_gold_price.value
+    # min_price = world.options.minimum_gold_price.value
+    # max_price = world.options.maximum_gold_price.value
 
-    #if min_price > max_price:
+    # if min_price > max_price:
     #    min_price = world.random.randint(0, max_price)
     #    logging.warning(f"[{world.multiworld.player_name[world.player]}] The Minimum Gold Price "
     #                    f"({world.options.minimum_gold_price.value * 100}) is higher than the "
     #                    f"Maximum Gold Price ({max_price * 100}). Lowering the minimum to: {min_price * 100}")
     #    world.options.minimum_gold_price.value = min_price
 
-    #shop_price_list = [world.random.randint(min_price * 100, max_price * 100) for _ in range(7)]
+    # shop_price_list = [world.random.randint(min_price * 100, max_price * 100) for _ in range(7)]
 
     # Convert the price list into a data dict.
-    #price_dict = {}
-    #for i in range(len(shop_price_list)):
+    # price_dict = {}
+    # for i in range(len(shop_price_list)):
     #    price_dict[0x103D6C + (i * 12)] = int.to_bytes(shop_price_list[i], 4, "big")
 
-    #return price_dict
+    # return price_dict
+
+
+def randomize_fountain_puzzle(world: "CVLoDWorld") -> Dict[Tuple[int, int], bytes]:
+    """Randomizes the combination for the Cornell Villa fountain puzzle and returns both the solution bytes to write
+    in the fountain puzzle code AND in Oldrey's Diary's description."""
+
+    villa_fountain_order = ["O", "M", "H", "V"]  # Vanilla order
+    world.random.shuffle(villa_fountain_order)
+
+    return {(0x4780, ni_files.OVL_PAUSE_MENU): cvlod_string_to_bytearray(f"{villa_fountain_order[0]} "
+                                                                         f"{villa_fountain_order[1]} "
+                                                                         f"{villa_fountain_order[2]} "
+                                                                         f"{villa_fountain_order[3]}      "),
+            (0x173, ni_files.OVL_FOUNTAIN_PUZZLE): FOUNTAIN_LETTERS_TO_BYTES[villa_fountain_order[0]],
+            (0x16B, ni_files.OVL_FOUNTAIN_PUZZLE): FOUNTAIN_LETTERS_TO_BYTES[villa_fountain_order[1]],
+            (0x163, ni_files.OVL_FOUNTAIN_PUZZLE): FOUNTAIN_LETTERS_TO_BYTES[villa_fountain_order[2]],
+            (0x143, ni_files.OVL_FOUNTAIN_PUZZLE): FOUNTAIN_LETTERS_TO_BYTES[villa_fountain_order[3]]}
 
 
 def get_countdown_numbers(options: CVLoDOptions, active_locations: Iterable[Location]) -> Dict[int, bytes]:
@@ -342,7 +362,8 @@ def get_countdown_numbers(options: CVLoDOptions, active_locations: Iterable[Loca
 
 
 def get_location_data(world: "CVLoDWorld", active_locations: Iterable[Location]) \
-        -> Tuple[Dict[int, bytes], List[str], List[bytearray], List[List[Union[int, str, None]]]]:
+        -> Tuple[Dict[Union[int, Tuple[int, int]], bytes], List[str], List[bytearray],
+                 List[List[Union[int, str, None]]]]:
     """Gets ALL the item data to go into the ROM. Item data consists of two bytes: the first dictates the appearance of
     the item, the second determines what the item actually is when picked up. All items from other worlds will be AP
     items that do nothing when picked up other than set their flag, and their appearance will depend on whether it's
@@ -354,15 +375,15 @@ def get_location_data(world: "CVLoDWorld", active_locations: Iterable[Location])
     regular data."""
 
     # Figure out the list of possible Ice Trap appearances to use based on the settings, first and foremost.
-    #if world.options.ice_trap_appearance == IceTrapAppearance.option_major_only:
+    # if world.options.ice_trap_appearance == IceTrapAppearance.option_major_only:
     #    allowed_classifications = ["progression", "progression skip balancing"]
-    #elif world.options.ice_trap_appearance == IceTrapAppearance.option_junk_only:
+    # elif world.options.ice_trap_appearance == IceTrapAppearance.option_junk_only:
     #    allowed_classifications = ["filler", "useful"]
-    #else:
+    # else:
     #    allowed_classifications = ["progression", "progression skip balancing", "filler", "useful"]
 
-    #trap_appearances = []
-    #for item in item_info:
+    # trap_appearances = []
+    # for item in item_info:
     #    if item_info[item]["default classification"] in allowed_classifications and item != "Ice Trap" and \
     #            get_item_info(item, "code") is not None:
     #        trap_appearances.append(item)
@@ -380,60 +401,69 @@ def get_location_data(world: "CVLoDWorld", active_locations: Iterable[Location])
 
         loc_type = get_location_info(loc.name, "type")
 
-        # Figure out the item ID bytes to put in each Location here. Write the item itself if either it's the player's
-        # very own, or it belongs to an Item Link that the player is a part of.
+        # Figure out the Item's primary byte (that controls what Item to give the player when they pick it up) to put in
+        # the Location here. If it's the player's very own Item, it should actually be that Item. Otherwise, it should
+        # be an Archipelago Item.
         if loc.item.player == world.player:
             if loc_type not in ["npc", "shop"] and get_item_info(loc.item.name, "pickup actor id") is not None:
-                location_bytes[get_location_info(loc.name, "offset")] = get_item_info(loc.item.name, "pickup actor id")
+                item_byte = get_item_info(loc.item.name, "pickup actor id")
             else:
-                location_bytes[get_location_info(loc.name, "offset")] = get_item_info(loc.item.name, "code") & 0xFF
+                item_byte = get_item_info(loc.item.name, "code") & 0xFF
         else:
-            # Make the item the unused Special3 - our multiworld item.
-            location_bytes[get_location_info(loc.name, "offset")] = 0x6
+            # Make the Item the unused Special3 - our multiworld item.
+            item_byte = 0x6
 
-        # Figure out the item's appearance. If it's a CVLoD player's item, change the multiworld item's model to
+        # Figure out the Item's appearance byte. If it's a CVLoD player's Item, change the multiworld Item's model to
         # match what it is. Otherwise, change it to an Archipelago progress or not progress icon. Do not write this if
         # it's an NPC item, as that will tell the majors only Countdown to decrease even if it's not a major.
         if loc_type != "npc":
             if loc.item.game == "Castlevania - Legacy of Darkness":
-                location_bytes[get_location_info(loc.name, "offset") - 1] = get_item_info(loc.item.name, "code")
-            elif loc.item.advancement:
-                location_bytes[get_location_info(loc.name, "offset") - 1] = 0x06  # Specail3 id
-            else:
-                location_bytes[get_location_info(loc.name, "offset") - 1] = 0x06
-        else:
-            location_bytes[get_location_info(loc.name, "offset") - 1] = 0x00
-
-        # If it's a PermaUp, change the item's model to a big PowerUp no matter what.
-        #if loc.item.game == "Castlevania - Legacy of Darkness" and loc.item.code == 0x10C + base_id:
-        #    location_bytes[get_location_info(loc.name, "offset") - 1] = 0x0B
-
-        # If it's an Ice Trap, change its model to one of the appearances we determined before.
-        # Unless it's an NPC item, in which case use the Ice Trap's regular ID so that it won't decrement the majors
-        # Countdown due to how I set up the NPC items to work.
-        #if loc.item.game == "Castlevania - Legacy of Darkness" and loc.item.code == 0x12 + base_id:
-        #    if loc_type == "npc":
-        #        location_bytes[get_location_info(loc.name, "offset") - 1] = 0x12
-        #    else:
-        #        location_bytes[get_location_info(loc.name, "offset") - 1] = \
-        #            get_item_info(world.random.choice(trap_appearances), "code")
+                # If it's a PermaUp, change the Item's model to a big PowerUp.
+                if loc.item.code == 0x10C + base_id:
+                    appearance_byte = 0x0B
+                # If it's an Ice Trap, change its model to one of the appearances we determined before.
+                # elif loc.item.code == 0x12 + base_id:
+                #     appearance_byte = get_item_info(world.random.choice(trap_appearances), "code")
                 # If we chose a PermaUp as our trap appearance, change it to its actual in-game ID of 0x0B.
-        #        if location_bytes[get_location_info(loc.name, "offset") - 1] == 0x10C:
-        #            location_bytes[get_location_info(loc.name, "offset") - 1] = 0x0B
+                #     if appearance_byte == 0x10C:
+                #         appearance_byte = 0x0B
+                # If it's none of the above exceptions, make the appearance whatever it should be as per the Item's
+                # code.
+                else:
+                    appearance_byte = get_item_info(loc.item.name, "code")
+            elif loc.item.advancement:
+                appearance_byte = 0x06  # Specail3 id
+            else:
+                appearance_byte = 0x06  # Also Special3 id (temporary placeholder)
+        else:
+            appearance_byte = 0x00
 
-        # Apply the invisibility variable depending on the "invisible items" setting.
-        #if (world.options.invisible_items == InvisibleItems.option_vanilla and loc_type == "inv") or \
+        # Apply the invisibility bit on the appearance byte depending on the "invisible items" setting.
+        # if (world.options.invisible_items == InvisibleItems.option_vanilla and loc_type == "inv") or \
         #        (world.options.invisible_items == InvisibleItems.option_hide_all and loc_type not in ["npc", "shop"]):
-        #    location_bytes[get_location_info(loc.name, "offset") - 1] += 0x80
-        #elif world.options.invisible_items == InvisibleItems.option_chance and loc_type not in ["npc", "shop"]:
+        #    appearance_byte += 0x80
+        # elif world.options.invisible_items == InvisibleItems.option_chance and loc_type not in ["npc", "shop"]:
         #    invisible = world.random.randint(0, 1)
         #    if invisible:
-        #        location_bytes[get_location_info(loc.name, "offset") - 1] += 0x80
+        #        appearance_byte += 0x80
 
         # Set the 0x80 flag in the appearance byte to flag the item as something that should decrement the Countdown
         # when picked up, if applicable.
         if loc.item.advancement or world.options.countdown.value == Countdown.option_all_locations:
-            location_bytes[get_location_info(loc.name, "offset") - 1] |= 0x80
+            appearance_byte |= 0x80
+
+        # Put the appearance and item bytes together to get the final item value to write in the ROM.
+        item_value = (appearance_byte << 8) + item_byte
+
+        # Get the offset to write the value to. If it's to be written into a compressed Nisitenma-Ichigo file, instead
+        # of just the offset int, it should be formatted as a tuple consisting of the offset and the file number.
+        item_offset = get_location_info(loc.name, "offset")
+        item_file_num = get_location_info(loc.name, "ni file")
+        if item_file_num is not None:
+            item_offset = (item_offset, item_file_num)
+
+        # Add the item value to the dict of writes by its offset.
+        location_bytes[item_offset] = item_value
 
         # If it's an Axe or Cross in a higher freestanding location, lower it into grab range.
         # KCEK made these spawn 3.2 units higher for some reason.
@@ -474,7 +504,7 @@ def get_location_data(world: "CVLoDWorld", active_locations: Iterable[Location])
 
         shop_colors_list.append(get_item_text_color(loc))
 
-    return {offset: int.to_bytes(byte, 1, "big") for offset, byte in location_bytes.items()}, shop_name_list,\
+    return {offset: int.to_bytes(byte, 2, "big") for offset, byte in location_bytes.items()}, shop_name_list, \
         shop_colors_list, shop_desc_list
 
 
@@ -501,7 +531,7 @@ def get_loading_zone_bytes(options: CVLoDOptions, starting_stage: str,
                 get_stage_info(active_stage_exits[stage]["prev"], "end spawn id")
 
             # Change CC's end-spawn ID to put you at Carrie's exit if appropriate
-            #if active_stage_exits[stage]["prev"] == rname.castle_center:
+            # if active_stage_exits[stage]["prev"] == rname.castle_center:
             #    if options.character_stages == CharacterStages.option_carrie_only or \
             #            active_stage_exits[rname.castle_center]["alt"] == stage:
             #        loading_zone_bytes[get_stage_info(stage, "startzone spawn offset")] = b"\x03"
