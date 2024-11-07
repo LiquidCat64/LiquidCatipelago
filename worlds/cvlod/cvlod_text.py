@@ -19,31 +19,40 @@ cvlod_char_dict = {"\n": (0xB6, 0), " ": (0xB7,  8), "!": (0x01,  4), '"': (0x02
                    "◊": (0x5F,  7), "「": (0x60, 7), "」": (0x61,  7), "。": (0x62, 5), "•": (0x63,  5), "—": (0x64,  9),
                    "▶": (0x65,  6), "₀": (0x66,  6), "₁": (0x67,  4), "₂": (0x68,  6), "₃": (0x69,  6), "₄": (0x6A,  6),
                    "₅": (0x6B,  6), "₆": (0x6C,  6), "₇": (0x6D,  6), "₈": (0x6E,  6), "₉": (0x6F,  6), "〃": (0x70,  6),
-                   "°": (0x71,  5), "∞": (0x72, 16), "、": (0x73,  7)}
+                   "°": (0x71,  5), "∞": (0x72, 16), "、": (0x73,  7),
+                   # Special command characters
+                   "»": (0xA3,  0),  # Press A with prompt arrow.
+                   "\t": (0xFF, 0),  # End the current string and begin the next string in the same text pool.
+                   }
 # [0] = CVLoD's in-game ID for that text character.
 # [1] = How much space towards the in-game line length limit it contributes.
 
 
-def cvlod_string_to_bytearray(cvlodtext: str, a_advance: bool = False, append_end: bool = True) -> bytearray:
-    """Converts a string into a list of bytes following cvlod's string format."""
+def cvlod_string_to_bytearray(cvlod_text: str, len_limit: int = 255, wrap: bool = True) -> Tuple[bytearray, int]:
+    """Converts a string into a bytearray following Castlevania: Legacy of Darkness's string format and gets the number
+    of lines that the string would display on-screen at once."""
     text_bytes = bytearray(0)
-    for i, char in enumerate(cvlodtext):
+
+    # Wrap the text if we are opting to do so.
+    if wrap:
+        refined_text, num_lines = cvlod_text_wrap(cvlod_text, len_limit)
+    else:
+        refined_text, num_lines = cvlod_text, 1
+
+    # Convert the string into CVLoD's text string format.
+    for i, char in enumerate(refined_text):
         if char == "\t":
             text_bytes.extend([0xFF, 0xFF])
         else:
             if char in cvlod_char_dict:
-                if cvlod_char_dict[char][0] >= 0xB0:
+                if cvlod_char_dict[char][0] >= 0xA0:
                     text_bytes.extend([cvlod_char_dict[char][0], 0x00])
                 else:
                     text_bytes.extend([0x00, cvlod_char_dict[char][0]])
             else:
                 text_bytes.extend([0x00, 0x41])
 
-    if a_advance:
-        text_bytes.extend([0xA3, 0x00])
-    if append_end:
-        text_bytes.extend([0xFF, 0xFF])
-    return text_bytes
+    return text_bytes, num_lines
 
 
 def cvlod_text_truncate(cvlodtext: str, textbox_len_limit: int) -> str:
@@ -71,15 +80,21 @@ def cvlod_text_wrap(cvlodtext: str, textbox_len_limit: int) -> Tuple[str, int]:
     num_lines = 1
 
     for i in range(len(words)):
+        # Reset the word length to 0 on every word iteration and make its default divider a space.
         word_len = 0
         word_divider = " "
 
+        # Check if we're at the very beginning of a line and handle the situation accordingly by increasing the current
+        # line length to account for the space if we are not. Otherwise, the word divider should be nothing.
         if line_len != 0:
             line_len += 8
         else:
             word_divider = ""
 
         for char in words[i]:
+            # Increase the current line and word length by the number of units that character contributes.
+            # If it's not in the char dict, then it's a character not in CVLoD's character set, in which case
+            # use the ? character's spacing by default.
             if char in cvlod_char_dict:
                 line_len += cvlod_char_dict[char][1]
                 word_len += cvlod_char_dict[char][1]
@@ -87,18 +102,26 @@ def cvlod_text_wrap(cvlodtext: str, textbox_len_limit: int) -> Tuple[str, int]:
                 line_len += 11
                 word_len += 11
 
+            # If the word alone is long enough to exceed the line length, or if we're looking at a manually-placed
+            # newline character, consider it wrapped manually at this point and reset the word and line lengths to 0.
             if word_len > textbox_len_limit or char in ["\n", "\t"]:
                 word_len = 0
                 line_len = 0
+                # Track the current number of on-screen textbox lines. The max number that can display at a time is 4.
                 if num_lines < 4:
                     num_lines += 1
 
+            # If the total length of the current line exceeds the line length, wrap the current word to the next line
+            # by changing the previous divider from a space to a newline and making the current line length the current
+            # word length.
             if line_len > textbox_len_limit:
                 word_divider = "\n"
                 line_len = word_len
+                # Track the current number of on-screen textbox lines. The max number that can display at a time is 4.
                 if num_lines < 4:
                     num_lines += 1
 
         new_text += word_divider + words[i]
 
+    # Return the final wrapped text and the number of on-screen lines.
     return new_text, num_lines

@@ -1,3 +1,8 @@
+foggy_lake = "Foggy Lake"
+fl_start = "Foggy Lake: main deck"
+fl_middle = "Foggy Lake: below decks"
+fl_end = "Foggy Lake: pier"
+
 forest_of_silence = "Forest of Silence"
 forest_start = "Forest of Silence: first half"
 forest_mid = "Forest of Silence: second half"

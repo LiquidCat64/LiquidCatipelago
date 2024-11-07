@@ -13,7 +13,7 @@ import pkgutil
 
 from .data import patches, lname, ni_files
 from .stages import get_stage_info
-from .text import cvlod_string_to_bytearray, cvlod_text_truncate, cvlod_text_wrap
+from .cvlod_text import cvlod_string_to_bytearray, cvlod_text_truncate, cvlod_text_wrap
 from .aesthetics import renon_item_dialogue, get_item_text_color
 from .locations import get_location_info
 from .options import CharacterStages, VincentFightCondition, RenonFightCondition, PostBehemothBoss, RoomOfClocksBoss, \
@@ -200,15 +200,50 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int32s(0xFFE190, patches.subweapon_surface_checker)
 
         # Make it possible to change the starting level.
-        rom_data.write_byte(0x15D3, 0x46, ni_files.OVL_INTRO_NARRATION_CS)
+        # rom_data.write_byte(0x15D3, 0x46, ni_files.OVL_INTRO_NARRATION_CS)
         rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
-        rom_data.write_byte(0x15DB, 0x02, ni_files.OVL_INTRO_NARRATION_CS)
+        # rom_data.write_byte(0x15DB, 0x02, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
         rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
 
         # Give Henry all the time in the world just like everyone else.
         rom_data.write_byte(0x86DDF, 0x04)
+
+        # Lock the door in Foggy Lake below decks leading out to above decks with the Deck Key.
+        # It's the same door in-universe as the above decks one but on a different map.
+        rom_data.write_int16(0x7C1BD4, 0x5100)
+        rom_data.write_int16(0x7C1BDC, 0x028E)
+        rom_data.write_byte(0x7C1BE3, 0x22)
+        rom_data.write_int16(0x7C1BE6, 0x0001)
+        # Custom text for the new locked door instance.
+        rom_data.write_bytes(0x7C1B14, cvlod_string_to_bytearray("Locked in!\n"
+                                                                 "You need Deck Key.»\t"
+                                                                 "Deck Key\n"
+                                                                 "       has been used.»\t", wrap=False)[0])
+        # Prevent the Foggy Lake cargo hold door from locking.
+        rom_data.write_int16(0x7C1C00, 0x0000)
+
+        # Disable the Foggy Lake Pier save jewel checking for one of the ship sinking cutscene flags to spawn. As much
+        # as the developers REALLY wanted it out of the picture for the cutscene, for our purposes it's impractical.
+        rom_data.write_byte(0x7C67F5, 0x00)
+        rom_data.write_int16(0x7C6806, 0x0000)
+        # Prevent the Sea Monster from respawning if you leave the pier map and return.
+        rom_data.write_byte(0x7C67B5, 0x80)
+        rom_data.write_int16(0x7C67C6, 0x015D)
+        # Un-set the "debris path sunk" flag after the Sea Monster is killed and when the door flag is set.
+        rom_data.write_int16(0x725A, 0x8040, ni_files.OVL_SEA_MONSTER)
+        rom_data.write_int16(0x725E, 0xCB90, ni_files.OVL_SEA_MONSTER)
+        rom_data.write_int32s(0xFFCB90, patches.sea_monster_sunk_path_flag_unsetter)
+        # Disable the two pier statue items checking each other's flags being not set as an additional spawn condition.
+        rom_data.write_byte(0x7C6815, 0x00)
+        rom_data.write_int16(0x7C6826, 0x0000)
+        rom_data.write_byte(0x7C6835, 0x00)
+        rom_data.write_int16(0x7C6846, 0x0000)
+        rom_data.write_byte(0x7C6855, 0x00)
+        rom_data.write_int16(0x7C6866, 0x0000)
+        rom_data.write_byte(0x7C6875, 0x00)
+        rom_data.write_int16(0x7C6886, 0x0000)
 
         # Make the final Cerberus in Villa Front Yard
         # un-set the Villa entrance portcullis closed flag for all characters (not just Henry).
@@ -240,20 +275,19 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_byte(0x797F8B, 0x23)
         rom_data.write_int16(0x797F8E, 0x0405)
         rom_data.write_bytes(0x797308, cvlod_string_to_bytearray("\"Maze Gate\"\n"
-                                                                 "\"One key unlocks both.\"", append_end=False))
+                                                                 "\"One key unlocks both.\"")[0])
         rom_data.write_bytes(0x797294, cvlod_string_to_bytearray("A click sounds from\n"
-                                                                 "both Garden gates... ", append_end=False))
+                                                                 "both Garden gates... ")[0])
         rom_data.write_bytes(0x78836E, cvlod_string_to_bytearray("A door marked\n"
                                                                  " \"Rose Garden Door\"\n"
-                                                                 "\"One key unlocks us all.\"", a_advance=True))
+                                                                 "\"One key unlocks us all.\"»\t")[0])
         rom_data.write_bytes(0x7883E8, cvlod_string_to_bytearray("A click sounds from\n"
-                                                                 "all Rose Garden Key doors...", a_advance=True))
+                                                                 "all Rose Garden Key doors...»\t")[0])
         rom_data.write_bytes(0x796FD6, cvlod_string_to_bytearray("A door marked\n"
                                                                  " \"Rose Garden Door\"\n"
-                                                                 "\"One key unlocks us all.\"       ",
-                                                                 append_end=False))
+                                                                 "\"One key unlocks us all.\"       ")[0])
         rom_data.write_bytes(0x79705E, cvlod_string_to_bytearray("A click sounds from\n"
-                                                                 "all Rose Garden Key doors...", append_end=False))
+                                                                 "all Rose Garden Key doors...")[0])
 
         # Apply the child Henry gate checks to the two doors leading to the vampire crypt,
         # so he can't be brought in there.
@@ -322,7 +356,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             rom_data.write_byte(0x90767, 0x63)  # Sun/Moon cards
 
         # Rename the Special3 to "AP Item"
-        rom_data.write_bytes(0xB89AA, cvlod_string_to_bytearray("AP Item ", append_end=False))
+        rom_data.write_bytes(0xB89AA, cvlod_string_to_bytearray("AP Item ")[0])
         # Change the Special3's appearance to that of a spinning contract.
         rom_data.write_int32s(0x11770A, [0x63583F80, 0x0000FFFF])
         # Disable spinning on the Special1 and 2 pickup models so colorblind people can more easily identify them.
@@ -588,25 +622,25 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int16(0x362, 0xC700, ni_files.OVL_FOUNTAIN_TOP_SHINE_TEXTBOX)
         rom_data.write_byte(0x367, 0x00, ni_files.OVL_FOUNTAIN_TOP_SHINE_TEXTBOX)
         rom_data.write_int16(0x36E, 0x0068, ni_files.OVL_FOUNTAIN_TOP_SHINE_TEXTBOX)
-        rom_data.write_bytes(0x720, cvlod_string_to_bytearray("...", a_advance=True), 371)
+        rom_data.write_bytes(0x720, cvlod_string_to_bytearray("...»\t")[0], 371)
         # 6am Rose Patch
         rom_data.write_int16(0x1E2, 0x8040, ni_files.OVL_6AM_ROSE_PATCH_TEXTBOX)
         rom_data.write_int16(0x1E6, 0xC700, ni_files.OVL_6AM_ROSE_PATCH_TEXTBOX)
         rom_data.write_byte(0x1EB, 0x01, ni_files.OVL_6AM_ROSE_PATCH_TEXTBOX)
         rom_data.write_int16(0x1F2, 0x0078, ni_files.OVL_6AM_ROSE_PATCH_TEXTBOX)
-        rom_data.write_bytes(0x380, cvlod_string_to_bytearray("...", a_advance=True), 370)
+        rom_data.write_bytes(0x380, cvlod_string_to_bytearray("...»\t")[0], 370)
         # Vincent
         rom_data.write_int16(0x180E, 0x8040, ni_files.OVL_VINCENT)
         rom_data.write_int16(0x1812, 0xC700, ni_files.OVL_VINCENT)
         rom_data.write_byte(0x1817, 0x02, ni_files.OVL_VINCENT)
         rom_data.write_int16(0x181E, 0x027F, ni_files.OVL_VINCENT)
-        rom_data.write_bytes(0x78E776, cvlod_string_to_bytearray(" " * 173, append_end=False))
+        rom_data.write_bytes(0x78E776, cvlod_string_to_bytearray(" " * 173)[0])
         # Mary
         rom_data.write_int16(0xB16, 0x8040, ni_files.OVL_MARY)
         rom_data.write_int16(0xB1A, 0xC700, ni_files.OVL_MARY)
         rom_data.write_byte(0xB1F, 0x03, ni_files.OVL_MARY)
         rom_data.write_int16(0xB26, 0x0086, ni_files.OVL_MARY)
-        rom_data.write_bytes(0x78F40E, cvlod_string_to_bytearray(" " * 295, append_end=False))
+        rom_data.write_bytes(0x78F40E, cvlod_string_to_bytearray(" " * 295)[0])
         # Heinrich
         rom_data.write_int16(0x962A, 0x8040, ni_files.OVL_LIZARD_MEN)
         rom_data.write_int16(0x962E, 0xC700, ni_files.OVL_LIZARD_MEN)
@@ -962,7 +996,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # completely ceases functioning.
         rom_data.write_int16(0x230, 0x1000, ni_files.OVL_1ST_REIN_CARRIE_CRYPT_VAMPIRE_CS)
         # Insert a special message over the "Found a hidden path" text.
-        rom_data.write_bytes(0xB30, cvlod_string_to_bytearray("<To Be Continued|\\|/", append_end=False),
+        rom_data.write_bytes(0xB30, cvlod_string_to_bytearray("<To Be Continued|\\|/")[0],
                              ni_files.OVL_FOUND_A_HIDDEN_PATH_CS)
 
         # Change Oldrey's Diary into an item location.
@@ -980,7 +1014,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int16(0xB12, 0x0086, ni_files.OVL_MARY)
 
         # Write "Z + R + START" over the Special1 description.
-        rom_data.write_bytes(0x3B7C, cvlod_string_to_bytearray("Z + R + START"), ni_files.OVL_PAUSE_MENU)
+        rom_data.write_bytes(0x3B7C, cvlod_string_to_bytearray("Z + R + START\t")[0], ni_files.OVL_PAUSE_MENU)
 
         # Write the specified window colors
         rom_data.write_byte(0x8881A, options["window_color_r"] << 4)
@@ -1101,8 +1135,7 @@ def write_patch(world: "CVLoDWorld", patch: CVLoDProcedurePatch, offset_data: Di
     mary_text = cvlod_text_wrap(mary_text, 254)
 
     patch.write_token(APTokenTypes.WRITE, 0x78EAE0,
-                      bytes(cvlod_string_to_bytearray(mary_text[0] + (" " * (866 - len(mary_text[0]))),
-                                                      append_end=False)))
+                      bytes(cvlod_string_to_bytearray(mary_text[0] + (" " * (866 - len(mary_text[0]))))[0]))
 
     # Write the secondary name the client will use to distinguish a vanilla ROM from an AP one.
     patch.write_token(APTokenTypes.WRITE, 0xFFBFD0, "ARCHIPELAG01".encode("utf-8"))

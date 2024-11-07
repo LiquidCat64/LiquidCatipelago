@@ -1,10 +1,15 @@
+fl_to_below = "To below decks door"
+fl_from_below = "From below decks door"
+fl_sink = "Sink the ship"
+fl_end = "Foggy Lake exit door"
+
 forest_dbridge_gate = "Descending bridge gate"
 forest_werewolf_gate = "Werewolf gate"
-forest_end = "Dracula's drawbridge"
+forest_end = "Forest of Silence drawbridge"
 
 cw_portcullis_c = "Central portcullis"
 cw_lt_door = "Left Tower door"
-cw_end = "End portcullis"
+cw_end = "Castle Wall end portcullis"
 
 villa_warp = "Warp into the Storeroom"
 

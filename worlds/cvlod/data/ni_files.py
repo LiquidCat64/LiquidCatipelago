@@ -1,4 +1,5 @@
 # IDs for the compressed files pointed to by the game's "Nisitenma-Ichigo" table that the APWorld modifies.
+OVL_SEA_MONSTER = 238
 OVL_LIZARD_MEN = 252
 OVL_GILLES_DE_RAIS = 262
 OVL_VINCENT = 263

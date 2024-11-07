@@ -1,7 +1,6 @@
 from .data import lname, rname, ename
 from typing import List, Union
 
-
 # # #    KEY    # # #
 # "stage" = What stage the Region is a part of. The Region and its corresponding Locations and Entrances will only be
 #           put in if its stage is active.
@@ -9,6 +8,45 @@ from typing import List, Union
 # "entrances" = The Entrances to add to that Region when putting in said Region (provided their add conditions pass).
 region_info = {
     "Menu": {},
+
+    rname.fl_start: {"stage": rname.foggy_lake,
+                     "locations": [lname.fld_bow_port,
+                                   lname.fld_starboard_port,
+                                   lname.fld_foremast_lower,
+                                   lname.fld_stairs_port,
+                                   lname.fld_stairs_starboard,
+                                   lname.fld_net_port,
+                                   lname.fld_net_starboard,
+                                   lname.fld_mainmast_base,
+                                   lname.fld_near_door,
+                                   lname.fld_near_block_l,
+                                   lname.fld_near_block_r,
+                                   lname.fld_above_door,
+                                   lname.fld_stern_port,
+                                   lname.fld_stern_starboard,
+                                   lname.fld_poop_port_crates,
+                                   lname.fld_poop_starboard_crates,
+                                   lname.fld_mainmast_top,
+                                   lname.fld_jiggermast,
+                                   lname.fld_foremast_upper_port,
+                                   lname.fld_foremast_upper_starboard],
+                     "entrances": [ename.fl_to_below]},
+
+    rname.fl_middle: {"stage": rname.foggy_lake,
+                      "locations": [lname.flb_hallway_l,
+                                    lname.flb_hallway_r,
+                                    lname.flb_tall_crates,
+                                    lname.flb_short_crates_l,
+                                    lname.flb_short_crates_r],
+                      "entrances": [ename.fl_sink]},
+
+    rname.fl_end: {"stage": rname.foggy_lake,
+                   "locations": [lname.flp_pier_l,
+                                 lname.flp_pier_m,
+                                 lname.flp_pier_r,
+                                 lname.flp_statue_l,
+                                 lname.flp_statue_r],
+                   "entrances": [ename.fl_end]},
 
     rname.forest_start: {"stage": rname.forest_of_silence,
                          "locations": [lname.forest_pillars_right,

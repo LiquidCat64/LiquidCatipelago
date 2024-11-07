@@ -46,6 +46,17 @@ if TYPE_CHECKING:
 # regions = All Regions that make up the stage. If the stage is in the world's active stages, its Regions and their
 #           corresponding Locations and Entrances will all be created.
 stage_info = {
+    "Foggy Lake": {
+        "start region": rname.fl_start, "start map id": 0x10, "start spawn id": 0x00,
+        "mid region": rname.fl_middle, "mid map id": 0x11, "mid spawn id": 0x02,
+        "end region": rname.fl_end, "end map id": 0x12, "end spawn id": 0x01,
+        "endzone map offset": 0xB6302F, "endzone spawn offset": 0xB6302B,
+        "save number offsets": [0x1049C5, 0x1049CD, 0x1049D5],
+        "regions": [rname.fl_start,
+                    rname.fl_middle,
+                    rname.fl_end]
+    },
+
     "Forest of Silence": {
         "start region": rname.forest_start, "start map id": 0x00, "start spawn id": 0x00,
         "mid region": rname.forest_mid, "mid map id": 0x00, "mid spawn id": 0x04,
@@ -198,15 +209,16 @@ stage_info = {
     },
 }
 
-vanilla_stage_order = ["Castle Wall", "Villa"]
+vanilla_stage_order = ["Foggy Lake", "Castle Wall", "Villa"]
 
-vanilla_stage_exits = {
+vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_silence,
+                                          "alt": None, "position": 1, "path": " "},
                        #rname.forest_of_silence: {"prev": None, "next": rname.castle_wall,
-                       #                          "alt": None, "position": 1, "path": " "},
+                       #                          "alt": None, "position": 2, "path": " "},
                        rname.castle_wall: {"prev": None, "next": rname.villa,
-                                           "alt": None, "position": 2, "path": " "},
+                                           "alt": None, "position": 3, "path": " "},
                        rname.villa: {"prev": None, "next": rname.tunnel,
-                                     "alt": rname.underground_waterway, "position": 3, "path": " "}}
+                                     "alt": rname.underground_waterway, "position": 4, "path": " "}}
                        #rname.tunnel: {"prev": None, "next": rname.castle_center,
                        #               "alt": None, "position": 4, "path": " "},
                        #rname.underground_waterway: {"prev": None, "next": rname.castle_center,

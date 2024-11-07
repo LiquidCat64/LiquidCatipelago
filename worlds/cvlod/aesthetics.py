@@ -7,7 +7,7 @@ from .stages import vanilla_stage_order, get_stage_info
 from .locations import get_location_info, base_id
 from .regions import get_region_info
 from .items import get_item_info, item_info
-from .text import cvlod_string_to_bytearray
+from .cvlod_text import cvlod_string_to_bytearray
 
 from typing import TYPE_CHECKING, Dict, List, Tuple, Union, Iterable
 
@@ -328,7 +328,7 @@ def randomize_fountain_puzzle(world: "CVLoDWorld") -> Dict[Tuple[int, int], byte
     return {(0x4780, ni_files.OVL_PAUSE_MENU): cvlod_string_to_bytearray(f"{villa_fountain_order[0]} "
                                                                          f"{villa_fountain_order[1]} "
                                                                          f"{villa_fountain_order[2]} "
-                                                                         f"{villa_fountain_order[3]}      "),
+                                                                         f"{villa_fountain_order[3]}      ")[0],
             (0x173, ni_files.OVL_FOUNTAIN_PUZZLE): FOUNTAIN_LETTERS_TO_BYTES[villa_fountain_order[0]],
             (0x16B, ni_files.OVL_FOUNTAIN_PUZZLE): FOUNTAIN_LETTERS_TO_BYTES[villa_fountain_order[1]],
             (0x163, ni_files.OVL_FOUNTAIN_PUZZLE): FOUNTAIN_LETTERS_TO_BYTES[villa_fountain_order[2]],

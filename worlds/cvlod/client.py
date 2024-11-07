@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Set
 from .locations import base_id
-from .text import cvlod_text_wrap, cvlod_string_to_bytearray
+from .cvlod_text import cvlod_text_wrap, cvlod_string_to_bytearray
 
 from NetUtils import ClientStatus
 import worlds._bizhawk as bizhawk

@@ -158,7 +158,7 @@ class CVLoDWorld(World):
 
         # Add the warp Entrances to the Menu Region (the one always at the start of the Region list).
         # created_regions[0].add_exits(get_warp_entrances(self.active_warp_list))
-        created_regions[0].add_exits({rname.cw_start: "Start stage"})
+        created_regions[0].add_exits({rname.fl_start: "Start stage"})
 
         for reg in created_regions:
 

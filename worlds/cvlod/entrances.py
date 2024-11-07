@@ -16,6 +16,11 @@ from typing import Dict, List, Tuple, Union
 #               is a boolean for whether we are evaluating for the option value or not.
 entrance_info = {
     # Forest of Silence
+    ename.fl_to_below: {"destination": rname.fl_middle, "rule": iname.dck_key},
+    ename.fl_from_below: {"destination": rname.fl_start, "rule": iname.dck_key},
+    ename.fl_sink: {"destination": rname.fl_end},
+    ename.fl_end: {"destination": rname.cw_start},
+
     #ename.forest_dbridge_gate: {"destination": rname.forest_mid},
     #ename.forest_werewolf_gate: {"destination": rname.forest_end},
     #ename.forest_end: {"destination": ["next", rname.forest_of_silence]},
