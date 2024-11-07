@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Set
 from .locations import base_id
-from .text import cv64_text_wrap, cv64_string_to_bytearray
+from .cv64_text import cv64_string_to_bytearray
 
 from NetUtils import ClientStatus
 import worlds._bizhawk as bizhawk
@@ -147,11 +147,10 @@ class Castlevania64Client(BizHawkClient):
             # Write any DeathLinks received along with the corresponding death cause starting with the oldest.
             # To minimize Bizhawk Write jank, the DeathLink write will be prioritized over the item received one.
             if self.received_deathlinks and not self.self_induced_death and not written_deathlinks:
-                death_text, num_lines = cv64_text_wrap(self.death_causes[0], 96)
+                death_text, num_lines = cv64_string_to_bytearray(self.death_causes[0] + "\t", 96)
                 await bizhawk.write(ctx.bizhawk_ctx, [(0x389BE3, [0x01], "RDRAM"),
                                                       (0x389BDF, [0x11], "RDRAM"),
-                                                      (0x18BF98, bytearray([0xA2, 0x0B]) +
-                                                       cv64_string_to_bytearray(death_text, False), "RDRAM"),
+                                                      (0x18BF98, bytearray([0xA2, 0x0B]) + death_text, "RDRAM"),
                                                       (0x18C097, [num_lines], "RDRAM")])
                 self.received_deathlinks -= 1
                 del self.death_causes[0]
@@ -170,12 +169,12 @@ class Castlevania64Client(BizHawkClient):
                         text_color = bytearray([0xA2, 0x0B])
                     else:
                         text_color = bytearray([0xA2, 0x02])
-                    received_text, num_lines = cv64_text_wrap(f"{ctx.item_names.lookup_in_game(next_item.item)}\n"
-                                                              f"from {ctx.player_names[next_item.player]}", 96)
+                    received_text, num_lines = \
+                        cv64_string_to_bytearray(f"{ctx.item_names.lookup_in_game(next_item.item)}\n"
+                                                 f"from {ctx.player_names[next_item.player]}\t", 96)
                     await bizhawk.guarded_write(ctx.bizhawk_ctx,
                                                 [(0x389BE1, [next_item.item & 0xFF], "RDRAM"),
-                                                 (0x18C0A8, text_color + cv64_string_to_bytearray(received_text, False),
-                                                  "RDRAM"),
+                                                 (0x18C0A8, text_color + received_text, "RDRAM"),
                                                  (0x18C1A7, [num_lines], "RDRAM")],
                                                 [(0x389BE1, [0x00], "RDRAM"),   # Remote item reward buffer
                                                  (0x389CBE, save_struct[0xDA:0xDC], "RDRAM"),  # Received items

@@ -13,7 +13,7 @@ import pkgutil
 from . import lzkn64
 from .data import patches, ni_files
 from .stages import get_stage_info
-from .text import cv64_string_to_bytearray, cv64_text_truncate, cv64_text_wrap
+from .cv64_text import cv64_string_to_bytearray, cv64_text_truncate
 from .aesthetics import renon_item_dialogue, get_item_text_color
 from .locations import get_location_info
 from .options import CharacterStages, VincentFightCondition, RenonFightCondition, PostBehemothBoss, RoomOfClocksBoss, \
@@ -256,8 +256,7 @@ class CV64PatchExtensions(APPatchExtension):
 
         # Rename the Wooden Stake and Rose to "You are a FOOL!"
         rom_data.write_bytes(0xEFE34,
-                             bytearray([0xFF, 0xFF, 0xA2, 0x0B]) + cv64_string_to_bytearray("You are a FOOL!",
-                                                                                            append_end=False))
+                             bytearray([0xFF, 0xFF, 0xA2, 0x0B]) + cv64_string_to_bytearray("You are a FOOL!")[0])
         # Capitalize the "k" in "Archives key" to be consistent with...literally every other key name!
         rom_data.write_byte(0xEFF21, 0x2D)
 
@@ -281,7 +280,7 @@ class CV64PatchExtensions(APPatchExtension):
         rom_data.write_bytes(0xBFDBAC, cv64_string_to_bytearray("The Furious Nerd Curse\n"
                                                                 "prevents you from setting\n"
                                                                 "anything until the seal\n"
-                                                                "is removed!", True))
+                                                                "is removed!»\t")[0])
 
         # Special1/2 descriptions redirection.
         rom_data.write_int16(0x1D1E, 0x8040, ni_files.OVL_PAUSE_MENU)
@@ -559,7 +558,7 @@ class CV64PatchExtensions(APPatchExtension):
             rom_data.write_bytes(0xBFCC6E, cv64_string_to_bytearray(f"It won't budge!\n"
                                                                     f"You'll need the power\n"
                                                                     f"of the basement crystal\n"
-                                                                    f"to undo the seal.", True))
+                                                                    f"to undo the seal.»\n")[0])
             special2_name = "Crystal "
             special2_text = "The crystal is on!\n" \
                             "Time to teach the old man\n" \
@@ -571,7 +570,7 @@ class CV64PatchExtensions(APPatchExtension):
             rom_data.write_bytes(0xBFCC6E, cv64_string_to_bytearray(f"It won't budge!\n"
                                                                     f"You'll need to defeat\n"
                                                                     f"{options['required_s2s']} powerful monsters\n"
-                                                                    f"to undo the seal.", True))
+                                                                    f"to undo the seal.»\n")[0])
             special2_name = "Trophy  "
             special2_text = f"Proof you killed a powerful\n" \
                             f"Night Creature. Earn {options['required_s2s']}/{options['total_s2s']}\n" \
@@ -581,7 +580,7 @@ class CV64PatchExtensions(APPatchExtension):
             rom_data.write_bytes(0xBFCC6E, cv64_string_to_bytearray(f"It won't budge!\n"
                                                                     f"You'll need to find\n"
                                                                     f"{options['required_s2s']} Special2 jewels\n"
-                                                                    f"to undo the seal.", True))
+                                                                    f"to undo the seal.»\n")[0])
             special2_text = f"Need {options['required_s2s']}/{options['total_s2s']} to kill Dracula.\n" \
                             f"Looking closely, you see...\n" \
                             f"a piece of him within?"
@@ -592,13 +591,12 @@ class CV64PatchExtensions(APPatchExtension):
                             "how did you get a Special2!?"
         rom_data.write_byte(0xADE8F, options["required_s2s"])
         # Change the Special2 name depending on the setting.
-        rom_data.write_bytes(0xEFD4E, cv64_string_to_bytearray(special2_name))
+        rom_data.write_bytes(0xEFD4E, cv64_string_to_bytearray(special2_name + "\n")[0])
         # Change the Special1 and 2 menu descriptions to tell you how many you need to unlock a warp and fight Dracula
         # respectively.
         special_text_bytes = cv64_string_to_bytearray(f"{options['s1s_per_warp']} per warp unlock.\n"
                                                       f"{options['total_special1s']} exist in total.\n"
-                                                      f"Z + R + START to warp.") + cv64_string_to_bytearray(
-            special2_text)
+                                                      f"Z + R + START to warp.\t" + special2_text + "\t")[0]
         rom_data.write_bytes(0xBFE53C, special_text_bytes)
 
         # On-the-fly actor data modifier hook TODO: Scrap every last bit of this, too!
@@ -781,7 +779,7 @@ class CV64PatchExtensions(APPatchExtension):
             rom_data.write_byte(0x391C7, 0x00)  # Prevent PowerUps from dropping from regular enemies.
             rom_data.write_byte(0xEDEDF, 0x03)  # Make any vanishing PowerUps that do show up L jewels instead.
             # Rename the PowerUp to "PermaUp"
-            rom_data.write_bytes(0xEFDEE, cv64_string_to_bytearray("PermaUp"))
+            rom_data.write_bytes(0xEFDEE, cv64_string_to_bytearray("PermaUp\t")[0])
             # Replace the PowerUp in the Forest Special1 Bridge 3HB rock with an L jewel if 3HBs aren't randomized
             if not options["multi_hit_breakables"]:
                 rom_data.write_byte(0x10C7A1, 0x03)
@@ -924,7 +922,7 @@ class CV64PatchExtensions(APPatchExtension):
         # Everything related to shopsanity.
         if options["shopsanity"]:
             rom_data.write_byte(0xBFBFDF, 0x01)
-            rom_data.write_bytes(0x103868, cv64_string_to_bytearray("Not obtained. "))
+            rom_data.write_bytes(0x103868, cv64_string_to_bytearray("Not obtained. \t")[0])
             rom_data.write_int32s(0xBFD8D0, patches.shopsanity_stuff)
             rom_data.write_int32(0xBD828, 0x0C0FF643)  # JAL	0x803FD90C
             rom_data.write_int32(0xBD5B8, 0x0C0FF651)  # JAL	0x803FD944
@@ -1072,7 +1070,7 @@ def write_patch(world: "CV64World", patch: CV64ProcedurePatch, offset_data: Dict
                                  f"`{str(s1s_per_warp * 4).zfill(2)} {active_warp_list[4]}\t"
                                  f"`{str(s1s_per_warp * 5).zfill(2)} {active_warp_list[5]}\t"
                                  f"`{str(s1s_per_warp * 6).zfill(2)} {active_warp_list[6]}\t"
-                                 f"`{str(s1s_per_warp * 7).zfill(2)} {active_warp_list[7]}")))
+                                 f"`{str(s1s_per_warp * 7).zfill(2)} {active_warp_list[7]}\t")[0]))
 
     # Write the new File Select stage numbers.
     for stage in world.active_stage_exits:
@@ -1081,19 +1079,18 @@ def write_patch(world: "CV64World", patch: CV64ProcedurePatch, offset_data: Dict
 
     # Write all the shop text.
     if world.options.shopsanity:
-        patch.write_token(APTokenTypes.WRITE, 0x103868, bytes(cv64_string_to_bytearray("Not obtained. ")))
+        patch.write_token(APTokenTypes.WRITE, 0x103868, bytes(cv64_string_to_bytearray("Not obtained. ")[0]))
 
         shopsanity_name_text = bytearray(0)
         shopsanity_desc_text = bytearray(0)
         for i in range(len(shop_name_list)):
             shopsanity_name_text += bytearray([0xA0, i]) + shop_colors_list[i] + \
-                                    cv64_string_to_bytearray(cv64_text_truncate(shop_name_list[i], 74))
+                                    cv64_string_to_bytearray(cv64_text_truncate(shop_name_list[i] + "\t", 74))[0]
 
             shopsanity_desc_text += bytearray([0xA0, i])
             if shop_desc_list[i][1] is not None:
-                shopsanity_desc_text += cv64_string_to_bytearray("For " + shop_desc_list[i][1] + ".\n",
-                                                                 append_end=False)
-            shopsanity_desc_text += cv64_string_to_bytearray(renon_item_dialogue[shop_desc_list[i][0]])
+                shopsanity_desc_text += cv64_string_to_bytearray("For " + shop_desc_list[i][1] + ".\n")[0]
+            shopsanity_desc_text += cv64_string_to_bytearray(renon_item_dialogue[shop_desc_list[i][0]] + "\t")[0]
         patch.write_token(APTokenTypes.WRITE, 0x1AD00, bytes(shopsanity_name_text))
         patch.write_token(APTokenTypes.WRITE, 0x1A800, bytes(shopsanity_desc_text))
 
@@ -1106,10 +1103,9 @@ def write_patch(world: "CV64World", patch: CV64ProcedurePatch, offset_data: Dict
         else:
             item_name = loc.item.name
         inject_address = 0xBB7164 + (256 * (loc.address & 0xFFF))
-        wrapped_name, num_lines = cv64_text_wrap(item_name + "\nfor " +
-                                                 world.multiworld.get_player_name(loc.item.player), 96)
-        patch.write_token(APTokenTypes.WRITE, inject_address, bytes(get_item_text_color(loc) +
-                                                                    cv64_string_to_bytearray(wrapped_name)))
+        item_text, num_lines = cv64_string_to_bytearray(item_name + "\nfor " +
+                                                        world.multiworld.get_player_name(loc.item.player) + "\t", 96)
+        patch.write_token(APTokenTypes.WRITE, inject_address, bytes(get_item_text_color(loc) + item_text))
         patch.write_token(APTokenTypes.WRITE, inject_address + 255, bytes([num_lines]))
 
     # Write the secondary name the client will use to distinguish a vanilla ROM from an AP one.

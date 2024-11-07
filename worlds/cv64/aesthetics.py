@@ -392,7 +392,8 @@ def get_countdown_numbers(options: CV64Options, active_locations: Iterable[Locat
 
 
 def get_location_data(world: "CV64World", active_locations: Iterable[Location]) \
-        -> Tuple[Dict[int, bytes], List[str], List[bytearray], List[List[Union[int, str, None]]]]:
+        -> Tuple[Dict[Union[int, Tuple[int, int]], bytes], List[str], List[bytearray],
+                 List[List[Union[int, str, None]]]]:
     """Gets ALL the item data to go into the ROM. Item data consists of two bytes: the first dictates the appearance of
     the item, the second determines what the item actually is when picked up. All items from other worlds will be AP
     items that do nothing when picked up other than set their flag, and their appearance will depend on whether it's

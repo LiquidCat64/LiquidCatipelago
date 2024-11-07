@@ -16,28 +16,40 @@ cv64_char_dict = {"\n": (0x01, 0), " ": (0x02, 4), "!": (0x03, 2), '"': (0x04, 5
                   "n": (0x50, 6), "o": (0x51, 5), "p": (0x52, 5), "q": (0x53, 5), "r": (0x54, 4), "s": (0x55, 4),
                   "t": (0x56, 4), "u": (0x57, 5), "v": (0x58, 6), "w": (0x59, 8), "x": (0x5A, 5), "y": (0x5B, 5),
                   "z": (0x5C, 4), "{": (0x5D, 4), "|": (0x5E, 2), "}": (0x5F, 3), "`": (0x61, 4), "「": (0x62, 3),
-                  "」": (0x63, 3), "~": (0x65, 3), "″": (0x72, 3), "°": (0x73, 3), "∞": (0x74, 8)}
+                  "」": (0x63, 3), "~": (0x65, 3), "″": (0x72, 3), "°": (0x73, 3), "∞": (0x74, 8),
+                  # Special command characters
+                  "»": (0xA3, 0),  # Press A with prompt arrow.
+                  "\t": (0xFF, 0),  # End the current string and begin the next string in the same text pool.
+                  }
 # [0] = CV64's in-game ID for that text character.
 # [1] = How much space towards the in-game line length limit it contributes.
 
 
-def cv64_string_to_bytearray(cv64text: str, a_advance: bool = False, append_end: bool = True) -> bytearray:
-    """Converts a string into a bytearray following CV64's string format."""
+def cv64_string_to_bytearray(cv64_text: str, len_limit: int = 255, wrap: bool = True) -> Tuple[bytearray, int]:
+    """Converts a string into a bytearray following Castlevania 64's string format and gets the number
+    of lines that the string would display on-screen at once."""
     text_bytes = bytearray(0)
-    for i, char in enumerate(cv64text):
+
+    # Wrap the text if we are opting to do so.
+    if wrap:
+        refined_text, num_lines = cv64_text_wrap(cv64_text, len_limit)
+    else:
+        refined_text, num_lines = cv64_text, 1
+
+    # Convert the string into CV64's text string format.
+    for i, char in enumerate(refined_text):
         if char == "\t":
             text_bytes.extend([0xFF, 0xFF])
         else:
             if char in cv64_char_dict:
-                text_bytes.extend([0x00, cv64_char_dict[char][0]])
+                if cv64_char_dict[char][0] >= 0xA0:
+                    text_bytes.extend([cv64_char_dict[char][0], 0x00])
+                else:
+                    text_bytes.extend([0x00, cv64_char_dict[char][0]])
             else:
                 text_bytes.extend([0x00, 0x21])
 
-    if a_advance:
-        text_bytes.extend([0xA3, 0x00])
-    if append_end:
-        text_bytes.extend([0xFF, 0xFF])
-    return text_bytes
+    return text_bytes, num_lines
 
 
 def cv64_text_truncate(cv64text: str, textbox_len_limit: int) -> str:
@@ -65,15 +77,21 @@ def cv64_text_wrap(cv64text: str, textbox_len_limit: int) -> Tuple[str, int]:
     num_lines = 1
 
     for i in range(len(words)):
+        # Reset the word length to 0 on every word iteration and make its default divider a space.
         word_len = 0
         word_divider = " "
 
+        # Check if we're at the very beginning of a line and handle the situation accordingly by increasing the current
+        # line length to account for the space if we are not. Otherwise, the word divider should be nothing.
         if line_len != 0:
             line_len += 4
         else:
             word_divider = ""
 
         for char in words[i]:
+            # Increase the current line and word length by the number of units that character contributes.
+            # If it's not in the char dict, then it's a character not in CVLoD's character set, in which case
+            # use the ? character's spacing by default.
             if char in cv64_char_dict:
                 line_len += cv64_char_dict[char][1]
                 word_len += cv64_char_dict[char][1]
@@ -81,18 +99,26 @@ def cv64_text_wrap(cv64text: str, textbox_len_limit: int) -> Tuple[str, int]:
                 line_len += 5
                 word_len += 5
 
+            # If the word alone is long enough to exceed the line length, or if we're looking at a manually-placed
+            # newline character, consider it wrapped manually at this point and reset the word and line lengths to 0.
             if word_len > textbox_len_limit or char in ["\n", "\t"]:
                 word_len = 0
                 line_len = 0
+                # Track the current number of on-screen textbox lines. The max number that can display at a time is 4.
                 if num_lines < 4:
                     num_lines += 1
 
+            # If the total length of the current line exceeds the line length, wrap the current word to the next line
+            # by changing the previous divider from a space to a newline and making the current line length the current
+            # word length.
             if line_len > textbox_len_limit:
                 word_divider = "\n"
                 line_len = word_len
+                # Track the current number of on-screen textbox lines. The max number that can display at a time is 4.
                 if num_lines < 4:
                     num_lines += 1
 
         new_text += word_divider + words[i]
 
+    # Return the final wrapped text and the number of on-screen lines.
     return new_text, num_lines
