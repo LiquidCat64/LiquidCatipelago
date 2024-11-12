@@ -19,11 +19,13 @@ entrance_info = {
     ename.fl_to_below: {"destination": rname.fl_middle, "rule": iname.dck_key},
     ename.fl_from_below: {"destination": rname.fl_start, "rule": iname.dck_key},
     ename.fl_sink: {"destination": rname.fl_end},
-    ename.fl_end: {"destination": rname.cw_start},
+    ename.fl_end: {"destination": rname.forest_start},
 
-    #ename.forest_dbridge_gate: {"destination": rname.forest_mid},
-    #ename.forest_werewolf_gate: {"destination": rname.forest_end},
-    #ename.forest_end: {"destination": ["next", rname.forest_of_silence]},
+    ename.forest_king_skeleton_1: {"destination": rname.forest_half_1},
+    ename.forest_dbridge_gate: {"destination": rname.forest_half_2},
+    ename.forest_reverse_leap: {"destination": rname.forest_half_1, "add conds": ["hard"]},
+    ename.forest_final_switch: {"destination": rname.forest_end},
+    ename.forest_end: {"destination": rname.cw_start},
 
     # Castle Wall
     ename.cw_portcullis_c: {"destination": rname.cw_exit},

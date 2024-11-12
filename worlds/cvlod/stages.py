@@ -59,12 +59,13 @@ stage_info = {
 
     "Forest of Silence": {
         "start region": rname.forest_start, "start map id": 0x00, "start spawn id": 0x00,
-        "mid region": rname.forest_mid, "mid map id": 0x00, "mid spawn id": 0x04,
+        "mid region": rname.forest_half_2, "mid map id": 0x00, "mid spawn id": 0x06,
         "end region": rname.forest_end, "end map id": 0x00, "end spawn id": 0x01,
         "endzone map offset": 0xB6302F, "endzone spawn offset": 0xB6302B,
         "save number offsets": [0x1049C5, 0x1049CD, 0x1049D5],
         "regions": [rname.forest_start,
-                    rname.forest_mid,
+                    rname.forest_half_1,
+                    rname.forest_half_2,
                     rname.forest_end]
     },
 
@@ -209,12 +210,12 @@ stage_info = {
     },
 }
 
-vanilla_stage_order = ["Foggy Lake", "Castle Wall", "Villa"]
+vanilla_stage_order = ["Foggy Lake", "Forest of Silence", "Castle Wall", "Villa"]
 
 vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_silence,
                                           "alt": None, "position": 1, "path": " "},
-                       #rname.forest_of_silence: {"prev": None, "next": rname.castle_wall,
-                       #                          "alt": None, "position": 2, "path": " "},
+                       rname.forest_of_silence: {"prev": None, "next": rname.castle_wall,
+                                                 "alt": None, "position": 2, "path": " "},
                        rname.castle_wall: {"prev": None, "next": rname.villa,
                                            "alt": None, "position": 3, "path": " "},
                        rname.villa: {"prev": None, "next": rname.tunnel,

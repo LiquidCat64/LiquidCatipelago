@@ -4,8 +4,9 @@ fl_middle = "Foggy Lake: below decks"
 fl_end = "Foggy Lake: pier"
 
 forest_of_silence = "Forest of Silence"
-forest_start = "Forest of Silence: first half"
-forest_mid = "Forest of Silence: second half"
+forest_start = "Forest of Silence: starting area"
+forest_half_1 = "Forest of Silence: first half"
+forest_half_2 = "Forest of Silence: second half"
 forest_end = "Forest of Silence: end area"
 
 castle_wall = "Castle Wall"

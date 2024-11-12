@@ -17,7 +17,7 @@ from .data import iname, rname, ename
 from worlds.AutoWorld import WebWorld, World
 from .aesthetics import randomize_lighting, shuffle_sub_weapons, rom_empty_breakables_flags, \
     randomize_music, get_start_inventory_data, get_location_data, randomize_shop_prices, get_loading_zone_bytes, \
-    get_countdown_numbers, randomize_fountain_puzzle
+    get_countdown_numbers, randomize_fountain_puzzle, randomize_charnel_prize_coffin
 from .rom import RomData, write_patch, get_base_rom_path, CVLoDProcedurePatch, CVLOD_US_HASH
 from .client import CastlevaniaLoDClient
 
@@ -248,6 +248,8 @@ class CVLoDWorld(World):
         # Start Inventory
         offset_data.update(get_start_inventory_data(self.player, self.options,
                                                     self.multiworld.precollected_items[self.player]))
+        # Forest Charnel prize coffin
+        offset_data.update(randomize_charnel_prize_coffin(self))
         # Villa fountain puzzle
         offset_data.update(randomize_fountain_puzzle(self))
 

@@ -200,9 +200,9 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int32s(0xFFE190, patches.subweapon_surface_checker)
 
         # Make it possible to change the starting level.
-        # rom_data.write_byte(0x15D3, 0x46, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15D3, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
         rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
-        # rom_data.write_byte(0x15DB, 0x02, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15DB, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
         rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
@@ -244,6 +244,47 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int16(0x7C6866, 0x0000)
         rom_data.write_byte(0x7C6875, 0x00)
         rom_data.write_int16(0x7C6886, 0x0000)
+
+        # Make coffins 01-04 in the Forest Charnel Houses never spawn items (as in, the RNG for them will never pass).
+        rom_data.write_int32(0x76F440, 0x10000005)  # B [forward 0x05]
+        # Make coffin 00 always try spawning the same consistent three items regardless of whether we previously broke
+        # it or not and regardless of difficulty.
+        rom_data.write_int32(0x76F478, 0x00000000)  # NOP-ed Hard difficulty check
+        rom_data.write_byte(0x76FAC3, 0x00)  # No event flag set for coffin 00.
+        rom_data.write_int32(0x76F4B4, 0x00000000)  # NOP-ed Not Easy difficulty check
+        # Use the current loop iteration to tell what entry in the table to spawn.
+        rom_data.write_int32(0x76F4D4, 0x264E0000)  # ADDIU T6, S2, 0x0000
+        # Assign the event flags and remove the "vanish timer" flag on each of the three coffin item entries we'll use.
+        rom_data.write_int16(0x774966, 0x0011)
+        rom_data.write_byte(0x774969, 0x00)
+        rom_data.write_int16(0x774972, 0x0012)
+        rom_data.write_byte(0x774975, 0x00)
+        rom_data.write_int16(0x7749C6, 0x0013)
+        rom_data.write_byte(0x7749C9, 0x00)
+        # Turn the Henry child actor into a torch check with all necessary parameters assigned.
+        rom_data.write_int16(0x7758DE, 0x0022)
+        rom_data.write_byte(0x7782D5, 0x00)
+        rom_data.write_int16(0x7782E4, 0x01D9)
+        rom_data.write_int16(0x7782E6, 0x0000)
+        rom_data.write_int16(0x7782E8, 0x0000)
+        rom_data.write_int16(0x7782EC, 0x000C)
+        # Set Flag 0x23 on the item King Skeleton 2 leaves behind, and prevent it from being the possible Henry drop.
+        rom_data.write_int32(0x43F8, 0x10000006, ni_files.OVL_KING_SKELETON)
+        rom_data.write_int32s(0x444C, [0x3C088040,  # LUI   T0, 0x8040
+                                       0x2508CBB0,  # ADDIU T0, T0, 0xCBB0
+                                       0x0100F809,  # JALR  RA, T0
+                                       0x00000000], ni_files.OVL_KING_SKELETON)
+        rom_data.write_int32s(0xFFCBB0, patches.king_skeleton_chicken_flag_setter)
+        # Add the backup King Skeleton jaws item that will spawn only if the player orphans it the first time.
+        rom_data.write_byte(0x778415, 0x20)
+        rom_data.write_int32s(0x778418, [0x3D000000, 0x00000000, 0xC4B2C000])
+        rom_data.write_int16(0x778426, 0x002C)
+        rom_data.write_int16(0x778428, 0x0023)
+        rom_data.write_int16(0x77842A, 0x0000)
+        # Make the drawbridge cutscene's end behavior its Henry end behavior for everyone.
+        # The "drawbridge lowered" flag should be set so that Forest's regular end zone is easily accessible, and no
+        # separate cutscene should play in the next map.
+        rom_data.write_int32(0x1294, 0x1000000C, ni_files.OVL_DRAWBRIDGE_LOWERS_CS)
 
         # Make the final Cerberus in Villa Front Yard
         # un-set the Villa entrance portcullis closed flag for all characters (not just Henry).

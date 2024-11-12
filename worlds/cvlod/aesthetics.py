@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from . import CVLoDWorld
 
 FOUNTAIN_LETTERS_TO_BYTES = {"O": b"\x01", "M": b"\x02", "H": b"\x03", "V": b"\x04"}
+CHARNEL_COFFIN_ACTORS_START = 0x777C94
+ACTOR_ENTRY_LENGTH = 0x20
 
 rom_sub_weapon_offsets = {
     # 0x10C6EB: [0x10, rname.forest_of_silence],  # Forest
@@ -318,6 +320,17 @@ def randomize_shop_prices(world: "CVLoDWorld") -> Dict[int, bytes]:
     # return price_dict
 
 
+def randomize_charnel_prize_coffin(world: "CVLoDWorld") -> Dict[int, bytes]:
+    """Randomizes which of the five coffins in the Forest of Silence's Charnel Houses will be the "prize coffin" that
+    will contain three checks upon being broken. Returns the bytes and addresses to write to make the change after
+    deciding it."""
+    correct_charnel_coffin = world.random.randint(0, 4)
+
+    # Swap the IDs of coffin 00 and the new coffin the checks will be in.
+    return {CHARNEL_COFFIN_ACTORS_START + 0x19 + (ACTOR_ENTRY_LENGTH * correct_charnel_coffin): b"\x00",
+            CHARNEL_COFFIN_ACTORS_START + 0x19: int.to_bytes(correct_charnel_coffin, 1, "big")}
+
+
 def randomize_fountain_puzzle(world: "CVLoDWorld") -> Dict[Tuple[int, int], bytes]:
     """Randomizes the combination for the Cornell Villa fountain puzzle and returns both the solution bytes to write
     in the fountain puzzle code AND in Oldrey's Diary's description."""
@@ -464,6 +477,11 @@ def get_location_data(world: "CVLoDWorld", active_locations: Iterable[Location])
 
         # Add the item value to the dict of writes by its offset.
         location_bytes[item_offset] = item_value
+
+        # Add the item value by the alternate offset as well if there is one.
+        alt_offset = get_location_info(loc.name, "alt offset")
+        if alt_offset is not None:
+            location_bytes[alt_offset] = item_value
 
         # If it's an Axe or Cross in a higher freestanding location, lower it into grab range.
         # KCEK made these spawn 3.2 units higher for some reason.

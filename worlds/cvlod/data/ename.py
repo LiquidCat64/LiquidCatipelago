@@ -3,8 +3,10 @@ fl_from_below = "From below decks door"
 fl_sink = "Sink the ship"
 fl_end = "Foggy Lake exit door"
 
+forest_king_skeleton_1 = "Defeat King Skeleton 1"
 forest_dbridge_gate = "Descending bridge gate"
-forest_werewolf_gate = "Werewolf gate"
+forest_reverse_leap = "Reverse leap of faith"
+forest_final_switch = "Final switch gate"
 forest_end = "Forest of Silence drawbridge"
 
 cw_portcullis_c = "Central portcullis"
