@@ -68,12 +68,14 @@ entrance_info = {
     # Villa crypt exterior
     ename.villa_bridge_door: {"destination": rname.villa_maze_f},
     ename.villa_crest_door: {"destination": rname.villa_crypt_i, "rule": "Crests"},
-    #ename.villa_end_r: {"destination": ["next", rname.villa]},
+    ename.villa_end_r: {"destination": rname.tunnel_start},
     #ename.villa_end_c: {"destination": ["alt", rname.villa]},
 
     # Tunnel
-    #ename.tunnel_start_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
-    #ename.tunnel_gondolas: {"destination": rname.tunnel_end},
+    ename.tunnel_cutscene: {"destination": rname.tunnel_main},
+    # ename.tunnel_start_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
+    ename.tunnel_gondolas: {"destination": rname.tunnel_end},
+    ename.tunnel_reverse: {"destination": rname.tunnel_start, "add conds": ["hard"]},
     #ename.tunnel_end_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
     #ename.tunnel_end: {"destination": ["next", rname.tunnel]},
     # Underground Waterway

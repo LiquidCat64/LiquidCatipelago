@@ -31,7 +31,8 @@ villa_crypt_e = "Villa: crypt exterior"
 villa_crypt_i = "Villa: crypt interior"
 
 tunnel = "Tunnel"
-tunnel_start = "Tunnel: first half"
+tunnel_start = "Tunnel: starting area"
+tunnel_main = "Tunnel: first half"
 tunnel_end = "Tunnel: second half"
 
 underground_waterway = "Underground Waterway"

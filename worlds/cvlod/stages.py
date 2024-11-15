@@ -105,11 +105,12 @@ stage_info = {
 
     "Tunnel": {
         "start region": rname.tunnel_start, "start map id": 0x07, "start spawn id": 0x00,
-        "mid region": rname.tunnel_end, "mid map id": 0x07, "mid spawn id": 0x03,
-        "end region": rname.tunnel_end, "end map id": 0x07, "end spawn id": 0x11,
+        "mid region": rname.tunnel_end, "mid map id": 0x07, "mid spawn id": 0x04,
+        "end region": rname.tunnel_end, "end map id": 0x07, "end spawn id": 0x01,
         "endzone map offset": 0x109B4F, "endzone spawn offset": 0x109B51, "character": "Reinhardt",
         "save number offsets": [0x104A15, 0x104A1D, 0x104A25, 0x104A2D],
         "regions": [rname.tunnel_start,
+                    rname.tunnel_main,
                     rname.tunnel_end]
     },
 
@@ -210,7 +211,7 @@ stage_info = {
     },
 }
 
-vanilla_stage_order = ["Foggy Lake", "Forest of Silence", "Castle Wall", "Villa"]
+vanilla_stage_order = ["Foggy Lake", "Forest of Silence", "Castle Wall", "Villa", "Tunnel"]
 
 vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_silence,
                                           "alt": None, "position": 1, "path": " "},
@@ -219,9 +220,9 @@ vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_
                        rname.castle_wall: {"prev": None, "next": rname.villa,
                                            "alt": None, "position": 3, "path": " "},
                        rname.villa: {"prev": None, "next": rname.tunnel,
-                                     "alt": rname.underground_waterway, "position": 4, "path": " "}}
-                       #rname.tunnel: {"prev": None, "next": rname.castle_center,
-                       #               "alt": None, "position": 4, "path": " "},
+                                     "alt": rname.underground_waterway, "position": 4, "path": " "},
+                       rname.tunnel: {"prev": None, "next": rname.castle_center,
+                                      "alt": None, "position": 5, "path": " "}}
                        #rname.underground_waterway: {"prev": None, "next": rname.castle_center,
                        #                             "alt": None, "position": 4, "path": "'"},
                        #rname.castle_center: {"prev": None, "next": rname.duel_tower,

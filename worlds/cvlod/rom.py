@@ -202,13 +202,17 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Make it possible to change the starting level.
         rom_data.write_byte(0x15D3, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
         rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
-        rom_data.write_byte(0x15DB, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15DB, 0x07, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
         rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
 
         # Give Henry all the time in the world just like everyone else.
         rom_data.write_byte(0x86DDF, 0x04)
+        # Make the Henry warp jewels work for everyone at the expense of the light effect surrounding them.
+        # The code that creates and renders it is exclusively inside Henry's overlay, so it must go for it to function
+        # for the rest of the characters, sadly.
+        rom_data.write_int32(0xF6A5C, 0x00000000)  # NOP
 
         # Lock the door in Foggy Lake below decks leading out to above decks with the Deck Key.
         # It's the same door in-universe as the above decks one but on a different map.
@@ -261,13 +265,13 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_byte(0x774975, 0x00)
         rom_data.write_int16(0x7749C6, 0x0013)
         rom_data.write_byte(0x7749C9, 0x00)
-        # Turn the Henry child actor into a torch check with all necessary parameters assigned.
-        rom_data.write_int16(0x7758DE, 0x0022)
-        rom_data.write_byte(0x7782D5, 0x00)
-        rom_data.write_int16(0x7782E4, 0x01D9)
-        rom_data.write_int16(0x7782E6, 0x0000)
-        rom_data.write_int16(0x7782E8, 0x0000)
-        rom_data.write_int16(0x7782EC, 0x000C)
+        # Turn the Forest Henry child actor into a torch check with all necessary parameters assigned.
+        rom_data.write_int16(0x7758DE, 0x0022)  # Dropped item flag ID
+        rom_data.write_byte(0x7782D5, 0x00)     # Flag check unassignment
+        rom_data.write_int16(0x7782E4, 0x01D9)  # Candle actor ID
+        rom_data.write_int16(0x7782E6, 0x0000)  # Flag check unassignment
+        rom_data.write_int16(0x7782E8, 0x0000)  # Flag check unassignment
+        rom_data.write_int16(0x7782EC, 0x000C)  # Candle ID
         # Set Flag 0x23 on the item King Skeleton 2 leaves behind, and prevent it from being the possible Henry drop.
         rom_data.write_int32(0x43F8, 0x10000006, ni_files.OVL_KING_SKELETON)
         rom_data.write_int32s(0x444C, [0x3C088040,  # LUI   T0, 0x8040
@@ -336,6 +340,18 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int32(0x797BB8, 0x802E4C34)
         rom_data.write_byte(0x797D6C, 0x52)
         rom_data.write_int32(0x797D70, 0x802E4C34)
+
+        # Make the Tunnel gondolas check for the Spider Women cutscene like they do in CV64.
+        rom_data.write_int32(0x79B8CC, 0x0C0FF2F8)  # JAL	0x803FCBE0
+        rom_data.write_int32s(0xFFCBE0, patches.gondola_spider_cutscene_checker)
+        # Turn the Tunnel Henry child actor into a torch check with all necessary parameters assigned.
+        rom_data.write_int16(0x79EF8E, 0x0024)  # Dropped item flag ID
+        rom_data.write_byte(0x7A1469, 0x00)     # Flag check unassignment
+        rom_data.write_int16(0x7A1478, 0x01D9)  # Candle actor ID
+        rom_data.write_int16(0x7A147A, 0x0000)  # Flag check unassignment
+        rom_data.write_int16(0x7A147C, 0x0000)  # Flag check unassignment
+        rom_data.write_int16(0x7A147E, 0x0000)  # Flag check unassignment
+        rom_data.write_int16(0x7A1480, 0x000F)  # Candle ID
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
         # came before them
