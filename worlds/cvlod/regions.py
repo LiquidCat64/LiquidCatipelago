@@ -243,7 +243,8 @@ region_info = {
                                         lname.villac_coffin_l,
                                         lname.villac_coffin_r],
                           "entrances": [ename.villa_end_r,
-                                        ename.villa_end_ca]
+                                        ename.villa_end_ca,
+                                        ename.villa_end_co]
                           },
 
     rname.tunnel_start: {"stage": rname.tunnel,
@@ -276,7 +277,7 @@ region_info = {
                                       lname.tunnel_rgondola_station,
                                       lname.tunnel_gondola_transfer],
                         "entrances": [  # ename.tunnel_start_renon,
-                                      ename.tunnel_gondolas]},
+                            ename.tunnel_gondolas]},
 
     rname.tunnel_end: {"stage": rname.tunnel,
                        "locations": [lname.tunnel_corpse_bucket_quag,
@@ -295,9 +296,9 @@ region_info = {
                                      lname.tunnel_shovel_sdoor_m,
                                      lname.tunnel_shovel_sdoor_r],
                        "entrances": [  # ename.tunnel_end_renon,
-                                     ename.tunnel_reverse,
-                                     # #ename.tunnel_end
-                                    ]},
+                           ename.tunnel_reverse,
+                           # #ename.tunnel_end
+                       ]},
 
     rname.uw_main: {"stage": rname.underground_waterway,
                     "locations": [lname.uw_near_ent,
@@ -324,10 +325,58 @@ region_info = {
                                   ]},
 
     rname.uw_end: {"stage": rname.underground_waterway,
-                   "locations": [lname.the_end],
                    "entrances": [
                        # ename.uw_end
                    ]},
+
+    rname.tow_start: {"stage": rname.the_outer_wall,
+                      "locations": [lname.tow_start_rear,
+                                    lname.tow_start_front,
+                                    lname.tow_start_entry_l,
+                                    lname.tow_start_entry_r,
+                                    lname.tow_start_climb_b,
+                                    lname.tow_start_climb_t,
+                                    lname.tow_start_elevator_l,
+                                    lname.tow_start_elevator_r,
+                                    lname.tow_pillar_l,
+                                    lname.tow_pillar_r,
+                                    lname.tow_eagle,
+                                    lname.tow_saws_door_l,
+                                    lname.tow_saws_door_r,
+                                    lname.tow_child,
+                                    lname.tow_key_ledge,
+                                    lname.tow_key_entry_l,
+                                    lname.tow_key_entry_r,
+                                    lname.tow_key_alcove,
+                                    lname.tow_locked_door_l,
+                                    lname.tow_locked_door_r,
+                                    lname.tow_half_arch_under,
+                                    lname.tow_half_arch_between,
+                                    lname.tow_half_arch_secret],
+                      "entrances": [ename.tow_to_wall_door,
+                                    ename.tow_leap]},
+
+    rname.tow_mid: {"stage": rname.the_outer_wall,
+                    "locations": [lname.tow_retract_elevator_l,
+                                  lname.tow_retract_elevator_r,
+                                  lname.tow_retract_shimmy_start,
+                                  lname.tow_retract_shimmy_mid,
+                                  lname.tow_boulders_door_l,
+                                  lname.tow_boulders_door_r,
+                                  lname.tow_boulders_elevator_l,
+                                  lname.tow_boulders_elevator_r,
+                                  lname.tow_near_boulders_exit,
+                                  lname.tow_slide_start,
+                                  lname.tow_slide_first_u,
+                                  lname.tow_slide_first_l,
+                                  lname.tow_slide_second],
+                    "entrances": [ename.tow_from_wall_door,
+                                  ename.tow_slide]},
+
+    rname.tow_end: {"stage": rname.the_outer_wall,
+                    "locations": [lname.the_end],
+                    # "entrances": [ename.tow_end]},
+                    },
 
     rname.cc_main: {"stage": rname.castle_center,
                     "locations": [lname.ccb_skel_hallway_ent,

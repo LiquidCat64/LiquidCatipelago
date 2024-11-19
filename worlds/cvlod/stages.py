@@ -124,6 +124,17 @@ stage_info = {
                     rname.uw_end]
     },
 
+    "The Outer Wall": {
+        "start region": rname.tow_start, "start map id": 0x2A, "start spawn id": 0x00,
+        "mid region": rname.tow_mid, "mid map id": 0x2A, "mid spawn id": 0x0C,
+        "end region": rname.tow_end, "end map id": 0x2A, "end spawn id": 0x0B,
+        "endzone map offset": 0x109B67, "endzone spawn offset": 0x109B69, "character": "Cornell",
+        "save number offsets": [0x104A35, 0x104A3D],
+        "regions": [rname.tow_start,
+                    rname.tow_mid,
+                    rname.tow_end]
+    },
+
     "Castle Center": {
         "start region": rname.cc_main, "start map id": 0x09, "start spawn id": 0x00,
         "mid region": rname.cc_main, "mid map id": 0x0E, "mid spawn id": 0x03,
@@ -211,7 +222,8 @@ stage_info = {
     },
 }
 
-vanilla_stage_order = ["Foggy Lake", "Forest of Silence", "Castle Wall", "Villa", "Tunnel", "Underground Waterway"]
+vanilla_stage_order = ["Foggy Lake", "Forest of Silence", "Castle Wall", "Villa", "Tunnel", "Underground Waterway",
+                       "The Outer Wall"]
 
 vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_silence,
                                           "alt": None, "position": 1, "path": " "},
@@ -224,7 +236,9 @@ vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_
                        rname.tunnel: {"prev": None, "next": rname.castle_center,
                                       "alt": None, "position": 5, "path": " "},
                        rname.underground_waterway: {"prev": None, "next": rname.castle_center,
-                                                    "alt": None, "position": 5, "path": "'"}}
+                                                    "alt": None, "position": 5, "path": "'"},
+                       rname.the_outer_wall: {"prev": None, "next": rname.castle_center,
+                                              "alt": None, "position": 5, "path": "'"}}
                        #rname.castle_center: {"prev": None, "next": rname.duel_tower,
                        #                      "alt": rname.tower_of_science, "position": 5, "path": " "},
                        #rname.duel_tower: {"prev": rname.castle_center, "next": rname.tower_of_execution,

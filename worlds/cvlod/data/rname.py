@@ -39,6 +39,11 @@ underground_waterway = "Underground Waterway"
 uw_main = "Underground Waterway: main area"
 uw_end = "Underground Waterway: end"
 
+the_outer_wall = "The Outer Wall"
+tow_start = "The Outer Wall: first half"
+tow_mid = "The Outer Wall: second half"
+tow_end = "The Outer Wall: end arena"
+
 castle_center = "Castle Center"
 cc_main = "Castle Center: main area"
 cc_crystal = "Castle Center: big crystal"

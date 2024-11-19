@@ -55,6 +55,12 @@ uw_final_waterfall = "Final waterfall"
 uw_renon = "Underground Waterway contract"
 uw_end = "End Waterway door"
 
+tow_to_wall_door = "To Wall Door"
+tow_from_wall_door = "From Wall Door"
+tow_leap = "Starting climb leap of faith"
+tow_slide = "Slide down the rooftops"
+tow_end = "End Outer Wall drop-in"
+
 cc_tc_door = "Torture Chamber door"
 cc_renon = "Castle Center contract"
 cc_lower_wall = "Lower sealed cracked wall"

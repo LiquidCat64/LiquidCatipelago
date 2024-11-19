@@ -61,21 +61,6 @@ rom_sub_weapon_offsets = {
     # 0x10CEE3: [0x0D, rname.clock_tower],
 }
 
-rom_empty_breakables_flags = {
-    0x10C74D: 0x40FF05,  # Forest of Silence
-    0x10C765: 0x20FF0E,
-    0x10C774: 0x0800FF0E,
-    0x10C755: 0x80FF05,
-    0x10C784: 0x0100FF0E,
-    0x10C73C: 0x0200FF0E,
-
-    0x10C8D0: 0x0400FF0E,  # Villa foyer
-
-    0x10CF9F: 0x08,  # Room of Clocks flags
-    0x10CFA7: 0x01,
-    0xBFCB6F: 0x04,  # Room of Clocks candle property IDs
-    0xBFCB73: 0x05,
-}
 
 # TODO: Find and lower all the problematic freestanding sub-weapon spots.
 rom_axe_cross_lower_values = {

@@ -157,7 +157,7 @@ class MultiHitBreakables(Toggle):
 
 
 class EmptyBreakables(Toggle):
-    """Adds 9 check locations in the form of breakables that normally have nothing (all empty Forest coffins, etc.)
+    """Adds 12 check locations in the form of breakables that normally have nothing (all empty Outer Wall torches, etc.)
     and some additional Red Jewels and/or moneybags into the item pool to compensate."""
     display_name = "Empty Breakables"
 
@@ -453,7 +453,7 @@ class CVLoDOptions(PerGameCommonOptions):
     carrie_logic: CarrieLogic
     hard_logic: HardLogic
     multi_hit_breakables: MultiHitBreakables
-    # empty_breakables: EmptyBreakables
+    empty_breakables: EmptyBreakables
     # lizard_locker_items: LizardLockerItems
     # shopsanity: Shopsanity
     # shop_prices: ShopPrices

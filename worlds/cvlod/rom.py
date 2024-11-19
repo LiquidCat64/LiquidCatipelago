@@ -202,7 +202,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Make it possible to change the starting level.
         rom_data.write_byte(0x15D3, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
         rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
-        rom_data.write_byte(0x15DB, 0x08, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15DB, 0x2A, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
         rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
@@ -350,7 +350,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int16(0x7A1478, 0x01D9)  # Candle actor ID
         rom_data.write_int16(0x7A147A, 0x0000)  # Flag check unassignment
         rom_data.write_int16(0x7A147C, 0x0000)  # Flag check unassignment
-        rom_data.write_int16(0x7A147E, 0x0000)  # Flag check unassignment
+        rom_data.write_int16(0x7A147E, 0x0000)  # Rotation unassignment
         rom_data.write_int16(0x7A1480, 0x000F)  # Candle ID
         # Set the Tunnel end zone destination ID to the ID for the decoupled Spider Queen arena.
         rom_data.write_byte(0x79FD8F, 0x40)
@@ -361,7 +361,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int16(0x7A5768, 0x01D9)  # Candle actor ID
         rom_data.write_int16(0x7A576A, 0x0000)  # Flag check unassignment
         rom_data.write_int16(0x7A576C, 0x0000)  # Flag check unassignment
-        rom_data.write_int16(0x7A576E, 0x0000)  # Flag check unassignment
+        rom_data.write_int16(0x7A576E, 0x0000)  # Rotation unassignment
         rom_data.write_int16(0x7A5770, 0x0000)  # Candle ID
         rom_data.write_int32(0x7A5774, 0x00000000)  # Removed special spawn check address
         # Set the Waterway end zone destination ID to the ID for the decoupled Medusa arena.
@@ -373,6 +373,16 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int16(0x7C87C6, 0x02A1)  # Tunnel flag ID
         rom_data.write_byte(0x7C87D5, 0x20)  # Flag check assignment
         rom_data.write_int16(0x7C87E6, 0x02A2)  # Underground Waterway flag ID
+
+        # Turn the Outer Wall Henry child actor into a torch check with all necessary parameters assigned.
+        rom_data.write_int16(0x833A9E, 0x0026)  # Dropped item flag ID
+        rom_data.write_byte(0x834B15, 0x00)     # Flag check unassignment
+        rom_data.write_int16(0x834B24, 0x01D9)  # Candle actor ID
+        rom_data.write_int16(0x834B26, 0x0000)  # Flag check unassignment
+        rom_data.write_int16(0x834B28, 0x0000)  # Flag check unassignment
+        rom_data.write_int16(0x834B2A, 0x0000)  # Rotation unassignment
+        rom_data.write_int16(0x834B2C, 0x0002)  # Candle ID
+        rom_data.write_int32(0x834B30, 0x00000000)  # Removed special spawn check address
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
         # came before them
@@ -486,6 +496,11 @@ class CVLoDPatchExtensions(APPatchExtension):
             rom_data.write_int16(0x7D0DC6, 0x032A)  # CT gear climb top corner slab
             rom_data.write_int16(0x829A16, 0x032D)  # CT giant chasm farside climb
             rom_data.write_int16(0x82CC8A, 0x0330)  # CT beneath final slide
+
+        # If the empty breakables are on, write all data associated with them.
+        if options["empty_breakables"]:
+            for offset in patches.empty_breakables_data:
+                rom_data.write_bytes(offset, patches.empty_breakables_data[offset])
 
         # Kills the pointer to the Countdown number, resets the "in a demo?" value whenever changing/reloading the
         # game state, and mirrors the current game state value in a spot that's easily readable.
@@ -1249,6 +1264,7 @@ def write_patch(world: "CVLoDWorld", patch: CVLoDProcedurePatch, offset_data: Di
         # "permanent_powerups": world.options.permanent_powerups.value,
         # "background_music": world.options.background_music.value,
         "multi_hit_breakables": world.options.multi_hit_breakables.value,
+        "empty_breakables": world.options.empty_breakables.value,
         # "drop_previous_sub_weapon": world.options.drop_previous_sub_weapon.value,
         "countdown": world.options.countdown.value,
         # "shopsanity": world.options.shopsanity.value,

@@ -15,9 +15,9 @@ from .regions import get_region_info
 from .rules import CVLoDRules
 from .data import iname, rname, ename
 from worlds.AutoWorld import WebWorld, World
-from .aesthetics import randomize_lighting, shuffle_sub_weapons, rom_empty_breakables_flags, \
-    randomize_music, get_start_inventory_data, get_location_data, randomize_shop_prices, get_loading_zone_bytes, \
-    get_countdown_numbers, randomize_fountain_puzzle, randomize_charnel_prize_coffin
+from .aesthetics import randomize_lighting, shuffle_sub_weapons, randomize_music, get_start_inventory_data,\
+    get_location_data, randomize_shop_prices, get_loading_zone_bytes,  get_countdown_numbers,\
+    randomize_fountain_puzzle, randomize_charnel_prize_coffin
 from .rom import RomData, write_patch, get_base_rom_path, CVLoDProcedurePatch, CVLOD_US_HASH
 from .client import CastlevaniaLoDClient
 
@@ -234,9 +234,6 @@ class CVLoDWorld(World):
         # Sub-weapons
         if self.options.sub_weapon_shuffle == SubWeaponShuffle.option_own_pool:
             offset_data.update(shuffle_sub_weapons(self))
-        # Empty breakables
-        #if self.options.empty_breakables:
-        #    offset_data.update(rom_empty_breakables_flags)
         # Music
         #if self.options.background_music:
         #    offset_data.update(randomize_music(self))

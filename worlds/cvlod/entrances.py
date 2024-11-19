@@ -54,7 +54,7 @@ entrance_info = {
     ename.villa_from_storeroom: {"destination": rname.villa_living, "rule": iname.str_key},
     # Villa front maze
     ename.villa_from_main_maze_gate: {"destination": rname.villa_living, "rule": iname.gdn_key},
-    ename.villa_copper_door: {"destination": rname.villa_crypt_e, "rule": iname.cu_key},
+    ename.villa_copper_door: {"destination": rname.villa_crypt_e, "rule": iname.cu_key, "add conds": ["not hard"]},
     ename.villa_front_rose_doors: {"destination": rname.villa_maze_r, "rule": iname.rg_key},
     # Villa rear maze
     ename.villa_from_rear_maze_gate: {"destination": rname.villa_servants, "rule": iname.gdn_key},
@@ -70,6 +70,7 @@ entrance_info = {
     ename.villa_crest_door: {"destination": rname.villa_crypt_i, "rule": "Crests"},
     ename.villa_end_r: {"destination": rname.tunnel_start},
     ename.villa_end_ca: {"destination": rname.uw_main},
+    ename.villa_end_co: {"destination": rname.tow_start},
 
     # Tunnel
     ename.tunnel_cutscene: {"destination": rname.tunnel_main},
@@ -83,6 +84,13 @@ entrance_info = {
     #ename.uw_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
     ename.uw_final_waterfall: {"destination": rname.uw_end},
     # ename.uw_end: {"destination": ["next", rname.underground_waterway]},
+
+    # The Outer Wall
+    ename.tow_to_wall_door: {"destination": rname.tow_mid, "rule": iname.wall_key, "add conds": ["not hard"]},
+    ename.tow_leap: {"destination": rname.tow_mid, "add conds": ["hard"]},
+    ename.tow_from_wall_door: {"destination": rname.tow_start, "rule": iname.wall_key},
+    ename.tow_slide: {"destination": rname.tow_end},
+    # ename.tow_end: {"destination": ["next", rname.the_outer_wall]},
 
     # Castle Center
     #ename.cc_tc_door: {"destination": rname.cc_torture_chamber, "rule": iname.chb_key},
