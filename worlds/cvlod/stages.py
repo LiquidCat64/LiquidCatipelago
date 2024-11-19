@@ -116,7 +116,7 @@ stage_info = {
 
     "Underground Waterway": {
         "start region": rname.uw_main, "start map id": 0x08, "start spawn id": 0x00,
-        "mid region": rname.uw_main, "mid map id": 0x08, "mid spawn id": 0x03,
+        "mid region": rname.uw_main, "mid map id": 0x08, "mid spawn id": 0x04,
         "end region": rname.uw_end, "end map id": 0x08, "end spawn id": 0x01,
         "endzone map offset": 0x109B67, "endzone spawn offset": 0x109B69, "character": "Carrie",
         "save number offsets": [0x104A35, 0x104A3D],
@@ -211,7 +211,7 @@ stage_info = {
     },
 }
 
-vanilla_stage_order = ["Foggy Lake", "Forest of Silence", "Castle Wall", "Villa", "Tunnel"]
+vanilla_stage_order = ["Foggy Lake", "Forest of Silence", "Castle Wall", "Villa", "Tunnel", "Underground Waterway"]
 
 vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_silence,
                                           "alt": None, "position": 1, "path": " "},
@@ -222,9 +222,9 @@ vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_
                        rname.villa: {"prev": None, "next": rname.tunnel,
                                      "alt": rname.underground_waterway, "position": 4, "path": " "},
                        rname.tunnel: {"prev": None, "next": rname.castle_center,
-                                      "alt": None, "position": 5, "path": " "}}
-                       #rname.underground_waterway: {"prev": None, "next": rname.castle_center,
-                       #                             "alt": None, "position": 4, "path": "'"},
+                                      "alt": None, "position": 5, "path": " "},
+                       rname.underground_waterway: {"prev": None, "next": rname.castle_center,
+                                                    "alt": None, "position": 5, "path": "'"}}
                        #rname.castle_center: {"prev": None, "next": rname.duel_tower,
                        #                      "alt": rname.tower_of_science, "position": 5, "path": " "},
                        #rname.duel_tower: {"prev": rname.castle_center, "next": rname.tower_of_execution,

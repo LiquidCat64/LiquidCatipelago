@@ -202,7 +202,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Make it possible to change the starting level.
         rom_data.write_byte(0x15D3, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
         rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
-        rom_data.write_byte(0x15DB, 0x07, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15DB, 0x08, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
         rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
@@ -352,17 +352,39 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int16(0x7A147C, 0x0000)  # Flag check unassignment
         rom_data.write_int16(0x7A147E, 0x0000)  # Flag check unassignment
         rom_data.write_int16(0x7A1480, 0x000F)  # Candle ID
+        # Set the Tunnel end zone destination ID to the ID for the decoupled Spider Queen arena.
+        rom_data.write_byte(0x79FD8F, 0x40)
+
+        # Turn the Waterway Henry child actor into a torch check with all necessary parameters assigned.
+        rom_data.write_int16(0x7A409E, 0x0025)  # Dropped item flag ID
+        rom_data.write_byte(0x7A5759, 0x00)     # Flag check unassignment
+        rom_data.write_int16(0x7A5768, 0x01D9)  # Candle actor ID
+        rom_data.write_int16(0x7A576A, 0x0000)  # Flag check unassignment
+        rom_data.write_int16(0x7A576C, 0x0000)  # Flag check unassignment
+        rom_data.write_int16(0x7A576E, 0x0000)  # Flag check unassignment
+        rom_data.write_int16(0x7A5770, 0x0000)  # Candle ID
+        rom_data.write_int32(0x7A5774, 0x00000000)  # Removed special spawn check address
+        # Set the Waterway end zone destination ID to the ID for the decoupled Medusa arena.
+        rom_data.write_byte(0x7A4A0B, 0x80)
+
+        # Make different Tunnel/Waterway boss arena end loading zones spawn depending on whether the 0x2A1 or 0x2A2
+        # flags are set.
+        rom_data.write_byte(0x7C87B5, 0x20)  # Flag check assignment
+        rom_data.write_int16(0x7C87C6, 0x02A1)  # Tunnel flag ID
+        rom_data.write_byte(0x7C87D5, 0x20)  # Flag check assignment
+        rom_data.write_int16(0x7C87E6, 0x02A2)  # Underground Waterway flag ID
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
         # came before them
         # #rom_data.write_int32(0x97244, 0x803FDD60)
         # #rom_data.write_int32s(0xBFDD60, patches.forest_cw_villa_intro_cs_player)
 
-        # Make changing the map ID to 0xFF reset the map. Helpful to work around a bug wherein the camera gets stuck
-        # when entering a loading zone that doesn't change the map.
-        # #rom_data.write_int32s(0x197B0, [0x0C0FF7E6,  # JAL   0x803FDF98
-        #                            0x24840008])  # ADDIU A0, A0, 0x0008
-        # #rom_data.write_int32s(0xBFDF98, patches.map_id_refresher)
+        # Make changing the map ID to 0xFF reset the map (helpful to work around a bug wherein the camera gets stuck
+        # when entering a loading zone that doesn't change the map) or changing the map ID to 0x53 or 0x93 to go to a
+        # decoupled version of the Spider Queen or Medusa arena respectively.
+        rom_data.write_int32s(0x1C3B4, [0x0C0FF304,    # JAL   0x803FCC10
+                                        0x24840008]),  # ADDIU A0, A0, 0x0008
+        rom_data.write_int32s(0xFFCC10, patches.map_refresher)
 
         # Enable swapping characters when loading into a map by holding L.
         # rom_data.write_int32(0x97294, 0x803FDFC4)

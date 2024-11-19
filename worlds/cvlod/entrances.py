@@ -69,7 +69,7 @@ entrance_info = {
     ename.villa_bridge_door: {"destination": rname.villa_maze_f},
     ename.villa_crest_door: {"destination": rname.villa_crypt_i, "rule": "Crests"},
     ename.villa_end_r: {"destination": rname.tunnel_start},
-    #ename.villa_end_c: {"destination": ["alt", rname.villa]},
+    ename.villa_end_ca: {"destination": rname.uw_main},
 
     # Tunnel
     ename.tunnel_cutscene: {"destination": rname.tunnel_main},
@@ -78,11 +78,12 @@ entrance_info = {
     ename.tunnel_reverse: {"destination": rname.tunnel_start, "add conds": ["hard"]},
     #ename.tunnel_end_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
     #ename.tunnel_end: {"destination": ["next", rname.tunnel]},
+
     # Underground Waterway
     #ename.uw_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
-    #ename.uw_final_waterfall: {"destination": rname.uw_end},
-    #ename.uw_waterfall_skip: {"destination": rname.uw_main, "add conds": ["hard"]},
-    #ename.uw_end: {"destination": ["next", rname.underground_waterway]},
+    ename.uw_final_waterfall: {"destination": rname.uw_end},
+    # ename.uw_end: {"destination": ["next", rname.underground_waterway]},
+
     # Castle Center
     #ename.cc_tc_door: {"destination": rname.cc_torture_chamber, "rule": iname.chb_key},
     #ename.cc_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},

@@ -1149,7 +1149,7 @@ countdown_number_manager = [
     # Updates the color of the number depending on what it currently is.
     # 0 = Dark brown    Same as the initial count = Green     Otherwise = Light brown
     0x3C08801D,  # LUI   T0, 0x801D
-    0x9109AE79,  # LBU   T1, 0xAE79 (T0)
+    0x9109AB91,  # LBU   T1, 0xAB91 (T0)
     0x3C0A8040,  # LUI   T2, 0x8040
     0x01495021,  # ADDU  T2, T2, T1
     0x914BC4D0,  # LBU   T3, 0xC4D0 (T2)
@@ -1528,19 +1528,40 @@ forest_cw_villa_intro_cs_player = [
     0x08005FAA   # J     0x80017EA8
 ]
 
-map_id_refresher = [
-    # After transitioning to a different map, if this detects the map ID being transitioned to as FF, it will write back
-    # the past map ID so that the map will reset. Useful for thngs like getting around a bug wherein the camera fixes in
-    # place if you enter a loading zone that doesn't actually change the map, which can happen in a seed that gives you
-    # any character tower stage at the very start.
+map_refresher = [
+    # During the map loading process, if this detects the spawn ID being transitioned to as FF, it will write back
+    # the past spawn ID so that the map will reset without changing the player's previous spawn location. Useful for
+    # things like setting a loading zone to lead back to itself.
+
+    # New to the LoD implementation: checking for 0x53 or 0x93 to send the player to decoupled versions of the
+    # Medusa/Spider Queen arena (by un-setting and setting the appropriate flags).
+    0x904F2BBB,  # LBU   T7, 0x2BBB (V0)
     0x240800FF,  # ADDIU T0, R0, 0x00FF
-    0x110E0003,  # BEQ   T0, T6, [forward 0x03]
-    0x00000000,  # NOP
+    0x150F0004,  # BNE   T0, T7, [forward 0x04]
+    0x904928D3,  # LBU   T1, 0x28D3 (V0)
+    0xA0492BBB,  # SB    T1, 0x2BBB (V0)
     0x03E00008,  # JR    RA
-    0xA44E61D8,  # SH    T6, 0x61D8
-    0x904961D9,  # LBU   T1, 0x61D9
-    0xA0496429,  # SB    T1, 0x6429
-    0x03E00008   # JR    RA
+    0xA44E28D0,  # SH    T6, 0x28D0 (V0)
+    0x31EA0040,  # ANDI  T2, T7, 0x0040
+    0x11400008,  # BEQZ  T2,     [forward 0x08]
+    0x904B27F4,  # LBU   T3, 0x27F4 (V0)
+    0x316B00DF,  # ANDI  T3, T3, 0x00DF
+    0x356B0040,  # ORI   T3, T3, 0x0040
+    0xA04B27F4,  # SB    T3, 0x27F4 (V0)
+    0x31EF003F,  # ANDI  T7, T7, 0x003F
+    0xA04F2BBB,  # SB    T7, 0x2BBB (V0)
+    0x03E00008,  # JR    RA
+    0xA44E28D0,  # SH    T6, 0x28D0 (V0)
+    0x31EA0080,  # ANDI  T2, T7, 0x0080
+    0x11400006,  # BEQZ  T2,     [forward 0x06]
+    0x904B27F4,  # LBU   T3, 0x27F4 (V0)
+    0x316B00BF,  # ANDI  T3, T3, 0x00BF
+    0x356B0020,  # ORI   T3, T3, 0x0020
+    0xA04B27F4,  # SB    T3, 0x27F4 (V0)
+    0x31EF003F,  # ANDI  T7, T7, 0x003F
+    0xA04F2BBB,  # SB    T7, 0x2BBB (V0)
+    0x03E00008,  # JR    RA
+    0xA44E28D0,  # SH    T6, 0x28D0 (V0)
 ]
 
 character_changer = [
@@ -2314,6 +2335,76 @@ always_actor_edits = {
     0x7A1ECA: 0x08,
     # Henry Villa warp jewel
     0x7A1EE8: 0x00,
+
+    # Underground Waterway
+    # Cutscene triggers
+    0x7A4CF8: 0x00,
+    0x7A4D18: 0x00,
+    # Reinhardt/Carrie-only text spots
+    0x7A4D38: 0x00,
+    0x7A4D58: 0x00,
+    0x7A4D78: 0x00,
+    0x7A4D98: 0x00,
+    0x7A4DB8: 0x00,
+    0x7A4DD8: 0x00,
+    0x7A4DF8: 0x00,
+    0x7A4E18: 0x00,
+    0x7A4E58: 0x00,
+    # Henry child
+    0x7A5758: 0x00,
+    # Reinhardt/Carrie White Jewels
+    0x7A5778: 0x00,
+    0x7A5798: 0x00,
+    0x7A57B8: 0x00,
+    # Henry White Jewels
+    0x7A57DA: 0x08,
+    0x7A57FA: 0x08,
+    0x7A581A: 0x08,
+    # Other difficulty items/candles
+    0x7A585A: 0x08,
+    0x7A587A: 0x08,
+    0x7A5898: 0x00,
+    0x7A58B8: 0x00,
+    0x7A58D8: 0x00,
+    0x7A58F8: 0x00,
+    0x7A593A: 0x08,
+    0x7A595A: 0x08,
+    0x7A5978: 0x00,
+    0x7A599A: 0x08,
+    0x7A59BA: 0x08,
+    0x7A59D8: 0x00,
+    0x7A59FA: 0x08,
+    0x7A5A18: 0x00,
+    0x7A5A3A: 0x08,
+    0x7A5A58: 0x00,
+    0x7A5A7A: 0x08,
+    0x7A5A9A: 0x08,
+    0x7A5ABA: 0x08,
+    0x7A5ADA: 0x08,
+    0x7A5AFA: 0x08,
+    0x7A5B18: 0x00,
+    0x7A5B3A: 0x08,
+    0x7A5B5A: 0x08,
+    # Henry Villa warp jewel
+    0x7A5B78: 0x00,
+
+    # Tunnel/Waterway boss arena
+    # Character-specific boss actors (get rid of Reinhardt/Carrie's and keep Henry's)
+    0x7C8676: 0x08,
+    0x7C8694: 0x00,
+    0x7C86B6: 0x08,
+    0x7C86D4: 0x00,
+    # Character-specific doors
+    0x7C86F6: 0x08,
+    0x7C8714: 0x00,
+    # Character-specific loading zones
+    0x7C8736: 0x08,
+    0x7C8756: 0x08,
+    0x7C8774: 0x00,
+    0x7C8794: 0x00,
+    0x7C87B4: 0x00,
+    0x7C87D4: 0x00,
+    0x7C87F6: 0x08,
 }
 
 cw_combined_edits = {

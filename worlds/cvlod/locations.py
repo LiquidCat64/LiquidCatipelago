@@ -298,6 +298,29 @@ location_info = {
     lname.tunnel_shovel_sdoor_r:        {"code": 0xD1, "offset": 0x79F01A, "normal item": iname.cross,
                                          "add conds": ["sub"]},
 
+    # Underground Waterway
+    lname.uw_near_ent:         {"code": 0xDC,  "offset": 0x7A40FA, "normal item": iname.gold_300},
+    lname.uw_across_ent:       {"code": 0xDD,  "offset": 0x7A4112, "normal item": iname.gold_300},
+    lname.uw_first_ledge1:     {"code": 0x30F, "offset": 0x7A4180, "normal item": iname.purify,   "add conds": ["3hb"]},
+    lname.uw_first_ledge2:     {"code": 0x310, "offset": 0x7A4182, "normal item": iname.purify,   "add conds": ["3hb"]},
+    lname.uw_first_ledge3:     {"code": 0x311, "offset": 0x7A4184, "normal item": iname.ampoule,  "add conds": ["3hb"]},
+    lname.uw_first_ledge4:     {"code": 0x312, "offset": 0x7A4186, "normal item": iname.ampoule,  "add conds": ["3hb"]},
+    lname.uw_first_ledge5:     {"code": 0x313, "offset": 0x7A4188, "normal item": iname.gold_300, "add conds": ["3hb"]},
+    lname.uw_first_ledge6:     {"code": 0x314, "offset": 0x7A418A, "normal item": iname.gold_300, "add conds": ["3hb"]},
+    lname.uw_poison_parkour:   {"code": 0xDE,  "offset": 0x7A40B2, "normal item": iname.ampoule},
+    # lname.uw_boss: {"event": iname.trophy, "add conds": ["boss"]},
+    lname.uw_waterfall_ledge:  {"code": 0xE2,  "offset": 0x7A40E2, "normal item": iname.gold_500},
+    lname.uw_waterfall_child:  {"code": 0x25,  "offset": 0x7A409A, "normal item": iname.gold_100},
+    lname.uw_carrie1:          {"code": 0xDF,  "offset": 0x7A40BE, "normal item": iname.m_card,
+                                "add conds": ["carrie"]},
+    lname.uw_carrie2:          {"code": 0xE0,  "offset": 0x7A40CA, "normal item": iname.beef,
+                                "add conds": ["carrie"]},
+    lname.uw_bricks_save:      {"code": 0xE1,  "offset": 0x7A40D6, "normal item": iname.powerup},
+    lname.uw_above_skel_ledge: {"code": 0xE3,  "offset": 0x7A415A, "normal item": iname.chicken},
+    lname.uw_in_skel_ledge1:   {"code": 0x315, "offset": 0x7A419A, "normal item": iname.chicken, "add conds": ["3hb"]},
+    lname.uw_in_skel_ledge2:   {"code": 0x316, "offset": 0x7A419C, "normal item": iname.chicken, "add conds": ["3hb"]},
+    lname.uw_in_skel_ledge3:   {"code": 0x317, "offset": 0x7A419E, "normal item": iname.chicken, "add conds": ["3hb"]},
+
     lname.the_end:        {"event": iname.victory},
 }
 

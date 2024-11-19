@@ -52,7 +52,6 @@ tunnel_end_renon = "Tunnel end contract"
 tunnel_end = "End Tunnel door"
 
 uw_final_waterfall = "Final waterfall"
-uw_waterfall_skip = "Do Waterfall Skip"
 uw_renon = "Underground Waterway contract"
 uw_end = "End Waterway door"
 

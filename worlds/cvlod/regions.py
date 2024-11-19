@@ -242,7 +242,8 @@ region_info = {
                                         lname.villac_wall_r,
                                         lname.villac_coffin_l,
                                         lname.villac_coffin_r],
-                          "entrances": [ename.villa_end_r]
+                          "entrances": [ename.villa_end_r,
+                                        ename.villa_end_ca]
                           },
 
     rname.tunnel_start: {"stage": rname.tunnel,
@@ -292,8 +293,7 @@ region_info = {
                                      lname.tunnel_shovel_mdoor_r,
                                      lname.tunnel_shovel_sdoor_l,
                                      lname.tunnel_shovel_sdoor_m,
-                                     lname.tunnel_shovel_sdoor_r,
-                                     lname.the_end],
+                                     lname.tunnel_shovel_sdoor_r],
                        "entrances": [  # ename.tunnel_end_renon,
                                      ename.tunnel_reverse,
                                      # #ename.tunnel_end
@@ -309,8 +309,9 @@ region_info = {
                                   lname.uw_first_ledge5,
                                   lname.uw_first_ledge6,
                                   lname.uw_poison_parkour,
-                                  lname.uw_boss,
-                                  lname.uw_waterfall_alcove,
+                                  # lname.uw_boss,
+                                  lname.uw_waterfall_ledge,
+                                  lname.uw_waterfall_child,
                                   lname.uw_carrie1,
                                   lname.uw_carrie2,
                                   lname.uw_bricks_save,
@@ -319,11 +320,14 @@ region_info = {
                                   lname.uw_in_skel_ledge2,
                                   lname.uw_in_skel_ledge3],
                     "entrances": [ename.uw_final_waterfall,
-                                  ename.uw_renon]},
+                                  # ename.uw_renon
+                                  ]},
 
     rname.uw_end: {"stage": rname.underground_waterway,
-                   "entrances": [ename.uw_waterfall_skip,
-                                 ename.uw_end]},
+                   "locations": [lname.the_end],
+                   "entrances": [
+                       # ename.uw_end
+                   ]},
 
     rname.cc_main: {"stage": rname.castle_center,
                     "locations": [lname.ccb_skel_hallway_ent,
