@@ -90,7 +90,16 @@ entrance_info = {
     ename.tow_leap: {"destination": rname.tow_mid, "add conds": ["hard"]},
     ename.tow_from_wall_door: {"destination": rname.tow_start, "rule": iname.wall_key},
     ename.tow_slide: {"destination": rname.tow_end},
-    # ename.tow_end: {"destination": ["next", rname.the_outer_wall]},
+    ename.tow_end: {"destination": rname.at_start},
+
+    # Art Tower
+    ename.at_start: {"destination": rname.tow_end},
+    ename.at_to_door_1: {"destination": rname.at_middle, "rule": iname.at1_key, "add conds": ["not hard"]},
+    ename.at_skip_door_1: {"destination": rname.at_middle, "add conds": ["hard"]},
+    ename.at_from_door_1: {"destination": rname.at_start, "rule": iname.at1_key},
+    ename.at_to_door_2: {"destination": rname.at_end, "rule": iname.at2_key},
+    ename.at_from_door_2: {"destination": rname.at_middle, "rule": iname.at2_key},
+    # ename.at_end: {"destination": ["nest", rname.art_tower]}
 
     # Castle Center
     #ename.cc_tc_door: {"destination": rname.cc_torture_chamber, "rule": iname.chb_key},

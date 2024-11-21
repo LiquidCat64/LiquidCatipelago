@@ -202,7 +202,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Make it possible to change the starting level.
         rom_data.write_byte(0x15D3, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
         rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
-        rom_data.write_byte(0x15DB, 0x2A, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15DB, 0x25, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
         rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
@@ -383,6 +383,30 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int16(0x834B2A, 0x0000)  # Rotation unassignment
         rom_data.write_int16(0x834B2C, 0x0002)  # Candle ID
         rom_data.write_int32(0x834B30, 0x00000000)  # Removed special spawn check address
+        # Make the Outer Wall end loading zone send you to the start of Art Tower instead of the fan map, as well as
+        # heal the player.
+        rom_data.write_int16(0x834448, 0x0001)
+        rom_data.write_int16(0x83444A, 0x2500)
+
+        # Make the Art Tower start loading zone send you to the end of The Outer Wall instead of the fan map.
+        rom_data.write_int16(0x818DF2, 0x2A0B)
+        # Make the loading zone leading from Art Tower museum -> conservatory slightly smaller.
+        rom_data.write_int16(0x818E10, 0xFE18)
+        # Change the player spawn coordinates coming from Art Tower conservatory -> museum to start them behind the
+        # Key 2 door, so they will need Key 2 to come this way.
+        rom_data.write_int16(0x1103E4, 0xFE22)  # Player Z position
+        rom_data.write_int16(0x1103E8, 0x000D)  # Camera X position
+        rom_data.write_int16(0x1103EC, 0xFE10)  # Camera Z position
+        rom_data.write_int16(0x1103F2, 0xFE22)  # Focus point Z position
+        # Prevent the Hell Knights in the middle Art Tower hallway from locking the doors until defeated.
+        rom_data.write_byte(0x81A5B0, 0x00)
+        rom_data.write_byte(0x81A5D0, 0x02)
+        rom_data.write_byte(0x81A5F0, 0x02)
+        # Put the left item on top of the Art Tower conservatory doorway on its correct flag.
+        rom_data.write_int16(0x81DDB4, 0x02AF)
+        # Prevent the middle item on top of the Art Tower conservatory doorway from self-modifying itself.
+        rom_data.write_byte(0x81DD81, 0x80)
+        rom_data.write_int32(0x81DD9C, 0x00000000)
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
         # came before them

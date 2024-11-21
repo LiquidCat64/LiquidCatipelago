@@ -44,6 +44,11 @@ tow_start = "The Outer Wall: first half"
 tow_mid = "The Outer Wall: second half"
 tow_end = "The Outer Wall: end arena"
 
+art_tower = "Art Tower"
+at_start = "Art Tower: card museum"
+at_middle = "Art Tower: middle armor hallway"
+at_end = "Art Tower: chandelier conservatory"
+
 castle_center = "Castle Center"
 cc_main = "Castle Center: main area"
 cc_crystal = "Castle Center: big crystal"
