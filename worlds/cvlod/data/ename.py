@@ -69,6 +69,11 @@ at_to_door_2 = "To Art Tower Door 2"
 at_from_door_2 = "From Art Tower Door 2"
 at_end = "Art Tower end passage"
 
+tor_start = "Tower of Ruins start passage"
+tor_doors = "Solve the door maze"
+tor_climb = "Climb to the heavens"
+tor_end = "Tower of Ruins end passage"
+
 cc_tc_door = "Torture Chamber door"
 cc_renon = "Castle Center contract"
 cc_lower_wall = "Lower sealed cracked wall"

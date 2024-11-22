@@ -99,7 +99,13 @@ entrance_info = {
     ename.at_from_door_1: {"destination": rname.at_start, "rule": iname.at1_key},
     ename.at_to_door_2: {"destination": rname.at_end, "rule": iname.at2_key},
     ename.at_from_door_2: {"destination": rname.at_middle, "rule": iname.at2_key},
-    # ename.at_end: {"destination": ["nest", rname.art_tower]}
+    ename.at_end: {"destination": rname.tor_start},
+
+    # Tower of Ruins
+    ename.tor_start: {"destination": rname.at_end},
+    ename.tor_doors: {"destination": rname.tor_middle},
+    ename.tor_climb: {"destination": rname.tor_end},
+    #ename.tor_end: {"destionaion": ["next", rname.tower_of_ruins]}
 
     # Castle Center
     #ename.cc_tc_door: {"destination": rname.cc_torture_chamber, "rule": iname.chb_key},

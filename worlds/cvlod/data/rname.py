@@ -49,6 +49,11 @@ at_start = "Art Tower: card museum"
 at_middle = "Art Tower: middle armor hallway"
 at_end = "Art Tower: chandelier conservatory"
 
+tower_of_ruins = "Tower of Ruins"
+tor_start = "Tower of Ruins: door maze"
+tor_middle = "Tower of Ruins: dark chambers"
+tor_end = "Tower of Ruins: end room"
+
 castle_center = "Castle Center"
 cc_main = "Castle Center: main area"
 cc_crystal = "Castle Center: big crystal"

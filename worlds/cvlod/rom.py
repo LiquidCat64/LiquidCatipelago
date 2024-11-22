@@ -202,7 +202,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Make it possible to change the starting level.
         rom_data.write_byte(0x15D3, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
         rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
-        rom_data.write_byte(0x15DB, 0x25, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15DB, 0x23, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
         rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
@@ -407,6 +407,24 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Prevent the middle item on top of the Art Tower conservatory doorway from self-modifying itself.
         rom_data.write_byte(0x81DD81, 0x80)
         rom_data.write_int32(0x81DD9C, 0x00000000)
+
+        # Remove the Tower of Science item flag checks from the invisible Tower of Ruins statue items.
+        # Yeah, your guess as to what the devs may have been thinking with this is as good as mine.
+        rom_data.write_byte(0x808C65, 0x00)
+        rom_data.write_int16(0x808C76, 0x0000)
+        rom_data.write_byte(0x809185, 0x00)
+        rom_data.write_int16(0x809196, 0x0000)
+        # Clone the third Tower of Ruins gate actor and turn it around the other way. These actors normally only have
+        # collision on one side, so if you were coming the other way you could very easily sequence break.
+        rom_data.write_byte(0x809925, 0x00)     # Flag check unassignment
+        rom_data.write_int32s(0x809928, [0x43DB0000, 0x42960000, 0x43100000])  # XYZ coordinates
+        rom_data.write_int16(0x809934, 0x01B9)  # Special door actor ID
+        rom_data.write_int16(0x809936, 0x0000)  # Flag check unassignment
+        rom_data.write_int16(0x809938, 0x0000)  # Flag check unassignment
+        rom_data.write_int16(0x80993A, 0x8000)  # Rotation
+        rom_data.write_int16(0x80993C, 0x0002)  # Door ID
+        # Set the Tower of Ruins end loading zone destination to the Castle Center top elevator White Jewel.
+        rom_data.write_int16(0x8128EE, 0x0F03)
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
         # came before them
