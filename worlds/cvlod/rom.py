@@ -426,6 +426,41 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Set the Tower of Ruins end loading zone destination to the Castle Center top elevator White Jewel.
         rom_data.write_int16(0x8128EE, 0x0F03)
 
+        # Change some shelf decoration Nitros and Mandragoras into actual items.
+        rom_data.write_int32(0x7A9BE8, 0xC0800000)  # X position
+        rom_data.write_int32(0x7A9C08, 0xC0800000)  # X position
+        rom_data.write_int16(0x7A9BF4, 0x0027)  # Interactable actor ID
+        rom_data.write_int16(0x7A9C14, 0x0027)  # Interactable actor ID
+        rom_data.write_int16(0x7A9BF8, 0x0346)  # Flag ID
+        rom_data.write_int16(0x7A9C18, 0x0345)  # Flag ID
+        rom_data.write_int32(0x7B8940, 0xC3A00000)  # X position
+        rom_data.write_int32(0x7B89A0, 0xC3990000)  # X position
+        rom_data.write_int16(0x7B894C, 0x0027)  # Interactable actor ID
+        rom_data.write_int16(0x7B89AC, 0x0027)  # Interactable actor ID
+        rom_data.write_int16(0x7B8950, 0x0348)  # Flag ID
+        rom_data.write_int16(0x7A9CB0, 0x0347)  # Flag ID
+        rom_data.write_int16(0x7B8952, 0x0000)  # Param unassignment
+        rom_data.write_int16(0x7B89B2, 0x0000)  # Param unassignment
+        # Fix the Castle Center library bookshelf item by rearranging the map's actor list slightly, and changing it
+        # to not spawn instead of spawn when its flag is not set.
+        library_card_actor = rom_data.read_bytes(0x7B6720, 0x20)
+        rom_data.write_bytes(0x7B6660, rom_data.read_bytes(0x7B6640, 0xE0))
+        library_card_actor[1] = 0x80
+        rom_data.write_bytes(0x7B6640, library_card_actor)
+        # Fix both Castle Center elevator bridges for both characters unless enabling only one character's stages.
+        # At which point one bridge will be always broken and one always repaired instead.
+        rom_data.write_int32(0x7B938C, 0x51200004)  # BEQZL  T1, [forward 0x04]
+        rom_data.write_byte(0x7B9B8D, 0x01)  # Reinhardt bridge
+        rom_data.write_byte(0x7B9BAD, 0x01)  # Carrie bridge
+        # if options.character_stages.value == options.character_stages.option_reinhardt_only:
+        # rom_data.write_int32(0x6CEAA0, 0x240B0000)  # ADDIU T3, R0, 0x0000
+        # elif options.character_stages.value == options.character_stages.option_carrie_only == 3:
+        # rom_data.write_int32(0x6CEAA0, 0x240B0001)  # ADDIU T3, R0, 0x0001
+        # else:
+        # rom_data.write_int32(0x6CEAA0, 0x240B0001)  # ADDIU T3, R0, 0x0001
+        # rom_data.write_int32(0x6CEAA4, 0x240D0001)  # ADDIU T5, R0, 0x0001
+        # TODO: Add all the Nitro spot check-related hacks and do something about the Cornell intro actors
+
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
         # came before them
         # #rom_data.write_int32(0x97244, 0x803FDD60)
@@ -447,16 +482,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # rom_data.write_byte(0xD9D83, 0x74)
         # rom_data.write_int32(0xD9D84, 0x080FF14D)  # J 0x803FC534
         # rom_data.write_int32s(0xBFC534, patches.coffin_time_checker)
-
-        # Fix both Castle Center elevator bridges for both characters unless enabling only one character's stages.
-        # At which point one bridge will be always broken and one always repaired instead.
-        # if options.character_stages.value == options.character_stages.option_reinhardt_only:
-        # rom_data.write_int32(0x6CEAA0, 0x240B0000)  # ADDIU T3, R0, 0x0000
-        # elif options.character_stages.value == options.character_stages.option_carrie_only == 3:
-        # rom_data.write_int32(0x6CEAA0, 0x240B0001)  # ADDIU T3, R0, 0x0001
-        # else:
-        # rom_data.write_int32(0x6CEAA0, 0x240B0001)  # ADDIU T3, R0, 0x0001
-        # rom_data.write_int32(0x6CEAA4, 0x240D0001)  # ADDIU T5, R0, 0x0001
 
         # Enable being able to carry multiple Special jewels, Nitros, Mandragoras, and Key Items simultaneously
         # Special1

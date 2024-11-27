@@ -297,7 +297,7 @@ region_info = {
                                      lname.tunnel_shovel_sdoor_r],
                        "entrances": [  # ename.tunnel_end_renon,
                            ename.tunnel_reverse,
-                           # #ename.tunnel_end
+                           ename.tunnel_end
                        ]},
 
     rname.uw_main: {"stage": rname.underground_waterway,
@@ -326,7 +326,7 @@ region_info = {
 
     rname.uw_end: {"stage": rname.underground_waterway,
                    "entrances": [
-                       # ename.uw_end
+                    ename.uw_end
                    ]},
 
     rname.tow_start: {"stage": rname.the_outer_wall,
@@ -456,8 +456,7 @@ region_info = {
 
     rname.tor_end: {"stage": rname.tower_of_ruins,
                     "locations": [lname.torb_across_exit,
-                                  lname.torb_near_exit,
-                                  lname.the_end],
+                                  lname.torb_near_exit],
                     # "entrances": [ename.tor_end]
                     },
 
@@ -487,11 +486,9 @@ region_info = {
                                   lname.ccelv_pipes,
                                   lname.ccelv_switch,
                                   lname.ccelv_staircase,
-                                  lname.ccff_redcarpet_knight,
                                   lname.ccff_gears_side,
                                   lname.ccff_gears_mid,
                                   lname.ccff_gears_corner,
-                                  lname.ccff_lizard_knight,
                                   lname.ccff_lizard_near_knight,
                                   lname.ccff_lizard_pit,
                                   lname.ccff_lizard_corner,
@@ -506,7 +503,6 @@ region_info = {
                                   lname.ccff_lizard_slab3,
                                   lname.ccff_lizard_slab4,
                                   lname.ccll_brokenstairs_floor,
-                                  lname.ccll_brokenstairs_knight,
                                   lname.ccll_brokenstairs_save,
                                   lname.ccll_glassknight_l,
                                   lname.ccll_glassknight_r,
@@ -532,7 +528,7 @@ region_info = {
                                   lname.ccia_nitro_shelf_i],
                     "entrances": [ename.cc_tc_door,
                                   ename.cc_lower_wall,
-                                  ename.cc_renon,
+                                  # ename.cc_renon,
                                   ename.cc_upper_wall]},
 
     rname.cc_torture_chamber: {"stage": rname.castle_center,
@@ -546,14 +542,16 @@ region_info = {
                                      lname.ccl_bookcase]},
 
     rname.cc_crystal: {"stage": rname.castle_center,
-                       "locations": [lname.cc_behind_the_seal,
-                                     lname.cc_boss_one,
-                                     lname.cc_boss_two],
+                       #"locations": [lname.cc_behind_the_seal,
+                       #              lname.cc_boss_one,
+                       #              lname.cc_boss_two],
                        "entrances": [ename.cc_elevator]},
 
     rname.cc_elev_top: {"stage": rname.castle_center,
-                        "entrances": [ename.cc_exit_r,
-                                      ename.cc_exit_c]},
+                        "locations": [lname.the_end],
+                        #"entrances": [ename.cc_exit_r,
+                        #              ename.cc_exit_c]
+                        },
 
     rname.dt_main: {"stage": rname.duel_tower,
                     "locations": [lname.dt_boss_one,

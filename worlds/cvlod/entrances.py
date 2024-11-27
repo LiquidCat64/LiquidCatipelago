@@ -78,12 +78,12 @@ entrance_info = {
     ename.tunnel_gondolas: {"destination": rname.tunnel_end},
     ename.tunnel_reverse: {"destination": rname.tunnel_start, "add conds": ["hard"]},
     #ename.tunnel_end_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
-    #ename.tunnel_end: {"destination": ["next", rname.tunnel]},
+    ename.tunnel_end: {"destination": rname.cc_main},
 
     # Underground Waterway
     #ename.uw_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
     ename.uw_final_waterfall: {"destination": rname.uw_end},
-    # ename.uw_end: {"destination": ["next", rname.underground_waterway]},
+    ename.uw_end: {"destination": rname.cc_main},
 
     # The Outer Wall
     ename.tow_to_wall_door: {"destination": rname.tow_mid, "rule": iname.wall_key, "add conds": ["not hard"]},
@@ -108,11 +108,11 @@ entrance_info = {
     #ename.tor_end: {"destionaion": ["next", rname.tower_of_ruins]}
 
     # Castle Center
-    #ename.cc_tc_door: {"destination": rname.cc_torture_chamber, "rule": iname.chb_key},
+    ename.cc_tc_door: {"destination": rname.cc_torture_chamber, "rule": iname.chb_key},
     #ename.cc_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
-    #ename.cc_lower_wall: {"destination": rname.cc_crystal, "rule": "Bomb 2"},
-    #ename.cc_upper_wall: {"destination": rname.cc_library, "rule": "Bomb 1"},
-    #ename.cc_elevator: {"destination": rname.cc_elev_top},
+    ename.cc_lower_wall: {"destination": rname.cc_crystal, "rule": "Bomb 2"},
+    ename.cc_upper_wall: {"destination": rname.cc_library, "rule": "Bomb 1"},
+    ename.cc_elevator: {"destination": rname.cc_elev_top},
     #ename.cc_exit_r: {"destination": ["next", rname.castle_center]},
     #ename.cc_exit_c: {"destination": ["alt", rname.castle_center]},
     # Duel Tower

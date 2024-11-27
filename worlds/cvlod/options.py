@@ -454,7 +454,7 @@ class CVLoDOptions(PerGameCommonOptions):
     hard_logic: HardLogic
     multi_hit_breakables: MultiHitBreakables
     empty_breakables: EmptyBreakables
-    # lizard_locker_items: LizardLockerItems
+    lizard_locker_items: LizardLockerItems
     # shopsanity: Shopsanity
     # shop_prices: ShopPrices
     # minimum_gold_price: MinimumGoldPrice

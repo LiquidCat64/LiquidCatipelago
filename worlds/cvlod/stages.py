@@ -247,7 +247,7 @@ stage_info = {
 }
 
 vanilla_stage_order = ["Foggy Lake", "Forest of Silence", "Castle Wall", "Villa", "Tunnel", "Underground Waterway",
-                       "The Outer Wall", "Art Tower", "Tower of Ruins"]
+                       "The Outer Wall", "Art Tower", "Tower of Ruins", "Castle Center"]
 
 vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_silence,
                                           "alt": None, "position": 1, "path": " "},
@@ -267,9 +267,8 @@ vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_
                                          "alt": None, "position": 5, "path": "'"},
                        rname.tower_of_ruins: {"prev": rname.art_tower, "next": rname.castle_center,
                                               "alt": None, "position": 5, "path": "'"},
-                       }
-                       #rname.castle_center: {"prev": None, "next": rname.duel_tower,
-                       #                      "alt": rname.tower_of_science, "position": 5, "path": " "},
+                       rname.castle_center: {"prev": None, "next": rname.duel_tower,
+                                             "alt": rname.tower_of_science, "position": 5, "path": " "}}
                        #rname.duel_tower: {"prev": rname.castle_center, "next": rname.tower_of_execution,
                        #                   "alt": None, "position": 6, "path": " "},
                        #rname.tower_of_execution: {"prev": rname.duel_tower, "next": rname.room_of_clocks,
