@@ -326,43 +326,42 @@ double_component_checker = [
     # "no need to set 2" outcome to see if the other can be set.
 
     # Mandragora checker
-    0x10400007,  # BEQZ  V0,     [forward 0x07]
-    0x3C0A8039,  # LUI   T2, 0x8039
-    0x31098000,  # ANDI  T1, T0, 0x8000
-    0x15200008,  # BNEZ  T1,     [forward 0x08]
-    0x91499C5D,  # LBU   T1, 0x9C5D (T2)
-    0x11200006,  # BEQZ  T1, 0x80183938
-    0x00000000,  # NOP
-    0x10000007,  # B     [forward 0x07]
-    0x31E90100,  # ANDI  T1, T7, 0x0100
-    0x15200002,  # BNEZ  T1,     [forward 0x02]
-    0x91499C5D,  # LBU   T1, 0x9C5D (T2)
-    0x15200003,  # BNEZ  T1,     [forward 0x03]
-    0x3C198000,  # LUI   T9, 0x8000
-    0x27391590,  # ADDIU T9, T9, 0x1590
-    0x03200008,  # JR    T9
-    0x24090001,  # ADDIU T1, R0, 0x0001
-    0xA4E9004C,  # SH    T1, 0x004C (A3)
-    0x3C190E00,  # LUI   T9, 0x0E00
-    0x273903E0,  # ADDIU T9, T9, 0x03E0
-    0x03200008,  # JR    T9
+    # Check the "set Mandragora" flag for the wall we are currently looking at.
+    0x8E080054,  # LW    T0, 0x0054 (S0)
+    0x15000004,  # BNEZ  T0,     [forward 0x04]
+    0x3C09801D,  # LUI   T1, 0x801D
+    0x912AAA7E,  # LBU   T2, 0xAA7E (T1)
+    0x10000003,  # B             [forward 0x03]
+    0x314A0040,  # ANDI  T2, T2, 0x0040
+    0x912AAA84,  # LBU   T2, 0xAA84 (T1)
+    0x314A0080,  # ANDI  T2, T2, 0x0080
+    0x15400005,  # BNEZ  T2,     [forward 0x05]
+    # If the flag is not set, check to see if we have Mandragora in the inventory.
+    0x912BAB56,  # LBU   T3, 0xAB56 (T1)
+    0x11600003,  # BEQZ  T3,     [forward 0x03]
+    0x240C0001,  # ADDIU T4, R0, 0x0001
+    0x03E00008,  # JR    RA
+    0xA60C004C,  # SH    T4, 0x004C (S0)
+    0x0800078C,  # J     0x80001E30
     0x00000000,  # NOP
     # Nitro checker
-    0x10400007,  # BEQZ  V0,     [forward 0x07]
-    0x3C0A8039,  # LUI   T2, 0x8039
-    0x31694000,  # ANDI  T1, T3, 0x4000
-    0x15200008,  # BNEZ  T1,     [forward 0x08]
-    0x91499C5C,  # LBU   T1, 0x9C5C
-    0x11200006,  # BEQZ  T1,     [forward 0x06]
-    0x00000000,  # NOP
-    0x1000FFF4,  # B     [backward 0x0B]
-    0x914F9C18,  # LBU   T7, 0x9C18 (T2)
-    0x31E90002,  # ANDI  T1, T7, 0x0002
-    0x1520FFEC,  # BNEZ  T1,     [backward 0x13]
-    0x91499C5C,  # LBU   T1, 0x9C5C (T2)
-    0x1520FFEF,  # BNEZ  T1,     [backward 0x15]
-    0x00000000,  # NOP
-    0x1000FFE8,  # B             [backward 0x17]
+    # Check the "set Magical Nitro" flag for the wall we are currently looking at.
+    0x8E080054,  # LW    T0, 0x0054 (S0)
+    0x15000004,  # BNEZ  T0,     [forward 0x04]
+    0x3C09801D,  # LUI   T1, 0x801D
+    0x912AAA7E,  # LBU   T2, 0xAA7E (T1)
+    0x10000003,  # B             [forward 0x03]
+    0x314A0080,  # ANDI  T2, T2, 0x0080
+    0x912AAA83,  # LBU   T2, 0xAA83 (T1)
+    0x314A0001,  # ANDI  T2, T2, 0x0001
+    0x15400005,  # BNEZ  T2,     [forward 0x05]
+    # If the flag is not set, check to see if we have Magical Nitro in the inventory.
+    0x912BAB55,  # LBU   T3, 0xAB55 (T1)
+    0x11600003,  # BEQZ  T3,     [forward 0x03]
+    0x240C0001,  # ADDIU T4, R0, 0x0001
+    0x03E00008,  # JR    RA
+    0xA60C004E,  # SH    T4, 0x004E (S0)
+    0x0800078C,  # J     0x80001E30
     0x00000000,  # NOP
 ]
 
@@ -370,18 +369,20 @@ downstairs_seal_checker = [
     # This will run specifically for the downstairs crack to see if the seal has been removed before then deciding to
     # let the player set the bomb components or not. An anti-dick measure, since there is a limited number of each
     # component per world.
-    0x14400004,  # BNEZ  V0,     [forward 0x04]
-    0x3C0A8039,  # LUI   T2, 0x8039
-    0x914A9C18,  # LBU   T2, 0x9C18 (T2)
-    0x314A0001,  # ANDI  T2, T2, 0x0001
-    0x11400003,  # BEQZ  T2,     [forward 0x03]
-    0x3C198000,  # LUI   T9, 0x8000
-    0x27391448,  # ADDIU T9, T9, 0x1448
-    0x03200008,  # JR    T9
-    0x3C190E00,  # LUI   T9, 0x0E00
-    0x273902B4,  # ADDIU T9, T9, 0x02B4
-    0x03200008,  # JR    T9
+    0x8E080054,  # LW    T0, 0x0054 (S0)
+    0x15000009,  # BNEZ  T0,     [forward 0x09]
+    0x3C09801D,  # LUI   T1, 0x801D
+    0x9129AA7D,  # LBU   T1, 0xAA7D (T1)
+    0x31290001,  # ANDI  T1, T1, 0x0001
+    0x15200005,  # BNEZ  T1,     [forward 0x05]
     0x00000000,  # NOP
+    0x26040008,  # ADDIU A0, S0, 0x0008
+    0x2605000E,  # ADDIU A1, S0, 0x000E
+    0x0800078C,  # J     0x80001E30
+    0x24060008,  # ADDIU A2, R0, 0x0008
+    0x3C0A0E00,  # LUI   T2, 0x0E00
+    0x254A02C0,  # ADDIU T2, T2, 0x02C0
+    0x01400008,  # JR    T2
 ]
 
 renon_cutscene_checker = [
@@ -2601,6 +2602,8 @@ always_actor_edits = {
     0x7D430A: 0x08,  # Cornell forward zone to Art Tower
 
     # Castle Center Basement
+    0x7A95C4: 0x28,
+    0x7A95E4: 0x50,
     # Behemoth cutscene trigger
     0x7A9604: 0x00,
     # Reinhardt/Carrie-only White Jewel

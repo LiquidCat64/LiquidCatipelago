@@ -202,7 +202,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Make it possible to change the starting level.
         rom_data.write_byte(0x15D3, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
         rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
-        rom_data.write_byte(0x15DB, 0x23, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15DB, 0x19, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
         rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
@@ -460,6 +460,51 @@ class CVLoDPatchExtensions(APPatchExtension):
         # rom_data.write_int32(0x6CEAA0, 0x240B0001)  # ADDIU T3, R0, 0x0001
         # rom_data.write_int32(0x6CEAA4, 0x240D0001)  # ADDIU T5, R0, 0x0001
         # TODO: Add all the Nitro spot check-related hacks and do something about the Cornell intro actors
+        # Prevent taking Nitro or Mandragora through their shelf text.
+        rom_data.write_int32(0x1F0, 0x240C0000, ni_files.OVL_TAKE_NITRO_TEXTBOX)  # ADDIU T4, R0, 0x0000
+        rom_data.write_int32(0x22C, 0x240F0000, ni_files.OVL_TAKE_MANDRAGORA_TEXTBOX)  # ADDIU T7, R0, 0x0000
+
+        # Ensure the vampire Nitro check will always pass, so they'll never not spawn and crash the Villa cutscenes.
+        rom_data.write_int32(0x128, 0x24020001, ni_files.OVL_VAMPIRE_SPAWNER)  # ADDIU V0, R0, 0x0001
+
+        # Prevent throwing Nitro in the Hazardous Materials Disposals.
+        rom_data.write_int32(0x1E4, 0x24020001, ni_files.OVL_NITRO_DISPOSAL_TEXTBOX)  # ADDIU V0, R0, 0x0001
+
+        # Allow placing both bomb components at a cracked wall at once while having multiple copies of each, prevent
+        # placing them at the downstairs crack altogether until the seal is removed, and enable placing both in one
+        # interaction.
+        rom_data.write_int32(0xEE8, 0x803FCD50, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x34A, 0x8040, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x34E, 0xCCC0, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x38A, 0x8040, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x38E, 0xCCC0, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x3F6, 0x8040, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x3FA, 0xCD00, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x436, 0x8040, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x43A, 0xCD00, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int32s(0xFFCCC0, patches.double_component_checker)
+        rom_data.write_int32s(0xFFCD50, patches.downstairs_seal_checker)
+        # rom_data.write_int32s(0xBFE074, patches.mandragora_with_nitro_setter)
+
+        # Custom message for if you try checking the downstairs Castle Center crack before removing the seal.
+        rom_data.write_bytes(0x7A924C, cvlod_string_to_bytearray("The Furious Nerd Curse\n"
+                                                                 "prevents you from setting\n"
+                                                                 "anything until the seal\n"
+                                                                 "is removed!»\t")[0])
+
+        # Disable the rapid flashing effect in the CC planetarium cutscene to ensure it won't trigger seizures.
+        # TODO: Make this an option.
+        #rom_data.write_int32(0xC5C, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        #rom_data.write_int32(0xCD0, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        #rom_data.write_int32(0xC64, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        #rom_data.write_int32(0xC74, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        #rom_data.write_int32(0xC80, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        #rom_data.write_int32(0xC88, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        #rom_data.write_int32(0xC90, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        #rom_data.write_int32(0xC9C, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        #rom_data.write_int32(0xCB4, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+        #rom_data.write_int32(0xCC8, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
+
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
         # came before them
@@ -607,12 +652,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # rom_data.write_int32(0xB5E3FB, 0x24020001)  # ADDIU  V0, R0, 0x0001
         # Skip the yes/no prompts to set Nitro/Mandragora at both walls.
         # rom_data.write_int32(0xB5DF3E, 0x24030001)  # ADDIU  V1, R0, 0x0001
-
-        # Custom message if you try checking the downstairs CC crack before removing the seal.
-        # rom_data.write_bytes(0xBFDBAC, cvlod_string_to_bytearray("The Furious Nerd Curse\n"
-        #                                               "prevents you from setting\n"
-        #                                               "anything until the seal\n"
-        #                                               "is removed!", True))
 
         # rom_data.write_int32s(0xBFDD20, patches.special_descriptions_redirector)
 
