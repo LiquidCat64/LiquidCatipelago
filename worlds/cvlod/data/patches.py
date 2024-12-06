@@ -365,10 +365,11 @@ double_component_checker = [
     0x00000000,  # NOP
 ]
 
-downstairs_seal_checker = [
+basement_seal_checker = [
     # This will run specifically for the downstairs crack to see if the seal has been removed before then deciding to
-    # let the player set the bomb components or not. An anti-dick measure, since there is a limited number of each
-    # component per world.
+    # let the player set the bomb components or not, giving them the "Furious Nerd Curse" message if not. Unlike in the
+    # vanilla game, Magical Nitro and Mandragora is not replenish-able, so an anti-softlock measure is necessary to
+    # ensure they aren't wasted trying to blow up a currently-impervious wall.
     0x8E080054,  # LW    T0, 0x0054 (S0)
     0x15000009,  # BNEZ  T0,     [forward 0x09]
     0x3C09801D,  # LUI   T1, 0x801D
@@ -383,6 +384,27 @@ downstairs_seal_checker = [
     0x3C0A0E00,  # LUI   T2, 0x0E00
     0x254A02C0,  # ADDIU T2, T2, 0x02C0
     0x01400008,  # JR    T2
+]
+
+cutscene_active_checkers = [
+    # Returns True (1) if we are not currently in a cutscene or False (0) if we are in V0. Custom actor spawn condition
+    # for things like the Cornell intro actors in Castle Center.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9109AE8B,  # LBU   T1, 0xAE8B (T0)
+    0x11200002,  # BEQZ  T1,     [forward 0x02]
+    0x24020000,  # ADDIU V0, R0, 0x0000
+    0x24020001,  # ADDIU V0, R0, 0x0001
+    0x03E00008,  # JR    RA
+    0x00000000,
+    # Returns True (1) if we are currently in a cutscene or False (0) if we are not in V0. Custom actor spawn condition
+    # for things like the Cornell intro actors in Castle Center.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9109AE8B,  # LBU   T1, 0xAE8B (T0)
+    0x11200002,  # BEQZ  T1,     [forward 0x02]
+    0x24020001,  # ADDIU V0, R0, 0x0001
+    0x24020000,  # ADDIU V0, R0, 0x0000
+    0x03E00008,  # JR    RA
+    0x00000000,
 ]
 
 renon_cutscene_checker = [
@@ -1734,36 +1756,26 @@ mandragora_with_nitro_setter = [
     # When setting a Nitro, if Mandragora is in the inventory too and the wall's "Mandragora set" flag is not set, this
     # will automatically subtract a Mandragora from the inventory and set its flag so the wall can be blown up in just
     # one interaction instead of two.
-    0x3C088039,  # LUI   T0, 0x8039
-    0x81099EE1,  # LB    T1, 0x9EE1 (T0)
-    0x240A000C,  # ADDIU T2, R0, 0x000C
-    0x112A000E,  # BEQ   T1, T2, [forward 0x0E]
-    0x81099C18,  # LB    T1, 0x9C18 (T0)
-    0x31290002,  # ANDI  T1, T1, 0x0002
-    0x11200009,  # BEQZ  T1,     [forward 0x09]
-    0x91099C5D,  # LBU   T1, 0x9C5D (T0)
-    0x11200007,  # BEQZ  T1,     [forward 0x07]
-    0x910B9C1A,  # LBU   T3, 0x9C1A (T0)
-    0x316A0001,  # ANDI  T2, T3, 0x0001
-    0x15400004,  # BNEZ  T2,     [forward 0x04]
-    0x2529FFFF,  # ADDIU T1, T1, 0xFFFF
-    0xA1099C5D,  # SB    T1, 0x9C5D (T0)
-    0x356B0001,  # ORI   T3, T3, 0x0001
-    0xA10B9C1A,  # SB    T3, 0x9C1A (T0)
-    0x08000512,  # J     0x80001448
-    0x00000000,  # NOP
-    0x810B9BF2,  # LB    T3, 0x9BF2 (T0)
-    0x31690040,  # ANDI  T1, T3, 0x0040
-    0x11200008,  # BEQZ  T1,     [forward 0x08]
-    0x91099C5D,  # LBU   T1, 0x9C5D (T0)
-    0x11200006,  # BEQZ  T1,     [forward 0x06]
-    0x316A0080,  # ANDI  T2, T3, 0x0080
-    0x15400004,  # BNEZ  T2, 0x803FE0E8
-    0x2529FFFF,  # ADDIU T1, T1, 0xFFFF
-    0xA1099C5D,  # SB    T1, 0x9C5D (T0)
-    0x356B0080,  # ORI   T3, T3, 0x0080
-    0xA10B9BF2,  # SB    T3, 0x9BF2 (T0)
-    0x08000512   # J     0x80001448
+    0x8E080054,  # LW    T0, 0x0054 (S0)
+    0x15000004,  # BNEZ  T0,     [forward 0x04]
+    0x3C09801C,  # LUI   T1, 0x801C
+    0x340AAA7E,  # ORI   T2, R0, 0xAA7E
+    0x10000003,  # B             [forward 0x03]
+    0x240B0040,  # ADDIU T3, R0, 0x0040
+    0x340AAA84,  # ORI   T2, R0, 0xAA84
+    0x240B0080,  # ADDIU T3, R0, 0x0080
+    0x012A6025,  # OR    T4, T1, T2
+    0x918D0000,  # LBU   T5, 0x0000 (T4)
+    0x01AB7024,  # AND   T6, T5, T3
+    0x15C00007,  # BNEZ  T6,     [forward 0x07]
+    0x3C09801D,  # LUI   T1, 0x801D
+    0x912FAB56,  # LBU   T7, 0xAB56 (T1)
+    0x11E00004,  # BEQZ  T7,     [forward 0x04]
+    0x25EFFFFF,  # ADDIU T7, T7, 0xFFFF
+    0xA12FAB56,  # SB    T7, 0xAB56 (T1)
+    0x016DC025,  # OR    T8, T3, T5
+    0xA1980000,  # SB    T8, 0x0000 (T4)
+    0x08001231,  # J     0x800048C4
 ]
 
 ambience_silencer = [
@@ -2606,8 +2618,19 @@ always_actor_edits = {
     0x7A95E4: 0x50,
     # Behemoth cutscene trigger
     0x7A9604: 0x00,
+    # Reinhardt-only enemies
+    0x7AA2A4: 0x2B,
+    0x7AA2C4: 0x2E,
+    0x7AA2E4: 0x2C,
     # Reinhardt/Carrie-only White Jewel
     0x7AA364: 0x00,
+    # Cornell intro breakables
+    0x7AA404: 0x00,
+    0x7AA424: 0x00,
+    0x7AA444: 0x00,
+    0x7AA464: 0x00,
+    0x7AA484: 0x00,
+    0x7AA4A4: 0x00,
     # Difficulty-specific items/breakables
     0x7A9DA4: 0x00,
     0x7A9DC6: 0x08,
@@ -2668,6 +2691,12 @@ always_actor_edits = {
     0x7AE1D2: 0x08,
 
     # Castle Center Factory Floor
+    # Cornell intro actors
+    0x7B1368: 0x00,
+    0x7B1388: 0x00,
+    0x7B13A8: 0x00,
+    0x7B13C8: 0x00,
+    0x7B13E8: 0x00,
     # Reinhardt/Carrie/Henry-only enemies
     0x7B1328: 0x00,
     0x7B1348: 0x00,
@@ -2755,6 +2784,25 @@ always_actor_edits = {
     0x7B8EDE: 0x08,
 
     # Castle Center Top Elevator
+    # Reinhardt-only enemies
+    0x7B9C74: 0x00,
+    0x7B9C94: 0x00,
+    0x7B9CB4: 0x00,
+    0x7B9CD4: 0x00,
+    0x7B9CF4: 0x00,
+    0x7B9D14: 0x00,
+    0x7B9D34: 0x00,
+    0x7B9D54: 0x00,
+    0x7B9D74: 0x00,
+    0x7B9D94: 0x00,
+    0x7B9DB4: 0x00,
+    0x7B9DD4: 0x00,
+    # Carrie-only enemies
+    0x7B9DF4: 0x00,
+    0x7B9E14: 0x00,
+    0x7B9E34: 0x00,
+    0x7B9E54: 0x00,
+    0x7B9E74: 0x00,
     # Reinhardt/Carrie-only loading zones
     0x7B9FF4: 0x00,
     0x7BA014: 0x00,

@@ -228,10 +228,11 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Prevent the Foggy Lake cargo hold door from locking.
         rom_data.write_int16(0x7C1C00, 0x0000)
 
-        # Disable the Foggy Lake Pier save jewel checking for one of the ship sinking cutscene flags to spawn. As much
-        # as the developers REALLY wanted it out of the picture for the cutscene, for our purposes it's impractical.
-        rom_data.write_byte(0x7C67F5, 0x00)
+        # Disable the Foggy Lake Pier save jewel checking for one of the ship sinking cutscene flags to spawn.
+        # To preserve the cutscene director's vision, we'll put it on our custom "not in a cutscene" check instead!
+        rom_data.write_byte(0x7C67F5, 0x08)
         rom_data.write_int16(0x7C6806, 0x0000)
+        rom_data.write_int32(0x7C6810, 0x803FCDBC)
         # Prevent the Sea Monster from respawning if you leave the pier map and return.
         rom_data.write_byte(0x7C67B5, 0x80)
         rom_data.write_int16(0x7C67C6, 0x015D)
@@ -426,6 +427,61 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Set the Tower of Ruins end loading zone destination to the Castle Center top elevator White Jewel.
         rom_data.write_int16(0x8128EE, 0x0F03)
 
+        # Make the Cornell intro cutscene actors in Castle Center spawn only when we are actually in a cutscene.
+        rom_data.write_int32s(0xFFCDA0, patches.cutscene_active_checkers)
+        # Basement
+        rom_data.write_byte(0x7AA2A5, 0x0A)
+        rom_data.write_int32(0x7AA2C0, 0x803FCDBC)
+        rom_data.write_byte(0x7AA2C5, 0x0A)
+        rom_data.write_int32(0x7AA2E0, 0x803FCDBC)
+        rom_data.write_byte(0x7AA2E5, 0x0A)
+        rom_data.write_int32(0x7AA300, 0x803FCDBC)
+        rom_data.write_byte(0x7AA305, 0x0A)
+        rom_data.write_int32(0x7AA320, 0x803FCDBC)
+        rom_data.write_byte(0x7AA325, 0x0A)
+        rom_data.write_int32(0x7AA340, 0x803FCDBC)
+        rom_data.write_byte(0x7AA345, 0x0A)
+        rom_data.write_int32(0x7AA360, 0x803FCDBC)
+        rom_data.write_byte(0x7AA365, 0x08)
+        rom_data.write_int32(0x7AA380, 0x803FCDBC)
+        rom_data.write_byte(0x7AA405, 0x08)
+        rom_data.write_int32(0x7AA420, 0x803FCDA0)
+        rom_data.write_byte(0x7AA425, 0x08)
+        rom_data.write_int32(0x7AA440, 0x803FCDA0)
+        rom_data.write_byte(0x7AA445, 0x08)
+        rom_data.write_int32(0x7AA460, 0x803FCDA0)
+        rom_data.write_byte(0x7AA465, 0x08)
+        rom_data.write_int32(0x7AA480, 0x803FCDA0)
+        rom_data.write_byte(0x7AA485, 0x08)
+        rom_data.write_int32(0x7AA4A0, 0x803FCDA0)
+        rom_data.write_byte(0x7AA4A5, 0x08)
+        rom_data.write_int32(0x7AA4C0, 0x803FCDA0)
+        # Factory Floor
+        rom_data.write_byte(0x7B1369, 0x08)
+        rom_data.write_int32(0x7B1384, 0x803FCDA0)
+        rom_data.write_byte(0x7B1389, 0x08)
+        rom_data.write_int32(0x7B13A4, 0x803FCDA0)
+        rom_data.write_byte(0x7B13A9, 0x08)
+        rom_data.write_int32(0x7B13C4, 0x803FCDA0)
+        rom_data.write_byte(0x7B13C9, 0x08)
+        rom_data.write_int32(0x7B13E4, 0x803FCDA0)
+        rom_data.write_byte(0x7B13E9, 0x08)
+        rom_data.write_int32(0x7B1404, 0x803FCDA0)
+        rom_data.write_byte(0x7B1429, 0x08)
+        rom_data.write_int32(0x7B1444, 0x803FCDBC)
+        rom_data.write_byte(0x7B1449, 0x08)
+        rom_data.write_int32(0x7B1464, 0x803FCDBC)
+        rom_data.write_byte(0x7B1469, 0x08)
+        rom_data.write_int32(0x7B1484, 0x803FCDBC)
+        # Lizard Lab
+        rom_data.write_byte(0x7B4309, 0x88)
+        rom_data.write_int32(0x7B4324, 0x803FCDBC)
+        rom_data.write_byte(0x7B4349, 0x08)
+        rom_data.write_int32(0x7B4364, 0x803FCDBC)
+        rom_data.write_byte(0x7B4369, 0x08)
+        rom_data.write_int32(0x7B4384, 0x803FCDBC)
+        rom_data.write_byte(0x7B4389, 0x08)
+        rom_data.write_int32(0x7B43A4, 0x803FCDBC)
         # Change some shelf decoration Nitros and Mandragoras into actual items.
         rom_data.write_int32(0x7A9BE8, 0xC0800000)  # X position
         rom_data.write_int32(0x7A9C08, 0xC0800000)  # X position
@@ -437,16 +493,16 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int32(0x7B89A0, 0xC3990000)  # X position
         rom_data.write_int16(0x7B894C, 0x0027)  # Interactable actor ID
         rom_data.write_int16(0x7B89AC, 0x0027)  # Interactable actor ID
-        rom_data.write_int16(0x7B8950, 0x0348)  # Flag ID
-        rom_data.write_int16(0x7A9CB0, 0x0347)  # Flag ID
+        rom_data.write_int16(0x7B8950, 0x0347)  # Flag ID
+        rom_data.write_int16(0x7B89B0, 0x0348)  # Flag ID
         rom_data.write_int16(0x7B8952, 0x0000)  # Param unassignment
         rom_data.write_int16(0x7B89B2, 0x0000)  # Param unassignment
-        # Fix the Castle Center library bookshelf item by rearranging the map's actor list slightly, and changing it
-        # to not spawn instead of spawn when its flag is not set.
-        library_card_actor = rom_data.read_bytes(0x7B6720, 0x20)
-        rom_data.write_bytes(0x7B6660, rom_data.read_bytes(0x7B6640, 0xE0))
-        library_card_actor[1] = 0x80
-        rom_data.write_bytes(0x7B6640, library_card_actor)
+        # Restore the Castle Center library bookshelf item by moving its actor entry into the main library actor list.
+        rom_data.write_bytes(0x7B6620, rom_data.read_bytes(0x7B6720, 0x20))
+        rom_data.write_byte(0x7B6621, 0x80)
+        # Make the Castle Center post-Behemoth boss cutscenes trigger-able by anyone.
+        rom_data.write_byte(0x118139, 0x00)
+        rom_data.write_byte(0x118165, 0x00)
         # Fix both Castle Center elevator bridges for both characters unless enabling only one character's stages.
         # At which point one bridge will be always broken and one always repaired instead.
         rom_data.write_int32(0x7B938C, 0x51200004)  # BEQZL  T1, [forward 0x04]
@@ -459,16 +515,43 @@ class CVLoDPatchExtensions(APPatchExtension):
         # else:
         # rom_data.write_int32(0x6CEAA0, 0x240B0001)  # ADDIU T3, R0, 0x0001
         # rom_data.write_int32(0x6CEAA4, 0x240D0001)  # ADDIU T5, R0, 0x0001
-        # TODO: Add all the Nitro spot check-related hacks and do something about the Cornell intro actors
+
         # Prevent taking Nitro or Mandragora through their shelf text.
         rom_data.write_int32(0x1F0, 0x240C0000, ni_files.OVL_TAKE_NITRO_TEXTBOX)  # ADDIU T4, R0, 0x0000
+        rom_data.write_bytes(0x7B7406, cvlod_string_to_bytearray("Huh!? Someone super glued\n"
+                                                                 "all these Magical Nitro bottles\n"
+                                                                 "to the shelf!»\n"
+                                                                 "Better find some elsewhere,\n"
+                                                                 "lest you suffer the fate of an\n"
+                                                                 "insane lunatic coyote in trying\n"
+                                                                 "to force-remove one...»\t\t")[0])
         rom_data.write_int32(0x22C, 0x240F0000, ni_files.OVL_TAKE_MANDRAGORA_TEXTBOX)  # ADDIU T7, R0, 0x0000
+        rom_data.write_bytes(0x7A8FFC, cvlod_string_to_bytearray("\tThese Mandragora bottles\n"
+                                                                 "are empty, and a note was\n"
+                                                                 "left behind:»\n"
+                                                                 "\"Come 2035, and the Boss\n"
+                                                                 "will be in for a very LOUD\n"
+                                                                 "surprise! Hehehehe!\"»\n"
+                                                                 "Whoever battles Dracula then\n"
+                                                                 "may have an easy time...»\t")[0])
 
         # Ensure the vampire Nitro check will always pass, so they'll never not spawn and crash the Villa cutscenes.
         rom_data.write_int32(0x128, 0x24020001, ni_files.OVL_VAMPIRE_SPAWNER)  # ADDIU V0, R0, 0x0001
 
         # Prevent throwing Nitro in the Hazardous Materials Disposals.
         rom_data.write_int32(0x1E4, 0x24020001, ni_files.OVL_NITRO_DISPOSAL_TEXTBOX)  # ADDIU V0, R0, 0x0001
+        rom_data.write_bytes(0x7ADCCE, cvlod_string_to_bytearray("\t\"Hazardous materials disposal.\"»\n"
+                                                                 "\"DO NOT OPERATE:\n"
+                                                                 "Traces of gelatinous bloody "
+                                                                 "tears need cleaning.\"»    \t")[0])
+        rom_data.write_bytes(0x7B0770, cvlod_string_to_bytearray("\t\"Hazardous materials disposal.\"»\n"
+                                                                 "\"DO NOT OPERATE:\n"
+                                                                 "Jammed shut by repeated use "
+                                                                 "from COWARDS.\"»     \t")[0])
+        rom_data.write_bytes(0x7B2B2A, cvlod_string_to_bytearray("\t\"Hazardous materials disposal.\"»\n"
+                                                                 "\"DO NOT OPERATE:\n"
+                                                                 "Busted by Henrich attempting "
+                                                                 "to escape through it.\"»  \t")[0])
 
         # Allow placing both bomb components at a cracked wall at once while having multiple copies of each, prevent
         # placing them at the downstairs crack altogether until the seal is removed, and enable placing both in one
@@ -483,8 +566,12 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int16(0x436, 0x8040, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
         rom_data.write_int16(0x43A, 0xCD00, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
         rom_data.write_int32s(0xFFCCC0, patches.double_component_checker)
-        rom_data.write_int32s(0xFFCD50, patches.downstairs_seal_checker)
-        # rom_data.write_int32s(0xBFE074, patches.mandragora_with_nitro_setter)
+        rom_data.write_int32s(0xFFCD50, patches.basement_seal_checker)
+        rom_data.write_int16(0x646, 0x8040, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x64A, 0xCDE0, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x65E, 0x8040, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int16(0x662, 0xCDE0, ni_files.OVL_INGREDIENT_SET_TEXTBOX)
+        rom_data.write_int32s(0xFFCDE0, patches.mandragora_with_nitro_setter)
 
         # Custom message for if you try checking the downstairs Castle Center crack before removing the seal.
         rom_data.write_bytes(0x7A924C, cvlod_string_to_bytearray("The Furious Nerd Curse\n"
@@ -834,18 +921,19 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int16(0x1812, 0xC700, ni_files.OVL_VINCENT)
         rom_data.write_byte(0x1817, 0x02, ni_files.OVL_VINCENT)
         rom_data.write_int16(0x181E, 0x027F, ni_files.OVL_VINCENT)
-        rom_data.write_bytes(0x78E776, cvlod_string_to_bytearray(" " * 173)[0])
+        rom_data.write_bytes(0x78E776, cvlod_string_to_bytearray(" " * 173, wrap=False)[0])
         # Mary
         rom_data.write_int16(0xB16, 0x8040, ni_files.OVL_MARY)
         rom_data.write_int16(0xB1A, 0xC700, ni_files.OVL_MARY)
         rom_data.write_byte(0xB1F, 0x03, ni_files.OVL_MARY)
         rom_data.write_int16(0xB26, 0x0086, ni_files.OVL_MARY)
-        rom_data.write_bytes(0x78F40E, cvlod_string_to_bytearray(" " * 295)[0])
+        rom_data.write_bytes(0x78F40E, cvlod_string_to_bytearray(" " * 295, wrap=False)[0])
         # Heinrich
         rom_data.write_int16(0x962A, 0x8040, ni_files.OVL_LIZARD_MEN)
         rom_data.write_int16(0x962E, 0xC700, ni_files.OVL_LIZARD_MEN)
         rom_data.write_byte(0x9633, 0x04, ni_files.OVL_LIZARD_MEN)
         rom_data.write_int16(0x963A, 0x0284, ni_files.OVL_LIZARD_MEN)
+        rom_data.write_bytes(0x7B3210, cvlod_string_to_bytearray(" " * 415, wrap=False)[0])
 
         # Sub-weapon check function hook
         # rom_data.write_int32(0xBF32C, 0x00000000)  # NOP
