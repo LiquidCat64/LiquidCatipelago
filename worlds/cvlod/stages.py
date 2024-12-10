@@ -162,9 +162,9 @@ stage_info = {
     "Castle Center": {
         "start region": rname.cc_main, "start map id": 0x09, "start spawn id": 0x00,
         "mid region": rname.cc_main, "mid map id": 0x0E, "mid spawn id": 0x03,
-        "end region": rname.cc_elev_top, "end map id": 0x0F, "end spawn id": 0x02,
-        "endzone map offset": 0x109CB7, "endzone spawn offset": 0x109CB9,
-        "altzone map offset": 0x109CCF, "altzone spawn offset": 0x109CD1,
+        "end region": rname.cc_elev_top, "end map id": 0x0F, "end spawn id": 0x01,
+        "endzone map offset": 0x7B9AED, "endzone spawn offset": 0x7B9AEE,
+        "altzone map offset": 0x7B9B02, "altzone spawn offset": 0x7B9B03,
         "save number offsets": [0x104A45, 0x104A4D, 0x104A55, 0x104A5D, 0x104A65, 0x104A6D, 0x104A75],
         "regions": [rname.cc_main,
                     rname.cc_torture_chamber,
@@ -195,16 +195,15 @@ stage_info = {
     },
 
     "Tower of Science": {
-        "start region": rname.tosci_start, "start map id": 0x12, "start spawn id": 0x00,
-        "startzone map offset": 0x109D77, "startzone spawn offset": 0x109D79,
-        "mid region": rname.tosci_conveyors, "mid map id": 0x12, "mid spawn id": 0x03,
-        "end region": rname.tosci_conveyors, "end map id": 0x12, "end spawn id": 0x04,
-        "endzone map offset": 0x109D5F, "endzone spawn offset": 0x109D61, "character": "Carrie",
+        "start region": rname.tosci_start, "start map id": 0x21, "start spawn id": 0x00,
+        "startzone map offset": 0x7EE44E, "startzone spawn offset": 0x7EE44F,
+        "mid region": rname.tosci_middle, "mid map id": 0x22, "mid spawn id": 0x02,
+        "end region": rname.tosci_end, "end map id": 0x22, "end spawn id": 0x01,
+        "endzone map offset": 0x804032, "endzone spawn offset": 0x804033, "character": "Carrie",
         "save number offsets": [0x104A95, 0x104A9D, 0x104AA5],
         "regions": [rname.tosci_start,
-                    rname.tosci_three_doors,
-                    rname.tosci_conveyors,
-                    rname.tosci_key3]
+                    rname.tosci_middle,
+                    rname.tosci_end]
     },
 
     "Tower of Sorcery": {
@@ -247,7 +246,7 @@ stage_info = {
 }
 
 vanilla_stage_order = ["Foggy Lake", "Forest of Silence", "Castle Wall", "Villa", "Tunnel", "Underground Waterway",
-                       "The Outer Wall", "Art Tower", "Tower of Ruins", "Castle Center"]
+                       "The Outer Wall", "Art Tower", "Tower of Ruins", "Castle Center", "Tower of Science"]
 
 vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_silence,
                                           "alt": None, "position": 1, "path": " "},
@@ -268,13 +267,14 @@ vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_
                        rname.tower_of_ruins: {"prev": rname.art_tower, "next": rname.castle_center,
                                               "alt": None, "position": 5, "path": "'"},
                        rname.castle_center: {"prev": None, "next": rname.duel_tower,
-                                             "alt": rname.tower_of_science, "position": 5, "path": " "}}
+                                             "alt": rname.tower_of_science, "position": 5, "path": " "},
                        #rname.duel_tower: {"prev": rname.castle_center, "next": rname.tower_of_execution,
                        #                   "alt": None, "position": 6, "path": " "},
                        #rname.tower_of_execution: {"prev": rname.duel_tower, "next": rname.room_of_clocks,
                        #                           "alt": None, "position": 7, "path": " "},
-                       #rname.tower_of_science: {"prev": rname.castle_center, "next": rname.tower_of_sorcery,
-                       #                         "alt": None, "position": 6, "path": "'"},
+                       rname.tower_of_science: {"prev": rname.castle_center, "next": rname.tower_of_sorcery,
+                                                "alt": None, "position": 6, "path": "'"},
+                       }
                        #rname.tower_of_sorcery: {"prev": rname.tower_of_science, "next": rname.room_of_clocks,
                        #                         "alt": None, "position": 7, "path": "'"},
                        #rname.room_of_clocks: {"prev": None, "next": rname.clock_tower,

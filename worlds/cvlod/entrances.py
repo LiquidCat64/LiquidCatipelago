@@ -105,7 +105,7 @@ entrance_info = {
     ename.tor_start: {"destination": rname.at_end},
     ename.tor_doors: {"destination": rname.tor_middle},
     ename.tor_climb: {"destination": rname.tor_end},
-    #ename.tor_end: {"destionaion": ["next", rname.tower_of_ruins]}
+    ename.tor_end: {"destionaion": rname.cc_elev_top},
 
     # Castle Center
     ename.cc_tc_door: {"destination": rname.cc_torture_chamber, "rule": iname.chb_key},
@@ -114,20 +114,22 @@ entrance_info = {
     ename.cc_upper_wall: {"destination": rname.cc_library, "rule": "Bomb 1"},
     ename.cc_elevator: {"destination": rname.cc_elev_top},
     #ename.cc_exit_r: {"destination": ["next", rname.castle_center]},
-    #ename.cc_exit_c: {"destination": ["alt", rname.castle_center]},
+    ename.cc_exit_c: {"destination": rname.tosci_start},
+
+    # Tower of Science
+    ename.tosci_start: {"destination": rname.cc_elev_top},
+    ename.tosci_lone_door: {"destination": rname.tosci_middle},
+    ename.tosci_to_ctrl_door: {"destination": rname.tosci_end, "rule": iname.ctrl_key},
+    ename.tosci_from_ctrl_door: {"destination": rname.tosci_middle, "rule": iname.ctrl_key},
+    # ename.tosci_end: {"destination": ["next", rname.tower_of_science]},
+
     # Duel Tower
     #ename.dt_start: {"destination": ["prev", rname.duel_tower]},
     #ename.dt_end: {"destination": ["next", rname.duel_tower]},
     # Tower of Execution
     #ename.toe_start: {"destination": ["prev", rname.tower_of_execution]},
     #ename.toe_end: {"destination": ["next", rname.tower_of_execution]},
-    # Tower of Science
-    #ename.tosci_start: {"destination": ["prev", rname.tower_of_science]},
-    #ename.tosci_key1_door: {"destination": rname.tosci_three_doors, "rule": iname.science_key1},
-    #ename.tosci_to_key2_door: {"destination": rname.tosci_conveyors, "rule": iname.science_key2},
-    #ename.tosci_from_key2_door: {"destination": rname.tosci_start, "rule": iname.science_key2},
-    #ename.tosci_key3_door: {"destination": rname.tosci_key3, "rule": iname.science_key3},
-    #ename.tosci_end: {"destination": ["next", rname.tower_of_science]},
+
     # Tower of Sorcery
     #ename.tosor_start: {"destination": ["prev", rname.tower_of_sorcery]},
     #ename.tosor_end: {"destination": ["next", rname.tower_of_sorcery]},

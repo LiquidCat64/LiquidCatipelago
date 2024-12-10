@@ -72,10 +72,9 @@ toe_main = "Tower of Execution: main area"
 toe_ledge = "Tower of Execution: gated ledge"
 
 tower_of_science = "Tower of Science"
-tosci_start = "Tower of Science: turret lab"
-tosci_three_doors = "Tower of Science: locked key1 room"
-tosci_conveyors = "Tower of Science: spiky conveyors"
-tosci_key3 = "Tower of Science: locked key3 room"
+tosci_start = "Tower of Science: cube factory"
+tosci_middle = "Tower of Science: turret halls"
+tosci_end = "Tower of Science: control room"
 
 room_of_clocks = "Room of Clocks"
 roc_main = "Room of Clocks"

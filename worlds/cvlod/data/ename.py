@@ -91,10 +91,9 @@ toe_gate_skip = "Just jump past the gate from above, bro!"
 toe_end = "Tower of Execution end staircase"
 
 tosci_start = "Tower of Science start passage"
-tosci_key1_door = "Science Door 1"
-tosci_to_key2_door = "To Science Door 2"
-tosci_from_key2_door = "From Science Door 2"
-tosci_key3_door = "Science Door 3"
+tosci_lone_door = "Lone turret room door"
+tosci_to_ctrl_door = "To Control Room Door"
+tosci_from_ctrl_door = "From Control Room Door"
 tosci_end = "Tower of Science end passage"
 
 tosor_start = "Tower of Sorcery start passage"

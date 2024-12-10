@@ -202,7 +202,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Make it possible to change the starting level.
         rom_data.write_byte(0x15D3, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
         rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
-        rom_data.write_byte(0x15DB, 0x19, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15DB, 0x21, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
         rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
@@ -592,6 +592,24 @@ class CVLoDPatchExtensions(APPatchExtension):
         #rom_data.write_int32(0xCB4, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
         #rom_data.write_int32(0xCC8, 0x00000000, ni_files.OVL_CC_PLANETARIUM_SOLVED_CS)
 
+        # Make one of the lone turret room doors in Tower of Science display an unused message if you try to open it
+        # before blowing up said turret.
+        rom_data.write_byte(0x803E28, 0x00)
+        rom_data.write_byte(0x803E54, 0x00)
+        # Touch up the message to clarify the room number (to try and minimize confusion if the player approaches the
+        # door from the other side).
+        rom_data.write_bytes(0x803C12, cvlod_string_to_bytearray("Room 1\ncannon ")[0] +
+                             rom_data.read_bytes(0x803C20, 0xE6))
+        # Change the Security Crystal's play sound function call into a set song to play call when it tries to play its
+        # music theme, so it will actually play correctly when coming in from a different stage with a different song.
+        rom_data.write_int16(0x800526, 0x7274)
+        # Make it so checking the Control Room doors will play the map's song, in the event the player tries going
+        # backwards after killing the Security Crystal and having there be no music.
+        rom_data.write_int16(0x803F74, 0x5300)
+        rom_data.write_int32(0x803F78, 0x803FCE40)
+        rom_data.write_int16(0x803FA0, 0x5300)
+        rom_data.write_int32(0x803FA4, 0x803FCE40)
+        rom_data.write_int32s(0xFFCE40, patches.door_map_music_player)
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
         # came before them

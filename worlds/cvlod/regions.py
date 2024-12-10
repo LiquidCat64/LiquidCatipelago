@@ -326,7 +326,7 @@ region_info = {
 
     rname.uw_end: {"stage": rname.underground_waterway,
                    "entrances": [
-                    ename.uw_end
+                       ename.uw_end
                    ]},
 
     rname.tow_start: {"stage": rname.the_outer_wall,
@@ -542,16 +542,58 @@ region_info = {
                                      lname.ccl_bookcase]},
 
     rname.cc_crystal: {"stage": rname.castle_center,
-                       #"locations": [lname.cc_behind_the_seal,
+                       # "locations": [lname.cc_behind_the_seal,
                        #              lname.cc_boss_one,
                        #              lname.cc_boss_two],
                        "entrances": [ename.cc_elevator]},
 
     rname.cc_elev_top: {"stage": rname.castle_center,
-                        "locations": [lname.the_end],
-                        #"entrances": [ename.cc_exit_r,
-                        #              ename.cc_exit_c]
+                        "entrances": [
+                                      # ename.cc_exit_r,
+                                      ename.cc_exit_c]
                         },
+
+    rname.tosci_start: {"stage": rname.tower_of_science,
+                        "locations": [lname.toscic_first,
+                                      lname.toscic_second,
+                                      lname.toscic_elevator,
+                                      lname.toscit_lone_c,
+                                      lname.toscit_lone_rl,
+                                      lname.toscit_lone_rr],
+                        "entrances": [ename.tosci_start,
+                                      ename.tosci_lone_door]},
+
+    rname.tosci_middle: {"stage": rname.tower_of_science,
+                         "locations": [lname.toscit_sec_1,
+                                       lname.toscit_sec_2,
+                                       lname.toscit_sec_check_l,
+                                       lname.toscit_sec_check_r,
+                                       lname.toscit_25d_pipes,
+                                       lname.toscit_25d_cover,
+                                       lname.toscit_course_d1_l,
+                                       lname.toscit_course_d1_r,
+                                       lname.toscit_course_d2_l,
+                                       lname.toscit_course_d2_r,
+                                       lname.toscit_course_d3_l,
+                                       lname.toscit_course_d3_c,
+                                       lname.toscit_course_alcove,
+                                       lname.toscit_course_end],
+                         "entrances": [ename.tosci_to_ctrl_door]},
+
+    rname.tosci_end: {"stage": rname.tower_of_science,
+                      "locations": [lname.toscit_ctrl_fl,
+                                    lname.toscit_ctrl_fr,
+                                    lname.toscit_ctrl_l,
+                                    lname.toscit_ctrl_r,
+                                    lname.toscit_ctrl_rl,
+                                    lname.toscit_ctrl_rr,
+                                    lname.toscit_ctrl_interface_f,
+                                    lname.toscit_ctrl_interface_rl,
+                                    lname.toscit_ctrl_interface_rr,
+                                    lname.the_end],
+                      "entrances": [ename.tosci_from_ctrl_door,
+                                    # ename.tosci_end
+                                    ]},
 
     rname.dt_main: {"stage": rname.duel_tower,
                     "locations": [lname.dt_boss_one,
@@ -585,36 +627,6 @@ region_info = {
     rname.toe_ledge: {"stage": rname.tower_of_execution,
                       "locations": [lname.toe_keygate_l,
                                     lname.toe_keygate_r]},
-
-    rname.tosci_start: {"stage": rname.tower_of_science,
-                        "locations": [lname.tosci_elevator,
-                                      lname.tosci_plain_sr,
-                                      lname.tosci_stairs_sr],
-                        "entrances": [ename.tosci_start,
-                                      ename.tosci_key1_door,
-                                      ename.tosci_to_key2_door]},
-
-    rname.tosci_three_doors: {"stage": rname.tower_of_science,
-                              "locations": [lname.tosci_three_door_hall]},
-
-    rname.tosci_conveyors: {"stage": rname.tower_of_science,
-                            "locations": [lname.tosci_ibridge_t,
-                                          lname.tosci_ibridge_b1,
-                                          lname.tosci_ibridge_b2,
-                                          lname.tosci_ibridge_b3,
-                                          lname.tosci_ibridge_b4,
-                                          lname.tosci_ibridge_b5,
-                                          lname.tosci_ibridge_b6,
-                                          lname.tosci_conveyor_sr,
-                                          lname.tosci_exit],
-                            "entrances": [ename.tosci_from_key2_door,
-                                          ename.tosci_key3_door,
-                                          ename.tosci_end]},
-
-    rname.tosci_key3: {"stage": rname.tower_of_science,
-                       "locations": [lname.tosci_key3_r,
-                                     lname.tosci_key3_m,
-                                     lname.tosci_key3_l]},
 
     rname.tosor_main: {"stage": rname.tower_of_sorcery,
                        "locations": [lname.tosor_stained_tower,
