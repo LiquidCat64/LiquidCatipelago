@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Dict, List, Tuple, Union
 if TYPE_CHECKING:
     from . import CVLoDWorld
 
-
 # # #    KEY    # # #
 # "start region" = The Region that the start of the stage is in. Used for connecting the previous stage's end and
 #                  alternate end (if it exists) Entrances to the start of the next one.
@@ -174,13 +173,15 @@ stage_info = {
     },
 
     "Duel Tower": {
-        "start region": rname.dt_main, "start map id": 0x13, "start spawn id": 0x00,
-        "startzone map offset": 0x109DA7, "startzone spawn offset": 0x109DA9,
-        "mid region": rname.dt_main, "mid map id": 0x13, "mid spawn id": 0x15,
-        "end region": rname.dt_main, "end map id": 0x13, "end spawn id": 0x01,
-        "endzone map offset": 0x109D8F, "endzone spawn offset": 0x109D91, "character": "Reinhardt",
+        "start region": rname.dt_main, "start map id": 0x27, "start spawn id": 0x00,
+        "startzone map offset": 0x82719A, "startzone spawn offset": 0x82719B,
+        "mid region": rname.dt_main, "mid map id": 0x27, "mid spawn id": 0x02,
+        "end region": rname.dt_main, "end map id": 0x27, "end spawn id": 0x01,
+        "endzone map offset": 0x8271AE, "endzone spawn offset": 0x8271AF, "character": "Reinhardt",
         "save number offsets": [0x104ACD],
-        "regions": {rname.dt_main}
+        "regions": {rname.dt_start,
+                    rname.dt_main,
+                    rname.dt_end}
     },
 
     "Tower of Execution": {
@@ -246,7 +247,8 @@ stage_info = {
 }
 
 vanilla_stage_order = ["Foggy Lake", "Forest of Silence", "Castle Wall", "Villa", "Tunnel", "Underground Waterway",
-                       "The Outer Wall", "Art Tower", "Tower of Ruins", "Castle Center", "Tower of Science"]
+                       "The Outer Wall", "Art Tower", "Tower of Ruins", "Castle Center", "Duel Tower",
+                       "Tower of Science"]
 
 vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_silence,
                                           "alt": None, "position": 1, "path": " "},
@@ -268,21 +270,23 @@ vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_
                                               "alt": None, "position": 5, "path": "'"},
                        rname.castle_center: {"prev": None, "next": rname.duel_tower,
                                              "alt": rname.tower_of_science, "position": 5, "path": " "},
-                       #rname.duel_tower: {"prev": rname.castle_center, "next": rname.tower_of_execution,
-                       #                   "alt": None, "position": 6, "path": " "},
-                       #rname.tower_of_execution: {"prev": rname.duel_tower, "next": rname.room_of_clocks,
+                       rname.duel_tower: {"prev": rname.castle_center, "next": rname.tower_of_execution,
+                                          "alt": None, "position": 6, "path": " "},
+                       # rname.tower_of_execution: {"prev": rname.duel_tower, "next": rname.room_of_clocks,
                        #                           "alt": None, "position": 7, "path": " "},
                        rname.tower_of_science: {"prev": rname.castle_center, "next": rname.tower_of_sorcery,
                                                 "alt": None, "position": 6, "path": "'"},
                        }
-                       #rname.tower_of_sorcery: {"prev": rname.tower_of_science, "next": rname.room_of_clocks,
-                       #                         "alt": None, "position": 7, "path": "'"},
-                       #rname.room_of_clocks: {"prev": None, "next": rname.clock_tower,
-                       #                       "alt": None, "position": 8, "path": " "},
-                       #rname.clock_tower: {"prev": None, "next": rname.castle_keep,
-                       #                    "alt": None, "position": 9, "path": " "},
-                       #rname.castle_keep: {"prev": None, "next": None,
-                       #                    "alt": None, "position": 10, "path": " "}}
+
+
+# rname.tower_of_sorcery: {"prev": rname.tower_of_science, "next": rname.room_of_clocks,
+#                         "alt": None, "position": 7, "path": "'"},
+# rname.room_of_clocks: {"prev": None, "next": rname.clock_tower,
+#                       "alt": None, "position": 8, "path": " "},
+# rname.clock_tower: {"prev": None, "next": rname.castle_keep,
+#                    "alt": None, "position": 9, "path": " "},
+# rname.castle_keep: {"prev": None, "next": None,
+#                    "alt": None, "position": 10, "path": " "}}
 
 
 def get_stage_info(stage: str, info: str):
@@ -322,13 +326,13 @@ def get_normal_stage_exits(world: "CVLoDWorld") -> Dict[str, dict]:
     exits = {name: vanilla_stage_exits[name].copy() for name in vanilla_stage_exits}
     non_branching_pos = 1
 
-    #for stage in stage_info:
-        # Remove character stages that are not enabled.
+    # for stage in stage_info:
+    # Remove character stages that are not enabled.
     #    if not verify_character_stage(world, stage):
     #        del exits[stage]
     #        continue
 
-        # If branching pathways are not enabled, update the exit info to converge said stages on a single path.
+    # If branching pathways are not enabled, update the exit info to converge said stages on a single path.
     #    if not world.branching_stages:
     #        if world.carrie_stages and not world.reinhardt_stages and exits[stage]["alt"] is not None:
     #            exits[stage]["next"] = exits[stage]["alt"]

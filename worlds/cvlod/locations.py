@@ -561,6 +561,21 @@ location_info = {
     lname.ccl_bookcase:                  {"code": 0x12E, "offset": 0x7B6638, "normal item": iname.s_card,
                                           "countdown": 18},
 
+    # Duel Tower
+    lname.dt_pre_sweeper_l:  {"code": 0x249, "offset": 0x8284BC, "normal item": iname.jewel_s},
+    lname.dt_pre_sweeper_r:  {"code": 0x248, "offset": 0x82849C, "normal item": iname.jewel_s},
+    lname.dt_werewolf_ledge: {"code": 0x254, "offset": 0x827012, "normal item": iname.powerup},
+    lname.dt_post_sweeper_l: {"code": 0x252, "offset": 0x8284DC, "normal item": iname.jewel_s},
+    lname.dt_post_sweeper_r: {"code": 0x253, "offset": 0x8284FC, "normal item": iname.jewel_s},
+    lname.dt_slant_l:        {"code": 0x24B, "offset": 0x82702A, "normal item": iname.gold_300},
+    lname.dt_slant_r:        {"code": 0x24A, "offset": 0x82701E, "normal item": iname.jewel_s},
+    lname.dt_pinwheels_l:    {"code": 0x24C, "offset": 0x827036, "normal item": iname.chicken},
+    lname.dt_pinwheels_r:    {"code": 0x24D, "offset": 0x826FD6, "normal item": iname.jewel_l},
+    lname.dt_guards_l:       {"code": 0x24E, "offset": 0x827072, "normal item": iname.jewel_s},
+    lname.dt_guards_r:       {"code": 0x24F, "offset": 0x82707E, "normal item": iname.gold_300},
+    lname.dt_werebull_l:     {"code": 0x251, "offset": 0x82705A, "normal item": iname.chicken},
+    lname.dt_werebull_r:     {"code": 0x250, "offset": 0x826FFA, "normal item": iname.powerup},
+
     # Tower of Science
     lname.toscic_first:             {"code": 0x1DC, "offset": 0x7EE00E, "normal item": iname.gold_300},
     lname.toscic_second:            {"code": 0x1DB, "offset": 0x7EE002, "normal item": iname.jewel_s},

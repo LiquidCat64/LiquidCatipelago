@@ -113,23 +113,24 @@ entrance_info = {
     ename.cc_lower_wall: {"destination": rname.cc_crystal, "rule": "Bomb 2"},
     ename.cc_upper_wall: {"destination": rname.cc_library, "rule": "Bomb 1"},
     ename.cc_elevator: {"destination": rname.cc_elev_top},
-    #ename.cc_exit_r: {"destination": ["next", rname.castle_center]},
+    ename.cc_exit_r: {"destination": rname.dt_start},
     ename.cc_exit_c: {"destination": rname.tosci_start},
 
+    # Duel Tower
+    ename.dt_start: {"destination": rname.cc_elev_top},
+    ename.dt_drop: {"destination": rname.dt_main},
+    ename.dt_last: {"destination": rname.dt_end},
+    # ename.dt_end: {"destination": ["next", rname.duel_tower]},
+
+    # Tower of Execution
+    #ename.toe_start: {"destination": ["prev", rname.tower_of_execution]},
+    #ename.toe_end: {"destination": ["next", rname.tower_of_execution]},
     # Tower of Science
     ename.tosci_start: {"destination": rname.cc_elev_top},
     ename.tosci_lone_door: {"destination": rname.tosci_middle},
     ename.tosci_to_ctrl_door: {"destination": rname.tosci_end, "rule": iname.ctrl_key},
     ename.tosci_from_ctrl_door: {"destination": rname.tosci_middle, "rule": iname.ctrl_key},
     # ename.tosci_end: {"destination": ["next", rname.tower_of_science]},
-
-    # Duel Tower
-    #ename.dt_start: {"destination": ["prev", rname.duel_tower]},
-    #ename.dt_end: {"destination": ["next", rname.duel_tower]},
-    # Tower of Execution
-    #ename.toe_start: {"destination": ["prev", rname.tower_of_execution]},
-    #ename.toe_end: {"destination": ["next", rname.tower_of_execution]},
-
     # Tower of Sorcery
     #ename.tosor_start: {"destination": ["prev", rname.tower_of_sorcery]},
     #ename.tosor_end: {"destination": ["next", rname.tower_of_sorcery]},

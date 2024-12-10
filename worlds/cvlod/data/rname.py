@@ -62,7 +62,9 @@ cc_library = "Castle Center: library"
 cc_elev_top = "Castle Center: elevator top"
 
 duel_tower = "Duel Tower"
-dt_main = "Duel Tower"
+dt_start = "Duel Tower: Were-jaguar arena"
+dt_main = "Duel Tower: main area"
+dt_end = "Duel Tower: end alcove"
 
 tower_of_sorcery = "Tower of Sorcery"
 tosor_main = "Tower of Sorcery"

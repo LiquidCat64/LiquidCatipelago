@@ -83,6 +83,8 @@ cc_exit_r = "Castle Center Reinhardt (Medusa Head) exit"
 cc_exit_c = "Castle Center Carrie (Ghost) exit"
 
 dt_start = "Duel Tower start passage"
+dt_drop = "Duel Tower Were-jaguar drop-off"
+dt_last = "Duel Tower final fight"
 dt_end = "Duel Tower end passage"
 
 toe_start = "Tower of Execution start passage"

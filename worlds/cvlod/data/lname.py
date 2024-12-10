@@ -409,12 +409,19 @@ ccff_lizard_slab3 = "Castle Center: Lizard locker room slab - Item 3"
 ccff_lizard_slab4 = "Castle Center: Lizard locker room slab - Item 4"
 
 # Duel Tower definitions
-dt_stones_start = "Duel Tower: Stepping stone path start"
-dt_werebull_arena = "Duel Tower: Above Were-bull arena"
-dt_ibridge_l = "Duel Tower: Invisible bridge balcony - Left"
-dt_ibridge_r = "Duel Tower: Invisible bridge balcony - Right"
-
-dt_stones_end = "Duel Tower: Stepping stone path end"
+dt_pre_sweeper_l = "Duel Tower: Pre-Werewolf sweeper island - Left"
+dt_pre_sweeper_r = "Duel Tower: Pre-Werewolf sweeper island - Right"
+dt_werewolf_ledge = "Duel Tower: Werewolf arena ledge"
+dt_post_sweeper_l = "Duel Tower: Post-Werewolf sweeper island - Left"
+dt_post_sweeper_r = "Duel Tower: Post-Werewolf sweeper island - Right"
+dt_slant_l = "Duel Tower: Slanted hallway bottom - Left"
+dt_slant_r = "Duel Tower: Slanted hallway bottom - Right"
+dt_pinwheels_l = "Duel Tower: Pinwheel alley start - Left"
+dt_pinwheels_r = "Duel Tower: Pinwheel alley start - Right"
+dt_guards_l = "Duel Tower: Guarded shopping landing - Left"
+dt_guards_r = "Duel Tower: Guarded shopping landing - Right"
+dt_werebull_l = "Duel Tower: Were-bull arena - Left"
+dt_werebull_r = "Duel Tower: Were-bull arena - Right"
 
 # Tower of Execution definitions
 toe_midsavespikes_r = "Tower of Execution: Past mid-savepoint spikes - Right"
@@ -431,7 +438,6 @@ toe_ledge4 = "Tower of Execution: Pre-mid-savepoint platforms ledge - Item 4"
 toe_ledge5 = "Tower of Execution: Pre-mid-savepoint platforms ledge - Item 5"
 
 toe_keygate_r = "Tower of Execution: Execution Key gate - Right"
-
 
 # Tower of Science definitions
 toscic_first = "Tower of Science: Cube factory first corner"
