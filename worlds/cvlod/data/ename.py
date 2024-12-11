@@ -88,9 +88,7 @@ dt_last = "Duel Tower final fight"
 dt_end = "Duel Tower end passage"
 
 toe_start = "Tower of Execution start passage"
-toe_gate = "Execution gate"
-toe_gate_skip = "Just jump past the gate from above, bro!"
-toe_end = "Tower of Execution end staircase"
+toe_end = "Tower of Execution end passage"
 
 tosci_start = "Tower of Science start passage"
 tosci_lone_door = "Lone turret room door"

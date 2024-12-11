@@ -120,11 +120,12 @@ entrance_info = {
     ename.dt_start: {"destination": rname.cc_elev_top},
     ename.dt_drop: {"destination": rname.dt_main},
     ename.dt_last: {"destination": rname.dt_end},
-    # ename.dt_end: {"destination": ["next", rname.duel_tower]},
+    ename.dt_end: {"destination": rname.toe_main},
 
     # Tower of Execution
-    #ename.toe_start: {"destination": ["prev", rname.tower_of_execution]},
+    ename.toe_start: {"destination": rname.dt_end},
     #ename.toe_end: {"destination": ["next", rname.tower_of_execution]},
+
     # Tower of Science
     ename.tosci_start: {"destination": rname.cc_elev_top},
     ename.tosci_lone_door: {"destination": rname.tosci_middle},

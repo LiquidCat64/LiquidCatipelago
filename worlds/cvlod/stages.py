@@ -185,14 +185,13 @@ stage_info = {
     },
 
     "Tower of Execution": {
-        "start region": rname.toe_main, "start map id": 0x10, "start spawn id": 0x00,
-        "startzone map offset": 0x109D17, "startzone spawn offset": 0x109D19,
-        "mid region": rname.toe_main, "mid map id": 0x10, "mid spawn id": 0x02,
-        "end region": rname.toe_main, "end map id": 0x10, "end spawn id": 0x12,
-        "endzone map offset": 0x109CFF, "endzone spawn offset": 0x109D01, "character": "Reinhardt",
+        "start region": rname.toe_main, "start map id": 0x1E, "start spawn id": 0x00,
+        "startzone map offset": 0x7E0E0A, "startzone spawn offset": 0x7E0E0B,
+        "mid region": rname.toe_main, "mid map id": 0x20, "mid spawn id": 0x02,
+        "end region": rname.toe_main, "end map id": 0x20, "end spawn id": 0x03,
+        "endzone map offset": 0x7E641E, "endzone spawn offset": 0x7E641F, "character": "Reinhardt",
         "save number offsets": [0x104A7D, 0x104A85],
-        "regions": [rname.toe_main,
-                    rname.toe_ledge]
+        "regions": [rname.toe_main]
     },
 
     "Tower of Science": {
@@ -248,7 +247,7 @@ stage_info = {
 
 vanilla_stage_order = ["Foggy Lake", "Forest of Silence", "Castle Wall", "Villa", "Tunnel", "Underground Waterway",
                        "The Outer Wall", "Art Tower", "Tower of Ruins", "Castle Center", "Duel Tower",
-                       "Tower of Science"]
+                       "Tower of Execution", "Tower of Science"]
 
 vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_silence,
                                           "alt": None, "position": 1, "path": " "},
@@ -272,8 +271,8 @@ vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_
                                              "alt": rname.tower_of_science, "position": 5, "path": " "},
                        rname.duel_tower: {"prev": rname.castle_center, "next": rname.tower_of_execution,
                                           "alt": None, "position": 6, "path": " "},
-                       # rname.tower_of_execution: {"prev": rname.duel_tower, "next": rname.room_of_clocks,
-                       #                           "alt": None, "position": 7, "path": " "},
+                       rname.tower_of_execution: {"prev": rname.duel_tower, "next": rname.room_of_clocks,
+                                                  "alt": None, "position": 7, "path": " "},
                        rname.tower_of_science: {"prev": rname.castle_center, "next": rname.tower_of_sorcery,
                                                 "alt": None, "position": 6, "path": "'"},
                        }

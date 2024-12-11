@@ -202,7 +202,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Make it possible to change the starting level.
         rom_data.write_byte(0x15D3, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
         rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
-        rom_data.write_byte(0x15DB, 0x27, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15DB, 0x1E, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
         rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
@@ -610,6 +610,13 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int16(0x803FA0, 0x5300)
         rom_data.write_int32(0x803FA4, 0x803FCE40)
         rom_data.write_int32s(0xFFCE40, patches.door_map_music_player)
+
+        # Make the Tower of Execution 3HB pillars with 1HB breakables not set their flags, and have said 1HB breakables
+        # set the flags instead.
+        rom_data.write_int16(0x7E0A66, 0x0000)
+        rom_data.write_int16(0x7E0B26, 0x01B5)
+        rom_data.write_int16(0x7E0A96, 0x0000)
+        rom_data.write_int16(0x7E0B32, 0x01B8)
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
         # came before them

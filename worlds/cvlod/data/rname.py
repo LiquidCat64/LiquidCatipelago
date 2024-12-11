@@ -71,7 +71,6 @@ tosor_main = "Tower of Sorcery"
 
 tower_of_execution = "Tower of Execution"
 toe_main = "Tower of Execution: main area"
-toe_ledge = "Tower of Execution: gated ledge"
 
 tower_of_science = "Tower of Science"
 tosci_start = "Tower of Science: cube factory"
