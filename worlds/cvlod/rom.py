@@ -202,7 +202,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Make it possible to change the starting level.
         rom_data.write_byte(0x15D3, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
         rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
-        rom_data.write_byte(0x15DB, 0x1E, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15DB, 0x1D, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
         rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
@@ -617,6 +617,13 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int16(0x7E0B26, 0x01B5)
         rom_data.write_int16(0x7E0A96, 0x0000)
         rom_data.write_int16(0x7E0B32, 0x01B8)
+
+        # Make the Tower of Sorcery pink diamond always drop the same 3 items, prevent it from setting its own flag when
+        # broken, and have it set individual flags on each of its drops.
+        rom_data.write_int32(0x7DD624, 0x00106040)  # SLL   T4, S0, 1
+        rom_data.write_int32(0x7DCE2C, 0x00000000)  # NOP
+        rom_data.write_int32(0x7DCDFC, 0x0C0FF3A4)  # JAL   0x803FCE90
+        rom_data.write_int32s(0xFFCE80, patches.pink_sorcery_diamond_customizer)
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
         # came before them

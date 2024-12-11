@@ -491,13 +491,14 @@ toscit_ctrl_interface_rl = "Tower of Science: Control room - Rear-left interface
 toscit_ctrl_interface_rr = "Tower of Science: Control room - Rear-right interface"
 
 # Tower of Sorcery definitions
-tosor_stained_tower = "Tower of Sorcery: Stained glass tower"
-tosor_savepoint = "Tower of Sorcery: Mid-savepoint platform"
-tosor_trickshot = "Tower of Sorcery: Trick shot from mid-savepoint platform"
-tosor_yellow_bubble = "Tower of Sorcery: Above yellow bubble"
-tosor_blue_platforms = "Tower of Sorcery: Tiny blue platforms start"
-tosor_side_isle = "Tower of Sorcery: Lone red platform side island"
-tosor_ibridge = "Tower of Sorcery: Special2 platform"
+tosor_electric = "Tower of Sorcery: Bottom electrical islands"
+tosor_lasers = "Tower of Sorcery: Laser crystal field"
+tosor_climb_l = "Tower of Sorcery: Final climb savepoint - Left"
+tosor_climb_r = "Tower of Sorcery: Final climb savepoint - Right"
+tosor_ibridge = "Tower of Sorcery: Invisible bridge platform"
+tosor_super_1 = "Tower of Sorcery: Pink super diamond - Item 1"
+tosor_super_2 = "Tower of Sorcery: Pink super diamond - Item 2"
+tosor_super_3 = "Tower of Sorcery: Pink super diamond - Item 3"
 
 # Room of Clocks definitions
 roc_ent_l = "Room of Clocks: Left from entrance hallway"

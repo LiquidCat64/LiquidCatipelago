@@ -56,8 +56,8 @@ remote_item_giver = [
     0x00000000,  # NOP
     0x8D8F005C,  # LW    T7, 0x005C (T4)
     0x11E0FFFA,  # BEQZ  T7,     [backward 0x06]
-    0x00000000,  # NOP
-    0x1DE0FFF8,  # BGTZ  T7,     [backward 0x08]
+    0x95980000,  # LHU   T8, 0x0000 (T4)
+    0x1300FFF8,  # BGTZ  T8,     [backward 0x08]
     0x00000000,  # NOP
     0x8DED0038,  # LW    T5, 0x0038 (T7)
     0x91AE0026,  # LBU   T6, 0x0026 (T5)
@@ -2034,6 +2034,22 @@ door_map_music_player = [
     0x03E00008,  # JR    RA
 ]
 
+pink_sorcery_diamond_customizer = [
+    # Gives each item that drops from the pink Tower of Sorcery diamond its own unique flag and additional settings
+    # attributes.
+    0x03494001,
+    0x034A4001,
+    0x034B4001,
+    0x00000000,
+    0x00104080,  # SLL   T0, S0, 2
+    0x3C098040,  # LUI   T1, 0x8040
+    0x01094821,  # ADDU  T1, T0, T1
+    0x952ACE80,  # LHU   T2, 0xCE80 (T1)
+    0x9527CE82,  # LHU   A3, 0xCE82 (T1)
+    0x08058E56,  # J     0x80163958
+    0xAFAA0010   # SW    T2, 0x0010 (SP)
+]
+
 always_actor_edits = {
     # Foggy Lake Decks
     0x7BE1E0: 0x00,
@@ -3033,6 +3049,30 @@ always_actor_edits = {
     0x7E75CC: 0x00,
     # Cornell loading zone
     0x7E75EE: 0x08,
+
+    # Tower of Sorcery
+    # Cornell White Jewels
+    0x7E01E6: 0x08,
+    0x7E0206: 0x08,
+    0x7E0226: 0x08,
+    # Carrie White Jewels
+    0x7E0244: 0x00,
+    0x7E0264: 0x00,
+    0x7E0284: 0x00,
+    # Difficulty-specific items/breakables
+    0x7E02C6: 0x08,
+    0x7E0306: 0x08,
+    0x7E0326: 0x08,
+    0x7E0364: 0x00,
+    0x7E0384: 0x00,
+    0x7E03A4: 0x00,
+    0x7E03C6: 0x08,
+    # Carrie loading zones
+    0x7E03E4: 0x00,
+    0x7E0404: 0x00,
+    # Cornell loading zones
+    0x7E0426: 0x08,
+    0x7E0446: 0x08,
 }
 
 cw_combined_edits = {

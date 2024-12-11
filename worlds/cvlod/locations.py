@@ -653,6 +653,16 @@ location_info = {
     lname.toscit_ctrl_interface_rl: {"code": 0x1F7, "offset": 0x8050B0, "normal item": iname.chicken},
     lname.toscit_ctrl_interface_rr: {"code": 0x1F8, "offset": 0x804FF0, "normal item": iname.s_card},
 
+    # Tower of Sorcery
+    lname.tosor_electric: {"code": 0x1A9, "offset": 0x7DF0CE, "normal item": iname.jewel_s},
+    lname.tosor_lasers:   {"code": 0x1AA, "offset": 0x7DF09E, "normal item": iname.axe, "add conds": ["sub"]},
+    lname.tosor_climb_l:  {"code": 0x1AB, "offset": 0x7DF0DA, "normal item": iname.jewel_s},
+    lname.tosor_climb_r:  {"code": 0x1AC, "offset": 0x7DF0E6, "normal item": iname.gold_300},
+    lname.tosor_ibridge:  {"code": 0x1AD, "offset": 0x7DF0C2, "normal item": iname.powerup},
+    lname.tosor_super_1:  {"code": 0x349, "offset": 0x7DEB90, "normal item": iname.gold_500},
+    lname.tosor_super_2:  {"code": 0x34A, "offset": 0x7DEB92, "normal item": iname.gold_500},
+    lname.tosor_super_3:  {"code": 0x34B, "offset": 0x7DEB94, "normal item": iname.kit},
+
     lname.the_end:        {"event": iname.victory},
 }
 

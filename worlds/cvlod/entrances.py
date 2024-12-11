@@ -131,10 +131,12 @@ entrance_info = {
     ename.tosci_lone_door: {"destination": rname.tosci_middle},
     ename.tosci_to_ctrl_door: {"destination": rname.tosci_end, "rule": iname.ctrl_key},
     ename.tosci_from_ctrl_door: {"destination": rname.tosci_middle, "rule": iname.ctrl_key},
-    # ename.tosci_end: {"destination": ["next", rname.tower_of_science]},
+    ename.tosci_end: {"destination": rname.tosor_main},
+
     # Tower of Sorcery
-    #ename.tosor_start: {"destination": ["prev", rname.tower_of_sorcery]},
+    ename.tosor_start: {"destination": rname.tosci_end},
     #ename.tosor_end: {"destination": ["next", rname.tower_of_sorcery]},
+
     # Room of Clocks
     #ename.roc_gate: {"destination": ["next", rname.room_of_clocks]},
     # Clock Tower

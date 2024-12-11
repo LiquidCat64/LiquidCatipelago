@@ -207,11 +207,11 @@ stage_info = {
     },
 
     "Tower of Sorcery": {
-        "start region": rname.tosor_main, "start map id": 0x11, "start spawn id": 0x00,
-        "startzone map offset": 0x109D47, "startzone spawn offset": 0x109D49,
-        "mid region": rname.tosor_main, "mid map id": 0x11, "mid spawn id": 0x01,
-        "end region": rname.tosor_main, "end map id": 0x11, "end spawn id": 0x13,
-        "endzone map offset": 0x109D2F, "endzone spawn offset": 0x109D31, "character": "Carrie",
+        "start region": rname.tosor_main, "start map id": 0x1D, "start spawn id": 0x00,
+        "startzone map offset": 0x7DF116, "startzone spawn offset": 0x7DF117,
+        "mid region": rname.tosor_main, "mid map id": 0x1D, "mid spawn id": 0x02,
+        "end region": rname.tosor_main, "end map id": 0x1D, "end spawn id": 0x01,
+        "endzone map offset": 0x7DF12A, "endzone spawn offset": 0x7DF12B, "character": "Carrie",
         "save number offsets": [0x104A8D],
         "regions": [rname.tosor_main]
     },
@@ -247,7 +247,7 @@ stage_info = {
 
 vanilla_stage_order = ["Foggy Lake", "Forest of Silence", "Castle Wall", "Villa", "Tunnel", "Underground Waterway",
                        "The Outer Wall", "Art Tower", "Tower of Ruins", "Castle Center", "Duel Tower",
-                       "Tower of Execution", "Tower of Science"]
+                       "Tower of Execution", "Tower of Science", "Tower of Sorcery"]
 
 vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_silence,
                                           "alt": None, "position": 1, "path": " "},
@@ -275,11 +275,11 @@ vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_
                                                   "alt": None, "position": 7, "path": " "},
                        rname.tower_of_science: {"prev": rname.castle_center, "next": rname.tower_of_sorcery,
                                                 "alt": None, "position": 6, "path": "'"},
+                       rname.tower_of_sorcery: {"prev": rname.tower_of_science, "next": rname.room_of_clocks,
+                                                "alt": None, "position": 7, "path": "'"},
                        }
 
 
-# rname.tower_of_sorcery: {"prev": rname.tower_of_science, "next": rname.room_of_clocks,
-#                         "alt": None, "position": 7, "path": "'"},
 # rname.room_of_clocks: {"prev": None, "next": rname.clock_tower,
 #                       "alt": None, "position": 8, "path": " "},
 # rname.clock_tower: {"prev": None, "next": rname.castle_keep,
