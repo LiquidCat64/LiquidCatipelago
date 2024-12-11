@@ -218,9 +218,9 @@ stage_info = {
 
     "Room of Clocks": {
         "start region": rname.roc_main, "start map id": 0x1B, "start spawn id": 0x00,
-        "mid region": rname.roc_main, "mid map id": 0x1B, "mid spawn id": 0x02,
-        "end region": rname.roc_main, "end map id": 0x1B, "end spawn id": 0x14,
-        "endzone map offset": 0x109EAF, "endzone spawn offset": 0x109EB1,
+        "mid region": rname.roc_main, "mid map id": 0x1B, "mid spawn id": 0x04,
+        "end region": rname.roc_main, "end map id": 0x1B, "end spawn id": 0x02,
+        "endzone map offset": 0x7D7392, "endzone spawn offset": 0x7D7393,
         "save number offsets": [0x104AC5],
         "regions": [rname.roc_main]
     },
@@ -247,7 +247,7 @@ stage_info = {
 
 vanilla_stage_order = ["Foggy Lake", "Forest of Silence", "Castle Wall", "Villa", "Tunnel", "Underground Waterway",
                        "The Outer Wall", "Art Tower", "Tower of Ruins", "Castle Center", "Duel Tower",
-                       "Tower of Execution", "Tower of Science", "Tower of Sorcery"]
+                       "Tower of Execution", "Tower of Science", "Tower of Sorcery", "Room of Clocks"]
 
 vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_silence,
                                           "alt": None, "position": 1, "path": " "},
@@ -277,11 +277,11 @@ vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_
                                                 "alt": None, "position": 6, "path": "'"},
                        rname.tower_of_sorcery: {"prev": rname.tower_of_science, "next": rname.room_of_clocks,
                                                 "alt": None, "position": 7, "path": "'"},
+                       rname.room_of_clocks: {"prev": None, "next": rname.clock_tower,
+                                              "alt": None, "position": 8, "path": " "},
                        }
 
 
-# rname.room_of_clocks: {"prev": None, "next": rname.clock_tower,
-#                       "alt": None, "position": 8, "path": " "},
 # rname.clock_tower: {"prev": None, "next": rname.castle_keep,
 #                    "alt": None, "position": 9, "path": " "},
 # rname.castle_keep: {"prev": None, "next": None,

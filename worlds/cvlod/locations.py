@@ -663,6 +663,16 @@ location_info = {
     lname.tosor_super_2:  {"code": 0x34A, "offset": 0x7DEB92, "normal item": iname.gold_500},
     lname.tosor_super_3:  {"code": 0x34B, "offset": 0x7DEB94, "normal item": iname.kit},
 
+    # Room of Clocks
+    lname.roc_ent_l:  {"code": 0x19C, "offset": 0x7D71D2, "normal item": iname.jewel_l},
+    lname.roc_ent_r:  {"code": 0x2B5, "offset": 0x7D720E, "normal item": iname.powerup},
+    lname.roc_elev_r: {"code": 0x19E, "offset": 0x7D71F6, "normal item": iname.axe,   "add conds": ["sub"]},
+    lname.roc_elev_l: {"code": 0x19D, "offset": 0x7D71EA, "normal item": iname.cross, "add conds": ["sub"]},
+    lname.roc_cont_r: {"code": 0x19F, "offset": 0x7D726E, "normal item": iname.jewel_s},
+    lname.roc_cont_l: {"code": 0x1A1, "offset": 0x7D7256, "normal item": iname.holy,  "add conds": ["sub"]},
+    lname.roc_exit:   {"code": 0x1A0, "offset": 0x7D723E, "normal item": iname.knife, "add conds": ["sub"]},
+    # lname.roc_boss:   {"event": iname.trophy, "add conds": ["boss"]},
+
     lname.the_end:        {"event": iname.victory},
 }
 

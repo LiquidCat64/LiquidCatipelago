@@ -492,7 +492,7 @@ toscit_ctrl_interface_rr = "Tower of Science: Control room - Rear-right interfac
 
 # Tower of Sorcery definitions
 tosor_electric = "Tower of Sorcery: Bottom electrical islands"
-tosor_lasers = "Tower of Sorcery: Laser crystal field"
+tosor_lasers = "Tower of Sorcery: Laser crystal warzone"
 tosor_climb_l = "Tower of Sorcery: Final climb savepoint - Left"
 tosor_climb_r = "Tower of Sorcery: Final climb savepoint - Right"
 tosor_ibridge = "Tower of Sorcery: Invisible bridge platform"

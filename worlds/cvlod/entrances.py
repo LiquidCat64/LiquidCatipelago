@@ -124,7 +124,7 @@ entrance_info = {
 
     # Tower of Execution
     ename.toe_start: {"destination": rname.dt_end},
-    #ename.toe_end: {"destination": ["next", rname.tower_of_execution]},
+    ename.toe_end: {"destination": rname.roc_main},
 
     # Tower of Science
     ename.tosci_start: {"destination": rname.cc_elev_top},
@@ -135,7 +135,7 @@ entrance_info = {
 
     # Tower of Sorcery
     ename.tosor_start: {"destination": rname.tosci_end},
-    #ename.tosor_end: {"destination": ["next", rname.tower_of_sorcery]},
+    ename.tosor_end: {"destination": rname.roc_main},
 
     # Room of Clocks
     #ename.roc_gate: {"destination": ["next", rname.room_of_clocks]},

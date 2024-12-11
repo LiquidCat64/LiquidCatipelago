@@ -614,8 +614,7 @@ region_info = {
                                    lname.toes2_end_l,
                                    lname.toes2_end_r],
                      "entrances": [ename.toe_start,
-                                   # ename.toe_end
-                                   ]},
+                                   ename.toe_end]},
 
     rname.tosci_start: {"stage": rname.tower_of_science,
                         "locations": [lname.toscic_first,
@@ -665,11 +664,9 @@ region_info = {
                                      lname.tosor_ibridge,
                                      lname.tosor_super_1,
                                      lname.tosor_super_2,
-                                     lname.tosor_super_3,
-                                     lname.the_end],
+                                     lname.tosor_super_3],
                        "entrances": [ename.tosor_start,
-                                     # ename.tosor_end
-                                     ]},
+                                     ename.tosor_end]},
 
     rname.roc_main: {"stage": rname.room_of_clocks,
                      "locations": [lname.roc_ent_l,
@@ -679,8 +676,10 @@ region_info = {
                                    lname.roc_cont_r,
                                    lname.roc_cont_l,
                                    lname.roc_exit,
-                                   lname.roc_boss],
-                     "entrances": [ename.roc_gate]},
+                                   # lname.roc_boss,
+                                   lname.the_end],
+                     # "entrances": [ename.roc_gate]
+                     },
 
     rname.ct_start: {"stage": rname.clock_tower,
                      "locations": [lname.ct_gearclimb_battery_slab1,
