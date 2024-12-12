@@ -138,16 +138,21 @@ entrance_info = {
     ename.tosor_end: {"destination": rname.roc_main},
 
     # Room of Clocks
-    #ename.roc_gate: {"destination": ["next", rname.room_of_clocks]},
+    ename.roc_gate: {"destination": rname.ct_start},
+
     # Clock Tower
-    #ename.ct_to_door1: {"destination": rname.ct_middle, "rule": iname.clocktower_key1},
-    #ename.ct_from_door1: {"destination": rname.ct_start, "rule": iname.clocktower_key1},
-    #ename.ct_to_door2: {"destination": rname.ct_end, "rule": iname.clocktower_key2},
-    #ename.ct_from_door2: {"destination": rname.ct_middle, "rule": iname.clocktower_key2},
-    #ename.ct_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
-    #ename.ct_door_3: {"destination": ["next", rname.clock_tower], "rule": iname.clocktower_key3},
-    # Castle Keep
-    #ename.ck_slope_jump: {"destination": rname.roc_main, "add conds": ["hard"]},
+    ename.ct_to_door_a: {"destination": rname.ct_bpillars, "rule": iname.cta_key},
+    ename.ct_from_door_a: {"destination": rname.ct_start, "rule": iname.cta_key},
+    ename.ct_to_door_b: {"destination": rname.ct_abyss_near, "rule": iname.ctb_key},
+    ename.ct_from_door_b: {"destination": rname.ct_bpillars, "rule": iname.ctb_key},
+    ename.ct_door_c: {"destination": rname.ct_abyss_far, "rule": iname.ctc_key, "add conds": ["not hard"]},
+    ename.ct_door_c_skip: {"destination": rname.ct_abyss_far, "add conds": ["hard"]},
+    ename.ct_door_c_reverse: {"destination": rname.ct_abyss_near, "add conds": ["hard"]},
+    ename.ct_to_door_d: {"destination": rname.ct_face, "rule": iname.ctd_key},
+    ename.ct_from_door_d: {"destination": rname.ct_abyss_far, "rule": iname.ctd_key},
+    # ename.ct_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
+    ename.ct_door_e: {"destination": rname.ct_engine, "rule": iname.cte_key},
+    # ename.ct_end: {"destination": rname.ck_main},
 }
 
 add_conds = {"carrie": ("carrie_logic", True, True),

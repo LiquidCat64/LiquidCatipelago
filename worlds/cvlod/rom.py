@@ -202,7 +202,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Make it possible to change the starting level.
         rom_data.write_byte(0x15D3, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
         rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
-        rom_data.write_byte(0x15DB, 0x1B, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15DB, 0x17, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
         rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
@@ -624,6 +624,22 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int32(0x7DCE2C, 0x00000000)  # NOP
         rom_data.write_int32(0x7DCDFC, 0x0C0FF3A4)  # JAL   0x803FCE90
         rom_data.write_int32s(0xFFCE80, patches.pink_sorcery_diamond_customizer)
+
+        # Lock the door in Clock Tower workshop leading out to the grand abyss map with Clocktower Key D.
+        # It's the same door in-universe as Clocktower Door D but on a different map.
+        rom_data.write_int16(0x82D104, 0x5300)
+        rom_data.write_int16(0x82D130, 0x5300)
+        rom_data.write_int32(0x82D108, 0x803FCEC0)
+        rom_data.write_int32(0x82D134, 0x803FCED4)
+        rom_data.write_int16(0x82D10C, 0x029E)
+        rom_data.write_byte(0x82D113, 0x26)
+        rom_data.write_int16(0x82D116, 0x0102)
+        rom_data.write_int32s(0xFFCEC0, patches.clock_tower_workshop_text_modifier)
+        # Custom text for the new locked door instance.
+        rom_data.write_bytes(0x7C1B14, cvlod_string_to_bytearray("Locked in!\n"
+                                                                 "You need Deck Key.»\t"
+                                                                 "Deck Key\n"
+                                                                 "       has been used.»\t", wrap=False)[0])
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
         # came before them
