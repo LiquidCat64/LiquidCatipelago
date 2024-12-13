@@ -151,7 +151,7 @@ class CVLoDWorld(World):
         #    created_regions.append(Region(rname.renon, self.player, self.multiworld))
 
         # Add the Dracula's chamber (the end) Region.
-        # created_regions.append(Region(rname.ck_drac_chamber, self.player, self.multiworld))
+        created_regions.append(Region(rname.ck_drac_chamber, self.player, self.multiworld))
 
         # Set up the Regions correctly.
         self.multiworld.regions.extend(created_regions)

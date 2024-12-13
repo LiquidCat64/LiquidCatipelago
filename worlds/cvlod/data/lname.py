@@ -551,9 +551,12 @@ ctw_slope_slab2 = "Clock Tower: Under slippery slope slab - Item 2"
 ctw_slope_slab3 = "Clock Tower: Under slippery slope slab - Item 3"
 
 # Castle Keep definitions
+ck_renon_sw = "Castle Keep: Renon's room - Southwest"
+ck_renon_se = "Castle Keep: Renon's room - Southeast"
+ck_renon_nw = "Castle Keep: Renon's room - Northwest"
+ck_renon_ne = "Castle Keep: Renon's room - Northeast"
 ck_behind_drac = "Castle Keep: Behind Dracula's chamber"
 ck_cube = "Castle Keep: Dracula's floating cube"
-
 ck_flame_l = "Castle Keep: Left Dracula door flame"
 ck_flame_r = "Castle Keep: Right Dracula door flame"
 

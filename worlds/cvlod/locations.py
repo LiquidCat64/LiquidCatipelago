@@ -722,6 +722,18 @@ location_info = {
                                          "add conds": ["3hb"]},
     lname.ctw_walkway_mid:              {"code": 0x25F, "offset": 0x82CBCA, "normal item": iname.powerup},
 
+    # Castle Keep
+    lname.ck_renon_sw:    {"code": 0x176, "offset": 0x7CCC96, "normal item": iname.ampoule},
+    lname.ck_renon_se:    {"code": 0x175, "offset": 0x7CCC8A, "normal item": iname.jewel_l},
+    lname.ck_renon_nw:    {"code": 0x178, "offset": 0x7CCCAE, "normal item": iname.ampoule},
+    lname.ck_renon_ne:    {"code": 0x177, "offset": 0x7CCCA2, "normal item": iname.purify},
+    # lname.ck_boss_one: {"event": iname.trophy, "add conds": ["boss", "renon"]},
+    # lname.ck_boss_two: {"event": iname.trophy, "add conds": ["boss", "vincent"]},
+    lname.ck_flame_l:     {"code": 0x179, "offset": 0x7CD448, "normal item": iname.beef, "type": "inv"},
+    lname.ck_flame_r:     {"code": 0x17A, "offset": 0x7CD4A8, "normal item": iname.beef, "type": "inv"},
+    lname.ck_behind_drac: {"code": 0x173, "offset": 0x7CCC72, "normal item": iname.powerup},
+    lname.ck_cube:        {"code": 0x174, "offset": 0x7CCCBA, "normal item": iname.chicken},
+
     lname.the_end:        {"event": iname.victory},
 }
 

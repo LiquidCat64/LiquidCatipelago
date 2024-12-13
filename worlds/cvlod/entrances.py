@@ -152,7 +152,10 @@ entrance_info = {
     ename.ct_from_door_d: {"destination": rname.ct_abyss_far, "rule": iname.ctd_key},
     # ename.ct_renon: {"destination": rname.renon, "add conds": ["shopsanity"]},
     ename.ct_door_e: {"destination": rname.ct_engine, "rule": iname.cte_key},
-    # ename.ct_end: {"destination": rname.ck_main},
+    ename.ct_end: {"destination": rname.ck_main},
+
+    # Castle Keep
+    ename.ck_drac_door: {"destination": rname.ck_drac_chamber, "rule": "Dracula"}
 }
 
 add_conds = {"carrie": ("carrie_logic", True, True),

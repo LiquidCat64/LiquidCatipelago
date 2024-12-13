@@ -444,11 +444,11 @@ class CVLoDOptions(PerGameCommonOptions):
     sub_weapon_shuffle: SubWeaponShuffle
     spare_keys: SpareKeys
     # hard_item_pool: HardItemPool
-    # special1s_per_warp: Special1sPerWarp
-    # total_special1s: TotalSpecial1s
-    # draculas_condition: DraculasCondition
-    # percent_special2s_required: PercentSpecial2sRequired
-    # total_special2s: TotalSpecial2s
+    special1s_per_warp: Special1sPerWarp
+    total_special1s: TotalSpecial1s
+    draculas_condition: DraculasCondition
+    percent_special2s_required: PercentSpecial2sRequired
+    total_special2s: TotalSpecial2s
     # bosses_required: BossesRequired
     carrie_logic: CarrieLogic
     hard_logic: HardLogic

@@ -240,8 +240,8 @@ stage_info = {
     },
 
     "Castle Keep": {
-        "start region": rname.ck_main, "start map id": 0x14, "start spawn id": 0x02,
-        "mid region": rname.ck_main, "mid map id": 0x14, "mid spawn id": 0x03,
+        "start region": rname.ck_main, "start map id": 0x14, "start spawn id": 0x00,
+        "mid region": rname.ck_main, "mid map id": 0x14, "mid spawn id": 0x01,
         "end region": rname.ck_drac_chamber,
         "save number offsets": [0x104AAD],
         "regions": {rname.ck_main}
@@ -250,7 +250,8 @@ stage_info = {
 
 vanilla_stage_order = ["Foggy Lake", "Forest of Silence", "Castle Wall", "Villa", "Tunnel", "Underground Waterway",
                        "The Outer Wall", "Art Tower", "Tower of Ruins", "Castle Center", "Duel Tower",
-                       "Tower of Execution", "Tower of Science", "Tower of Sorcery", "Room of Clocks", "Clock Tower"]
+                       "Tower of Execution", "Tower of Science", "Tower of Sorcery", "Room of Clocks", "Clock Tower",
+                       "Castle Keep"]
 
 vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_silence,
                                           "alt": None, "position": 1, "path": " "},
@@ -284,11 +285,8 @@ vanilla_stage_exits = {rname.foggy_lake: {"prev": None, "next": rname.forest_of_
                                               "alt": None, "position": 8, "path": " "},
                        rname.clock_tower: {"prev": None, "next": rname.castle_keep,
                                            "alt": None, "position": 9, "path": " "},
-                       }
-
-
-# rname.castle_keep: {"prev": None, "next": None,
-#                    "alt": None, "position": 10, "path": " "}}
+                       rname.castle_keep: {"prev": None, "next": None,
+                                           "alt": None, "position": 10, "path": " "}}
 
 
 def get_stage_info(stage: str, info: str):

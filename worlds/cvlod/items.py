@@ -133,15 +133,13 @@ def get_item_counts(world: "CVLoDWorld") -> Dict[str, Dict[str, int]]:
     #    item_counts["useful"][iname.permaup] = 2
 
     # Add the total Special1s.
-    item_counts["progression_skip_balancing"][iname.s1] = 1
-    extras_count += 1
-    #item_counts["progression_skip_balancing"][iname.special_one] = world.options.total_special1s.value
-    #extras_count += world.options.total_special1s.value
+    item_counts["progression_skip_balancing"][iname.s1] = world.options.total_special1s.value
+    extras_count += world.options.total_special1s.value
 
     # Add the total Special2s if Dracula's Condition is Special2s.
-    #if world.options.draculas_condition == DraculasCondition.option_specials:
-    #    item_counts["progression_skip_balancing"][iname.special_two] = world.options.total_special2s.value
-    #    extras_count += world.options.total_special2s.value
+    if world.options.draculas_condition == DraculasCondition.option_specials:
+        item_counts["progression_skip_balancing"][iname.s2] = world.options.total_special2s.value
+        extras_count += world.options.total_special2s.value
 
     # Determine the extra key counts if applicable. Doing this before moving Special1s will ensure only the keys and
     # bomb components are affected by this.
@@ -158,9 +156,9 @@ def get_item_counts(world: "CVLoDWorld") -> Dict[str, Dict[str, int]]:
 
     # Move the total number of Special1s needed to warp everywhere to normal progression balancing if S1s per warp is
     # 3 or lower.
-    #if world.s1s_per_warp <= 3:
-    #    item_counts["progression_skip_balancing"][iname.special_one] -= world.s1s_per_warp * 7
-    #    item_counts["progression"][iname.special_one] = world.s1s_per_warp * 7
+    if world.s1s_per_warp <= 3:
+        item_counts["progression_skip_balancing"][iname.s1] -= world.s1s_per_warp * 7
+        item_counts["progression"][iname.s1] = world.s1s_per_warp * 7
 
     # Determine the total amounts of replaceable filler and non-filler junk.
     total_filler_junk = 0

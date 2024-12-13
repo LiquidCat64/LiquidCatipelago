@@ -202,7 +202,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Make it possible to change the starting level.
         rom_data.write_byte(0x15D3, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
         rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
-        rom_data.write_byte(0x15DB, 0x17, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15DB, 0x14, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
         rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
@@ -640,6 +640,10 @@ class CVLoDPatchExtensions(APPatchExtension):
                                                                  "You need Deck Key.»\t"
                                                                  "Deck Key\n"
                                                                  "       has been used.»\t", wrap=False)[0])
+
+        # Prevent the Renon's Departure cutscene from triggering during the castle escape sequence.
+        rom_data.write_byte(0x7CCFF1, 0x80)
+        rom_data.write_int16(0x7CD002, 0x017D)
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
         # came before them
