@@ -170,6 +170,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Unlock Hard Mode and all characters and costumes from the start
         rom_data.write_int32(0x244, 0x00000000, ni_files.OVL_CHARACTER_SELECT)
         rom_data.write_int32(0x1DE4, 0x00000000, ni_files.OVL_NECRONOMICON)
+        rom_data.write_int32(0x1E28, 0x00000000, ni_files.OVL_FILE_SELECT_CONTROLLER)
         rom_data.write_int32(0x1FF8, 0x00000000, ni_files.OVL_FILE_SELECT_CONTROLLER)
         rom_data.write_int32(0x2000, 0x00000000, ni_files.OVL_FILE_SELECT_CONTROLLER)
         rom_data.write_int32(0x2008, 0x00000000, ni_files.OVL_FILE_SELECT_CONTROLLER)
@@ -190,6 +191,34 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int32(0xC300C, 0x00000000)
         rom_data.write_int32(0xC3284, 0x00000000)
 
+        # Check for exactly 0x8000 in the first actor field to tell if the actor list should terminate rather than if
+        # the 0x8000 flag is there, period. This will free it up for a different usage.
+        rom_data.write_int32s(0xC28B0, [0x00000000,   # NOP
+                                        0x340F8000,   # ORI   T7, R0, 0x8000
+                                        0x544FFFCA])  # BNEL  V0, T7, [backward 0x36]
+        rom_data.write_int32s(0xC2DAC, [0x00000000,   # NOP
+                                        0x340F8000,   # ORI   T7, R0, 0x8000
+                                        0x548FFFF5])  # BNEL  A0, T7, [backward 0x0B]
+        rom_data.write_int32s(0xC2320, [0x00000000,   # NOP
+                                        0x340F8000,   # ORI   T7, R0, 0x8000
+                                        0x546FFFF8])  # BNEL  V1, T7, [backward 0x08]
+        rom_data.write_int32s(0xC2360, [0x00000000,   # NOP
+                                        0x340F8000,   # ORI   T7, R0, 0x8000
+                                        0x546FFFF8])  # BNEL  V1, T7, [backward 0x08]
+        rom_data.write_int32s(0xC2570, [0x00000000,   # NOP
+                                        0x340F8000,   # ORI   T7, R0, 0x8000
+                                        0x544FFFD6])  # BNEL  V0, T7, [backward 0x2A]
+        rom_data.write_int32s(0xC3000, [0x00000000,   # NOP
+                                        0x340F8000,   # ORI   T7, R0, 0x8000
+                                        0x546FFFF8])  # BNEL  V1, T7, [backward 0x08]
+        rom_data.write_int32s(0xC26C0, [0x00000000,   # NOP
+                                        0x340F8000,   # ORI   T7, R0, 0x8000
+                                        0x544FFFCA])  # BNEL  V0, T7, [backward 0x36]
+
+        # Hack to check if an actor should spawn based on what "era" we're in (event flag 0x05BF being set or not).
+        rom_data.write_int32(0xC2C30, 0x080FF3BC)  # J 0x803FCEF0
+        rom_data.write_int32s(0xFFCEF0, patches.actor_era_spawn_checker)
+
         # Custom data-loading code
         rom_data.write_int32(0x18A94, 0x0800793D)  # J 0x8001E4F4
         rom_data.write_int32s(0x1F0F4, patches.custom_code_loader)
@@ -200,9 +229,9 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int32s(0xFFE190, patches.subweapon_surface_checker)
 
         # Make it possible to change the starting level.
-        rom_data.write_byte(0x15D3, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15D3, 0x10, ni_files.OVL_INTRO_NARRATION_CS)
         rom_data.write_byte(0x15D5, 0x00, ni_files.OVL_INTRO_NARRATION_CS)
-        rom_data.write_byte(0x15DB, 0x14, ni_files.OVL_INTRO_NARRATION_CS)
+        rom_data.write_byte(0x15DB, 0x10, ni_files.OVL_INTRO_NARRATION_CS)
 
         # Prevent flags from pre-setting in Henry Mode.
         rom_data.write_byte(0x22F, 0x04, ni_files.OVL_HENRY_NG_INITIALIZER)
@@ -295,6 +324,22 @@ class CVLoDPatchExtensions(APPatchExtension):
         # un-set the Villa entrance portcullis closed flag for all characters (not just Henry).
         rom_data.write_int32(0x35A4, 0x00000000, ni_files.OVL_CERBERUS)
 
+        # Lock the Villa rear gates with the Rose Brooch.
+        # Malus gate
+        rom_data.write_int16(0x797C0C, 0x5300)
+        rom_data.write_int16(0x797C38, 0x5300)
+        rom_data.write_byte(0x797C1B, 0x1A)
+        rom_data.write_byte(0x797C47, 0x1A)
+        rom_data.write_int16(0x797C14, 0x034C)
+        rom_data.write_int16(0x797C40, 0x034C)
+        # Henry gate
+        rom_data.write_int16(0x797FD4, 0x5300)
+        rom_data.write_int16(0x798000, 0x5300)
+        rom_data.write_byte(0x797FE3, 0x1A)
+        rom_data.write_byte(0x79800F, 0x1A)
+        rom_data.write_int16(0x797FDC, 0x034C)
+        rom_data.write_int16(0x798008, 0x034C)
+
         # Give the Gardener his Cornell behavior for everyone.
         rom_data.write_int32(0x490, 0x24020002, ni_files.OVL_GARDENER)  # ADDIU V0, R0, 0x0002
         rom_data.write_int32(0xD20, 0x00000000, ni_files.OVL_GARDENER)
@@ -307,33 +352,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_int32(0x8B8, 0x240F0002, ni_files.OVL_CHILD_HENRY)  # ADDIU T7, R0, 0x0002
 
         # Make Gilles De Rais spawn in the Villa crypt for everyone (not just Cornell).
+        # This should instead be controlled by the actor list.
         rom_data.write_byte(0x195, 0x00, ni_files.OVL_GILLES_DE_RAIS)
-
-        # Lock the two doors dividing the front and rear Maze Garden with the Rose Garden Key.
-        rom_data.write_byte(0x7983C1, 0x08)
-        rom_data.write_byte(0x7983E1, 0x09)
-        rom_data.write_int16(0x797F50, 0x5300)
-        rom_data.write_int16(0x797F58, 0x0293)
-        rom_data.write_byte(0x797F5F, 0x23)
-        rom_data.write_int16(0x797F62, 0x0405)
-        rom_data.write_int16(0x797F7C, 0x5300)
-        rom_data.write_int16(0x797F84, 0x0293)
-        rom_data.write_byte(0x797F8B, 0x23)
-        rom_data.write_int16(0x797F8E, 0x0405)
-        rom_data.write_bytes(0x797308, cvlod_string_to_bytearray("\"Maze Gate\"\n"
-                                                                 "\"One key unlocks both.\"")[0])
-        rom_data.write_bytes(0x797294, cvlod_string_to_bytearray("A click sounds from\n"
-                                                                 "both Garden gates... ")[0])
-        rom_data.write_bytes(0x78836E, cvlod_string_to_bytearray("A door marked\n"
-                                                                 " \"Rose Garden Door\"\n"
-                                                                 "\"One key unlocks us all.\"»\t")[0])
-        rom_data.write_bytes(0x7883E8, cvlod_string_to_bytearray("A click sounds from\n"
-                                                                 "all Rose Garden Key doors...»\t")[0])
-        rom_data.write_bytes(0x796FD6, cvlod_string_to_bytearray("A door marked\n"
-                                                                 " \"Rose Garden Door\"\n"
-                                                                 "\"One key unlocks us all.\"       ")[0])
-        rom_data.write_bytes(0x79705E, cvlod_string_to_bytearray("A click sounds from\n"
-                                                                 "all Rose Garden Key doors...")[0])
 
         # Apply the child Henry gate checks to the two doors leading to the vampire crypt,
         # so he can't be brought in there.
@@ -1297,13 +1317,19 @@ class CVLoDPatchExtensions(APPatchExtension):
         #                                0x8C4E0000])  # LW    T6, 0x0000 (V0)
         # rom_data.write_int32s(0xBFDEC4, patches.panther_jump_preventer)
 
-        # Write all the new item and loading zone bytes
+        # Write all the actor list spawn condition edits that we apply always (things like difficulty items, etc.).
         for offset in patches.always_actor_edits:
             rom_data.write_byte(offset, patches.always_actor_edits[offset])
-        for offset in patches.cw_combined_edits:
-            rom_data.write_byte(offset, patches.cw_combined_edits[offset])
-        for offset in patches.villa_combined_edits:
-            rom_data.write_byte(offset, patches.villa_combined_edits[offset])
+        for start_addr in patches.era_specific_actors:
+            era_statuses = patches.era_specific_actors[start_addr]
+            for actor_number in era_statuses:
+                curr_addr = start_addr + (actor_number * 0x20)
+                byte_to_alter = rom_data.read_byte(curr_addr)
+                if era_statuses[actor_number]:
+                    byte_to_alter |= 0x78
+                else:
+                    byte_to_alter |= 0xF8
+                rom_data.write_byte(curr_addr, byte_to_alter)
 
         # Make the lever checks for Cornell always pass
         rom_data.write_int32(0xE6C18, 0x240A0002)  # ADDIU T2, R0, 0x0002
@@ -1335,9 +1361,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # IDK what KCEK was planning here, since Cornell normally doesn't get this cutscene, but if it passes the game
         # completely ceases functioning.
         rom_data.write_int16(0x230, 0x1000, ni_files.OVL_1ST_REIN_CARRIE_CRYPT_VAMPIRE_CS)
-        # Insert a special message over the "Found a hidden path" text.
-        rom_data.write_bytes(0xB30, cvlod_string_to_bytearray("<To Be Continued|\\|/")[0],
-                             ni_files.OVL_FOUND_A_HIDDEN_PATH_CS)
 
         # Change Oldrey's Diary into an item location.
         rom_data.write_int16(0x792A24, 0x0027)

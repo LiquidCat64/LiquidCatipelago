@@ -2065,6 +2065,30 @@ clock_tower_workshop_text_modifier = [
     0xA50963E4   # SH    T1, 0x6392 (T0)
 ]
 
+actor_era_spawn_checker = [
+    # If every character flag is set in an actor, this will then check for the 0x8000 flag. If it's set, then the actor
+    # will be called not fine to spawn if we're in the "past" (event flag 0x05BF is set). If flag 0x8000 is not set,
+    # then the actor will be called not fine if we're in the "future" (even tflag 0x05BF is not set). Otherwise,
+    # whatever the regular check actor spawn conditions function decided for that actor will apply.
+    0x92280000,  # LBU   T0, 0x0000 (S1)
+    0x31090078,  # ANDI  T1, T0, 0x0078
+    0x240A0078,  # ADDIU T2, R0, 0x0078
+    0x152A000C,  # BNE   T1, T2, [forward 0x0C]
+    0x3C0B801D,  # LUI   T3, 0x801D
+    0x916BAB17,  # LBU   T3, 0xAB17 (T3)
+    0x310C0080,  # ANDI  T4, T0, 0x0080
+    0x11600005,  # BEQZ  T3,     [forward 0x05]
+    0x00000000,  # NOP
+    0x11800006,  # BEQZ  T4,     [forward 0x06]
+    0x00000000,  # NOP
+    0x10000003,  # B             [forward 0x03]
+    0x00000000,  # NOP
+    0x15800002,  # BNEZ  T4,     [forward 0x02]
+    0x00000000,  # NOP
+    0x00001025,  # OR    V0, R0, R0
+    0x03E00008,  # JR    RA
+]
+
 always_actor_edits = {
     # Foggy Lake Decks
     0x7BE1E0: 0x00,
@@ -2238,35 +2262,37 @@ always_actor_edits = {
     0x792B54: 0x00,
     0x792B74: 0x00,
     0x792B96: 0x08,
+
     # Villa maze
+    # Reinhardt/Carrie/Cornell White Jewel
+    0x798F88: 0x00,
+    # Henry White Jewel
+    0x798FAA: 0x08,
+    # Reinhardt/Carrie/Cornell-only stone dogs
     0x798A88: 0x00,
     0x798AA8: 0x00,
+    # Henry child
     0x798CE8: 0x00,
+    # Henry-only motorskellies
     0x798DEA: 0x08,
     0x798E0A: 0x08,
     0x798E2A: 0x08,
-    0x798FC8: 0x00,
-    0x798FEA: 0x08,
-    0x799008: 0x00,
+    # Difficulty-specific items/breakables
     0x799028: 0x00,
     0x79904A: 0x08,
-    0x799068: 0x00,
     0x799088: 0x00,
     0x7990CA: 0x08,
     0x7990EA: 0x08,
     0x79910A: 0x08,
     0x79912A: 0x08,
     0x79914A: 0x08,
-    0x799168: 0x00,
     0x79918A: 0x08,
     0x7991A8: 0x00,
     0x7991CA: 0x08,
     0x7991E8: 0x00,
-    0x799208: 0x00,
     0x799228: 0x00,
     0x79924A: 0x08,
     0x799268: 0x00,
-    0x799288: 0x00,
     0x7992AA: 0x08,
     0x7992CA: 0x08,
     0x7992EA: 0x08,
@@ -2282,14 +2308,10 @@ always_actor_edits = {
     0x79942A: 0x08,
     0x799448: 0x00,
     0x79946A: 0x08,
-    0x799488: 0x00,
-    0x7994A8: 0x00,
-    0x799608: 0x00,
-    0x799628: 0x00,
-    0x799648: 0x00,
-    0x799668: 0x00,
+    # Henry-only gates
     0x79974A: 0x08,
     0x79976A: 0x08,
+
     # Villa vampire crypt
     0x7D66AA: 0x08,
     0x7D66CA: 0x08,
@@ -3383,4 +3405,18 @@ empty_breakables_data = {
     0x8352E0: b"\xC3\x29\x80\x00",
     0x835320: b"\xC3\x01\x80\x00",
     0x835360: b"\xC4\x8F\xB0\x00",
+}
+
+era_specific_actors = {
+    # Every actor entry in every map's actor list that is specific to either the past or the future.
+    # True means past only, False means future only.
+    # Villa maze
+    0x798108: {1: False, 2: False, 10: True, 74: True, 75: False, 79: True, 80: True, 81: True, 82: True, 83: True,
+               84: True, 85: True, 86: True, 87: True, 88: True, 89: True, 90: True, 91: True, 92: True, 93: True,
+               94: True, 96: True, 97: True, 98: True, 99: True, 100: True, 101: True, 102: True, 106: True, 107: True,
+               108: True, 109: True, 110: True, 111: True, 112: True, 113: True, 114: True, 115: True, 118: True,
+               119: True, 120: True, 123: False, 131: False, 134: False, 136: False, 140: False, 141: False, 144: False,
+               148: False, 156: True, 158: False, 159: False, 160: False, 161: False, 162: False, 163: False,
+               164: False, 165: False, 166: False, 167: False, 168: True, 169: True, 170: True, 171: True, 172: True,
+               173: True, 174: True, 175: True, 176: True, 177: True}
 }
