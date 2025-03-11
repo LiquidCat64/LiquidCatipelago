@@ -324,22 +324,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # un-set the Villa entrance portcullis closed flag for all characters (not just Henry).
         rom_data.write_int32(0x35A4, 0x00000000, ni_files.OVL_CERBERUS)
 
-        # Lock the Villa rear gates with the Rose Brooch.
-        # Malus gate
-        rom_data.write_int16(0x797C0C, 0x5300)
-        rom_data.write_int16(0x797C38, 0x5300)
-        rom_data.write_byte(0x797C1B, 0x1A)
-        rom_data.write_byte(0x797C47, 0x1A)
-        rom_data.write_int16(0x797C14, 0x034C)
-        rom_data.write_int16(0x797C40, 0x034C)
-        # Henry gate
-        rom_data.write_int16(0x797FD4, 0x5300)
-        rom_data.write_int16(0x798000, 0x5300)
-        rom_data.write_byte(0x797FE3, 0x1A)
-        rom_data.write_byte(0x79800F, 0x1A)
-        rom_data.write_int16(0x797FDC, 0x034C)
-        rom_data.write_int16(0x798008, 0x034C)
-
         # Give the Gardener his Cornell behavior for everyone.
         rom_data.write_int32(0x490, 0x24020002, ni_files.OVL_GARDENER)  # ADDIU V0, R0, 0x0002
         rom_data.write_int32(0xD20, 0x00000000, ni_files.OVL_GARDENER)
@@ -350,6 +334,74 @@ class CVLoDPatchExtensions(APPatchExtension):
         rom_data.write_byte(0x613, 0x04, ni_files.OVL_CHILD_HENRY)
         rom_data.write_int32(0x844, 0x240F0002, ni_files.OVL_CHILD_HENRY)  # ADDIU T7, R0, 0x0002
         rom_data.write_int32(0x8B8, 0x240F0002, ni_files.OVL_CHILD_HENRY)  # ADDIU T7, R0, 0x0002
+
+        # Change the player spawn coordinates for Villa maze entrance 4 to put the player in front of the child escape
+        # gate instead of the rear maze exit door.
+        rom_data.write_int16s(0x10F876, [0x0290,   # Player X position
+                                         0x0000,   # Player Y position
+                                         0x021B,   # Player Z position
+                                         0x8000,   # Player rotation
+                                         0x02A0,   # Camera X position
+                                         0x000D,   # Camera Y position
+                                         0x021B,   # Camera Z position
+                                         0x0290,   # Focus point X position
+                                         0x000D,   # Focus point Y position
+                                         0x021B])  # Focus point Z position
+
+        # Special message for when checking the plaque next to the escape gate.
+        rom_data.write_bytes(0x79712C, cvlod_string_to_bytearray("「 TIME GATE\n"
+                                                                 "Present Her brooch\n"
+                                                                 "to enter.\n"
+                                                                 "    -Saint Germain」»\t", wrap=False)[0])
+        rom_data.write_bytes(0x796FD6, cvlod_string_to_bytearray("Is that plaque referring\n"
+                                                                 "to the Rose Brooch?\n"
+                                                                 "You should find it...»\t")[0])
+
+        # Make the escape gates check for the Rose Brooch in the player's inventory (without subtracting it) before
+        # letting them through.
+        rom_data.write_int32s(0xFFCF48, patches.rose_brooch_checker)
+        # Malus gate
+        rom_data.write_int16(0x797C0C, 0x0200)
+        rom_data.write_int32(0x797C10, 0x803FCF48)
+        rom_data.write_int16(0x797C38, 0x0200)
+        rom_data.write_int32(0x797C3C, 0x803FCF48)
+        # Henry gate
+        rom_data.write_int16(0x797FD4, 0x0200)
+        rom_data.write_int32(0x797FD8, 0x803FCF48)
+        rom_data.write_int16(0x798000, 0x0200)
+        rom_data.write_int32(0x798004, 0x803FCF48)
+
+        # Add a new loading zone behind the "time gate" in the Villa maze. To do this, we'll have to relocate the map's
+        # existing loading zone properties and update the pointer to them.
+        rom_data.write_int32(0x110D50, 0x803FCF78)
+        rom_data.write_bytes(0xFFCF78, rom_data.read_bytes(0x79807C, 0x3C))
+        # Add the new loading zone property data on the end.
+        rom_data.write_int32s(0xFFCFB4, [0x00000604, 0x03010000, 0x02D0001E, 0x023002BC, 0x00000208])
+        # Replace the Hard-exclusive item in Malus's bush with the new loading zone actor.
+        rom_data.write_int32s(0x799048, [0x00000000, 0x442E0000, 0x00000000, 0x44036000,
+                                         0x01AF0000, 0x00000000, 0x00030000, 0x00000000])
+
+        # Change the color of the fourth loading zone fade settings entry.
+        rom_data.write_int32(0x110D2C, 0xE1B9FF00)
+        # Era switcher hack
+        rom_data.write_int32(0xD3C08, 0x080FF3F8)  # J 0x803FCFE0
+        rom_data.write_int32s(0xFFCFE0, patches.era_switcher)
+
+        # Change the map name display actor in the Villa crypt to use entry 0x02 instead of 0x11 and have entry 0x02
+        # react to entrance 0x02 (the Villa end's).
+        rom_data.write_byte(0x861, 0x02, ni_files.OVL_MAP_NAME_DISPLAY)
+        rom_data.write_byte(0x7D6561, 0x02)
+        # Replace the second map name display settings entry for the Villa end with the one for our year text.
+        rom_data.write_int32s(0x910, [0x00060100, 0x04642E00], ni_files.OVL_MAP_NAME_DISPLAY)
+        # Replace the far rear Iron Thorn Fenced Garden text spot with the new map name display actor.
+        rom_data.write_int32s(0x7981E8, [0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                                         0x219F0000, 0x00000000, 0x00110000, 0x00000000])
+        # Hack to change the map name display string to a custom year string when time traveling.
+        rom_data.write_int16(0x3C6, 0x8040, ni_files.OVL_MAP_NAME_DISPLAY)
+        rom_data.write_int16(0x3CA, 0xD040, ni_files.OVL_MAP_NAME_DISPLAY)
+        rom_data.write_int32s(0xFFD040, patches.map_name_year_switcher)
+        # Year text for the above map name display hack.
+        rom_data.write_bytes(0xFFD020, cvlod_string_to_bytearray("1852\t1844\t")[0])
 
         # Make Gilles De Rais spawn in the Villa crypt for everyone (not just Cornell).
         # This should instead be controlled by the actor list.

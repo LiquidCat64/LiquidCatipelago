@@ -2089,6 +2089,50 @@ actor_era_spawn_checker = [
     0x03E00008,  # JR    RA
 ]
 
+rose_brooch_checker = [
+    # Checks if the Rose Brooch is in the player's inventory and returns True if so or False if not. Custom door opening
+    # condition for the "time gate" in the Villa.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9108AB5D,  # LBU   T0, 0xAB5D (T0)
+    0x11000002,  # BEQZ  T0,     [forward 0x02]
+    0x24020001,  # ADDIU V0, R0, 0x0001
+    0x24020000,  # ADDIU V0, R0, 0x0000
+    0x03E00008,  # JR   RA
+]
+
+era_switcher = [
+    # When going into a loading zone that has the (normally unused) 5th byte in its settings entry set, this will run
+    # once the fade-out starts. The flag byte for past/future will be toggled, and the "teleport" sound will play to
+    # signify that the player is time traveling.
+    0x8E080034,  # LW    T0, 0x0034 (S0)
+    0x91090005,  # LBU   T1, 0x0005 (T0)
+    0x15200003,  # BNEZ  T1,     [forward 0x03]
+    0x3C0A801D,  # LUI   T2, 0x801D
+    0x03E00008,  # JR    RA
+    0x00000000,  # NOP
+    0x914BAB17,  # LBU   T3, 0xAB17 (T2)
+    0x15600002,  # BNEZ  T3,     [forward 0x02]
+    0x240C0000,  # ADDIU T4, R0, 0x0000
+    0x240C0001,  # ADDIU T4, R0, 0x0001
+    0xA14CAB17,  # SB    T4, 0xAB17 (T2)
+    0x080059BE,  # J     0x800166F8
+    0x2404019B,  # ADDIU A0, R0, 0x019B
+]
+
+map_name_year_switcher = [
+    # If the text ID for the map name display message has a nonzero value in its high byte, this will redirect the
+    # text pointer to a different text pool for year number strings instead, with the exact year to display depending on
+    # the custom era flag being set or not. Used for the custom Villa time travel gate entrance.
+    0x30A8FF00,  # ANDI  T0, A1, 0xFF00
+    0x11000004,  # BEQZ  T0,     [forward 0x04]
+    0x3C09801D,  # LUI   T1, 0x801D
+    0x9125AB17,  # LBU   A1, 0xAB17 (T1)
+    0x3C048040,  # LUI   A0, 0x8040
+    0x2484D020,  # ADDIU A0, A0, 0xD020
+    0x08020FE8,  # J     0x80083FA0
+    0x30A500FF,  # ANDI  A1, A1, 0x00FF
+]
+
 always_actor_edits = {
     # Foggy Lake Decks
     0x7BE1E0: 0x00,
@@ -2188,9 +2232,18 @@ always_actor_edits = {
     0x77D8DE: 0x08,
     0x77D8FC: 0x00,
     0x77D91E: 0x08,
+
+
     # Villa front yard
+    # Castle Wall portcullis text spot (non-Henry only for when it's permanently closed)
     0x7851B6: 0x08,
+    # Fountain base text spot (Reinhardt/Carrie only)
     0x785254: 0x00,
+    # Reinhardt/Carrie/Cornell White Jewel
+    0x785A14: 0x00,
+    # Henry White Jewel
+    0x785A36: 0x08,
+    # Difficulty-specific items/breakables
     0x785A74: 0x00,
     0x785A96: 0x08,
     0x785AB4: 0x00,
@@ -2205,7 +2258,13 @@ always_actor_edits = {
     0x785C36: 0x08,
     0x785C56: 0x08,
     0x785C76: 0x08,
+
     # Villa foyer
+    # Reinhardt/Carrie/Cornell White Jewel
+    0x789B84: 0x00,
+    # Henry White Jewel
+    0x789BA6: 0x08,
+    # Difficulty-specific items/breakables
     0x7892E4: 0x00,
     0x789304: 0x00,
     0x789326: 0x08,
@@ -2214,7 +2273,6 @@ always_actor_edits = {
     0x789386: 0x08,
     0x7893A6: 0x08,
     0x7893C6: 0x08,
-    0x7893E6: 0x08,
     0x789404: 0x00,
     0x789426: 0x08,
     0x789446: 0x08,
@@ -2228,10 +2286,20 @@ always_actor_edits = {
     0x789546: 0x08,
     0x789BC4: 0x00,
     0x789BE6: 0x08,
+
     # Villa living area
+    # Reinhardt/Carrie/Cornell-only Renon cutscene trigger
     0x78FF34: 0x00,
+    # Archives table text spots
     0x7902F4: 0x00,
     0x790356: 0x08,
+    # Reinhardt/Carrie/Cornell White Jewels
+    0x790934: 0x00,
+    0x792AD4: 0x00,
+    # Henry White Jewels
+    0x790956: 0x08,
+    0x792AF6: 0x08,
+    # Difficulty-specific items/breakables
     0x790994: 0x00,
     0x7909B6: 0x08,
     0x790ED4: 0x00,
@@ -2244,7 +2312,6 @@ always_actor_edits = {
     0x790FB6: 0x08,
     0x791834: 0x00,
     0x791856: 0x08,
-    0x791C34: 0x00,
     0x791C76: 0x08,
     0x791C94: 0x00,
     0x791CB6: 0x08,
@@ -2256,8 +2323,6 @@ always_actor_edits = {
     0x792416: 0x08,
     0x792436: 0x08,
     0x792456: 0x08,
-    0x792A14: 0x00,
-    0x792A34: 0x00,
     0x792B36: 0x08,
     0x792B54: 0x00,
     0x792B74: 0x00,
@@ -2279,7 +2344,6 @@ always_actor_edits = {
     0x798E2A: 0x08,
     # Difficulty-specific items/breakables
     0x799028: 0x00,
-    0x79904A: 0x08,
     0x799088: 0x00,
     0x7990CA: 0x08,
     0x7990EA: 0x08,
@@ -3410,6 +3474,14 @@ empty_breakables_data = {
 era_specific_actors = {
     # Every actor entry in every map's actor list that is specific to either the past or the future.
     # True means past only, False means future only.
+    # Villa front yard
+    0x785174: {3: False, 4: False, 5: False, 6: False, 16: False, 17: True, 19: True, 20: True, 90: True, 91: True,
+               92: True, 93: True, 94: True},
+    # Villa foyer
+    0x788704: {7: False, 9: False, 11: False, 38: False, 39: False, 40: False, 41: True, 42: True, 43: True, 96: False,
+               103: True, 107: False},
+    # Villa living area
+    0x78FDF4: {11: False, 12: False, 13: True, 178: False, 242: True, 243: True, 353: True, 354: False},
     # Villa maze
     0x798108: {1: False, 2: False, 10: True, 74: True, 75: False, 79: True, 80: True, 81: True, 82: True, 83: True,
                84: True, 85: True, 86: True, 87: True, 88: True, 89: True, 90: True, 91: True, 92: True, 93: True,
