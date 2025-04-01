@@ -1,0 +1,200 @@
+import os
+import typing
+import settings
+import base64
+import logging
+
+from BaseClasses import Item, Region, Tutorial, ItemClassification
+from .items import CVHoDisItem, FILLER_ITEM_NAMES, ALL_CVHODIS_ITEMS, FURNITURE, get_item_names_to_ids, \
+    get_item_counts, get_pickup_type
+from .locations import CVHoDisLocation, get_location_names_to_ids, BASE_ID, get_locations_to_create, \
+    get_location_name_groups
+from .options import cvhodis_option_groups, CVHoDisOptions, SubWeaponShuffle
+from .regions import get_region_info, get_all_region_names
+from .rules import CVHoDisRules
+from .data import item_names, loc_names
+from worlds.AutoWorld import WebWorld, World
+
+from .aesthetics import shuffle_sub_weapons, get_location_data, get_countdown_flags, get_start_inventory_data, \
+    get_hint_card_hints
+from .rom import RomData, patch_rom, get_base_rom_path, CVHoDisProcedurePatch, CVHODIS_CT_US_HASH, CVHODIS_AC_US_HASH
+from .client import CastlevaniaHoDisClient
+
+
+class CVHoDisSettings(settings.Group):
+    class RomFile(settings.UserFilePath):
+        """File name of the Castlevania HoD US rom"""
+        copy_to = "Castlevania - Harmony of Dissonance (USA).gba"
+        description = "Castlevania HoD (US) ROM File"
+        md5s = [CVHODIS_CT_US_HASH, CVHODIS_AC_US_HASH]
+
+    rom_file: RomFile = RomFile(RomFile.copy_to)
+
+
+class CVHoDisWeb(WebWorld):
+    theme = "stone"
+    # options_presets = cvhodis_options_presets
+
+    tutorials = [Tutorial(
+        "Multiworld Setup Guide",
+        "A guide to setting up the Archipleago Castlevania: Harmony of Dissonance randomizer on your computer and "
+        "connecting it to a multiworld.",
+        "English",
+        "setup_en.md",
+        "setup/en",
+        ["Liquid Cat"]
+    )]
+
+    option_groups = cvhodis_option_groups
+
+
+class CVHoDisWorld(World):
+    """
+    Castlevania: Harmony of Dissonance is the second Metroidvania-style Castlevania released for the Game Boy Advance.
+    After childhood friend Lydie is kidnapped away to a mysterious castle not on any map, Juste Belmont travels to
+    this new place with his best friend Maxim at his side. The two split up to search for Lydie, but it soon becomes
+    clear that Maxim is not his normal self... Wield powerful sub-weapon spell fusions as Juste as you hunt for
+    Dracula's remains and unravel the conspiracy between two parallel castles.
+    """
+    game = "Castlevania - Harmony of Dissonance"
+    item_name_groups = {
+        "Furniture": {name for name in FURNITURE},
+        "Vlad": {item_names.relic_v_nail, item_names.relic_v_eye, item_names.relic_v_fang, item_names.relic_v_heart,
+                 item_names.relic_v_rib, item_names.relic_v_ring},
+    }
+    location_name_groups = get_location_name_groups()
+    options_dataclass = CVHoDisOptions
+    options: CVHoDisOptions
+    settings: typing.ClassVar[CVHoDisSettings]
+    origin_region_name = "Entrance A Main"
+
+    item_name_to_id = get_item_names_to_ids()
+    location_name_to_id = get_location_names_to_ids()
+
+    possible_hint_card_items = list[CVHoDisItem]
+
+    # Default values to possibly be updated in generate_early
+    furniture_amount_required: int = 0
+    # map_percentage_required: int = 0
+
+    auth: bytearray
+
+    web = CVHoDisWeb()
+
+    def generate_early(self) -> None:
+        test = b'M\xeb-'
+        # Generate the player's unique authentication
+        self.auth = bytearray(self.random.getrandbits(8) for _ in range(16))
+
+        self.furniture_amount_required = self.options.furniture_amount_required.value
+
+        # If the player has no goal requirements enabled at all, throw a warning and enable the Best Ending requirement.
+        if not self.furniture_amount_required and not self.options.best_ending_required and not \
+                self.options.worst_ending_required and not self.options.medium_ending_required:
+            logging.warning(f"{self.player_name} has no goal requirements enabled. The Best Ending requirement will be "
+                            f"enabled for them.")
+            self.options.best_ending_required.value = True
+
+    def create_regions(self) -> None:
+        # Create every Region object.
+        created_regions = [Region(name, self.player, self.multiworld) for name in get_all_region_names()]
+
+        # Attach the Regions to the Multiworld.
+        self.multiworld.regions.extend(created_regions)
+
+        for reg in created_regions:
+
+            # Add the Entrances to each Region (if it has any).
+            ent_destinations_and_names = get_region_info(reg.name, "entrances")
+            if ent_destinations_and_names is not None:
+                reg.add_exits(ent_destinations_and_names)
+
+            # Add the Locations to each Region (if it has any).
+            loc_names = get_region_info(reg.name, "locations")
+            if loc_names is None:
+                continue
+            locations_with_ids, locked_pairs = get_locations_to_create(loc_names, self.options)
+            reg.add_locations(locations_with_ids, CVHoDisLocation)
+
+            # Place locked Items on all of their associated Locations (if any Locations have any).
+            for locked_loc, locked_item in locked_pairs.items():
+                self.get_location(locked_loc).place_locked_item(self.create_item(locked_item,
+                                                                                 ItemClassification.progression))
+
+    def create_item(self, name: str, force_classification: typing.Optional[ItemClassification] = None) -> Item:
+        if force_classification is not None:
+            classification = force_classification
+        else:
+            classification = ALL_CVHODIS_ITEMS[name].default_classification
+
+        if name in ALL_CVHODIS_ITEMS:
+            code = ALL_CVHODIS_ITEMS[name].pickup_index + (get_pickup_type(name) << 8) + BASE_ID
+        else:
+            code = None
+
+        created_item = CVHoDisItem(name, classification, code, self.player)
+
+        return created_item
+
+    def create_items(self) -> None:
+        item_counts = get_item_counts(self)
+
+        # Set up the Items correctly.
+        own_itempool = [self.create_item(item, classification) for classification in item_counts for item
+                        in item_counts[classification] for _ in range(item_counts[classification][item])]
+
+        # Save the created progression Items that are not furniture for the later possibility of being the subject of a
+        # Hint Card hint.
+        self.possible_hint_card_items = [item for item in own_itempool if item.advancement and item.name not in
+                                         FURNITURE]
+
+        # Submit the created Items to the multiworld's itempool.
+        self.multiworld.itempool += own_itempool
+
+    def set_rules(self) -> None:
+        # Set all the Entrance and Location rules properly.
+        CVHoDisRules(self).set_cvhodis_rules()
+
+    def generate_output(self, output_directory: str) -> None:
+        # Get out all the Locations that are not Events.
+        active_locations = [loc for loc in self.multiworld.get_locations(self.player) if loc.address is not None]
+
+        # Location data
+        offset_data = get_location_data(self, active_locations)
+        # Hint Card hints
+        offset_data.update(get_hint_card_hints(self, active_locations))
+        # Sub-weapons
+        # if self.options.sub_weapon_shuffle:
+        #     offset_data.update(shuffle_sub_weapons(self))
+        # Item drop randomization
+        # if self.options.item_drop_randomization:
+        #     offset_data.update(populate_enemy_drops(self))
+        # Countdown
+        # if self.options.countdown:
+        #     offset_data.update(get_countdown_flags(self, active_locations))
+        # Start Inventory
+        # start_inventory_data = get_start_inventory_data(self)
+        # offset_data.update(start_inventory_data)
+
+        patch = CVHoDisProcedurePatch(player=self.player, player_name=self.player_name)
+        patch_rom(self, patch, offset_data)
+
+        rom_path = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}"
+                                f"{patch.patch_file_ending}")
+
+        patch.write(rom_path)
+
+    def fill_slot_data(self) -> dict:
+        return {"death_link": self.options.death_link.value,
+                "medium_ending_required": self.options.medium_ending_required.value,
+                "worst_ending_required": self.options.worst_ending_required.value,
+                "best_ending_required": self.options.best_ending_required.value,
+                "furniture_amount_required": self.furniture_amount_required}
+
+    def get_filler_item_name(self) -> str:
+        return self.random.choice(FILLER_ITEM_NAMES)
+
+    def modify_multidata(self, multidata: typing.Dict[str, typing.Any]):
+        # Put the player's unique authentication in connect_names.
+        multidata["connect_names"][base64.b64encode(self.auth).decode("ascii")] = \
+            multidata["connect_names"][self.player_name]
