@@ -5,21 +5,21 @@ from Options import OptionGroup, Choice, Range, Toggle, PerGameCommonOptions, St
 
 class MediumEndingRequired(Toggle):
     """
-    Whether receiving the medium ending (defeat Maxim in Castle A) is required for goal completion.
+    Whether watching the medium ending (defeat Maxim in Castle A) is required for goal completion.
     """
     display_name = "Medium Ending Required"
 
 
 class WorstEndingRequired(Toggle):
     """
-    Whether receiving the worst ending (defeat Maxim in Castle B with JB's and MK's Bracelets unequipped) is required for goal completion.
+    Whether watching the worst ending (defeat Maxim in Castle B with JB's and MK's Bracelets unequipped) is required for goal completion.
     """
     display_name = "Worst Ending Required"
 
 
 class BestEndingRequired(DefaultOnToggle):
     """
-    Whether receiving the worst ending (defeat Maxim in Castle B with JB's and MK's Bracelets equipped) is required for goal completion.
+    Whether watching the best ending (defeat Maxim in Castle B with JB's and MK's Bracelets equipped) is required for goal completion.
     Will be forced on if no other goal requirement is enabled.
     """
     display_name = "Best Ending Required"
@@ -27,7 +27,7 @@ class BestEndingRequired(DefaultOnToggle):
 
 class FurnitureAmountRequired(Range):
     """
-    How many pieces of furniture are required to be found and set for goal completion.
+    How many pieces of furniture are required to be found and set for goal completion. Furniture will be irrelevant if set to 0.
     """
     range_start = 0
     range_end = 31
