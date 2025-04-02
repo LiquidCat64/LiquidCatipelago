@@ -107,10 +107,10 @@ class CVHoDisPatchExtensions(APPatchExtension):
 
         # Make spawning pickups with custom palettes default to the always-loaded OBP1 palette if there are already
         # 2 custom item palettes loaded instead of despawning.
-        rom_data.write_bytes(0x197D0, [0x00, 0x49,  # ldr r1, 0x86A0000
+        rom_data.write_bytes(0x197D0, [0x00, 0x49,  # ldr r1, 0x86A0100
                                        0x8F, 0x46,  # mov r15, r1
-                                       0x00, 0x00, 0x6A, 0x08])
-        rom_data.write_bytes(0x6A0000, patches.item_palette_defaulter)
+                                       0x00, 0x01, 0x6A, 0x08])
+        rom_data.write_bytes(0x6A0100, patches.item_palette_defaulter)
 
         # Fix the MK's Bracelet check cutscene softlocking you if it gives you something that isn't MK's Bracelet.
         # Change the pointer to the actor data in the Sky Walkway A post-Shadow Maxim meeting room.
