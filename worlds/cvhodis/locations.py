@@ -27,7 +27,7 @@ class CVHoDisLocationData(NamedTuple):
 CVHODIS_CHECKS_INFO: dict[str, CVHoDisLocationData] = {
     # Various areas
     loc_names.portals_rt: CVHoDisLocationData(0x2F, 0x49BE14, item_names.equip_l_charm),
-    loc_names.portals_lw: CVHoDisLocationData(0x88, 0x69D518, item_names.equip_l_charm),
+    loc_names.portals_lw: CVHoDisLocationData(0x88, 0x69E118, item_names.equip_l_charm),
 
     # Entrance A
     loc_names.eta2:  CVHoDisLocationData(0xB2, 0x499794, item_names.use_prism_b),
@@ -40,7 +40,7 @@ CVHODIS_CHECKS_INFO: dict[str, CVHoDisLocationData] = {
     loc_names.eta11: CVHoDisLocationData(0x0F, 0x499A7C, item_names.relic_orb),
     loc_names.eta13: CVHoDisLocationData(0x46, 0x499B54, item_names.max_life),
     loc_names.eta17: CVHoDisLocationData(0x08, 0x499CA4, item_names.use_hint_3),
-    loc_names.eta18: CVHoDisLocationData(0x3C, 0x69D458, item_names.equip_bracelet_jb),
+    loc_names.eta18: CVHoDisLocationData(0x3C, 0x69E058, item_names.equip_bracelet_jb),
     loc_names.eta19: CVHoDisLocationData(0x82, 0x499CF8, item_names.equip_armor_l),
 
     # Entrance B
@@ -127,7 +127,7 @@ CVHODIS_CHECKS_INFO: dict[str, CVHoDisLocationData] = {
     loc_names.cya0a:  CVHoDisLocationData(0xCB, 0x4AD824, item_names.furn_teacup),
     loc_names.cya0b:  CVHoDisLocationData(0xCC, 0x4AD830, item_names.furn_teapot),
     loc_names.cya1:   CVHoDisLocationData(0x52, 0x4AD8A8, item_names.max_life),
-    loc_names.cya4:   CVHoDisLocationData(0x3D, 0x69D498, item_names.equip_mail_ce),
+    loc_names.cya4:   CVHoDisLocationData(0x3D, 0x69E098, item_names.equip_mail_ce),
     loc_names.cya6:   CVHoDisLocationData(0x34, 0x4AD98C, item_names.equip_g_amulet),
     loc_names.cya8:   CVHoDisLocationData(0xCD, 0x4AD9EC, item_names.use_potion),
     loc_names.cya9:   CVHoDisLocationData(0xCE, 0x4ADA58, item_names.furn_closet),
@@ -185,7 +185,7 @@ CVHODIS_CHECKS_INFO: dict[str, CVHoDisLocationData] = {
     loc_names.lca8b:  CVHoDisLocationData(0x58, 0x4A3FD4, item_names.max_life),
     loc_names.lca8c:  CVHoDisLocationData(0x6C, 0x4A3FE0, item_names.max_heart),
     loc_names.lca10:  CVHoDisLocationData(0x09, 0x4A404C, item_names.use_key_s),
-    loc_names.lca11:  CVHoDisLocationData(0x3E, 0x69D4D8, item_names.equip_crown),
+    loc_names.lca11:  CVHoDisLocationData(0x3E, 0x69E0D8, item_names.equip_crown),
     loc_names.lca14:  CVHoDisLocationData(0x1D, 0x4A4100, item_names.use_hint_1),
     loc_names.lca17:  CVHoDisLocationData(0xAB, 0x4A4244, item_names.equip_arm_p),
     loc_names.lca18:  CVHoDisLocationData(0xB0, 0x4A428C, item_names.equip_leggings),
@@ -208,7 +208,7 @@ CVHODIS_CHECKS_INFO: dict[str, CVHoDisLocationData] = {
     loc_names.lcb22b: CVHoDisLocationData(0x112, 0x4A5C58, item_names.use_uncurse),
 
     # Sky Walkway A
-    loc_names.swa7:   CVHoDisLocationData(0x07, 0x69D40C, item_names.equip_bracelet_mk),
+    loc_names.swa7:   CVHoDisLocationData(0x07, 0x69E00C, item_names.equip_bracelet_mk),
     loc_names.swa10a: CVHoDisLocationData(0xD6, 0x4A7FD0, item_names.use_a_venom),
     loc_names.swa10b: CVHoDisLocationData(0xD7, 0x4A7FF4, item_names.use_potion_h),
     loc_names.swa10c: CVHoDisLocationData(0x56, 0x4A8030, item_names.max_life),
