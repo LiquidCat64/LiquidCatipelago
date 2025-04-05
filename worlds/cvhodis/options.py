@@ -45,6 +45,12 @@ class MapPercentRequired(Range):
     display_name = "Map Percent Required"
 
 
+class EarlyLizard(DefaultOnToggle):
+    """
+    Ensures you will find Lizard Tail in the multiworld's Sphere 1 somewhere, making the harder paths out less likely.
+    """
+    display_name = "Early Lizard"
+
 class Countdown(Choice):
     """
     Displays, below and near the right side of the MP bar, the number of un-found progression/useful-marked items or the total check locations remaining in the area you are currently in.
@@ -82,6 +88,7 @@ class CVHoDisOptions(PerGameCommonOptions):
     # countdown: Countdown
     # sub_weapon_shuffle: SubWeaponShuffle
     # nerf_griffin_wing: NerfGriffinWing
+    early_lizard: EarlyLizard
     death_link: DeathLink
 
 
@@ -92,7 +99,7 @@ cvhodis_option_groups = [
     ]),
 
     OptionGroup("difficulty", [
-        SubWeaponShuffle, DeathLink]),
+        EarlyLizard, DeathLink]),
     # OptionGroup("quality of life", [
     #     Countdown])
 ]

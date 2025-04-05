@@ -353,6 +353,8 @@ CVHODIS_EVENT_MAPPING: dict[str, str] = {
 ALT_PICKUP_OFFSETS: dict[str, int] = {
     loc_names.lca17: 0x4A425C,
     loc_names.lca18: 0x4A42A4,
+    loc_names.lcb8a: 0x4A5868,
+    loc_names.lcb8b: 0x4A5874,
 }
 
 # All Locations spat out by Guardian Armor when he gets ground up into scrap spaghetti, mapped to their hardcoded

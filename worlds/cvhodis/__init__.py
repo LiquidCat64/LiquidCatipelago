@@ -82,7 +82,6 @@ class CVHoDisWorld(World):
     web = CVHoDisWeb()
 
     def generate_early(self) -> None:
-        test = b'M\xeb-'
         # Generate the player's unique authentication
         self.auth = bytearray(self.random.getrandbits(8) for _ in range(16))
 
@@ -94,6 +93,10 @@ class CVHoDisWorld(World):
             logging.warning(f"{self.player_name} has no goal requirements enabled. The Best Ending requirement will be "
                             f"enabled for them.")
             self.options.best_ending_required.value = True
+
+        # Place the Lizard Tail in early_items if the Early Lizard option is enabled.
+        if self.options.early_lizard:
+            self.multiworld.early_items[self.player][item_names.relic_tail] = 1
 
     def create_regions(self) -> None:
         # Create every Region object.

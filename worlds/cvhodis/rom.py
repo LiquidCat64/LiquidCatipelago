@@ -1,9 +1,11 @@
+import pathlib
+
 import Utils
 import logging
 import json
 
 from worlds.Files import APProcedurePatch, APTokenMixin, APTokenTypes, APPatchExtension
-from typing import Dict, Optional, Collection, TYPE_CHECKING
+from typing import Dict, Collection, TYPE_CHECKING
 
 import hashlib
 import os
@@ -20,6 +22,8 @@ if TYPE_CHECKING:
 
 CVHODIS_CT_US_HASH = "ea589465486d15e91ba94165c8024b55"  # Original GBA cartridge ROM
 CVHODIS_AC_US_HASH = "35db4a2bacdec253672db68e73a41005"  # Castlevania Advance Collection ROM
+
+USER_PATCHES_FOLDER_NAME = "cvhodis_user_patches"
 
 GBA_ROM_START = 0x8000000
 MK_ACTORS_START = 0x4A7F40
@@ -52,24 +56,84 @@ ARCHIPELAGO_IDENTIFIER = "ARCHIPELAG01"
 AUTH_NUMBER_START = 0x7FFF10
 QUEUED_TEXT_STRING_START = 0x7CEB00
 MULTIWORLD_TEXTBOX_POINTERS_START = 0x671C10
+ROM_PADDING_START = 0x69D400
+ROM_PADDING_BYTE = 0xFF
 
 
 class RomData:
-    def __init__(self, file: bytes, name: Optional[str] = None) -> None:
+    file: bytearray
+    name: str | None
+    padding_displacement: int
+
+    def __init__(self, file: bytes, name: str | None = None) -> None:
         self.file = bytearray(file)
         self.name = name
+        self.padding_displacement = 0
 
     def read_byte(self, offset: int) -> int:
+        """Return a byte at a specified address."""
         return self.file[offset]
 
     def read_bytes(self, start_address: int, length: int) -> bytearray:
+        """Return a string of bytes of a specified length beginning at a specified address."""
         return self.file[start_address:start_address + length]
 
     def write_byte(self, offset: int, value: int) -> None:
+        """Write a given byte at a specified address."""
         self.file[offset] = value
 
     def write_bytes(self, offset: int, values: Collection[int]) -> None:
+        """Write a given string of bytes beginning at a specified address."""
         self.file[offset:offset + len(values)] = values
+
+    def apply_ips(self, ips_file: bytes) -> None:
+        """Apply a supplied IPS Patch to the ROM data."""
+
+        file_pos = 5
+        while True:
+            # Get the ROM offset bytes of the current record.
+            rom_offset = int.from_bytes(ips_file[file_pos:file_pos + 3], "big")
+
+            # If we've hit the "EOF" codeword (aka 0x454F46), stop iterating because we've reached the end of the patch.
+            if rom_offset == 0x454F46:
+                return
+
+            # Get the size bytes of the current record.
+            bytes_size = int.from_bytes(ips_file[file_pos + 3:file_pos + 5], "big")
+
+            if bytes_size != 0:
+                # Write the bytes to the ROM.
+                self.write_bytes(rom_offset, ips_file[file_pos + 5:file_pos + 5 + bytes_size])
+
+                # Increase our position in the IPS patch to the start of the next record.
+                file_pos += 5 + bytes_size
+            else:
+                # If the size is 0, we are looking at an RLE record.
+                # Get the size of the RLE.
+                rle_size = int.from_bytes(ips_file[file_pos + 5:file_pos + 7], "big")
+
+                # Get the byte to be written over and over.
+                rle_byte = int.from_bytes(ips_file[file_pos + 7:file_pos + 8], "big")
+
+                # Write the RLE byte to the ROM the RLE size times over.
+                self.write_bytes(rom_offset, [rle_byte for _ in range(rle_size)])
+
+                # Increase our position in the IPS patch to the start of the next record.
+                file_pos += 8
+
+
+    def add_extra_data(self, values: Collection[int], hook_addr: int | None) -> int:
+        """Add a string of bytes to the end of the ROM data, where the padding begins. The start address of the data
+        is chosen dynamically depending on what might already be in that padding range and then returned."""
+        space_to_find = bytearray([ROM_PADDING_BYTE]) * len(values)
+        found_space_displacement = self.file[ROM_PADDING_START:].find(space_to_find)
+
+        self.padding_displacement += found_space_displacement
+        found_space_addr = ROM_PADDING_START + self.padding_displacement
+
+        self.write_bytes(found_space_addr, values)
+
+        return found_space_addr | GBA_ROM_START
 
     def get_bytes(self) -> bytes:
         return bytes(self.file)
@@ -92,6 +156,14 @@ class CVHoDisPatchExtensions(APPatchExtension):
         if options["compat_identifier"] != ARCHIPELAGO_IDENTIFIER:
             raise Exception("Incompatible patch/APWorld version. Make sure the Harmony of Dissonance APWorlds of both "
                             "you and the person who generated are matching (and preferably up-to-date).")
+
+        # Apply any user-supplied patch in a dedicated folder at the root of their Archipelago installation
+        # (after checking to see if it exists).
+        user_patch_folder_path = Utils.local_path(USER_PATCHES_FOLDER_NAME)
+        if pathlib.Path(user_patch_folder_path).is_dir():
+            for patch_name in [file for file in os.listdir(user_patch_folder_path) if file.endswith(".ips")]:
+                with open(os.path.join(user_patch_folder_path, patch_name), "rb") as patch:
+                    rom_data.apply_ips(patch.read())
 
         # Unlock all extras from the start (cutscene skipping, playable Maxim, Boss Rush, etc.).
         rom_data.write_bytes(0x1FF4, [0x00, 0x49,  # ldr r1, 0x86A1000
