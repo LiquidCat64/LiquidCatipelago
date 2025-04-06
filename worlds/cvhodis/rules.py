@@ -78,6 +78,11 @@ class CVHoDisRules:
             loc_names.cda0a: self.can_double_jump,
             loc_names.cda0b: self.can_double_jump,
             loc_names.cda0d: self.can_super_jump,
+            # Clock Tower A
+            loc_names.cra22a: self.can_win_ball_race_a,
+            loc_names.cra22d: self.can_win_ball_race_a,
+            loc_names.cra22c: self.can_win_ball_race_a,
+            loc_names.cra22b: self.can_win_ball_race_a,
             # Top Floor A
             loc_names.tfa1b: self.can_double_jump,
             loc_names.tfa1a: self.can_double_jump,
@@ -270,6 +275,10 @@ class CVHoDisRules:
     def can_warp_castles(self, state: CollectionState) -> bool:
         """JB's Bracelet."""
         return state.has(item_names.equip_bracelet_jb, self.player)
+
+    def can_win_ball_race_a(self, state: CollectionState) -> bool:
+        """Specifically Sylph Feather; Griffin's Wing makes this challenge way too hard."""
+        return state.has(item_names.relic_feather, self.player)
 
     def can_open_center_a_gate(self, state: CollectionState) -> bool:
         """Broke the hand statue in the Castle Top Floor A attic."""

@@ -265,6 +265,19 @@ class CastlevaniaHoDisClient(BizHawkClient):
                 await bizhawk.write(ctx.bizhawk_ctx, [(QUEUED_TEXTBOX_SMALL_ADDRESS, [0 for _ in range(12)], "EWRAM")])
                 return
 
+            # Update the ending events already being done on past separate sessions for if the player is running
+            # multiple of them.
+            if f"castlevania_hodis_events_{ctx.team}_{ctx.slot}" in ctx.stored_data:
+                if ctx.stored_data[f"castlevania_hodis_events_{ctx.team}_{ctx.slot}"] is not None:
+                    if ctx.stored_data[f"castlevania_hodis_events_{ctx.team}_{ctx.slot}"] & 0x1:
+                        self.got_medium_ending = True
+
+                    if ctx.stored_data[f"castlevania_hodis_events_{ctx.team}_{ctx.slot}"] & 0x2:
+                        self.got_worst_ending = True
+
+                    if ctx.stored_data[f"castlevania_hodis_events_{ctx.team}_{ctx.slot}"] & 0x4:
+                        self.got_best_ending = True
+
             # Enable DeathLink if it's in our slot_data.
             if "DeathLink" not in ctx.tags and ctx.slot_data["death_link"]:
                 await ctx.update_death_link(True)
@@ -285,19 +298,6 @@ class CastlevaniaHoDisClient(BizHawkClient):
                 # Record the time in which the death was sent so when we receive the packet we can tell it wasn't our
                 # own death. ctx.on_deathlink overwrites it later, so it MUST be grabbed now.
                 self.time_of_sent_death = ctx.last_death_link
-
-            # Update the Dracula II and Battle Arena events already being done on past separate sessions for if the
-            # player is running the Battle Arena and Dracula goal.
-            if f"castlevania_hodis_events_{ctx.team}_{ctx.slot}" in ctx.stored_data:
-                if ctx.stored_data[f"castlevania_hodis_events_{ctx.team}_{ctx.slot}"] is not None:
-                    if ctx.stored_data[f"castlevania_hodis_events_{ctx.team}_{ctx.slot}"] & 0x1:
-                        self.got_medium_ending = True
-
-                    if ctx.stored_data[f"castlevania_hodis_events_{ctx.team}_{ctx.slot}"] & 0x2:
-                        self.got_worst_ending = True
-
-                    if ctx.stored_data[f"castlevania_hodis_events_{ctx.team}_{ctx.slot}"] & 0x4:
-                        self.got_best_ending = True
 
             # If we have any queued death causes, handle DeathLink giving here.
             if self.death_causes and ok_to_inject and not self.currently_dead:
@@ -322,6 +322,10 @@ class CastlevaniaHoDisClient(BizHawkClient):
                 # think we just died on our own on the subsequent frames before the Game Over state.
                 del(self.death_causes[0])
                 self.currently_dead = True
+            # If somehow we have more than 0 HP while the client thinks we are dead at this point, set ourselves back
+            # to alive. The player likely loaded a savestate before the game state changed to Game Over.
+            elif curr_hp > 0 and self.currently_dead:
+                self.currently_dead = False
 
             # If we have a queue of Locations to inject "sent" messages with, do so before giving any subsequent Items.
             #elif self.sent_message_queue and ok_to_inject and not self.currently_dead and ctx.locations_info:
