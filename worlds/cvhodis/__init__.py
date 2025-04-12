@@ -176,8 +176,7 @@ class CVHoDisWorld(World):
         # if self.options.countdown:
         #     offset_data.update(get_countdown_flags(self, active_locations))
         # Start Inventory
-        # start_inventory_data = get_start_inventory_data(self)
-        # offset_data.update(start_inventory_data)
+        offset_data.update(get_start_inventory_data(self))
 
         patch = CVHoDisProcedurePatch(player=self.player, player_name=self.player_name)
         patch_rom(self, patch, offset_data)

@@ -59,6 +59,13 @@ MULTIWORLD_TEXTBOX_POINTERS_START = 0x671C10
 ROM_PADDING_START = 0x69D400
 ROM_PADDING_BYTE = 0xFF
 
+START_INVENTORY_USE_START = 0x6A7200
+START_INVENTORY_EQUIP_START = 0x6A7220
+START_INVENTORY_BOOK_START = 0x6A72B0
+START_INVENTORY_RELICS_START = 0x6A72B2
+START_INVENTORY_FURN_START = 0x6A72B4
+START_INVENTORY_WHIPS_START = 0x6A72B8
+START_INVENTORY_MAX_START = 0x6A72BA
 
 class RomData:
     file: bytearray
@@ -385,6 +392,20 @@ class CVHoDisPatchExtensions(APPatchExtension):
                                                          "spawn location back to start.\t",
                                                          len_limit=LEN_LIMIT_DESCRIPTION, wrap=False,
                                                          max_lines=DESCRIPTION_DISPLAY_LINES, textbox_advance=False))
+
+        # Give the player their Start Inventory upon starting a new game.
+        rom_data.write_bytes(0x6B730, [0x00, 0x49,  # ldr r1, 0x86A7000
+                                       0x8F, 0x46,  # mov r15, r1
+                                       0x00, 0x70, 0x6A, 0x08])
+        rom_data.write_bytes(0x6A7000, patches.start_inventory_giver)
+        rom_data.write_bytes(0x6A7018, int.to_bytes(START_INVENTORY_USE_START | GBA_ROM_START, 4, "little"))
+        rom_data.write_bytes(0x6A7034, int.to_bytes(START_INVENTORY_EQUIP_START | GBA_ROM_START, 4, "little"))
+        rom_data.write_bytes(0x6A704C, int.to_bytes(START_INVENTORY_BOOK_START | GBA_ROM_START, 4, "little"))
+        rom_data.write_bytes(0x6A7070, int.to_bytes(START_INVENTORY_RELICS_START | GBA_ROM_START, 4, "little"))
+        rom_data.write_bytes(0x6A708C, int.to_bytes(START_INVENTORY_FURN_START | GBA_ROM_START, 4, "little"))
+        rom_data.write_bytes(0x6A70A0, int.to_bytes(START_INVENTORY_WHIPS_START | GBA_ROM_START, 4, "little"))
+        rom_data.write_bytes(0x6A70CC, int.to_bytes(START_INVENTORY_MAX_START | GBA_ROM_START, 4, "little"))
+
 
         # Test
         # rom_data.write_bytes(0xCAA16, cvhodis_string_to_bytearray("❖1/⬘0      Howdy ✨6/@everyone✨8/!\nHow do you do?\nNice\n✨12/weather✨8/\ntoday!\nPretty\ngr8\nm8\nI\nr8\n8/8\rHave a free🅰 trial of the critically acclamied MMORPG ✨13/Final Fantasy XIV✨8/,🅰\rincluding the entirety🅰\rof ✨14/A Realm Reborn✨8/ and the award-winning ✨4/Heavansward✨8/ ~and~ ✨4/Stormblood✨8/ expansions up to ✨10/level 70✨8/ with ✨13/no restrictions on playtime✨8/! REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE▶1/EEEEEEEE✨2/EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE✨6/EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE✨9/EEEEEEE✨15/EEEEE✨3/EEEEEEEEEEEEEEEEEEEE✨5/EEEEEEE✨7/EEEEEE✨13/EEEEEEEEEEEEEE!!!✨6/!!!✨7/!!!!✨6/1✨8/🅰\f❖2/⬘1/Okay, Juste, I get it! Are you done now? Take a \b22/ or something!🅰\f\t"))

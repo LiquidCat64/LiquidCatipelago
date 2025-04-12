@@ -1,12 +1,15 @@
 from BaseClasses import ItemClassification, Location
 from .options import Countdown
 from .locations import CVHODIS_CHECKS_INFO, ALT_PICKUP_OFFSETS, GUARDIAN_GRINDER_LOCATIONS
-from .items import ALL_CVHODIS_ITEMS, PICKUP_TYPE_BOOK, PICKUP_TYPE_RELIC, PICKUP_TYPE_FURN
+from .items import ALL_CVHODIS_ITEMS, PICKUP_TYPE_BOOK, PICKUP_TYPE_RELIC, PICKUP_TYPE_FURN, PICKUP_TYPE_USE, \
+    PICKUP_TYPE_WHIP, PICKUP_TYPE_EQUIP
 from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_DESCRIPTION, DESCRIPTION_DISPLAY_LINES
-from .rom import AP_HINT_TEXT_START
+from .rom import AP_HINT_TEXT_START, START_INVENTORY_USE_START, START_INVENTORY_EQUIP_START, \
+    START_INVENTORY_BOOK_START, START_INVENTORY_RELICS_START, START_INVENTORY_FURN_START, START_INVENTORY_WHIPS_START, \
+    START_INVENTORY_MAX_START
 from .data import item_names
 
-from typing import TYPE_CHECKING, Iterable, TypedDict
+from typing import TYPE_CHECKING, Iterable, TypedDict, NamedTuple
 
 if TYPE_CHECKING:
     from . import CVHoDisWorld
@@ -17,24 +20,28 @@ FURN_AP_TRAP_INDEX = 0x21
 BOOK_AP_PROGRESSION_INDEX = 0x05
 RELIC_AP_PROG_USEFUL_INDEX = 0x0C
 
-class StatInfo(TypedDict):
-    # Amount this stat increases per Max Up the player starts with.
-    amount_per: int
-    # The most amount of this stat the player is allowed to start with. Problems arise if the stat  exceeds 9999, so we
-    # must ensure it can't if the player raises any class to level 99 as well as collects 255 of that max up. The game
-    # caps hearts at 999 automatically, so it doesn't matter so much for that one.
-    max_allowed: int
-    # The key variable in extra_stats that the stat max up affects.
-    variable: str
+MAX_STAT_VALUE = 999
+MAX_ITEMS_VALUE = 99
+MAX_UP_INCREMENT_VALUE = 5
 
+class CVHoDisInventoryData(NamedTuple):
+    main_start_addr: int
+    start_inventory_start_addr: int
+    length: int
+    text_id_start: int
+    is_large_textbox: bool
+    is_bitfield: bool
 
-extra_starting_stat_info: dict[str, StatInfo] = {
-    item_names.max_life: {"amount_per": 10,
-                          "max_allowed": 5289,
-                          "variable": "extra health"},
-    item_names.max_heart: {"amount_per": 6,
-                           "max_allowed": 999,
-                           "variable": "extra hearts"},
+# Each pickup type mapped to the following information on its dedicated inventory: Where it starts, where its start
+# inventory starts, its size in bytes, what text ID the item name strings start at, whether receiving an item for it
+# calls a small or large textbox, and whether it's a bitfield or array of counts.
+CVHODIS_INVENTORIES = {
+    PICKUP_TYPE_USE:   CVHoDisInventoryData(0x187A0, START_INVENTORY_USE_START,     28, 0x22, False, False),
+    PICKUP_TYPE_WHIP:  CVHoDisInventoryData(0x187BC, START_INVENTORY_WHIPS_START,    2, 0x1C, True,  True),
+    PICKUP_TYPE_EQUIP: CVHoDisInventoryData(0x187BE, START_INVENTORY_EQUIP_START,  128, 0x47, False, False),
+    PICKUP_TYPE_RELIC: CVHoDisInventoryData(0x1883F, START_INVENTORY_RELICS_START,   2, 0xAA, True,  True),
+    PICKUP_TYPE_BOOK:  CVHoDisInventoryData(0x1883E, START_INVENTORY_BOOK_START,     1, 0xA5, True,  True),
+    PICKUP_TYPE_FURN:  CVHoDisInventoryData(0x18843, START_INVENTORY_FURN_START,     4, 0xD8, False, True),
 }
 
 other_player_subtype_bytes = {
@@ -42,7 +49,6 @@ other_player_subtype_bytes = {
     0xE6: 0x14,
     0xE8: 0x0A
 }
-
 
 class OtherGameAppearancesInfo(TypedDict):
     # What type of item to place for the other player.
@@ -241,70 +247,55 @@ def get_start_inventory_data(world: "CVHoDisWorld") -> dict[int, bytes]:
     to be handled accordingly."""
     start_inventory_data = {}
 
-    magic_items_array = [0 for _ in range(8)]
-    cards_array = [0 for _ in range(20)]
-    extra_stats = {"extra health": 0,
-                   "extra magic": 0,
-                   "extra hearts": 0}
-
-    # Always start with the Dash Boots.
-    magic_items_array[0] = 1
+    inventory_arrays = {
+        inv_id: bytearray(CVHODIS_INVENTORIES[inv_id].length) for inv_id in CVHODIS_INVENTORIES
+    }
+    extra_life = 0
+    extra_hearts = 0
+    starting_spellbook = 0
 
     for item in world.multiworld.precollected_items[world.player]:
 
-        array_offset = item.code & 0xFF
+        type_byte = (item.code >> 8) & 0xFF
+        index_byte = item.code & 0xFF
 
-        # If it's a Max Up we're starting with, check if increasing the extra amount of that stat will put us over the
-        # max amount of the stat allowed. If it will, set the current extra amount to the max. Otherwise, increase it by
-        # the amount that it should.
-        if "Max Up" in item.name:
-            info = extra_starting_stat_info[item.name]
-            if extra_stats[info["variable"]] + info["amount_per"] > info["max_allowed"]:
-                extra_stats[info["variable"]] = info["max_allowed"]
+        # If the Item's type byte is a known type of item with an inventory array, handle it here.
+        if type_byte in inventory_arrays:
+            # If the inventory array is a bitfield, set the bit for that Item in that inventory array.
+            if CVHODIS_INVENTORIES[type_byte].is_bitfield:
+                inventory_arrays[type_byte][index_byte // 8] |= 1 << (index_byte % 8)
+            # Othrwise, meaning it's an array of counts, increment the count at that index if said count is not already
+            # the max inventory count.
             else:
-                extra_stats[info["variable"]] += info["amount_per"]
-        # If it's a DSS card we're starting with, set that card's value in the cards array.
-        elif "Card" in item.name:
-            cards_array[array_offset] = 1
-        # If it's none of the above, it has to be a regular Magic Item.
-        # Increase that Magic Item's value in the Magic Items array if it's not greater than 240. Last Keys are the only
-        # Magic Item wherein having more than one is relevant.
+                if inventory_arrays[type_byte][index_byte] < MAX_ITEMS_VALUE:
+                    inventory_arrays[type_byte][index_byte] += 1
+        # If it doesn't have an inventory array, then it must be a Max Up. In which case, handle it accordingly here.
+        elif item.name == item_names.max_life:
+            if extra_life + 5 < MAX_STAT_VALUE:
+                extra_life += MAX_UP_INCREMENT_VALUE
+            else:
+                extra_life = MAX_STAT_VALUE
         else:
-            # Decrease the Magic Item array offset by 1 if it's higher than the unused Map's item value.
-            if array_offset > 5:
-                array_offset -= 1
-            if magic_items_array[array_offset] < 240:
-                magic_items_array[array_offset] += 1
+            if extra_hearts + 5 < MAX_STAT_VALUE:
+                extra_hearts += MAX_UP_INCREMENT_VALUE
+            else:
+                extra_life = MAX_STAT_VALUE
 
-    # Add the start inventory arrays to the offset data in bytes form.
-    start_inventory_data[0x680080] = bytes(magic_items_array)
-    start_inventory_data[0x6800A0] = bytes(cards_array)
+        # If the Item is a spell book, set the starting equipped spell book value to that book's index + 1.
+        if type_byte == PICKUP_TYPE_BOOK:
+            starting_spellbook = index_byte + 1
 
-    # Add the extra max HP/MP/Hearts to all classes' base stats. Doing it this way makes us less likely to hit the max
-    # possible Max Ups.
-    # Vampire Killer
-    start_inventory_data[0xE08C6] = int.to_bytes(100 + extra_stats["extra health"], 2, "little")
-    start_inventory_data[0xE08CE] = int.to_bytes(100 + extra_stats["extra magic"], 2, "little")
-    start_inventory_data[0xE08D4] = int.to_bytes(50 + extra_stats["extra hearts"], 2, "little")
+    # Map the start inventory arrays to their ROM offsets.
+    for inv_id, inv_array in inventory_arrays.items():
+        start_inventory_data[CVHODIS_INVENTORIES[inv_id].start_inventory_start_addr] = bytes(inv_array)
 
-    # Magician
-    start_inventory_data[0xE090E] = int.to_bytes(50 + extra_stats["extra health"], 2, "little")
-    start_inventory_data[0xE0916] = int.to_bytes(400 + extra_stats["extra magic"], 2, "little")
-    start_inventory_data[0xE091C] = int.to_bytes(50 + extra_stats["extra hearts"], 2, "little")
+    # Map the extra starting stats to their offsets as well.
+    start_inventory_data[START_INVENTORY_MAX_START] = int.to_bytes(extra_life, 2, "little")
+    # MP is not currently supported, but it's here just in case.
+    start_inventory_data[START_INVENTORY_MAX_START + 2] = int.to_bytes(0x0000, 2, "little")
+    start_inventory_data[START_INVENTORY_MAX_START + 4] = int.to_bytes(extra_hearts, 2, "little")
 
-    # Fighter
-    start_inventory_data[0xE0932] = int.to_bytes(200 + extra_stats["extra health"], 2, "little")
-    start_inventory_data[0xE093A] = int.to_bytes(50 + extra_stats["extra magic"], 2, "little")
-    start_inventory_data[0xE0940] = int.to_bytes(50 + extra_stats["extra hearts"], 2, "little")
-
-    # Shooter
-    start_inventory_data[0xE0832] = int.to_bytes(50 + extra_stats["extra health"], 2, "little")
-    start_inventory_data[0xE08F2] = int.to_bytes(100 + extra_stats["extra magic"], 2, "little")
-    start_inventory_data[0xE08F8] = int.to_bytes(250 + extra_stats["extra hearts"], 2, "little")
-
-    # Thief
-    start_inventory_data[0xE0956] = int.to_bytes(50 + extra_stats["extra health"], 2, "little")
-    start_inventory_data[0xE095E] = int.to_bytes(50 + extra_stats["extra magic"], 2, "little")
-    start_inventory_data[0xE0964] = int.to_bytes(50 + extra_stats["extra hearts"], 2, "little")
+    # Map the starting spell book value to where it should be as well.
+    start_inventory_data[START_INVENTORY_BOOK_START + 1] = int.to_bytes(starting_spellbook, 1, "little")
 
     return start_inventory_data

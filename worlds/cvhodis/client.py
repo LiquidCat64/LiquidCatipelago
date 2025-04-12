@@ -6,6 +6,7 @@ from .locations import CVHODIS_CHECKS_INFO
 from .cvhodis_text import cvhodis_string_to_bytearray
 from .rom import ARCHIPELAGO_IDENTIFIER_START, ARCHIPELAGO_IDENTIFIER, AUTH_NUMBER_START, QUEUED_TEXT_STRING_START
 from .data import item_names, loc_names
+from .aesthetics import CVHODIS_INVENTORIES, MAX_STAT_VALUE, MAX_UP_INCREMENT_VALUE
 
 from BaseClasses import ItemClassification
 from NetUtils import ClientStatus
@@ -50,7 +51,6 @@ SOUND_ID_PICKUP_HEART = b"\x2F"
 SOUND_ID_PICKUP_SUB_WEAPON = b"\x30"
 SOUND_ID_PICKUP_MAX_UP = b"\x34"
 SOUND_ID_PICKUP_MAJOR = b"\x36"
-MAX_STAT_VALUE = 999
 
 ITEM_NAME_LIMIT = 300
 PLAYER_NAME_LIMIT = 50
@@ -61,26 +61,7 @@ FLAG_MEDIUM_ENDING = 0x45
 FLAG_WORST_ENDING = 0x46
 FLAG_BEST_ENDING = 0x1F
 
-class CVHoDisInventoryData(NamedTuple):
-    start_addr: int
-    length: int
-    text_id_start: int
-    is_large_textbox: bool
-    is_bitfield: bool
-
-# Each pickup type mapped to the following information on its dedicated inventory: Where it starts, its size in bytes,
-# what text ID the item name strings start at, whether receiving an item for it calls a small or large textbox, and
-# whether it's a bitfield or array of counts.
-INVENTORIES = {
-    PICKUP_TYPE_USE:   CVHoDisInventoryData(0x187A0, 28,  0x22, False, False),
-    PICKUP_TYPE_WHIP:  CVHoDisInventoryData(0x187BC, 2,   0x1C, True,  True),
-    PICKUP_TYPE_EQUIP: CVHoDisInventoryData(0x187BE, 128, 0x47, False, False),
-    PICKUP_TYPE_RELIC: CVHoDisInventoryData(0x1883F, 2,   0xAA, True,  True),
-    PICKUP_TYPE_BOOK:  CVHoDisInventoryData(0x1883E, 1,   0xA5, True,  True),
-    PICKUP_TYPE_FURN:  CVHoDisInventoryData(0x18843, 4,   0xD8, False, True),
-}
-
-INV_NUMBERS = [pickup_type for pickup_type in INVENTORIES]
+INV_NUMBERS = [pickup_type for pickup_type in CVHODIS_INVENTORIES]
 
 # These flags are communicated to the tracker as a bitfield using this order.
 # Modifying the order will cause undetectable autotracking issues.
@@ -138,7 +119,7 @@ class CastlevaniaHoDisClient(BizHawkClient):
             return False  # Should verify on the next pass
 
         ctx.game = self.game
-        ctx.items_handling = 0b101
+        ctx.items_handling = 0b001
         ctx.want_slot_data = True
         ctx.watcher_timeout = 0.125
         return True
@@ -202,10 +183,11 @@ class CastlevaniaHoDisClient(BizHawkClient):
                 }])
                 self.sent_initial_packets = True
 
-            read_state = await bizhawk.read(ctx.bizhawk_ctx, [(INVENTORIES[inv].start_addr, INVENTORIES[inv].length,
-                                                               "EWRAM") for inv in INVENTORIES] + [
+            read_state = await bizhawk.read(ctx.bizhawk_ctx, [(CVHODIS_INVENTORIES[inv].start_addr,
+                                                               CVHODIS_INVENTORIES[inv].length,
+                                                               "EWRAM") for inv in CVHODIS_INVENTORIES] + [
                                                               (RELICS_EQUIPPED_BITFIELD_START,
-                                                               INVENTORIES[PICKUP_TYPE_RELIC].length, "EWRAM"),
+                                                               CVHODIS_INVENTORIES[PICKUP_TYPE_RELIC].length, "EWRAM"),
                                                               (GAME_STATE_ADDRESS, 1, "EWRAM"),
                                                               (FLAGS_BITFIELD_START, 76, "EWRAM"),
                                                               (NUM_RECEIVED_ITEMS_ADDRESS, 2, "EWRAM"),
@@ -219,24 +201,24 @@ class CastlevaniaHoDisClient(BizHawkClient):
                                                               (CURRENT_HEARTS_ADDRESS, 2, "EWRAM"),
                                                               (CURRENT_BOOK_ADDRESS, 1, "EWRAM"),
                                                               (FURN_PLACED_BITFIELD_START,
-                                                               INVENTORIES[PICKUP_TYPE_FURN].length, "EWRAM")])
+                                                               CVHODIS_INVENTORIES[PICKUP_TYPE_FURN].length, "EWRAM")])
 
             curr_invs = {INV_NUMBERS[i]: bytearray(read_state[i]) for i in range(len(INV_NUMBERS))}
 
-            enabled_relics = bytearray(read_state[len(INVENTORIES)])
-            game_state = int.from_bytes(read_state[len(INVENTORIES) + 1], "little")
-            all_flags = read_state[len(INVENTORIES) + 2]
-            num_received_items = int.from_bytes(bytearray(read_state[len(INVENTORIES) + 3]), "little")
-            queued_received_info = bytearray(read_state[len(INVENTORIES) + 4])
-            delay_timer = int.from_bytes(bytearray(read_state[len(INVENTORIES) + 5]), "little")
-            menu_state = int.from_bytes(bytearray(read_state[len(INVENTORIES) + 6]), "little")
-            cutscene_state = int.from_bytes(bytearray(read_state[len(INVENTORIES) + 7]), "little")
-            textbox_state = int.from_bytes(bytearray(read_state[len(INVENTORIES) + 8]), "little")
-            max_stats_array = bytearray(read_state[len(INVENTORIES) + 9])
-            curr_hp = int.from_bytes(bytearray(read_state[len(INVENTORIES) + 10]), "little")
-            curr_hearts = int.from_bytes(bytearray(read_state[len(INVENTORIES) + 11]), "little")
-            curr_book = int.from_bytes(bytearray(read_state[len(INVENTORIES) + 12]), "little")
-            placed_furniture_flags = int.from_bytes(bytearray(read_state[len(INVENTORIES) + 13]), "little")
+            enabled_relics = bytearray(read_state[len(CVHODIS_INVENTORIES)])
+            game_state = int.from_bytes(read_state[len(CVHODIS_INVENTORIES) + 1], "little")
+            all_flags = read_state[len(CVHODIS_INVENTORIES) + 2]
+            num_received_items = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 3]), "little")
+            queued_received_info = bytearray(read_state[len(CVHODIS_INVENTORIES) + 4])
+            delay_timer = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 5]), "little")
+            menu_state = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 6]), "little")
+            cutscene_state = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 7]), "little")
+            textbox_state = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 8]), "little")
+            max_stats_array = bytearray(read_state[len(CVHODIS_INVENTORIES) + 9])
+            curr_hp = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 10]), "little")
+            curr_hearts = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 11]), "little")
+            curr_book = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 12]), "little")
+            placed_furniture_flags = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 13]), "little")
 
             # Get out each of the individual max stat values.
             max_hp = int.from_bytes(max_stats_array[0:2], "little")
@@ -375,10 +357,10 @@ class CastlevaniaHoDisClient(BizHawkClient):
 
                 item_name = ctx.item_names.lookup_in_slot(next_item.item)
 
-                if pickup_type in INVENTORIES:
+                if pickup_type in CVHODIS_INVENTORIES:
                     inv_array = curr_invs[pickup_type]
-                    inv_array_start = INVENTORIES[pickup_type].start_addr
-                    text_id = int.to_bytes(INVENTORIES[pickup_type].text_id_start + pickup_index,
+                    inv_array_start = CVHODIS_INVENTORIES[pickup_type].start_addr
+                    text_id = int.to_bytes(CVHODIS_INVENTORIES[pickup_type].text_id_start + pickup_index,
                                            2, "little")
                     # If the item is JB or MK's Bracelet, play the major pickup sound with the small textbox. These are
                     # the only two items to use this specific combination.
@@ -387,7 +369,7 @@ class CastlevaniaHoDisClient(BizHawkClient):
                         text_id_buffer_addr = QUEUED_TEXTBOX_SMALL_ADDRESS
                     # If the item normally calls a large textbox when picked up, play the major pickup sound and choose
                     # the large textbox buffer to write the text ID at.
-                    elif INVENTORIES[pickup_type].is_large_textbox:
+                    elif CVHODIS_INVENTORIES[pickup_type].is_large_textbox:
                         mssg_sfx_id = SOUND_ID_PICKUP_MAJOR
                         text_id_buffer_addr = QUEUED_TEXTBOX_LARGE_ADDRESS
                     # Otherwise, play the minor pickup sound and choose the small textbox buffer to write the ID at.
@@ -425,8 +407,8 @@ class CastlevaniaHoDisClient(BizHawkClient):
 
                 # If the Item is stored in a count and not a bitfield, check to see if the player has 99 of that Item.
                 # If they do, don't increase their count of that Item any further.
-                if pickup_type in INVENTORIES:
-                    if not INVENTORIES[pickup_type].is_bitfield:
+                if pickup_type in CVHODIS_INVENTORIES:
+                    if not CVHODIS_INVENTORIES[pickup_type].is_bitfield:
                         if inv_array[pickup_index] + 1 <= 99:
                             inv_address = inv_array_start + pickup_index
                             inv_guards += [(inv_address, int.to_bytes(inv_array[pickup_index], 1, "little"), "EWRAM")]
@@ -437,9 +419,6 @@ class CastlevaniaHoDisClient(BizHawkClient):
                             if item_name == item_names.equip_bracelet_jb:
                                 flag_word_index = FLAG_CLOCK_TOWER_DEATH_CUTSCENE >> 5
                                 flag_address = FLAGS_BITFIELD_START + (flag_word_index * 4) + 4
-                                test1 = event_flags_array[flag_word_index]
-                                test2 = event_flags_array[flag_word_index] | 1 << (
-                                            FLAG_CLOCK_TOWER_DEATH_CUTSCENE & 0x1F)
                                 inv_guards += [
                                     (flag_address, int.to_bytes(event_flags_array[flag_word_index], 4, "little"),
                                      "EWRAM")]
@@ -473,8 +452,8 @@ class CastlevaniaHoDisClient(BizHawkClient):
                     # If it's a Life Max Up being received, increment the player's max HP by 5 (if it's not above the
                     # max already) and give them a full health refill.
                     if item_name == item_names.max_life:
-                        if max_hp + 5 <= MAX_STAT_VALUE:
-                            new_hp = max_hp + 5
+                        if max_hp + MAX_UP_INCREMENT_VALUE <= MAX_STAT_VALUE:
+                            new_hp = max_hp + MAX_UP_INCREMENT_VALUE
                         else:
                             new_hp = MAX_STAT_VALUE
                         inv_guards += [(MAX_STATS_COUNTS_START, int.to_bytes(max_hp, 2, "little"), "EWRAM")]
@@ -483,15 +462,15 @@ class CastlevaniaHoDisClient(BizHawkClient):
                     # If it's a Heart Max Up being received, increment the player's max Hearts by 5 (if it's not above
                     # the max already) and increase their current Hearts by 5 (if it's not above the new max).
                     else:
-                        if max_hearts + 5 <= MAX_STAT_VALUE:
-                            new_max_hearts = max_hearts + 5
+                        if max_hearts + MAX_UP_INCREMENT_VALUE <= MAX_STAT_VALUE:
+                            new_max_hearts = max_hearts + MAX_UP_INCREMENT_VALUE
                         else:
                             new_max_hearts = MAX_STAT_VALUE
 
-                        if curr_hearts + 5 > new_max_hearts:
+                        if curr_hearts + MAX_UP_INCREMENT_VALUE > new_max_hearts:
                             new_curr_hearts = new_max_hearts
                         else:
-                            new_curr_hearts = curr_hearts + 5
+                            new_curr_hearts = curr_hearts + MAX_UP_INCREMENT_VALUE
                         inv_guards += [(MAX_STATS_COUNTS_START + 4, int.to_bytes(max_hearts, 2, "little"), "EWRAM")]
                         inv_writes += [(MAX_STATS_COUNTS_START + 4, int.to_bytes(new_max_hearts, 2, "little"), "EWRAM")]
                         refill_write = [(CURRENT_HEARTS_ADDRESS, int.to_bytes(new_curr_hearts, 2, "little"), "EWRAM")]
@@ -503,7 +482,8 @@ class CastlevaniaHoDisClient(BizHawkClient):
                                             + inv_writes + refill_write,
                                             # Make sure the number of received items and inventory to overwrite are
                                             # still what we expect them to be.
-                                            [(NUM_RECEIVED_ITEMS_ADDRESS, read_state[len(INVENTORIES) + 3], "EWRAM")]
+                                            [(NUM_RECEIVED_ITEMS_ADDRESS, read_state[len(CVHODIS_INVENTORIES) + 3],
+                                              "EWRAM")]
                                             + inv_guards),
 
             # Check how many bits are set in the placed furniture flags array to determine whether the player has
