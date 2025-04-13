@@ -333,11 +333,14 @@ class CVHoDisPatchExtensions(APPatchExtension):
                                        0x00, 0x34, 0x6A, 0x08])
         rom_data.write_bytes(0x6A3400, patches.furniture_pickup_customizer)
 
-        # Set the "can warp castles" flag when picking up JB's Bracelet.
+        # Play the "major pickup" sound when picking up JB's Bracelet.
         rom_data.write_bytes(0x19F84, [0x00, 0x4B,  # ldr r3, 0x86A4000
                                        0x9F, 0x46,  # mov r15, r3
                                        0x00, 0x40, 0x6A, 0x08])
-        rom_data.write_bytes(0x6A4000, patches.jb_bracelet_checker)
+        rom_data.write_bytes(0x6A4000, patches.major_pickup_sound_player)
+        # Make the round warp gates set the "can warp castles" flag if the player has JB's Bracelet.
+        rom_data.write_bytes(0x494F70, int.to_bytes(0x86A4101, 4, "little"))
+        rom_data.write_bytes(0x6A4100, patches.jb_bracelet_checker)
 
         # Disable the text when both warping and teleporting to Castle B for the first time.
         rom_data.write_bytes(0x1BEC8, [0x00, 0x00])

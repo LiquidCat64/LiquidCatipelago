@@ -414,18 +414,6 @@ class CastlevaniaHoDisClient(BizHawkClient):
                             inv_guards += [(inv_address, int.to_bytes(inv_array[pickup_index], 1, "little"), "EWRAM")]
                             inv_writes += [(inv_address, int.to_bytes(inv_array[pickup_index] + 1, 1, "little"),
                                             "EWRAM")]
-                            # If the Item is JB's Bracelet, set the Clock Tower Death cutscene flag to let the game know we
-                            # can warp between castles freely now.
-                            if item_name == item_names.equip_bracelet_jb:
-                                flag_word_index = FLAG_CLOCK_TOWER_DEATH_CUTSCENE >> 5
-                                flag_address = FLAGS_BITFIELD_START + (flag_word_index * 4) + 4
-                                inv_guards += [
-                                    (flag_address, int.to_bytes(event_flags_array[flag_word_index], 4, "little"),
-                                     "EWRAM")]
-                                inv_writes += [
-                                    (flag_address, int.to_bytes(event_flags_array[flag_word_index] | 1 <<
-                                                                (FLAG_CLOCK_TOWER_DEATH_CUTSCENE & 0x1F),
-                                                                4, "little"), "EWRAM")]
 
                     # If the Item is stored in a bitfield, set the bit for that Item in the bitfield.
                     else:
