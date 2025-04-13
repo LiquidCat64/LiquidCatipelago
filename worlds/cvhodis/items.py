@@ -91,7 +91,7 @@ EQUIPMENT: dict[str, CVHoDisItemData] = {
     item_names.equip_armor_par:   CVHoDisItemData(0x0A),
     item_names.equip_mail_ch:     CVHoDisItemData(0x0B),
     item_names.equip_armor_sc:    CVHoDisItemData(0x0C),
-    item_names.equip_mail_h:      CVHoDisItemData(0x0D),
+    item_names.equip_mail_h:      CVHoDisItemData(0x0D, ItemClassification.useful),
     item_names.equip_guardian_a:  CVHoDisItemData(0x0E),
     item_names.equip_mail_f:      CVHoDisItemData(0x0F, ItemClassification.useful),
     item_names.equip_brigan:      CVHoDisItemData(0x10),

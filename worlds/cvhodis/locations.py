@@ -27,7 +27,7 @@ class CVHoDisLocationData(NamedTuple):
 CVHODIS_CHECKS_INFO: dict[str, CVHoDisLocationData] = {
     # Various areas
     loc_names.portals_rt: CVHoDisLocationData(0x2F, 0x49BE14, item_names.equip_l_charm),
-    loc_names.portals_lw: CVHoDisLocationData(0x88, 0x69E118, item_names.equip_l_charm),
+    loc_names.portals_lw: CVHoDisLocationData(0x88, 0x69E118, item_names.equip_glove_s),
 
     # Entrance A
     loc_names.eta2:  CVHoDisLocationData(0xB2, 0x499794, item_names.use_prism_b),
