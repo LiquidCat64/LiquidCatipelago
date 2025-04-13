@@ -399,9 +399,9 @@ jb_bracelet_checker = [
     0x0F, 0x49,  # ldr  r1, 0x20187E8
     0x08, 0x78,  # ldrb r0, [r1]
     0x68, 0x39,  # sub  r1, 0x68
+    # Check if JB's Bracelet is in any of the three equipped accessory slots.
     0x4A, 0x78,  # ldrb r2, [r1, 0x01]
     0x2A, 0x2A,  # cmp  r2, 0x2A
-    # Check if JB's Bracelet is in any equipped accessory slot.
     0x00, 0xD1,  # bne  [forward 0x01]
     0x01, 0x30,  # add  r0, 0x01
     0x8A, 0x78,  # ldrb r2, [r1, 0x01]

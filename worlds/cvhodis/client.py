@@ -183,7 +183,7 @@ class CastlevaniaHoDisClient(BizHawkClient):
                 }])
                 self.sent_initial_packets = True
 
-            read_state = await bizhawk.read(ctx.bizhawk_ctx, [(CVHODIS_INVENTORIES[inv].start_addr,
+            read_state = await bizhawk.read(ctx.bizhawk_ctx, [(CVHODIS_INVENTORIES[inv].main_start_addr,
                                                                CVHODIS_INVENTORIES[inv].length,
                                                                "EWRAM") for inv in CVHODIS_INVENTORIES] + [
                                                               (RELICS_EQUIPPED_BITFIELD_START,
@@ -359,7 +359,7 @@ class CastlevaniaHoDisClient(BizHawkClient):
 
                 if pickup_type in CVHODIS_INVENTORIES:
                     inv_array = curr_invs[pickup_type]
-                    inv_array_start = CVHODIS_INVENTORIES[pickup_type].start_addr
+                    inv_array_start = CVHODIS_INVENTORIES[pickup_type].main_start_addr
                     text_id = int.to_bytes(CVHODIS_INVENTORIES[pickup_type].text_id_start + pickup_index,
                                            2, "little")
                     # If the item is JB or MK's Bracelet, play the major pickup sound with the small textbox. These are

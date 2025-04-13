@@ -34,6 +34,26 @@ Dracula Wraith will then appear and defeating him will grant you this ending.
 - "Furniture Amount Required": Collect and place the amount of furniture specified by this option in the empty room at the
 very bottom of Castle Treasury A/B.
 
+## What bosses are considered what difficulty by the Spellbound Bosses option?
+
+The following bosses are all considered "Medium" and expect 1 spell book with the Normal choice or 2 spell books with the Extreme choice to get past:
+- Devil
+- Giant Merman
+- Max Slimer
+- Peeping Big
+- Legion (saint)
+- Shadow
+
+The following bosses are all considered "Hard" and expect 1 spell book with the Normal choice or 2 spell books with the Extreme choice to get past:
+- Minotaur Lv2
+- Pazuzu
+- Legion (corpse)
+- Talos
+- Death
+- Cyclops
+
+All other bosses that are not listed are considered "Easy" and never expect anything.
+
 ## What items and locations get shuffled?
 
 All static items (use items, equipment, whip attachments, spell books, relics, furniture, and max ups) are all randomized
@@ -75,7 +95,7 @@ In Castlevania: Harmony of Dissonance, every location is part of a location grou
 So if you want to exclude all of, say, Luminous Cavern A from having progression, you can do so by just excluding
 "Luminous Cavern A" as a whole.
 
-## Will the Castlevania Advance Collection?
+## Will the Castlevania Advance Collection version work? What about the Castlevania Double Pack version?
 
 The Castlevania Advance Collection ROM is tested and known to work. However, there are some major caveats when playing with the
 Advance Collection ROM; most notably the fact that the audio does not function when played in an emulator outside the collection,
@@ -83,5 +103,7 @@ which is currently a requirement to connect to a multiworld. This happens becaus
 from the ROM, and all sound is instead played by the collection through external means. As such, it is most recommended to obtain
 the ROM by dumping it from an original cartridge of the game that you legally own. However, the Advance Collection *is* an
 option if you cannot do that and don't mind the lack of sound.
+
+The Castlevania Double Pack version is not supported and will not work.
 
 Regardless of which released ROM you intend to try playing with, the US version of the game is required.

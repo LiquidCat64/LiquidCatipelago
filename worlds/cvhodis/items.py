@@ -332,6 +332,10 @@ def get_item_counts(world: "CVHoDisWorld") -> dict[ItemClassification, dict[str,
         # it as Filler instead of Progression Skip Balancing.
         if item_to_add in FURNITURE and not world.furniture_amount_required:
             item_class = ItemClassification.filler
+        # If the Item is a spell book, and Spellbound Bosses is not disabled, submit it as Progression + Useful instead
+        # of just Useful.
+        elif item_to_add in BOOKS and world.options.spellbound_bosses:
+            item_class = ItemClassification.useful | ItemClassification.progression
         # If the Item is a Vlad Relic and neither the Worst nor Best Ending is required, submit it as just Useful
         # instead of Useful + Progression Skip Balancing.
         elif "Vlad" in item_to_add and not world.options.worst_ending_required and not \

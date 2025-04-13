@@ -3,7 +3,8 @@ from typing import Dict, TYPE_CHECKING
 from BaseClasses import CollectionState
 from worlds.generic.Rules import CollectionRule
 from .data import item_names, loc_names
-from .items import FURNITURE
+from .items import FURNITURE, BOOKS
+from .options import SpellboundBosses
 
 if TYPE_CHECKING:
     from . import CVHoDisWorld
@@ -17,6 +18,7 @@ class CVHoDisRules:
     medium_ending_required: int
     worst_ending_required: int
     best_ending_required: int
+    spellbound_bosses: int
 
     def __init__(self, world: "CVHoDisWorld") -> None:
         self.player = world.player
@@ -25,6 +27,7 @@ class CVHoDisRules:
         self.medium_ending_required = world.options.medium_ending_required.value
         self.worst_ending_required = world.options.worst_ending_required.value
         self.best_ending_required = world.options.best_ending_required.value
+        self.spellbound_bosses = world.options.spellbound_bosses.value
 
         self.location_rules = {
             # Entrance A
@@ -54,10 +57,12 @@ class CVHoDisRules:
             loc_names.sca4: self.can_double_jump,
             loc_names.sca12a: self.can_super_jump,
             loc_names.sca12b: self.can_super_jump,
+            loc_names.sca10: self.can_beat_hard_bosses,  # VS Legion (corpse)
             # Luminous Cavern A
             loc_names.lca11: self.can_break_walls,
             loc_names.lca8a: self.can_super_jump,
             loc_names.lca10: self.can_super_jump,
+            loc_names.lca23: self.can_beat_hard_bosses,  # VS Death
             # Sky Walkway A
             loc_names.swa7: self.can_pass_sky_a_wall,
             loc_names.swa12a: self.can_double_jump,
@@ -81,6 +86,7 @@ class CVHoDisRules:
             # Top Floor A
             loc_names.tfa1b: self.can_double_jump,
             loc_names.tfa1a: self.can_double_jump,
+            loc_names.tfa11: self.can_beat_hard_bosses,  # VS Minotaur Lv2
             # Entrance B
             loc_names.etb2b: self.can_break_ceilings,
             loc_names.etb2a: self.can_break_ceilings,
@@ -152,27 +158,35 @@ class CVHoDisRules:
             "Luminous A Warp Gate":  lambda state:
                 self.can_break_walls(state) and self.can_warp_castles(state),
             "Luminous A Floodgate Keyhole": self.can_open_floodgate,
+            "Luminous A Talos's Arena": self.can_beat_hard_bosses,  # VS Talos
             "Luminous A Top Super Jump from Left": self.can_super_jump,
             "Luminous A Top Super Jump from Right": self.can_super_jump,
             "Walkway A Double Jump from Portal Hall": self.can_double_jump,
-            "Walkway A Double Jump from Clock Exit": self.can_double_jump,
+            "Walkway A Double Jump from Clock Exit": lambda state:
+                self.can_double_jump(state) and self.can_beat_medium_bosses(state),  # VS Devil
             "Walkway A Main Downward": self.can_see_in_darkness,
             "Walkway A Press Onwards in Darkness": self.can_see_in_darkness,
+            "Walkway A Past Devil": self.can_beat_medium_bosses,  # VS Devil
             "Chapel A Upward Hall Climb": self.can_double_jump,
             "Chapel A Top MK Door": self.can_open_mk_doors,
             "Aqueduct A Main Left Double Jump": self.can_double_jump,
             "Aqueduct A Crush Wall Right": self.can_break_walls,
-            "Aqueduct A Main Right Double Jump": self.can_double_jump,
+            "Aqueduct A Main Right Double Jump": lambda state:
+                self.can_double_jump(state) and self.can_beat_medium_bosses(state),  # VS Giant Merman
+            "Aqueduct A Down from Merman Lair": self.can_beat_medium_bosses,  # VS Giant Merman
             "Aqueduct A Crush Wall Left": lambda state: self.can_break_walls(state) and self.can_double_jump(state),
             "Clock A Double Jump from Bottom": self.can_double_jump,
             "Clock A Double Jumps from Pendulum Area": self.can_double_jump,
             "Clock A Slide Space": lambda state: self.can_pass_clock_a_wall(state) and self.can_slide(state),
+            "Clock A Max Slimer's Arena Left": self.can_beat_medium_bosses,  # VS Max Slimer
+            "Clock A Max Slimer's Arena Right": self.can_beat_medium_bosses,  # VS Max Slimer
             "Clock A Warp Gate": self.can_warp_castles,
             "Top A Top MK Door": self.can_open_mk_doors,
             "Top A Crush Wall Right": self.can_break_walls,
             "Top A Crush Blocks": self.can_break_ceilings,
             "Top A Crush Wall Left": self.can_break_walls,
             "Top A Warp Gate": self.can_warp_castles,
+            "Top A Pazuzu's Arena": self.can_beat_hard_bosses,  # VS Pazuzu
             "Top A Lower Super Jump from Right": self.can_super_jump,
             "Top A Bottom Skull Door": self.can_open_skull_doors,
             "Top A Lower Super Jump from Left": self.can_super_jump,
@@ -190,6 +204,8 @@ class CVHoDisRules:
             "Entrance B Lower Crush Wall Left": self.can_break_walls,
             "Corridor B Right Skull Door": self.can_open_skull_doors,
             "Wailing B Right Skull Door": self.can_open_skull_doors,
+            "Shrine B Cyclops's Arena Right": self.can_beat_hard_bosses,  # VS Cyclops
+            "Shrine B Cyclops's Arena Left": self.can_beat_hard_bosses,  # VS Cyclops
             "Treasury B Warp Gates": lambda state:
                 self.can_open_lure_doors(state) and self.can_warp_castles(state),
             "Treasury B Double Jumps": self.can_double_jump,
@@ -199,8 +215,10 @@ class CVHoDisRules:
             "Luminous B Top Super Jump from Left": self.can_super_jump,
             "Luminous B Top Super Jump from Right": self.can_super_jump,
             "Luminous B Portal Area Double Jump": self.can_double_jump,
-            "Walkway B Double Jump from Clock Exit": self.can_double_jump,
+            "Walkway B Double Jump from Clock Exit": lambda state:
+                self.can_double_jump(state) and self.can_beat_medium_bosses(state),  # VS Legion (saint)
             "Walkway B Hall of Mirrors Double Jumps": self.can_double_jump,
+            "Walkway B Past Legion (saint)": self.can_beat_medium_bosses,  # VS Legion (saint)
             "Chapel B Upward Hall Climb": self.can_double_jump,
             "Chapel B Top MK Door": self.can_open_mk_doors,
             "Aqueduct B Main Left Double Jump": self.can_double_jump,
@@ -211,6 +229,8 @@ class CVHoDisRules:
             "Clock B Lower Alt-button Press from Bottom": self.can_pass_clock_b_gate,
             "Clock B Lower Alt-button Press from Top": self.can_pass_clock_b_gate,
             "Clock B Double Jumps from Pendulum Area": self.can_double_jump,
+            "Clock B Peeping Big's Arena Left": self.can_beat_medium_bosses,  # VS Peeping Big
+            "Clock B Peeping Big's Arena Right": self.can_beat_medium_bosses,  # VS Peeping Big
             "Clock B Slide Space": self.can_slide,
             "Clock B Warp Gate": self.can_warp_castles,
             "Top B Top MK Door": self.can_open_mk_doors,
@@ -272,6 +292,24 @@ class CVHoDisRules:
         """Specifically Sylph Feather; Griffin's Wing makes this challenge way too hard."""
         return state.has(item_names.relic_feather, self.player)
 
+    def can_beat_medium_bosses(self, state: CollectionState) -> bool:
+        """1 spell book if Spellbound Bosses is Normal, 2 if Extreme, or none if Disabled."""
+        if self.spellbound_bosses == SpellboundBosses.option_normal:
+            return state.has_from_list_unique([book for book in BOOKS], self.player, 1)
+        elif self.spellbound_bosses == SpellboundBosses.option_extreme:
+            return state.has_from_list_unique([book for book in BOOKS], self.player, 2)
+        else:
+            return True
+
+    def can_beat_hard_bosses(self, state: CollectionState) -> bool:
+        """2 spell books if Spellbound Bosses is Normal, 3 if Extreme, or none if Disabled."""
+        if self.spellbound_bosses == SpellboundBosses.option_normal:
+            return state.has_from_list_unique([book for book in BOOKS], self.player, 2)
+        elif self.spellbound_bosses == SpellboundBosses.option_extreme:
+            return state.has_from_list_unique([book for book in BOOKS], self.player, 3)
+        else:
+            return True
+
     def can_open_center_a_gate(self, state: CollectionState) -> bool:
         """Broke the hand statue in the Castle Top Floor A attic."""
         return state.has(item_names.event_hand, self.player)
@@ -288,15 +326,16 @@ class CVHoDisRules:
 
     def can_place_required_furniture(self, state: CollectionState) -> bool:
         """The number of unique furniture types specified by the Required Furniture Amount option."""
-        return state.has_from_list([furn for furn in FURNITURE], self.player, self.furniture_amount_required)
+        return state.has_from_list_unique([furn for furn in FURNITURE], self.player, self.furniture_amount_required)
 
     def can_pass_skeleton_b_wall(self, state: CollectionState) -> bool:
         """Broke the Crushing Stone wall in Skeleton Cave A."""
         return state.has_all([item_names.event_wall_skeleton, item_names.whip_crush], self.player)
 
     def can_pass_sky_a_wall(self, state: CollectionState) -> bool:
-        """Broke the Crushing Stone wall in Sky Walkway B."""
-        return state.has_all([item_names.event_wall_skeleton, item_names.whip_crush], self.player)
+        """Broke the Crushing Stone wall in Sky Walkway B and can beat Shadow, a medium difficulty boss."""
+        return (state.has_all([item_names.event_wall_skeleton, item_names.whip_crush], self.player) and
+                self.can_beat_medium_bosses(state))
 
     def can_pass_clock_a_wall(self, state: CollectionState) -> bool:
         """Hammered Bronze Guarder into the wall in Clock Tower B."""
