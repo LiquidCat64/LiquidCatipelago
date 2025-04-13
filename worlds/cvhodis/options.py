@@ -51,18 +51,18 @@ class EarlyLizard(DefaultOnToggle):
     """
     display_name = "Early Lizard"
 
-class SpellboundBosses(Choice):
+class SpellboundBossLogic(Choice):
     """
     Makes certain bosses that are considered "medium" or "hard" in difficulty logically expect spell books to get past. See the Game Page for information on which bosses are considered what difficulty.
     Extreme: Medium bosses expect 2 spell books and hard bosses expect 3 spell books.
     Normal: Medium bosses expect 1 spell book and hard bosses expect 2 spell books.
     Disabled: No boss expects any number of spell books.
     """
-    display_name = "Spellbound Bosses"
-    option_disabled = 0
-    option_normal = 1
-    option_extreme = 2
-    default = 1
+    display_name = "Spellbound Boss Logic"
+    option_none = 0
+    option_easy = 1
+    option_normal = 2
+    default = 2
 
 class Countdown(Choice):
     """
@@ -102,7 +102,7 @@ class CVHoDisOptions(PerGameCommonOptions):
     # sub_weapon_shuffle: SubWeaponShuffle
     # nerf_griffin_wing: NerfGriffinWing
     early_lizard: EarlyLizard
-    spellbound_bosses: SpellboundBosses
+    spellbound_boss_logic: SpellboundBossLogic
     death_link: DeathLink
 
 
@@ -113,7 +113,7 @@ cvhodis_option_groups = [
     ]),
 
     OptionGroup("difficulty", [
-        EarlyLizard, SpellboundBosses, DeathLink]),
+        EarlyLizard, SpellboundBossLogic, DeathLink]),
     # OptionGroup("quality of life", [
     #     Countdown])
 ]

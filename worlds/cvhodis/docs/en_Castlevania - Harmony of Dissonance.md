@@ -34,9 +34,9 @@ Dracula Wraith will then appear and defeating him will grant you this ending.
 - "Furniture Amount Required": Collect and place the amount of furniture specified by this option in the empty room at the
 very bottom of Castle Treasury A/B.
 
-## What bosses are considered what difficulty by the Spellbound Bosses option?
+## What bosses are considered what difficulty by the Spellbound Boss Logic option?
 
-The following bosses are all considered "Medium" and expect 1 spell book with the Normal choice or 2 spell books with the Extreme choice to get past:
+The following bosses are all considered "Medium" and expect 1 spell book with the Normal choice or 2 spell books with the Easy choice to get past:
 - Devil
 - Giant Merman
 - Max Slimer
@@ -44,7 +44,7 @@ The following bosses are all considered "Medium" and expect 1 spell book with th
 - Legion (saint)
 - Shadow
 
-The following bosses are all considered "Hard" and expect 1 spell book with the Normal choice or 2 spell books with the Extreme choice to get past:
+The following bosses are all considered "Hard" and expect 1 spell book with the Normal choice or 2 spell books with the Easy choice to get past:
 - Minotaur Lv2
 - Pazuzu
 - Legion (corpse)

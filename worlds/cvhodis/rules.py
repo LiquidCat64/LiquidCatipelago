@@ -4,7 +4,7 @@ from BaseClasses import CollectionState
 from worlds.generic.Rules import CollectionRule
 from .data import item_names, loc_names
 from .items import FURNITURE, BOOKS
-from .options import SpellboundBosses
+from .options import SpellboundBossLogic
 
 if TYPE_CHECKING:
     from . import CVHoDisWorld
@@ -27,7 +27,7 @@ class CVHoDisRules:
         self.medium_ending_required = world.options.medium_ending_required.value
         self.worst_ending_required = world.options.worst_ending_required.value
         self.best_ending_required = world.options.best_ending_required.value
-        self.spellbound_bosses = world.options.spellbound_bosses.value
+        self.spellbound_bosses = world.options.spellbound_boss_logic.value
 
         self.location_rules = {
             # Entrance A
@@ -293,19 +293,19 @@ class CVHoDisRules:
         return state.has(item_names.relic_feather, self.player)
 
     def can_beat_medium_bosses(self, state: CollectionState) -> bool:
-        """1 spell book if Spellbound Bosses is Normal, 2 if Extreme, or none if Disabled."""
-        if self.spellbound_bosses == SpellboundBosses.option_normal:
+        """1 spell book if Spellbound Boss Logic is Normal, 2 if Easy, or none if Disabled."""
+        if self.spellbound_bosses == SpellboundBossLogic.option_normal:
             return state.has_from_list_unique([book for book in BOOKS], self.player, 1)
-        elif self.spellbound_bosses == SpellboundBosses.option_extreme:
+        elif self.spellbound_bosses == SpellboundBossLogic.option_easy:
             return state.has_from_list_unique([book for book in BOOKS], self.player, 2)
         else:
             return True
 
     def can_beat_hard_bosses(self, state: CollectionState) -> bool:
-        """2 spell books if Spellbound Bosses is Normal, 3 if Extreme, or none if Disabled."""
-        if self.spellbound_bosses == SpellboundBosses.option_normal:
+        """2 spell books if Spellbound Boss Logic is Normal, 3 if Easy, or none if Disabled."""
+        if self.spellbound_bosses == SpellboundBossLogic.option_normal:
             return state.has_from_list_unique([book for book in BOOKS], self.player, 2)
-        elif self.spellbound_bosses == SpellboundBosses.option_extreme:
+        elif self.spellbound_bosses == SpellboundBossLogic.option_easy:
             return state.has_from_list_unique([book for book in BOOKS], self.player, 3)
         else:
             return True
