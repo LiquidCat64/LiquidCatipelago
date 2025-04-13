@@ -44,11 +44,6 @@ class CVHoDisRules:
             loc_names.wwa4b: self.can_double_jump,
             # Shrine of the Apostates A
             loc_names.saa16: self.can_slide,
-            loc_names.saa6b: self.can_slide,
-            loc_names.saa6a: self.can_slide,
-            loc_names.saa7: self.can_slide,
-            # Room of Illusion A
-            loc_names.ria17: self.can_slide,
             # Castle Treasury A
             loc_names.cya4: self.can_open_lure_doors,
             loc_names.cya20a: self.can_open_lure_doors,
@@ -98,9 +93,6 @@ class CVHoDisRules:
             loc_names.wwb0b: self.can_double_jump,
             loc_names.wwb4a: self.can_super_jump,
             loc_names.wwb4b: self.can_super_jump,
-            # Shrine of the Apostates B
-            loc_names.sab5: self.can_slide,
-            loc_names.sab7: self.can_slide,
             # Treasury B
             loc_names.cyb20: self.can_open_lure_doors,
             loc_names.event_ending_b: self.can_open_center_b_gate,

@@ -63,10 +63,13 @@ ALL_CVHODIS_REGIONS: dict[str, RegionInfo] = {
     # Room of Illusion A regions
     "Room A Left": {"locations": [loc_names.ria16]},
 
-    "Room A Right": {"locations": [loc_names.ria15,
-                                   loc_names.ria17],
+    "Room A Right": {"locations": [loc_names.ria15],
                      "entrances": {"Corridor A Main": "Room A Right Transition",
-                                   "Room and Treasury Portal": "Room A Slide Space Right"}},
+                                   "Room A Past Slide Space": "Room A Slide Space Right"}},
+
+    "Room A Past Slide Space": {"locations": [loc_names.ria17],
+                                "entrances": {"Room A Right": "Room A Slide Space Left",
+                                              "Room and Treasury Portal": "Room A Portal Room Entrance"}},
 
     # The Wailing Way A region
     "Wailing A Main": {"locations": [loc_names.wwa0b,
@@ -526,7 +529,7 @@ ALL_CVHODIS_REGIONS: dict[str, RegionInfo] = {
 
     # # # Misc. # # #
     "Room and Treasury Portal": {"locations": [loc_names.portals_rt],
-                                 "entrances": {"Room A Right": "Room A Slide Space Left",
+                                 "entrances": {"Room A Past Slide Space": "Room A Portal Room Exit",
                                                "Treasury B Lower": "Treasury B Exit Side"}},
 
     "Luminous and Walkway Portal": {"locations": [loc_names.portals_lw],
