@@ -4,13 +4,16 @@ import settings
 import base64
 import logging
 
-from BaseClasses import Item, Region, Tutorial, ItemClassification
+from BaseClasses import Region, Tutorial, ItemClassification, EntranceType
+from entrance_rando import disconnect_entrance_for_randomization, randomize_entrances
 from .items import CVHoDisItem, FILLER_ITEM_NAMES, ALL_CVHODIS_ITEMS, FURNITURE, get_item_names_to_ids, \
     get_item_counts, get_pickup_type
 from .locations import CVHoDisLocation, get_location_names_to_ids, BASE_ID, get_locations_to_create, \
     get_location_name_groups
-from .options import cvhodis_option_groups, CVHoDisOptions, SubWeaponShuffle
+from .options import cvhodis_option_groups, CVHoDisOptions, SubWeaponShuffle, AreaShuffle
 from .regions import get_region_info, get_all_region_names
+from .entrances import SHUFFLEABLE_TRANSITIONS, ERGroups, TARGET_GROUP_RELATIONSHIPS, cvhodis_on_connect, \
+    link_room_transitions, SORTED_TRANSITIONS
 from .rules import CVHoDisRules
 from .data import item_names, loc_names
 from worlds.AutoWorld import WebWorld, World
@@ -57,6 +60,7 @@ class CVHoDisWorld(World):
     Dracula's remains and unravel the conspiracy between two parallel castles.
     """
     game = "Castlevania - Harmony of Dissonance"
+    topology_present = True
     item_name_groups = {
         "Furniture": {name for name in FURNITURE},
         "Vlad": {item_names.relic_v_nail, item_names.relic_v_eye, item_names.relic_v_fang, item_names.relic_v_heart,
@@ -71,7 +75,8 @@ class CVHoDisWorld(World):
     item_name_to_id = get_item_names_to_ids()
     location_name_to_id = get_location_names_to_ids()
 
-    possible_hint_card_items = list[CVHoDisItem]
+    possible_hint_card_items: list[CVHoDisItem]
+    transition_pairings: list[tuple]
 
     # Default values to possibly be updated in generate_early
     furniture_amount_required: int = 0
@@ -82,6 +87,9 @@ class CVHoDisWorld(World):
     web = CVHoDisWeb()
 
     def generate_early(self) -> None:
+        self.possible_hint_card_items = []
+        self.transition_pairings = []
+
         # Generate the player's unique authentication
         self.auth = bytearray(self.random.getrandbits(8) for _ in range(16))
 
@@ -110,13 +118,27 @@ class CVHoDisWorld(World):
             # Add the Entrances to each Region (if it has any).
             ent_destinations_and_names = get_region_info(reg.name, "entrances")
             if ent_destinations_and_names is not None:
-                reg.add_exits(ent_destinations_and_names)
+                created_entrances = reg.add_exits(ent_destinations_and_names)
+
+                # If Area Shuffle is on, disconnect all the created randomizable entrances in the Region to prepare it
+                # for entrance randomizer.
+                if self.options.area_shuffle:
+                    for ent in created_entrances:
+                        if ent.name in SHUFFLEABLE_TRANSITIONS:
+                            ent.randomization_type = EntranceType.TWO_WAY
+                            ent.randomization_group = SHUFFLEABLE_TRANSITIONS[ent.name].castle_direction
+                            # If Area Shuffle is in One Castle mode, change all Castle B groups (the ones in the 5-8
+                            # range) to their corresponding Castle A groups instead to make them randomized together.
+                            if self.options.area_shuffle == AreaShuffle.option_combined and \
+                                    ent.randomization_group > 4:
+                                ent.randomization_group -= 4
+                            disconnect_entrance_for_randomization(ent)
 
             # Add the Locations to each Region (if it has any).
-            loc_names = get_region_info(reg.name, "locations")
-            if loc_names is None:
+            reg_loc_names = get_region_info(reg.name, "locations")
+            if reg_loc_names is None:
                 continue
-            locations_with_ids, locked_pairs = get_locations_to_create(loc_names, self.options)
+            locations_with_ids, locked_pairs = get_locations_to_create(reg_loc_names, self.options)
             reg.add_locations(locations_with_ids, CVHoDisLocation)
 
             # Place locked Items on all of their associated Locations (if any Locations have any).
@@ -124,7 +146,7 @@ class CVHoDisWorld(World):
                 self.get_location(locked_loc).place_locked_item(self.create_item(locked_item,
                                                                                  ItemClassification.progression))
 
-    def create_item(self, name: str, force_classification: typing.Optional[ItemClassification] = None) -> Item:
+    def create_item(self, name: str, force_classification: typing.Optional[ItemClassification] = None) -> CVHoDisItem:
         if force_classification is not None:
             classification = force_classification
         else:
@@ -158,6 +180,14 @@ class CVHoDisWorld(World):
         # Set all the Entrance and Location rules properly.
         CVHoDisRules(self).set_cvhodis_rules()
 
+    def connect_entrances(self) -> None:
+        # Randomize the Entrances and save the result.
+        if self.options.area_shuffle:
+            result = randomize_entrances(self, coupled=not self.options.decoupled_transitions.value,
+                                                           target_group_lookup=TARGET_GROUP_RELATIONSHIPS)
+            self.transition_pairings = sorted(result.pairings,
+                                              key=lambda transition: SORTED_TRANSITIONS.index(transition[0]))
+
     def generate_output(self, output_directory: str) -> None:
         # Get out all the Locations that are not Events.
         active_locations = [loc for loc in self.multiworld.get_locations(self.player) if loc.address is not None]
@@ -166,6 +196,9 @@ class CVHoDisWorld(World):
         offset_data = get_location_data(self, active_locations)
         # Hint Card hints
         offset_data.update(get_hint_card_hints(self, active_locations))
+        # Transition data
+        if self.options.area_shuffle:
+            offset_data.update(link_room_transitions(self.transition_pairings))
         # Sub-weapons
         # if self.options.sub_weapon_shuffle:
         #     offset_data.update(shuffle_sub_weapons(self))
@@ -191,7 +224,9 @@ class CVHoDisWorld(World):
                 "medium_ending_required": self.options.medium_ending_required.value,
                 "worst_ending_required": self.options.worst_ending_required.value,
                 "best_ending_required": self.options.best_ending_required.value,
-                "furniture_amount_required": self.furniture_amount_required}
+                "furniture_amount_required": self.furniture_amount_required,
+                "spellbound_boss_logic": self.options.spellbound_boss_logic.value,
+                "transition_pairings": self.transition_pairings}
 
     def get_filler_item_name(self) -> str:
         return self.random.choice(FILLER_ITEM_NAMES)
@@ -200,3 +235,21 @@ class CVHoDisWorld(World):
         # Put the player's unique authentication in connect_names.
         multidata["connect_names"][base64.b64encode(self.auth).decode("ascii")] = \
             multidata["connect_names"][self.player_name]
+
+    def write_spoiler_header(self, spoiler_handle: typing.TextIO) -> None:
+        # If Area Shuffle is enabled, write all randomized transitions to the spoiler.
+        if not self.options.area_shuffle:
+            return
+
+        spoiler = self.multiworld.spoiler
+        for pair in self.transition_pairings:
+            # If transitions are coupled, and we already wrote one direction, skip writing the other one.
+            if not self.options.decoupled_transitions and (pair[0], "both", self.player) in spoiler.entrances:
+                continue
+            spoiler.set_entrance(
+                pair[0],
+                pair[1],
+                "both" if not self.options.decoupled_transitions else "",
+                self.player
+            )
+

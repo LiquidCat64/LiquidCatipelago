@@ -409,6 +409,17 @@ class CVHoDisPatchExtensions(APPatchExtension):
         rom_data.write_bytes(0x6A70A0, int.to_bytes(START_INVENTORY_WHIPS_START | GBA_ROM_START, 4, "little"))
         rom_data.write_bytes(0x6A70CC, int.to_bytes(START_INVENTORY_MAX_START | GBA_ROM_START, 4, "little"))
 
+        # Terraform the left side of the Entrance -> Skeleton Cave floor transition to allow being placed there in ER.
+        # Entrance A
+        rom_data.write_bytes(0x187486, [0x46, 0x00, 0x12, 0x00])
+        rom_data.write_bytes(0x187496, [0x50, 0x00, 0x40, 0x00, 0x1A, 0x00])
+        rom_data.write_bytes(0x1874A6, [0x50, 0x00, 0x31, 0x00, 0x41, 0x00])
+        rom_data.write_bytes(0x1874B6, [0x19, 0x00, 0x16, 0x00, 0x41, 0x00])
+        # Entrance B
+        rom_data.write_bytes(0x1889E6, [0x67, 0x00, 0x88, 0x00])
+        rom_data.write_bytes(0x1889F6, [0x6B, 0x00, 0x0B, 0x00, 0x0B, 0x00])
+        rom_data.write_bytes(0x188A06, [0x6B, 0x00, 0x48, 0x00, 0x48, 0x00])
+        rom_data.write_bytes(0x188A16, [0x8C, 0x00, 0x89, 0x00, 0x52, 0x00])
 
         # Test
         # rom_data.write_bytes(0xCAA16, cvhodis_string_to_bytearray("❖1/⬘0      Howdy ✨6/@everyone✨8/!\nHow do you do?\nNice\n✨12/weather✨8/\ntoday!\nPretty\ngr8\nm8\nI\nr8\n8/8\rHave a free🅰 trial of the critically acclamied MMORPG ✨13/Final Fantasy XIV✨8/,🅰\rincluding the entirety🅰\rof ✨14/A Realm Reborn✨8/ and the award-winning ✨4/Heavansward✨8/ ~and~ ✨4/Stormblood✨8/ expansions up to ✨10/level 70✨8/ with ✨13/no restrictions on playtime✨8/! REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE▶1/EEEEEEEE✨2/EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE✨6/EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE✨9/EEEEEEE✨15/EEEEE✨3/EEEEEEEEEEEEEEEEEEEE✨5/EEEEEEE✨7/EEEEEE✨13/EEEEEEEEEEEEEE!!!✨6/!!!✨7/!!!!✨6/1✨8/🅰\f❖2/⬘1/Okay, Juste, I get it! Are you done now? Take a \b22/ or something!🅰\f\t"))

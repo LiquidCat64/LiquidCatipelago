@@ -51,6 +51,7 @@ class EarlyLizard(DefaultOnToggle):
     """
     display_name = "Early Lizard"
 
+
 class SpellboundBossLogic(Choice):
     """
     Makes certain bosses that are considered "medium" or "hard" in difficulty logically expect spell books to get past. See the Game Page for information on which bosses are considered what difficulty.
@@ -63,6 +64,25 @@ class SpellboundBossLogic(Choice):
     option_easy = 1
     option_normal = 2
     default = 2
+
+
+class AreaShuffle(Choice):
+    """
+    Randomizes where every transition to a different named area leads.
+    Separate: Both castles will have their areas kept separate from each other.
+    Combined: Both castles will have their areas mixed into one.
+    """
+    display_name = "Area Shuffle"
+    option_none = 0
+    option_separate = 1
+    option_combined = 2
+    default = 0
+
+class DecoupledTransitions(Toggle):
+    """
+    Whether transition entrances should be decoupled from exits if Area Shuffle is enabled. Going back through an area transition will send you somewhere completely different from whence you came.
+    """
+    display_name = "Decoupled Transitions"
 
 class Countdown(Choice):
     """
@@ -101,6 +121,8 @@ class CVHoDisOptions(PerGameCommonOptions):
     # countdown: Countdown
     # sub_weapon_shuffle: SubWeaponShuffle
     # nerf_griffin_wing: NerfGriffinWing
+    area_shuffle: AreaShuffle
+    decoupled_transitions: DecoupledTransitions
     early_lizard: EarlyLizard
     spellbound_boss_logic: SpellboundBossLogic
     death_link: DeathLink
@@ -113,7 +135,7 @@ cvhodis_option_groups = [
     ]),
 
     OptionGroup("difficulty", [
-        EarlyLizard, SpellboundBossLogic, DeathLink]),
+        AreaShuffle, DecoupledTransitions, EarlyLizard, SpellboundBossLogic, DeathLink]),
     # OptionGroup("quality of life", [
     #     Countdown])
 ]

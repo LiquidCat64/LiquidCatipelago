@@ -2,7 +2,7 @@ from typing import Dict, TYPE_CHECKING
 
 from BaseClasses import CollectionState
 from worlds.generic.Rules import CollectionRule
-from .data import item_names, loc_names
+from .data import item_names, loc_names,  ent_names
 from .items import FURNITURE, BOOKS
 from .options import SpellboundBossLogic
 
@@ -134,113 +134,99 @@ class CVHoDisRules:
 
         self.entrance_rules = {
             # Castle A
-            "Entrance A Upper Warp Gate": lambda state:
-                self.can_super_jump(state) and self.can_warp_castles(state),
-            "Entrance A Upper Crush Wall Left": lambda state:
-                self.can_break_walls(state) and self.can_super_jump(state),
-            "Entrance A Lower Warp Gate": lambda state:
-                self.can_open_lure_doors(state) and self.can_warp_castles(state),
-            "Entrance A Upper Crush Wall Right": lambda state:
-                self.can_break_walls(state) and self.can_super_jump(state),
-            "Entrance A Lower Crush Wall Right": self.can_break_walls,
-            "Entrance A Lower Crush Wall Left": self.can_break_walls,
-            "Corridor A Right Skull Door": self.can_open_skull_doors,
-            "Room A Slide Space Right": self.can_slide,
-            "Room A Slide Space Left": self.can_slide,
-            "Wailing A Right Skull Door": self.can_open_skull_doors,
-            "Treasury A Warp Gates":  lambda state:
-                self.can_open_lure_doors(state) and self.can_warp_castles(state),
-            "Treasury A Double Jumps": self.can_double_jump,
-            "Treasury A Top Skull Door": self.can_open_skull_doors,
-            "Treasury A Top Ceiling Transition": self.can_double_jump,
-            "Skeleton A Crate Rooms from Right": self.can_double_jump,
-            "Skeleton A Crate Rooms from Left": self.can_double_jump,
-            "Luminous A Warp Gate":  lambda state:
-                self.can_break_walls(state) and self.can_warp_castles(state),
-            "Luminous A Floodgate Keyhole": self.can_open_floodgate,
-            "Luminous A Talos's Arena": self.can_beat_hard_bosses,  # VS Talos
-            "Luminous A Top Super Jump from Left": self.can_super_jump,
-            "Luminous A Top Super Jump from Right": self.can_super_jump,
-            "Walkway A Double Jump from Portal Hall": self.can_double_jump,
-            "Walkway A Double Jump from Clock Exit": lambda state:
-                self.can_double_jump(state) and self.can_beat_medium_bosses(state),  # VS Devil
-            "Walkway A Main Downward": self.can_see_in_darkness,
-            "Walkway A Press Onwards in Darkness": self.can_see_in_darkness,
-            "Walkway A Past Devil": self.can_beat_medium_bosses,  # VS Devil
-            "Chapel A Upward Hall Climb": self.can_double_jump,
-            "Chapel A Top MK Door": self.can_open_mk_doors,
-            "Aqueduct A Main Left Double Jump": self.can_double_jump,
-            "Aqueduct A Crush Wall Right": self.can_break_walls,
-            "Aqueduct A Main Right Double Jump": lambda state:
-                self.can_double_jump(state) and self.can_beat_medium_bosses(state),  # VS Giant Merman
-            "Aqueduct A Down from Merman Lair": self.can_beat_medium_bosses,  # VS Giant Merman
-            "Aqueduct A Crush Wall Left": lambda state: self.can_break_walls(state) and self.can_double_jump(state),
-            "Clock A Double Jump from Bottom": self.can_double_jump,
-            "Clock A Double Jumps from Pendulum Area": self.can_double_jump,
-            "Clock A Slide Space": lambda state: self.can_pass_clock_a_wall(state) and self.can_slide(state),
-            "Clock A Max Slimer's Arena Left": self.can_beat_medium_bosses,  # VS Max Slimer
-            "Clock A Max Slimer's Arena Right": self.can_beat_medium_bosses,  # VS Max Slimer
-            "Clock A Warp Gate": self.can_warp_castles,
-            "Top A Top MK Door": self.can_open_mk_doors,
-            "Top A Crush Wall Right": self.can_break_walls,
-            "Top A Crush Blocks": self.can_break_ceilings,
-            "Top A Crush Wall Left": self.can_break_walls,
-            "Top A Warp Gate": self.can_warp_castles,
-            "Top A Pazuzu's Arena": self.can_beat_hard_bosses,  # VS Pazuzu
-            "Top A Lower Super Jump from Right": self.can_super_jump,
-            "Top A Bottom Skull Door": self.can_open_skull_doors,
-            "Top A Lower Super Jump from Left": self.can_super_jump,
+            ent_names.eta_warp_u: lambda state: self.can_super_jump(state) and self.can_warp_castles(state),
+            ent_names.eta_cstone_ul: lambda state: self.can_break_walls(state) and self.can_super_jump(state),
+            ent_names.eta_warp_l: lambda state: self.can_open_lure_doors(state) and self.can_warp_castles(state),
+            ent_names.eta_cstone_ur: lambda state: self.can_break_walls(state) and self.can_super_jump(state),
+            ent_names.eta_cstone_lr: self.can_break_walls,
+            ent_names.eta_cstone_ll: self.can_break_walls,
+            ent_names.mca_exit_tfa: self.can_open_skull_doors,
+            ent_names.ria_slide_r: self.can_slide,
+            ent_names.ria_slide_l: self.can_slide,
+            ent_names.wwa_exit_cya: self.can_open_skull_doors,
+            ent_names.cya_warp:  lambda state: self.can_open_lure_doors(state) and self.can_warp_castles(state),
+            ent_names.cya_djumps: self.can_double_jump,
+            ent_names.cya_exit_wwa: self.can_open_skull_doors,
+            ent_names.cya_exit_tfa: self.can_double_jump,
+            ent_names.sca_crates_r: self.can_double_jump,
+            ent_names.sca_crates_l: self.can_double_jump,
+            ent_names.lca_warp:  lambda state: self.can_break_walls(state) and self.can_warp_castles(state),
+            ent_names.lca_floodgate: self.can_open_floodgate,
+            ent_names.lca_talos: self.can_beat_hard_bosses,  # VS Talos
+            ent_names.lca_sjump_l: self.can_super_jump,
+            ent_names.lca_sjump_r: self.can_super_jump,
+            ent_names.swa_djump_p: self.can_double_jump,
+            ent_names.swa_djump_c: lambda state: self.can_double_jump(state) and self.can_beat_medium_bosses(state),  # VS Devil
+            ent_names.swa_goggles_u: self.can_see_in_darkness,
+            ent_names.swa_goggles_l: self.can_see_in_darkness,
+            ent_names.swa_devil: self.can_beat_medium_bosses,  # VS Devil
+            ent_names.cda_djump: self.can_double_jump,
+            ent_names.cda_exit_tfa: self.can_open_mk_doors,
+            ent_names.ada_djump_l: self.can_double_jump,
+            ent_names.ada_cstone_r: self.can_break_walls,
+            ent_names.ada_djump_r: lambda state: self.can_double_jump(state) and self.can_beat_medium_bosses(state),  # VS Giant Merman
+            ent_names.ada_down_m: self.can_beat_medium_bosses,  # VS Giant Merman
+            ent_names.ada_cstone_l: lambda state: self.can_break_walls(state) and self.can_double_jump(state),
+            ent_names.cra_djump_l: self.can_double_jump,
+            ent_names.cra_djump_p: self.can_double_jump,
+            ent_names.cra_slide: lambda state: self.can_pass_clock_a_wall(state) and self.can_slide(state),
+            ent_names.cra_slimer_l: self.can_beat_medium_bosses,  # VS Max Slimer
+            ent_names.cra_slimer_r: self.can_beat_medium_bosses,  # VS Max Slimer
+            ent_names.cra_warp: self.can_warp_castles,
+            ent_names.tfa_exit_cda: self.can_open_mk_doors,
+            ent_names.tfa_cstone_r: self.can_break_walls,
+            ent_names.tfa_cboots: self.can_break_ceilings,
+            ent_names.tfa_cstone_l: self.can_break_walls,
+            ent_names.tfa_warp: self.can_warp_castles,
+            ent_names.tfa_pazuzu: self.can_beat_hard_bosses,  # VS Pazuzu
+            ent_names.tfa_sjump_r: self.can_super_jump,
+            ent_names.tfa_exit_mca: self.can_open_skull_doors,
+            ent_names.tfa_sjump_l: self.can_super_jump,
 
             # Castle B
-            "Entrance B Upper Warp Gate": lambda state:
-                self.can_super_jump(state) and self.can_warp_castles(state),
-            "Entrance B Upper Crush Wall Left": lambda state:
-                self.can_break_walls(state) and self.can_super_jump(state),
-            "Entrance B Lower Warp Gate": lambda state:
-                self.can_open_lure_doors(state) and self.can_warp_castles(state),
-            "Entrance B Upper Crush Wall Right": lambda state:
-                self.can_break_walls(state) and self.can_super_jump(state),
-            "Entrance B Lower Crush Wall Right": self.can_break_walls,
-            "Entrance B Lower Crush Wall Left": self.can_break_walls,
-            "Corridor B Right Skull Door": self.can_open_skull_doors,
-            "Wailing B Right Skull Door": self.can_open_skull_doors,
-            "Shrine B Cyclops's Arena Right": self.can_beat_hard_bosses,  # VS Cyclops
-            "Shrine B Cyclops's Arena Left": self.can_beat_hard_bosses,  # VS Cyclops
-            "Treasury B Warp Gates": lambda state:
-                self.can_open_lure_doors(state) and self.can_warp_castles(state),
-            "Treasury B Double Jumps": self.can_double_jump,
-            "Treasury B Top Skull Door": self.can_open_skull_doors,
-            "Treasury B Top Ceiling Transition": self.can_double_jump,
-            "Skeleton B Right Collapsing Rock": self.can_double_jump,
-            "Luminous B Top Super Jump from Left": self.can_super_jump,
-            "Luminous B Top Super Jump from Right": self.can_super_jump,
-            "Luminous B Portal Area Double Jump": self.can_double_jump,
-            "Walkway B Double Jump from Clock Exit": lambda state:
-                self.can_double_jump(state) and self.can_beat_medium_bosses(state),  # VS Legion (saint)
-            "Walkway B Hall of Mirrors Double Jumps": self.can_double_jump,
-            "Walkway B Past Legion (saint)": self.can_beat_medium_bosses,  # VS Legion (saint)
-            "Chapel B Upward Hall Climb": self.can_double_jump,
-            "Chapel B Top MK Door": self.can_open_mk_doors,
-            "Aqueduct B Main Left Double Jump": self.can_double_jump,
-            "Aqueduct B Crush Wall Right": self.can_break_walls,
-            "Aqueduct B Main Right Double Jump": self.can_double_jump,
-            "Aqueduct B Crush Wall Left": lambda state: self.can_break_walls(state) and self.can_double_jump(state),
-            "Clock B Double Jump from Bottom": self.can_double_jump,
-            "Clock B Lower Alt-button Press from Bottom": self.can_pass_clock_b_gate,
-            "Clock B Lower Alt-button Press from Top": self.can_pass_clock_b_gate,
-            "Clock B Double Jumps from Pendulum Area": self.can_double_jump,
-            "Clock B Peeping Big's Arena Left": self.can_beat_medium_bosses,  # VS Peeping Big
-            "Clock B Peeping Big's Arena Right": self.can_beat_medium_bosses,  # VS Peeping Big
-            "Clock B Slide Space": self.can_slide,
-            "Clock B Warp Gate": self.can_warp_castles,
-            "Top B Top MK Door": self.can_open_mk_doors,
-            "Top B Crush Blocks": self.can_break_ceilings,
-            "Top B Warp Gate": self.can_warp_castles,
-            "Top B Throne Alt-button Press from Top": self.can_pass_top_b_gate,
-            "Top B Throne Alt-button Press from Bottom": self.can_pass_top_b_gate,
-            "Top B Lower Super Jump from Left": self.can_super_jump,
-            "Top B Bottom Skull Door": self.can_open_skull_doors,
-            "Top B Lower Super Jump from Right": self.can_super_jump,
+            ent_names.etb_warp_u: lambda state: self.can_super_jump(state) and self.can_warp_castles(state),
+            ent_names.etb_cstone_ul: lambda state: self.can_break_walls(state) and self.can_super_jump(state),
+            ent_names.etb_warp_l: lambda state: self.can_open_lure_doors(state) and self.can_warp_castles(state),
+            ent_names.etb_cstone_ur: lambda state: self.can_break_walls(state) and self.can_super_jump(state),
+            ent_names.etb_cstone_lr: self.can_break_walls,
+            ent_names.etb_cstone_ll: self.can_break_walls,
+            ent_names.mcb_exit_tfb: self.can_open_skull_doors,
+            ent_names.wwb_exit_cyb: self.can_open_skull_doors,
+            ent_names.sab_cyclops_r: self.can_beat_hard_bosses,  # VS Cyclops
+            ent_names.sab_cyclops_l: self.can_beat_hard_bosses,  # VS Cyclops
+            ent_names.cyb_warp: lambda state: self.can_open_lure_doors(state) and self.can_warp_castles(state),
+            ent_names.cyb_djump: self.can_double_jump,
+            ent_names.cyb_exit_wwb: self.can_open_skull_doors,
+            ent_names.cyb_exit_tfb: self.can_double_jump,
+            ent_names.scb_rock: self.can_double_jump,
+            ent_names.lcb_sjump_l: self.can_super_jump,
+            ent_names.lcb_sjump_r: self.can_super_jump,
+            ent_names.lcb_portal: self.can_double_jump,
+            ent_names.swb_djump_c: lambda state: self.can_double_jump(state) and self.can_beat_medium_bosses(state),  # VS Legion (saint)
+            ent_names.swb_djump_m: self.can_double_jump,
+            ent_names.swb_legion: self.can_beat_medium_bosses,  # VS Legion (saint)
+            ent_names.cdb_djump: self.can_double_jump,
+            ent_names.cdb_exit_tfb: self.can_open_mk_doors,
+            ent_names.adb_djump_l: self.can_double_jump,
+            ent_names.adb_cstone_r: self.can_break_walls,
+            ent_names.adb_djump_r: self.can_double_jump,
+            ent_names.adb_cstone_l: lambda state: self.can_break_walls(state) and self.can_double_jump(state),
+            ent_names.crb_djump_l: self.can_double_jump,
+            ent_names.crb_abutton_b: self.can_pass_clock_b_gate,
+            ent_names.crb_abutton_t: self.can_pass_clock_b_gate,
+            ent_names.crb_djump_p: self.can_double_jump,
+            ent_names.crb_peep_l: self.can_beat_medium_bosses,  # VS Peeping Big
+            ent_names.crb_peep_r: self.can_beat_medium_bosses,  # VS Peeping Big
+            ent_names.crb_slide: self.can_slide,
+            ent_names.crb_warp: self.can_warp_castles,
+            ent_names.tfb_exit_cdb: self.can_open_mk_doors,
+            ent_names.tfb_cboots: self.can_break_ceilings,
+            ent_names.tfb_warp: self.can_warp_castles,
+            ent_names.tfb_abutton_t: self.can_pass_top_b_gate,
+            ent_names.tfb_abutton_b: self.can_pass_top_b_gate,
+            ent_names.tfb_sjump_r: self.can_super_jump,
+            ent_names.tfb_exit_mcb: self.can_open_skull_doors,
+            ent_names.tfb_sjump_l: self.can_super_jump,
         }
 
     def can_double_jump(self, state: CollectionState) -> bool:
