@@ -1,7 +1,6 @@
 import pathlib
 
 import Utils
-import logging
 import json
 
 from worlds.Files import APProcedurePatch, APTokenMixin, APTokenTypes, APPatchExtension
@@ -9,7 +8,6 @@ from typing import Dict, Collection, TYPE_CHECKING
 
 import hashlib
 import os
-import pkgutil
 
 from .data import patches, loc_names
 from .locations import CVHODIS_CHECKS_INFO, GUARDIAN_GRINDER_LOCATIONS
@@ -395,6 +393,14 @@ class CVHoDisPatchExtensions(APPatchExtension):
                                                          "spawn location back to start.\t",
                                                          len_limit=LEN_LIMIT_DESCRIPTION, wrap=False,
                                                          max_lines=DESCRIPTION_DISPLAY_LINES, textbox_advance=False))
+
+        # Make the game auto-save after the intro with Talos.
+        rom_data.write_bytes(0x9554C, [0x00, 0x49,  # ldr r1, 0x86A6200
+                                       0x8F, 0x46,  # mov r15, r1
+                                       0x00, 0x62, 0x6A, 0x08])
+        rom_data.write_bytes(0x6A6200, patches.post_intro_autosave)
+        # Custom autosave message.
+        rom_data.write_bytes(0xD91B4, cvhodis_string_to_bytearray("Autosaved\n\t"))
 
         # Give the player their Start Inventory upon starting a new game.
         rom_data.write_bytes(0x6B730, [0x00, 0x49,  # ldr r1, 0x86A7000
