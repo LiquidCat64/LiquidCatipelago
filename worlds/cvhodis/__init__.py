@@ -13,7 +13,7 @@ from .locations import CVHoDisLocation, get_location_names_to_ids, BASE_ID, get_
 from .options import cvhodis_option_groups, CVHoDisOptions, SubWeaponShuffle, AreaShuffle
 from .regions import get_region_info, get_all_region_names
 from .entrances import SHUFFLEABLE_TRANSITIONS, ERGroups, TARGET_GROUP_RELATIONSHIPS, cvhodis_on_connect, \
-    link_room_transitions, SORTED_TRANSITIONS
+    link_room_transitions, SORTED_TRANSITIONS, SKULL_DOOR_GROUPS, MK_DOOR_GROUPS
 from .rules import CVHoDisRules
 from .data import item_names, loc_names
 from worlds.AutoWorld import WebWorld, World
@@ -126,12 +126,19 @@ class CVHoDisWorld(World):
                     for ent in created_entrances:
                         if ent.name in SHUFFLEABLE_TRANSITIONS:
                             ent.randomization_type = EntranceType.TWO_WAY
-                            ent.randomization_group = SHUFFLEABLE_TRANSITIONS[ent.name].castle_direction
-                            # If Area Shuffle is in One Castle mode, change all Castle B groups (the ones in the 5-8
-                            # range) to their corresponding Castle A groups instead to make them randomized together.
+                            ent.randomization_group = SHUFFLEABLE_TRANSITIONS[ent.name].er_group
+                            # If Area Shuffle is in Combined mode, collapse all Castle B groups into their
+                            # corresponding Castle A groups instead to make them randomized together.
                             if self.options.area_shuffle == AreaShuffle.option_combined and \
-                                    ent.randomization_group > 4:
-                                ent.randomization_group -= 4
+                                    ent.randomization_group > 8:
+                                ent.randomization_group -= 8
+                            # If Link Door Types is not on, collapse all special door type groups (MK and Skull) into
+                            # their corresponding normal door direction type to randomize them together.
+                            if not self.options.link_door_types:
+                                if ent.randomization_group in SKULL_DOOR_GROUPS:
+                                    ent.randomization_group -= 1
+                                elif ent.randomization_group in MK_DOOR_GROUPS:
+                                    ent.randomization_group -= 2
                             disconnect_entrance_for_randomization(ent)
 
             # Add the Locations to each Region (if it has any).
@@ -183,7 +190,7 @@ class CVHoDisWorld(World):
     def connect_entrances(self) -> None:
         # Randomize the Entrances and save the result.
         if self.options.area_shuffle:
-            result = randomize_entrances(self, coupled=not self.options.decoupled_transitions.value,
+            result = randomize_entrances(self, coupled=not self.options.decouple_transitions.value,
                                                            target_group_lookup=TARGET_GROUP_RELATIONSHIPS)
             self.transition_pairings = sorted(result.pairings,
                                               key=lambda transition: SORTED_TRANSITIONS.index(transition[0]))
@@ -244,12 +251,12 @@ class CVHoDisWorld(World):
         spoiler = self.multiworld.spoiler
         for pair in self.transition_pairings:
             # If transitions are coupled, and we already wrote one direction, skip writing the other one.
-            if not self.options.decoupled_transitions and (pair[0], "both", self.player) in spoiler.entrances:
+            if not self.options.decouple_transitions and (pair[1], "both", self.player) in spoiler.entrances:
                 continue
             spoiler.set_entrance(
                 pair[0],
                 pair[1],
-                "both" if not self.options.decoupled_transitions else "",
+                "both" if not self.options.decouple_transitions else "",
                 self.player
             )
 

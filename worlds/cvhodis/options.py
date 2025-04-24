@@ -78,17 +78,27 @@ class AreaShuffle(Choice):
     option_combined = 2
     default = 0
 
-class DecoupledTransitions(Toggle):
+
+class DecoupleTransitions(Toggle):
     """
     Whether transition entrances should be decoupled from exits if Area Shuffle is enabled. Going back through an area transition will send you somewhere completely different from whence you came.
     """
-    display_name = "Decoupled Transitions"
+    display_name = "Decouple Transitions"
+
+
+class LinkDoorTypes(Toggle):
+    """
+    Whether special door types should only be linked with each other (all skull doors link to other skull doors and all MK's Bracelet doors link to other MK's Bracelet doors).
+    """
+    display_name = "Link Door Types"
+
 
 class DoubleSidedWarps(DefaultOnToggle):
     """
     Allows changing castles at a round warp gate without needing to fulfill the cross-castle warp condition if the warp rooms on both sides of it have been reached independently of each other.
     """
     display_name = "Double-Sided Warps"
+
 
 class Countdown(Choice):
     """
@@ -128,7 +138,8 @@ class CVHoDisOptions(PerGameCommonOptions):
     # sub_weapon_shuffle: SubWeaponShuffle
     # nerf_griffin_wing: NerfGriffinWing
     area_shuffle: AreaShuffle
-    decoupled_transitions: DecoupledTransitions
+    decouple_transitions: DecoupleTransitions
+    link_door_types: LinkDoorTypes
     early_lizard: EarlyLizard
     spellbound_boss_logic: SpellboundBossLogic
     death_link: DeathLink
@@ -140,9 +151,10 @@ cvhodis_option_groups = [
         MediumEndingRequired, WorstEndingRequired, BestEndingRequired, FurnitureAmountRequired,
         # MapPercentRequired
     ]),
-
+    OptionGroup("entrance randomizer", [
+        AreaShuffle, DecoupleTransitions, LinkDoorTypes]),
     OptionGroup("difficulty", [
-        AreaShuffle, DecoupledTransitions, EarlyLizard, SpellboundBossLogic, DeathLink]),
+        EarlyLizard, SpellboundBossLogic, DeathLink]),
     OptionGroup("quality of life", [
         DoubleSidedWarps,
     #    Countdown
