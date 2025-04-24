@@ -352,7 +352,10 @@ class CVHoDisPatchExtensions(APPatchExtension):
         rom_data.write_bytes(0x1BC34, [0x00, 0x4A,  # ldr r2, 0x86A4700
                                        0x97, 0x46,  # mov r15, r2
                                        0x00, 0x47, 0x6A, 0x08])
-        rom_data.write_bytes(0x6A4700, patches.cross_castle_warp_blocker)
+        if options["double_sided_warps"]:
+            rom_data.write_bytes(0x6A4700, patches.double_sided_cross_castle_warp_blocker)
+        else:
+            rom_data.write_bytes(0x6A4700, patches.cross_castle_warp_blocker)
 
         # Block warping to a warp room the player hasn't been to yet in the current castle if they don't have the
         # cross-castle warp condition satisfied.
@@ -490,6 +493,7 @@ def patch_rom(world: "CVHoDisWorld", patch: CVHoDisProcedurePatch, offset_data: 
     # Write these slot options to a JSON.
     options_dict = {
         "required_furniture": world.furniture_amount_required,
+        "double_sided_warps": world.options.double_sided_warps.value,
         "seed": world.multiworld.seed,
         "compat_identifier": ARCHIPELAGO_IDENTIFIER
     }

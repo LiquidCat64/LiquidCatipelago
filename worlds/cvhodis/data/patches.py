@@ -436,15 +436,91 @@ jb_bracelet_checker = [
 cross_castle_warp_blocker = [
     # Blocks usage of the warp room cross-castle warp gates if the player doesn't have the cross-castle condition
     # satisfied. This is necessary to have due to the change of making said gate always spawn in its closed state.
+
+    # Check to see if the "can warp castles" flag is set. If the cross-castle warp condition is satisfied, it should
+    # be set.
     0x09, 0x48,  # ldr  r0, 0x200031B
     0x00, 0x78,  # ldrb r0, [r0]
     0x20, 0x21,  # mov  r1, 0x20
     0x08, 0x40,  # and  r0, r1
     0x00, 0x28,  # cmp  r0, 0x00
     0x01, 0xD1,  # bne  [forward 0x02]
+    # Abort the "activate round gate" function.
     0x05, 0x49,  # ldr  r1, 0x801BCB8
     0x8F, 0x46,  # mov  r15, r1
-    0x03, 0x49,  # ldr  r1, 0x0001848C
+    # Return to the function like normal.
+    0x03, 0x49,  # ldr  r1, 0x1848C
+    0x58, 0x18,  # add  r0, r3, r1
+    0x02, 0x68,  # ldr  r2, [r0]
+    0x90, 0x7A,  # ldrb r0, [r2, 0x0A]
+    0x00, 0x49,  # ldr  r1, 0x801BC3C
+    0x8F, 0x46,  # mov  r15, r1
+    # LDR number pool
+    0x3C, 0xBC, 0x01, 0x08,
+    0x8C, 0x84, 0x01, 0x00,
+    0xB8, 0xBC, 0x01, 0x08,
+    0x1B, 0x03, 0x00, 0x02,
+]
+
+double_sided_cross_castle_warp_blocker = [
+    # Similar to the above, except this one WILL allow the warp without the cross-castle condition satisfied on the
+    # condition that the warp room on the other side has been visited. If the Double-Sided Warps option is enabled, this
+    # will be injected instead.
+
+    # Check to see if the "can warp castles" flag is set. If the cross-castle warp condition is satisfied, it should
+    # be set.
+    0x17, 0x48,  # ldr  r0, 0x200031B
+    0x00, 0x78,  # ldrb r0, [r0]
+    0x20, 0x21,  # mov  r1, 0x20
+    0x08, 0x40,  # and  r0, r1
+    0x00, 0x28,  # cmp  r0, 0x00
+    0x1D, 0xD1,  # bne  [forward 0x1E]
+    # If it wasn't set, check to see if the player has the map square for the other castle's equivalent warp room.
+    # If they do, then allow the warp anyway.
+    0x18, 0xB4,  # push r3, r4
+    0x02, 0x20,  # mov  r0, 0x02
+    0x00, 0x06,  # lsl  r0, r0, 0x18
+    0x70, 0x30,  # add  r0, 0x70
+    0x04, 0x1C,  # add  r4, r0, 0x00
+    # Get the map XY coordinates of the player's current room.
+    0x20, 0x78,  # ldrb r0, [r4]
+    0x61, 0x78,  # ldrb r1, [r4, 0x01]
+    # The left half of the map's "uncovered" flags begin at 0200008C. Set our current address to load from there.
+    0x1C, 0x34,  # add  r4, 0x1C
+    # Left-shift the X coord by 1 to get the true value. The lowest bit in this value is actually what the game uses to
+    # tell which castle we are in.
+    0x42, 0x08,  # lsr  r2, r0, 0x01
+    # If the X coord is 0x20 or higher, set the start address to 020001CC and subtract 0x20 from the X coord.
+    # 020001CC is where the flags for the right half of the map begin.
+    0x20, 0x2A,  # cmp  r2, 0x20
+    0x02, 0xDB,  # blt  [forward 0x03]
+    0xFF, 0x34,  # add  r4, 0xFF
+    0x41, 0x34,  # add  r4, 0x41
+    0x20, 0x3A,  # sub  r2, 0x20
+    # Left-shift the y coord by 3 to allow us to offset to the word pair that we need to check.
+    0xC9, 0x00,  # lsl  r1, r1, 0x03
+    0x64, 0x18,  # add  r4, r4, r1
+    # The value still left in our X coord is the index for what bit in the word to check.
+    # With that in mind, prepare the bitfield to compare.
+    0x01, 0x23,  # mov  r3, 0x01
+    0x93, 0x40,  # lsl  r3, r2
+    # The first word is for Castle A, and the second is for Castle B. If we are in Castle A, check Castle B's flags
+    # or vice versa.
+    0x01, 0x21,  # mov  r1, 0x01
+    0x01, 0x40,  # and  r1, r0
+    0x01, 0x29,  # cmp  r1, 0x01
+    0x00, 0xD0,  # beq  [forward 0x01]
+    0x04, 0x34,  # add  r4, 0x04
+    0x20, 0x68,  # ldr  r0, [r4]
+    0x18, 0x40,  # and  r0, r3
+    0x18, 0xBC,  # pop  r3, r4
+    0x00, 0x28,  # cmp  r0, 0x00
+    0x01, 0xD1,  # bne  [forward 0x02]
+    # Abort the "activate round gate" function.
+    0x05, 0x49,  # ldr  r1, 0x801BCB8
+    0x8F, 0x46,  # mov  r15, r1
+    # Return to the function like normal.
+    0x03, 0x49,  # ldr  r1, 0x1848C
     0x58, 0x18,  # add  r0, r3, r1
     0x02, 0x68,  # ldr  r2, [r0]
     0x90, 0x7A,  # ldrb r0, [r2, 0x0A]

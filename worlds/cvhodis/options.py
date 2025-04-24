@@ -84,6 +84,12 @@ class DecoupledTransitions(Toggle):
     """
     display_name = "Decoupled Transitions"
 
+class DoubleSidedWarps(DefaultOnToggle):
+    """
+    Allows changing castles at a round warp gate without needing to fulfill the cross-castle warp condition if the warp rooms on both sides of it have been reached independently of each other.
+    """
+    display_name = "Double-Sided Warps"
+
 class Countdown(Choice):
     """
     Displays, below and near the right side of the MP bar, the number of un-found progression/useful-marked items or the total check locations remaining in the area you are currently in.
@@ -126,6 +132,7 @@ class CVHoDisOptions(PerGameCommonOptions):
     early_lizard: EarlyLizard
     spellbound_boss_logic: SpellboundBossLogic
     death_link: DeathLink
+    double_sided_warps: DoubleSidedWarps
 
 
 cvhodis_option_groups = [
@@ -136,6 +143,8 @@ cvhodis_option_groups = [
 
     OptionGroup("difficulty", [
         AreaShuffle, DecoupledTransitions, EarlyLizard, SpellboundBossLogic, DeathLink]),
-    # OptionGroup("quality of life", [
-    #     Countdown])
+    OptionGroup("quality of life", [
+        DoubleSidedWarps,
+    #    Countdown
+    ])
 ]
