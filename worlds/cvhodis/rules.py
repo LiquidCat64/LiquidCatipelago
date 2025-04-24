@@ -4,7 +4,7 @@ from BaseClasses import CollectionState
 from worlds.generic.Rules import CollectionRule
 from .data import item_names, loc_names,  ent_names
 from .items import FURNITURE, BOOKS
-from .options import SpellboundBossLogic
+from .options import SpellboundBossLogic, CastleWarpCondition
 
 if TYPE_CHECKING:
     from . import CVHoDisWorld
@@ -28,6 +28,7 @@ class CVHoDisRules:
         self.worst_ending_required = world.options.worst_ending_required.value
         self.best_ending_required = world.options.best_ending_required.value
         self.spellbound_bosses = world.options.spellbound_boss_logic.value
+        self.castle_warp_condition = world.options.castle_warp_condition.value
 
         self.location_rules = {
             # Entrance A
@@ -272,8 +273,12 @@ class CVHoDisRules:
         return state.has(item_names.equip_goggles, self.player)
 
     def can_warp_castles(self, state: CollectionState) -> bool:
-        """JB's Bracelet."""
-        return state.has(item_names.equip_bracelet_jb, self.player)
+        """JB's Bracelet, met Death at Clock Tower, or nothing depending on the Castle Warp Condition option."""
+        if self.castle_warp_condition == CastleWarpCondition.option_bracelet:
+            return state.has(item_names.equip_bracelet_jb, self.player)
+        elif self.castle_warp_condition == CastleWarpCondition.option_death:
+            return state.has(item_names.event_death, self.player)
+        return True
 
     def can_win_ball_race_a(self, state: CollectionState) -> bool:
         """Specifically Sylph Feather; Griffin's Wing makes this challenge way too hard."""

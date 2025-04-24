@@ -12,6 +12,7 @@ import os
 from .data import patches, loc_names
 from .locations import CVHODIS_CHECKS_INFO, GUARDIAN_GRINDER_LOCATIONS
 from .items import PICKUP_TYPE_MAX
+from .options import CastleWarpCondition
 from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_DESCRIPTION, DESCRIPTION_DISPLAY_LINES
 from settings import get_settings
 
@@ -336,36 +337,47 @@ class CVHoDisPatchExtensions(APPatchExtension):
                                        0x9F, 0x46,  # mov r15, r3
                                        0x00, 0x40, 0x6A, 0x08])
         rom_data.write_bytes(0x6A4000, patches.major_pickup_sound_player)
-        # Make the round warp gates set the "can warp castles" flag if the player has JB's Bracelet.
-        rom_data.write_bytes(0x494F70, int.to_bytes(0x86A4101, 4, "little"))
-        rom_data.write_bytes(0x6A4100, patches.jb_bracelet_checker)
 
-        # Disable the text when both warping and teleporting to Castle B for the first time.
-        rom_data.write_bytes(0x1BEC8, [0x00, 0x00])
+        # Disable the text when using a teleport to Castle B for the first time.
         rom_data.write_byte(0x7645, 0xE0)
 
-        # Make the warp room round gates always spawn in their closed states regardless of the Clock Tower Death
-        # cutscene flag being set or not.
-        rom_data.write_byte(0x1BAF9, 0xE0)
-
         # Block usage of the cross-castle round gate if they don't have the cross-castle warp condition satisfied.
-        rom_data.write_bytes(0x1BC34, [0x00, 0x4A,  # ldr r2, 0x86A4700
-                                       0x97, 0x46,  # mov r15, r2
-                                       0x00, 0x47, 0x6A, 0x08])
-        if options["double_sided_warps"]:
-            rom_data.write_bytes(0x6A4700, patches.double_sided_cross_castle_warp_blocker)
-        else:
-            rom_data.write_bytes(0x6A4700, patches.cross_castle_warp_blocker)
+        if options["castle_warp_condition"] != CastleWarpCondition.option_none:
+            rom_data.write_bytes(0x1BC34, [0x00, 0x4A,  # ldr r2, 0x86A4700
+                                           0x97, 0x46,  # mov r15, r2
+                                           0x00, 0x47, 0x6A, 0x08])
+            if options["double_sided_warps"]:
+                rom_data.write_bytes(0x6A4700, patches.double_sided_cross_castle_warp_blocker)
+            else:
+                rom_data.write_bytes(0x6A4700, patches.cross_castle_warp_blocker)
 
-        # Block warping to a warp room the player hasn't been to yet in the current castle if they don't have the
-        # cross-castle warp condition satisfied.
-        rom_data.write_bytes(0x9C30, [0x00, 0x48,  # ldr r0, 0x86A4500
-                                      0x87, 0x46,  # mov r15, r0
-                                      0x00, 0x45, 0x6A, 0x08])
-        rom_data.write_bytes(0x6A4500, patches.unvisited_warp_destination_blocker)
+            # Block warping to a warp room the player hasn't been to yet in the current castle if they don't have the
+            # cross-castle warp condition satisfied.
+            rom_data.write_bytes(0x9C30, [0x00, 0x48,  # ldr r0, 0x86A4500
+                                          0x87, 0x46,  # mov r15, r0
+                                          0x00, 0x45, 0x6A, 0x08])
+            rom_data.write_bytes(0x6A4500, patches.unvisited_warp_destination_blocker)
 
-        # Nuke the Clock Tower Death cutscene event.
-        rom_data.write_bytes(0x4AAF98, [0xFF, 0x7F, 0xFF, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+            # Make the round warp gates set the "can warp castles" flag if the player has JB's Bracelet.
+            if options["castle_warp_condition"] == CastleWarpCondition.option_bracelet:
+                rom_data.write_bytes(0x494F70, int.to_bytes(0x86A4101, 4, "little"))
+                rom_data.write_bytes(0x6A4100, patches.jb_bracelet_checker)
+
+            # Nuke the Clock Tower Death cutscene event and the text when changing castles through a warp room for the
+            # first time if the Castle Warp Condition is not Death. Otherwise, keep them.
+            if options["castle_warp_condition"] != CastleWarpCondition.option_death:
+                rom_data.write_bytes(0x1BEC8, [0x00, 0x00])
+                rom_data.write_bytes(0x4AAF98, [0xFF, 0x7F, 0xFF, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+                # Make the warp room round gates always spawn in their closed states regardless of the Clock Tower Death
+                # cutscene flag being set or not.
+                rom_data.write_byte(0x1BAF9, 0xE0)
+            else:
+                # If the warp condition is Death, make the gates check to see if we're in Death's room upon
+                # initialization.
+                rom_data.write_bytes(0x1BAFC, [0x00, 0x49,  # ldr r1, 0x86A4100
+                                               0x8F, 0x46,  # mov r15, r1
+                                               0x00, 0x41, 0x6A, 0x08])
+                rom_data.write_bytes(0x6A4100, patches.portal_death_room_checker)
 
         # Make MK's Bracelet doors unlockable in Castle B.
         rom_data.write_byte(0x1CD09, 0xE0)
@@ -434,7 +446,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # rom_data.write_bytes(0xCAA16, cvhodis_string_to_bytearray("❖1/⬘0      Howdy ✨6/@everyone✨8/!\nHow do you do?\nNice\n✨12/weather✨8/\ntoday!\nPretty\ngr8\nm8\nI\nr8\n8/8\rHave a free🅰 trial of the critically acclamied MMORPG ✨13/Final Fantasy XIV✨8/,🅰\rincluding the entirety🅰\rof ✨14/A Realm Reborn✨8/ and the award-winning ✨4/Heavansward✨8/ ~and~ ✨4/Stormblood✨8/ expansions up to ✨10/level 70✨8/ with ✨13/no restrictions on playtime✨8/! REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE▶1/EEEEEEEE✨2/EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE✨6/EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE✨9/EEEEEEE✨15/EEEEE✨3/EEEEEEEEEEEEEEEEEEEE✨5/EEEEEEE✨7/EEEEEE✨13/EEEEEEEEEEEEEE!!!✨6/!!!✨7/!!!!✨6/1✨8/🅰\f❖2/⬘1/Okay, Juste, I get it! Are you done now? Take a \b22/ or something!🅰\f\t"))
 
         # Go anywhere
-        # rom_data.write_bytes(0x498EC8, int.to_bytes(0x084ABD70, 4, "little"))
+        # rom_data.write_bytes(0x498EC8, int.to_bytes(0x084AA128, 4, "little"))
         # rom_data.write_bytes(0x498ECE, [0x54, 0x00])
 
         return rom_data.get_bytes()
@@ -494,6 +506,7 @@ def patch_rom(world: "CVHoDisWorld", patch: CVHoDisProcedurePatch, offset_data: 
     options_dict = {
         "required_furniture": world.furniture_amount_required,
         "double_sided_warps": world.options.double_sided_warps.value,
+        "castle_warp_condition": world.options.castle_warp_condition.value,
         "seed": world.multiworld.seed,
         "compat_identifier": ARCHIPELAGO_IDENTIFIER
     }

@@ -259,7 +259,8 @@ ALL_CVHODIS_REGIONS: dict[str, RegionInfo] = {
                                    "Clock A Ball Race": ent_names.cra_slide,
                                    "Clock A Right of Slimer": ent_names.cra_slimer_l}},
 
-    "Clock A Right of Slimer": {"locations": [loc_names.cra20],
+    "Clock A Right of Slimer": {"locations": [loc_names.cra20,
+                                              loc_names.event_death],
                      "entrances": {"Clock A Main": ent_names.cra_slimer_r,
                                    "Clock B Right of Peeper": ent_names.cra_warp}},
 

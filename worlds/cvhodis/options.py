@@ -55,7 +55,7 @@ class EarlyLizard(DefaultOnToggle):
 class SpellboundBossLogic(Choice):
     """
     Makes certain bosses that are considered "medium" or "hard" in difficulty logically expect spell books to get past. See the Game Page for information on which bosses are considered what difficulty.
-    Extreme: Medium bosses expect 2 spell books and hard bosses expect 3 spell books.
+    Easy: Medium bosses expect 2 spell books and hard bosses expect 3 spell books.
     Normal: Medium bosses expect 1 spell book and hard bosses expect 2 spell books.
     Disabled: No boss expects any number of spell books.
     """
@@ -64,6 +64,20 @@ class SpellboundBossLogic(Choice):
     option_easy = 1
     option_normal = 2
     default = 2
+
+
+class CastleWarpCondition(Choice):
+    """
+    The condition for allowing usage of all the warp room round gates to travel between castles.
+    None: No condition; the gates are all usable from the beginning.
+    Bracelet: The gates will unlock upon finding JB's Bracelet. There's no need to equip it.
+    Death: The gates will unlock after talking to Death at Clock Tower A like in the vanilla game.
+    """
+    display_name = "Castle Warp Condition"
+    option_none = 0
+    option_bracelet = 1
+    option_death = 2
+    default = 1
 
 
 class AreaShuffle(Choice):
@@ -142,6 +156,7 @@ class CVHoDisOptions(PerGameCommonOptions):
     link_door_types: LinkDoorTypes
     early_lizard: EarlyLizard
     spellbound_boss_logic: SpellboundBossLogic
+    castle_warp_condition: CastleWarpCondition
     death_link: DeathLink
     double_sided_warps: DoubleSidedWarps
 
@@ -154,7 +169,7 @@ cvhodis_option_groups = [
     OptionGroup("entrance randomizer", [
         AreaShuffle, DecoupleTransitions, LinkDoorTypes]),
     OptionGroup("difficulty", [
-        EarlyLizard, SpellboundBossLogic, DeathLink]),
+        EarlyLizard, SpellboundBossLogic, CastleWarpCondition, DeathLink]),
     OptionGroup("quality of life", [
         DoubleSidedWarps,
     #    Countdown

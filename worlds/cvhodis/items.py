@@ -5,6 +5,8 @@ from .locations import BASE_ID, CVHODIS_CHECKS_INFO
 from typing import TYPE_CHECKING, NamedTuple
 from collections import Counter
 
+from .options import CastleWarpCondition
+
 if TYPE_CHECKING:
     from . import CVHoDisWorld
 
@@ -341,6 +343,11 @@ def get_item_counts(world: "CVHoDisWorld") -> dict[ItemClassification, dict[str,
         elif "Vlad" in item_to_add and not world.options.worst_ending_required and not \
                 world.options.best_ending_required:
             item_class = ItemClassification.useful
+        # If the Item is JB's Bracelet and the Castle Warp Condition is not Bracelet, submit it as Progression Skip
+        # Balancing instead of just Progression.
+        elif item_to_add == item_names.equip_bracelet_jb and \
+                world.options.castle_warp_condition != CastleWarpCondition.option_bracelet:
+            item_class = ItemClassification.progression_skip_balancing
         # Otherwise, submit the Item as its specified default classification.
         else:
             item_class = ALL_CVHODIS_ITEMS[item_to_add].default_classification

@@ -2,7 +2,7 @@ import logging
 
 from BaseClasses import Location
 from .data import loc_names, item_names
-from .options import CVHoDisOptions
+from .options import CVHoDisOptions, CastleWarpCondition
 
 from typing import NamedTuple
 
@@ -337,7 +337,7 @@ CVHODIS_EVENT_MAPPING: dict[str, str] = {
     loc_names.event_ending_b: item_names.event_ending_b,
     loc_names.event_ending_g: item_names.event_ending_g,
     loc_names.event_furniture: item_names.event_furniture,
-    # loc_names.event_death: item_names.event_death,
+    loc_names.event_death: item_names.event_death,
     loc_names.event_wall_skeleton: item_names.event_wall_skeleton,
     loc_names.event_wall_sky: item_names.event_wall_sky,
     loc_names.event_button_clock: item_names.event_button_clock,
@@ -414,6 +414,10 @@ def get_locations_to_create(locations: list[str], options: CVHoDisOptions) -> \
 
         # Don't place the Furniture Event Location if no furniture amount is required.
         if loc == loc_names.event_furniture and not options.furniture_amount_required:
+            continue
+
+        # Don't place the Death Event Location if the Castle Warp Condition is not Death.
+        if loc == loc_names.event_death and options.castle_warp_condition != CastleWarpCondition.option_death:
             continue
 
         # Check to see if the Location is in the Checks Info dict.
