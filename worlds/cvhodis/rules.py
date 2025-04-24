@@ -31,8 +31,8 @@ class CVHoDisRules:
 
         self.location_rules = {
             # Entrance A
-            loc_names.eta2: self.can_break_ceilings,
-            loc_names.eta3: self.can_break_ceilings,
+            loc_names.eta2: lambda state: self.can_break_ceilings(state) and self.can_cross_drawbridges(state),
+            loc_names.eta3: lambda state: self.can_break_ceilings(state) and self.can_cross_drawbridges(state),
             loc_names.eta9: self.can_super_jump,
             loc_names.eta18: self.can_super_jump,
             loc_names.eta17: self.can_open_lure_doors,
@@ -88,8 +88,9 @@ class CVHoDisRules:
             loc_names.tfa1a: self.can_double_jump,
             loc_names.tfa11: self.can_beat_hard_bosses,  # VS Minotaur Lv2
             # Entrance B
-            loc_names.etb2b: self.can_break_ceilings,
-            loc_names.etb2a: self.can_break_ceilings,
+            loc_names.etb0: self.can_cross_drawbridges,
+            loc_names.etb2b: lambda state: self.can_break_ceilings(state) and self.can_cross_drawbridges(state),
+            loc_names.etb2a: lambda state: self.can_break_ceilings(state) and self.can_cross_drawbridges(state),
             loc_names.etb3: self.can_break_ceilings,
             loc_names.etb9: self.can_super_jump,
             # Marble Corridor B
@@ -338,6 +339,10 @@ class CVHoDisRules:
     def can_pass_top_b_gate(self, state: CollectionState) -> bool:
         """Pressed the gate button in Castle Top Floor A."""
         return state.has(item_names.event_button_top, self.player)
+
+    def can_cross_drawbridges(self, state: CollectionState) -> bool:
+        """Defeated Giant Bat in Marble Corridor A."""
+        return state.has(item_names.event_giant_bat, self.player)
 
     def set_cvhodis_rules(self) -> None:
         multiworld = self.world.multiworld

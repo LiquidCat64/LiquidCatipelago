@@ -345,6 +345,7 @@ CVHODIS_EVENT_MAPPING: dict[str, str] = {
     loc_names.event_guarder: item_names.event_guarder,
     loc_names.event_hand: item_names.event_hand,
     loc_names.event_button_top: item_names.event_button_top,
+    loc_names.event_giant_bat: item_names.event_giant_bat,
 }
 
 # Any Locations with alternate pickup actors in alternate room states that should also be modified, like the flooded
