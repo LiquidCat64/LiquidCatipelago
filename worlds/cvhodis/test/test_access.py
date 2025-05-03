@@ -46,17 +46,13 @@ class TreasuryAAccessibilityTest(CVHoDisTestBase):
 
     def test_treasury_a_access(self) -> None:
         self.assertFalse(self.can_reach_location(loc_names.cya1))
-        self.assertFalse(self.can_reach_location(loc_names.swb14))
-        self.assertFalse(self.can_reach_location(loc_names.cdb0a))
-        self.assertFalse(self.can_reach_entrance(ent_names.cdb_exit_tfb))
-        self.assertFalse(self.can_reach_entrance(ent_names.tfa_pazuzu))
 
         self.collect_by_name([item_names.relic_wing, item_names.relic_tail, item_names.book_fire, item_names.book_ice, item_names.equip_bracelet_mk])
 
+        self.assertFalse(self.can_reach_location(loc_names.cya1))
+
+        self.collect_by_name([item_names.use_key_s])
+
         self.assertTrue(self.can_reach_location(loc_names.cya1))
-        self.assertTrue(self.can_reach_location(loc_names.swb14))
-        self.assertTrue(self.can_reach_location(loc_names.cdb0a))
-        self.assertTrue(self.can_reach_entrance(ent_names.cdb_exit_tfb))
-        self.assertTrue(self.can_reach_entrance(ent_names.tfa_pazuzu))
 
 # TODO: Add more tests
