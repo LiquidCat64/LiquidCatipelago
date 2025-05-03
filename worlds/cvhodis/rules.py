@@ -161,6 +161,7 @@ class CVHoDisRules:
             ent_names.swa_djump_c: lambda state: self.can_double_jump(state) and self.can_beat_medium_bosses(state),  # VS Devil
             ent_names.swa_goggles_u: self.can_see_in_darkness,
             ent_names.swa_goggles_l: self.can_see_in_darkness,
+            ent_names.swa_dark_u: self.can_double_jump,
             ent_names.swa_devil: self.can_beat_medium_bosses,  # VS Devil
             ent_names.cda_djump: self.can_double_jump,
             ent_names.cda_exit_tfa: self.can_open_mk_doors,
@@ -352,16 +353,15 @@ class CVHoDisRules:
     def set_cvhodis_rules(self) -> None:
         multiworld = self.world.multiworld
 
-        for region in multiworld.get_regions(self.player):
-            # Set each Entrance's rule if it should have one.
-            for ent in region.entrances:
-                if ent.name in self.entrance_rules:
-                    ent.access_rule = self.entrance_rules[ent.name]
+        # Set each Entrance's rule if it should have one.
+        for ent_name, rule in self.entrance_rules.items():
+            entrance = multiworld.get_entrance(ent_name, self.player)
+            entrance.access_rule = rule
 
-            # Set each Location's rule if it should have one.
-            for loc in region.locations:
-                if loc.name in self.location_rules:
-                    loc.access_rule = self.location_rules[loc.name]
+        # Set each Location's rule if it should have one.
+        for loc in multiworld.get_locations(self.player):
+            if loc.name in self.location_rules:
+                loc.access_rule = self.location_rules[loc.name]
 
         # Set the World's completion condition depending on which goal objectives are required.
         required_objectives = []

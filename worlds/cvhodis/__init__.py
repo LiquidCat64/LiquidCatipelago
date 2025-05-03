@@ -233,6 +233,10 @@ class CVHoDisWorld(World):
                 "best_ending_required": self.options.best_ending_required.value,
                 "furniture_amount_required": self.furniture_amount_required,
                 "spellbound_boss_logic": self.options.spellbound_boss_logic.value,
+                "area_shuffle": self.options.area_shuffle.value,
+                "decouple_transitions": self.options.decouple_transitions.value,
+                "link_door_types": self.options.link_door_types.value,
+                "castle_warp_condition": self.options.castle_warp_condition,
                 "transition_pairings": self.transition_pairings}
 
     def get_filler_item_name(self) -> str:

@@ -143,7 +143,7 @@ SHUFFLEABLE_TRANSITIONS: dict[str, CVHoDisTransitionData] = {
     ent_names.cyb_exit_lcb:   CVHoDisTransitionData(0x4AE8F0, 0x84AE920, 0x0000, 0x0130, ERGroups.RIGHT_B, 0x67, 0x67),
     ent_names.cyb_exit_wwb:   CVHoDisTransitionData(0x4AED20, 0x84AED44, 0x0000, 0x0000, ERGroups.LEFT_SKULL_B, 0x67, 0x67),
     ent_names.cyb_exit_tfb:   CVHoDisTransitionData(0x4AED2C, 0x84AED44, 0x0200, 0x0000, ERGroups.TOP_B, 0x9F, 0x1F),
-    ent_names.scb_exit_cyb:   CVHoDisTransitionData(0x4A1B04, 0x84A1B1C, 0x0000, 0x0030, ERGroups.RIGHT_B, 0x67, 0x67),
+    ent_names.scb_exit_cyb:   CVHoDisTransitionData(0x4A1B10, 0x84A1B1C, 0x0000, 0x0030, ERGroups.RIGHT_B, 0x67, 0x67),
     ent_names.scb_exit_etb:   CVHoDisTransitionData(0x4A2210, 0x84A2228, 0x0108, 0x0000, ERGroups.TOP_B, 0x9F, 0x1F),
     ent_names.lcb_exit_cyb:   CVHoDisTransitionData(0x4A45A4, 0x84A45B0, 0x0000, 0x0000, ERGroups.LEFT_B, 0x67, 0x67),
     ent_names.lcb_exit_adb:   CVHoDisTransitionData(0x4A47F0, 0x84A47FC, 0x0000, 0x0130, ERGroups.RIGHT_B, 0x67, 0x67),

@@ -44,7 +44,7 @@ The following bosses are all considered "Medium" and expect 1 spell book with th
 - Legion (saint)
 - Shadow
 
-The following bosses are all considered "Hard" and expect 1 spell book with the Normal choice or 2 spell books with the Easy choice to get past:
+The following bosses are all considered "Hard" and expect 2 spell books with the Normal choice or 3 spell books with the Easy choice to get past:
 - Minotaur Lv2
 - Pazuzu
 - Legion (corpse)

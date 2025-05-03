@@ -68,7 +68,36 @@ INV_NUMBERS = [pickup_type for pickup_type in CVHODIS_INVENTORIES]
 EVENT_FLAG_MAP = {
     FLAG_MEDIUM_ENDING: "FLAG_OBTAINED_MEDIUM_ENDING",
     FLAG_WORST_ENDING: "FLAG_OBTAINED_WORST_ENDING",
-    FLAG_BEST_ENDING: "FLAG_OBTAINED_BEST_ENDING"
+    FLAG_BEST_ENDING: "FLAG_OBTAINED_BEST_ENDING",
+    0xFF: "FLAG_PLACED_REQUIRED_FURNITURE",
+    # Not actually set by the game, but we consider it set when enough furniture
+    # is detected as having been placed.
+    0x3D: "FLAG_MET_DEATH_IN_CLOCK_TOWER",
+    0x33: "FLAG_BROKE_LOWER_SKELETON_A_WALL",
+    0x27: "FLAG_BROKE_SKY_B_WALL_TO_SHADOW",
+    0x01: "FLAG_PRESSED_LOWER_CLOCK_A_BUTTON",
+    0x25: "FLAG_RAISED_CLOCK_B_CRANK",
+    0x24: "FLAG_HAMMERED_BRONZE_GUARDER",
+    0x53: "FLAG_DESTROYED_TOP_FLOOR_A_HAND",
+    0x02: "FLAG_PRESSED_TOP_FLOOR_A_BUTTON",
+    0x20: "FLAG_DRAINED_LUMINOUS_A_WATER",
+    0xE1: "FLAG_DEFEATED_GIANT_BAT",
+    0xE2: "FLAG_DEFEATED_SKULL_KNIGHT",
+    0xE3: "FLAG_DEFEATED_LIVING_ARMOR",
+    0xE4: "FLAG_DEFEATED_GOLEM",
+    0xE5: "FLAG_DEFEATED_MINOTAUR",
+    0xE6: "FLAG_DEFEATED_DEVIL",
+    0xE7: "FLAG_DEFEATED_GIANT_MERMAN",
+    0xE8: "FLAG_DEFEATED_MAX_SLIMER",
+    0xE9: "FLAG_DEFEATED_PEEPING_BIG",
+    0xEA: "FLAG_DEFEATED_LEGION_SAINT",
+    0xEB: "FLAG_DEFEATED_SHADOW",
+    0xEC: "FLAG_DEFEATED_MINOTAUR_LV2",
+    0xED: "FLAG_DEFEATED_LEGION_CORPSE",
+    0xEE: "FLAG_DEFEATED_TALOS",
+    0xEF: "FLAG_DEFEATED_DEATH",
+    0xD0: "FLAG_DEFEATED_CYCLOPS",
+    0xD2: "FLAG_DEFEATED_PAZUZU",
 }
 
 DEATHLINK_AREA_NAMES = ["Sealed Room", "Catacomb", "Abyss Staircase", "Audience Room", "Triumph Hallway",
@@ -229,9 +258,14 @@ class CastlevaniaHoDisClient(BizHawkClient):
             # big endian.
             event_flags_array = [int.from_bytes(all_flags[0x04:0x20][i:i + 4], "little") for i in
                                  range(0, len(all_flags[0x04:0x20]), 4)]
+            # Append the boss kill flags to the event flags as an additional word. We'll consider them Events 0xE0-0xFF.
+            event_flags_array.append(int.from_bytes(all_flags[0x48:], "little"))
+            # Consider the very last flag (Flag 0xFF) in our event flag array set if the furniture goal is complete.
+            if self.completed_furniture:
+                event_flags_array[7] |= 0x80000000
+
             pickup_flags_array = [int.from_bytes(all_flags[0x20:0x48][i:i + 4], "little") for i in
                                   range(0, len(all_flags[0x20:0x48]), 4)]
-            # boss_flags_array = int.from_bytes(all_flags[0x48:], "little")
 
             # If there's no receive sound queued, the delay timer is 0, we are not in a cutscene, not frozen due to an
             # item textbox, are able to pause, and are not currently paused, it should be safe to call a textbox.
@@ -259,6 +293,9 @@ class CastlevaniaHoDisClient(BizHawkClient):
 
                     if ctx.stored_data[f"castlevania_hodis_events_{ctx.team}_{ctx.slot}"] & 0x4:
                         self.got_best_ending = True
+
+                    if ctx.stored_data[f"castlevania_hodis_events_{ctx.team}_{ctx.slot}"] & 0x8:
+                        self.completed_furniture = True
 
             # Enable DeathLink if it's in our slot_data.
             if "DeathLink" not in ctx.tags and ctx.slot_data["death_link"]:
@@ -475,8 +512,9 @@ class CastlevaniaHoDisClient(BizHawkClient):
                                             + inv_guards),
 
             # Check how many bits are set in the placed furniture flags array to determine whether the player has
-            # completed the furniture objective.
-            if placed_furniture_flags.bit_count() >= ctx.slot_data["furniture_amount_required"]:
+            # completed the furniture objective (if more than 0 pieces are required).
+            if placed_furniture_flags.bit_count() >= ctx.slot_data["furniture_amount_required"] \
+                    and ctx.slot_data["furniture_amount_required"]:
                 self.completed_furniture = True
 
             # Check each bit in the event flags array for set AP event flags.
