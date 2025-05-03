@@ -55,9 +55,9 @@ class EarlyLizard(DefaultOnToggle):
 class SpellboundBossLogic(Choice):
     """
     Makes certain bosses that are considered "medium" or "hard" in difficulty logically expect spell books to get past. See the Game Page for information on which bosses are considered what difficulty.
+    None: No boss expects any number of spell books.
     Easy: Medium bosses expect 2 spell books and hard bosses expect 3 spell books.
     Normal: Medium bosses expect 1 spell book and hard bosses expect 2 spell books.
-    Disabled: No boss expects any number of spell books.
     """
     display_name = "Spellbound Boss Logic"
     option_none = 0
