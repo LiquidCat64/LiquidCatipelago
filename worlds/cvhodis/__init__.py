@@ -236,7 +236,7 @@ class CVHoDisWorld(World):
                 "area_shuffle": self.options.area_shuffle.value,
                 "decouple_transitions": self.options.decouple_transitions.value,
                 "link_door_types": self.options.link_door_types.value,
-                "castle_warp_condition": self.options.castle_warp_condition,
+                "castle_warp_condition": self.options.castle_warp_condition.value,
                 "transition_pairings": self.transition_pairings}
 
     def get_filler_item_name(self) -> str:
