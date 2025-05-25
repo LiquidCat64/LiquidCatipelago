@@ -96,8 +96,9 @@ EVENT_FLAG_MAP = {
     0xED: "FLAG_DEFEATED_LEGION_CORPSE",
     0xEE: "FLAG_DEFEATED_TALOS",
     0xEF: "FLAG_DEFEATED_DEATH",
-    0xD0: "FLAG_DEFEATED_CYCLOPS",
-    0xD2: "FLAG_DEFEATED_PAZUZU",
+    0xF0: "FLAG_DEFEATED_CYCLOPS",
+    # NOTE: 0xF1 is Intro Talos, but I don't think we care about him.
+    0xF2: "FLAG_DEFEATED_PAZUZU",
 }
 
 DEATHLINK_AREA_NAMES = ["Sealed Room", "Catacomb", "Abyss Staircase", "Audience Room", "Triumph Hallway",

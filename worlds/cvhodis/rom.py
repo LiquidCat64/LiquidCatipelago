@@ -341,7 +341,8 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Disable the text when using a teleport to Castle B for the first time.
         rom_data.write_byte(0x7645, 0xE0)
 
-        # Block usage of the cross-castle round gate if they don't have the cross-castle warp condition satisfied.
+        # Block usage of the cross-castle round gate if they don't have the "cross-castle warp condition satisfied"
+        # flag set.
         if options["castle_warp_condition"] != CastleWarpCondition.option_none:
             rom_data.write_bytes(0x1BC34, [0x00, 0x4A,  # ldr r2, 0x86A4700
                                            0x97, 0x46,  # mov r15, r2
@@ -358,26 +359,26 @@ class CVHoDisPatchExtensions(APPatchExtension):
                                           0x00, 0x45, 0x6A, 0x08])
             rom_data.write_bytes(0x6A4500, patches.unvisited_warp_destination_blocker)
 
-            # Make the round warp gates set the "can warp castles" flag if the player has JB's Bracelet.
-            if options["castle_warp_condition"] == CastleWarpCondition.option_bracelet:
-                rom_data.write_bytes(0x494F70, int.to_bytes(0x86A4101, 4, "little"))
-                rom_data.write_bytes(0x6A4100, patches.jb_bracelet_checker)
+        # Make the round warp gates set the "can warp castles" flag if the player has JB's Bracelet.
+        if options["castle_warp_condition"] == CastleWarpCondition.option_bracelet:
+            rom_data.write_bytes(0x494F70, int.to_bytes(0x86A4101, 4, "little"))
+            rom_data.write_bytes(0x6A4100, patches.jb_bracelet_checker)
 
-            # Nuke the Clock Tower Death cutscene event and the text when changing castles through a warp room for the
-            # first time if the Castle Warp Condition is not Death. Otherwise, keep them.
-            if options["castle_warp_condition"] != CastleWarpCondition.option_death:
-                rom_data.write_bytes(0x1BEC8, [0x00, 0x00])
-                rom_data.write_bytes(0x4AAF98, [0xFF, 0x7F, 0xFF, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
-                # Make the warp room round gates always spawn in their closed states regardless of the Clock Tower Death
-                # cutscene flag being set or not.
-                rom_data.write_byte(0x1BAF9, 0xE0)
-            else:
-                # If the warp condition is Death, make the gates check to see if we're in Death's room upon
-                # initialization.
-                rom_data.write_bytes(0x1BAFC, [0x00, 0x49,  # ldr r1, 0x86A4100
-                                               0x8F, 0x46,  # mov r15, r1
-                                               0x00, 0x41, 0x6A, 0x08])
-                rom_data.write_bytes(0x6A4100, patches.portal_death_room_checker)
+        # Nuke the Clock Tower Death cutscene event and the text when changing castles through a warp room for the
+        # first time if the Castle Warp Condition is not Death. Otherwise, keep them.
+        if options["castle_warp_condition"] != CastleWarpCondition.option_death:
+            rom_data.write_bytes(0x1BEC8, [0x00, 0x00])
+            rom_data.write_bytes(0x4AAF98, [0xFF, 0x7F, 0xFF, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+            # Make the warp room round gates always spawn in their closed states regardless of the Clock Tower Death
+            # cutscene flag being set or not.
+            rom_data.write_byte(0x1BAF9, 0xE0)
+        else:
+            # If the warp condition is Death, make the gates check to see if we're in Death's room upon
+            # initialization.
+            rom_data.write_bytes(0x1BAFC, [0x00, 0x49,  # ldr r1, 0x86A4100
+                                           0x8F, 0x46,  # mov r15, r1
+                                           0x00, 0x41, 0x6A, 0x08])
+            rom_data.write_bytes(0x6A4100, patches.portal_death_room_checker)
 
         # Make MK's Bracelet doors unlockable in Castle B.
         rom_data.write_byte(0x1CD09, 0xE0)
