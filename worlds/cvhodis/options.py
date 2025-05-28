@@ -84,7 +84,7 @@ class AreaShuffle(Choice):
     """
     Randomizes where every transition to a different named area leads.
     Separate: Both castles will have their areas kept separate from each other.
-    Combined: Both castles will have their areas mixed into one.
+    Combined: Both castles will have their areas mixed together, creating a singular, massive castle.
     """
     display_name = "Area Shuffle"
     option_none = 0
@@ -98,6 +98,20 @@ class DecoupleTransitions(Toggle):
     Whether transition entrances should be decoupled from exits if Area Shuffle is enabled. Going back through an area transition will send you somewhere completely different from whence you came.
     """
     display_name = "Decouple Transitions"
+
+
+class CastleSymmetry(DefaultOnToggle):
+    """
+    Whether randomized transitions should lead to the same corresponding area in both castles, if Area Shuffle is set to Separate.
+    """
+    display_name = "Castle Symmetry"
+
+
+class AreaSwapper(Toggle):
+    """
+    Swaps areas between the two castles at random. Does not apply if Area Shuffle is set to Combined.
+    """
+    display_name = "Area Swapper"
 
 
 class LinkDoorTypes(Toggle):
@@ -153,6 +167,7 @@ class CVHoDisOptions(PerGameCommonOptions):
     # nerf_griffin_wing: NerfGriffinWing
     area_shuffle: AreaShuffle
     decouple_transitions: DecoupleTransitions
+    castle_symmetry: CastleSymmetry
     link_door_types: LinkDoorTypes
     early_lizard: EarlyLizard
     spellbound_boss_logic: SpellboundBossLogic
@@ -167,7 +182,7 @@ cvhodis_option_groups = [
         # MapPercentRequired
     ]),
     OptionGroup("entrance randomizer", [
-        AreaShuffle, DecoupleTransitions, LinkDoorTypes]),
+        AreaShuffle, DecoupleTransitions, CastleSymmetry, LinkDoorTypes]),
     OptionGroup("difficulty", [
         EarlyLizard, SpellboundBossLogic, CastleWarpCondition, DeathLink]),
     OptionGroup("quality of life", [

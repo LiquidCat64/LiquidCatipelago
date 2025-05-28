@@ -77,6 +77,7 @@ class CVHoDisWorld(World):
 
     possible_hint_card_items: list[CVHoDisItem]
     transition_pairings: list[tuple]
+    priority_connections: list[tuple[list[int], list[int]]]
 
     # Default values to possibly be updated in generate_early
     furniture_amount_required: int = 0
@@ -89,6 +90,7 @@ class CVHoDisWorld(World):
     def generate_early(self) -> None:
         self.possible_hint_card_items = []
         self.transition_pairings = []
+        self.priority_connections = []
 
         # Generate the player's unique authentication
         self.auth = bytearray(self.random.getrandbits(8) for _ in range(16))
@@ -191,7 +193,8 @@ class CVHoDisWorld(World):
         # Randomize the Entrances and save the result.
         if self.options.area_shuffle:
             result = randomize_entrances(self, coupled=not self.options.decouple_transitions.value,
-                                                           target_group_lookup=TARGET_GROUP_RELATIONSHIPS)
+                                                           target_group_lookup=TARGET_GROUP_RELATIONSHIPS,
+                                         on_connect=cvhodis_on_connect)
             self.transition_pairings = sorted(result.pairings,
                                               key=lambda transition: SORTED_TRANSITIONS.index(transition[0]))
 
