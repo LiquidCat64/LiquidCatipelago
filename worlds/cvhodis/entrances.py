@@ -1,3 +1,4 @@
+from Options import Accessibility
 from .data import ent_names
 from .options import AreaShuffle
 from enum import IntEnum
@@ -5,6 +6,34 @@ from BaseClasses import Entrance
 from entrance_rando import ERPlacementState
 from typing import NamedTuple
 
+class CVHoDisEntrance(Entrance):
+    def can_connect_to(self, other: Entrance, dead_end: bool, er_state: "ERPlacementState") -> bool:
+        """
+        The regular Entrance's method, but with more conditions specific to Harmony of Dissonance to accommodate the
+        Castle Symmetry option on full Accessibility.
+        """
+        if er_state.world.options.castle_symmetry and er_state.world.options.area_shuffle.value == \
+            AreaShuffle.option_separate and er_state.world.options.accessibility == Accessibility.option_full:
+
+            # Always deny connecting the right Room A transition to a dead end or the right Skeleton A door, as this
+            # will create isolated inaccessible regions in the other castle due to right Room B being a dead end.
+            if self.name == ent_names.ria_exit_mca_r and (dead_end or other.name == ent_names.sca_exit_cya):
+                return False
+
+            # Don't connect to the Skeleton A left side unless the Skeleton B right door is reachable, to ensure nothing
+            # is locked out by the Skeleton B one-way rock before the left ceiling transition.
+            if other.name == ent_names.sca_exit_eta and not \
+                    er_state.collection_state.can_reach_entrance(ent_names.sca_exit_eta, er_state.world.player):
+                return False
+
+            # Don't connect to the Shrine B left side unless the Shrine A top transition is reachable, to ensure
+            # nothing is locked out by the Shrine A one-way wall after Living Armor.
+            if other.name == ent_names.sab_exit_etb and not \
+                    er_state.collection_state.can_reach_entrance(ent_names.saa_exit_wwa, er_state.world.player):
+                return False
+
+        # Run the regular Entrance class's method and return its result like normal.
+        return super().can_connect_to(other, dead_end, er_state)
 
 class ERGroups(IntEnum):
     # NOTE: The current stable GER's on_connect is not perfect, so for now, Top and Bottom entrances are considered Left

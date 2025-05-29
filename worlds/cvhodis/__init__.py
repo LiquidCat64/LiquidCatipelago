@@ -4,16 +4,16 @@ import settings
 import base64
 import logging
 
-from BaseClasses import Region, Tutorial, ItemClassification, EntranceType
+from BaseClasses import Tutorial, ItemClassification, EntranceType
 from entrance_rando import disconnect_entrance_for_randomization, randomize_entrances
 from .items import CVHoDisItem, FILLER_ITEM_NAMES, ALL_CVHODIS_ITEMS, FURNITURE, get_item_names_to_ids, \
     get_item_counts, get_pickup_type
 from .locations import CVHoDisLocation, get_location_names_to_ids, BASE_ID, get_locations_to_create, \
     get_location_name_groups
 from .options import cvhodis_option_groups, CVHoDisOptions, SubWeaponShuffle, AreaShuffle
-from .regions import get_region_info, get_all_region_names
+from .regions import get_region_info, get_all_region_names, CVHoDisRegion
 from .entrances import SHUFFLEABLE_TRANSITIONS, ERGroups, TARGET_GROUP_RELATIONSHIPS, cvhodis_on_connect, \
-    link_room_transitions, SORTED_TRANSITIONS, SKULL_DOOR_GROUPS, MK_DOOR_GROUPS
+    link_room_transitions, SORTED_TRANSITIONS, SKULL_DOOR_GROUPS, MK_DOOR_GROUPS, CVHoDisEntrance
 from .rules import CVHoDisRules
 from .data import item_names, loc_names
 from worlds.AutoWorld import WebWorld, World
@@ -110,7 +110,7 @@ class CVHoDisWorld(World):
 
     def create_regions(self) -> None:
         # Create every Region object.
-        created_regions = [Region(name, self.player, self.multiworld) for name in get_all_region_names()]
+        created_regions = [CVHoDisRegion(name, self.player, self.multiworld) for name in get_all_region_names()]
 
         # Attach the Regions to the Multiworld.
         self.multiworld.regions.extend(created_regions)

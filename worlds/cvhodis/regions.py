@@ -1,5 +1,11 @@
+from BaseClasses import Region
 from .data import loc_names, ent_names
-from typing import TypedDict
+from .entrances import CVHoDisEntrance
+from typing import TypedDict, ClassVar
+
+
+class CVHoDisRegion(Region):
+    entrance_type: ClassVar[type[CVHoDisEntrance]] = CVHoDisEntrance
 
 
 class RegionInfo(TypedDict, total=False):
