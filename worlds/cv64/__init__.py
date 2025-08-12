@@ -279,6 +279,27 @@ class CV64World(World):
 
         patch.write(rom_path)
 
+    def fill_slot_data(self) -> dict:
+        return {"stage_exits": self.active_stage_exits,
+                "warp_list": self.active_warp_list,
+                "character_stages": self.options.character_stages.value,
+                "stage_shuffle": self.options.stage_shuffle.value,
+                "starting_stage": self.options.starting_stage.value,
+                "sub_weapon_shuffle": self.options.sub_weapon_shuffle.value,
+                "special1s_per_warp": self.s1s_per_warp,
+                "total_special1s": self.total_s1s,
+                "draculas_condition": self.drac_condition,
+                "special2s_required": int(self.options.percent_special2s_required.value / 100 *
+                                          self.options.total_special2s.value),
+                "total_special2s": self.options.total_special2s.value,
+                "bosses_required": self.options.bosses_required.value,
+                "carrie_logic": self.options.carrie_logic.value,
+                "hard_logic": self.options.hard_logic.value,
+                "multi_hit_breakables": self.options.multi_hit_breakables.value,
+                "empty_breakables": self.options.empty_breakables.value,
+                "lizard_locker_items": self.options.lizard_locker_items.value,
+                "shopsanity": self.options.shopsanity.value}
+
     def get_filler_item_name(self) -> str:
         return self.random.choice(filler_item_names)
 

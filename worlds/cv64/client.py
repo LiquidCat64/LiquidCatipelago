@@ -10,6 +10,31 @@ from worlds._bizhawk.client import BizHawkClient
 if TYPE_CHECKING:
     from worlds._bizhawk.context import BizHawkClientContext
 
+PLAYER_COORDINATES_START = 0x9E1B0
+
+# These flags are communicated to the tracker as a bitfield using this order.
+# Modifying this here without also modifying the tracker will cause autotracking issues.
+# TODO: Add the rest of the boss kill flags
+EVENT_FLAG_MAP = {
+    0x1BF: "FLAG_ACTIVATE_CRYSTAL",
+    0xD2: "FLAG_DEFEATED_KING_SKELETON_1",
+    0xD3: "FLAG_DEFEATED_FOREST_WERE_TIGER",
+    0xD1: "FLAG_DEFEATED_KING_SKELETON_2",
+    #0xB3: "FLAG_DEFEATED_WHITE_DRAGONS",
+    #0xB3: "FLAG_DEFEATED_JA_OLDREY",
+    #0xB3: "FLAG_DEFEATED_UNDEAD_MAIDEN",
+    #0xB3: "FLAG_DEFEATED_LIZARD_MEN_TRIO",
+    #0xB3: "FLAG_DEFEATED_BEHEMOTH",
+    #0xB3: "FLAG_DEFEATED_ROSA_CAMILLA",
+    #0xB3: "FLAG_DEFEATED_WERE_JAGUAR",
+    #0xB3: "FLAG_DEFEATED_WEREWOLF",
+    #0xB3: "FLAG_DEFEATED_WERE_BULL",
+    #0xB3: "FLAG_DEFEATED_DUEL_TOWER_WERE_TIGER",
+    #0xB3: "FLAG_DEFEATED_DEATH_ACTRISE",
+    #0xB3: "FLAG_DEFEATED_RENON",
+    #0xB3: "FLAG_DEFEATED_VINCENT",
+}
+
 DEATHLINK_AREA_NUMBERS = [0, 1, 1, 2, 2, 2, 2, 3, 4, 5, 5, 5, 5, 5, 5, 5,
                           7, 9, 8, 6, 12, 12, 13, 11, 12, 5, 2, 10, 13, 13]
 
@@ -93,7 +118,8 @@ class Castlevania64Client(BizHawkClient):
                                                               (0x389BE4, 224, "RDRAM"),
                                                               (0x389EFB, 1, "RDRAM"),
                                                               (0x389EEF, 1, "RDRAM"),
-                                                              (0xBFBFDE, 2, "ROM")])
+                                                              (0xBFBFDE, 2, "ROM"),
+                                                              (PLAYER_COORDINATES_START, 0xC, "RDRAM")])
 
             game_state = int.from_bytes(read_state[0], "big")
             save_struct = read_state[2]
@@ -103,6 +129,7 @@ class Castlevania64Client(BizHawkClient):
             current_menu = int.from_bytes(read_state[4], "big")
             num_received_items = int.from_bytes(bytearray(save_struct[0xDA:0xDC]), "big")
             rom_flags = int.from_bytes(read_state[5], "big")
+            player_coords = read_state[6]
 
             # Make sure we are in the Gameplay or Credits states before detecting sent locations and/or DeathLinks.
             # If we are in any other state, such as the Game Over state, set self_induced_death to false, so we can once
