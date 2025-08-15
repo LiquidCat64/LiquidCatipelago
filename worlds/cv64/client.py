@@ -1,5 +1,5 @@
-from typing import TYPE_CHECKING, Set
-from .locations import base_id
+from typing import TYPE_CHECKING
+from .locations import BASE_ID
 from .text import cv64_text_wrap, cv64_string_to_bytearray
 
 from NetUtils import ClientStatus
@@ -16,23 +16,25 @@ PLAYER_COORDINATES_START = 0x9E1B0
 # Modifying this here without also modifying the tracker will cause autotracking issues.
 # TODO: Add the rest of the boss kill flags
 EVENT_FLAG_MAP = {
-    0x1BF: "FLAG_ACTIVATE_CRYSTAL",
+    0x1BF: "FLAG_ACTIVATED_CRYSTAL",
     0xD2: "FLAG_DEFEATED_KING_SKELETON_1",
     0xD3: "FLAG_DEFEATED_FOREST_WERE_TIGER",
     0xD1: "FLAG_DEFEATED_KING_SKELETON_2",
-    #0xB3: "FLAG_DEFEATED_WHITE_DRAGONS",
-    #0xB3: "FLAG_DEFEATED_JA_OLDREY",
-    #0xB3: "FLAG_DEFEATED_UNDEAD_MAIDEN",
-    #0xB3: "FLAG_DEFEATED_LIZARD_MEN_TRIO",
-    #0xB3: "FLAG_DEFEATED_BEHEMOTH",
-    #0xB3: "FLAG_DEFEATED_ROSA_CAMILLA",
-    #0xB3: "FLAG_DEFEATED_WERE_JAGUAR",
-    #0xB3: "FLAG_DEFEATED_WEREWOLF",
-    #0xB3: "FLAG_DEFEATED_WERE_BULL",
-    #0xB3: "FLAG_DEFEATED_DUEL_TOWER_WERE_TIGER",
-    #0xB3: "FLAG_DEFEATED_DEATH_ACTRISE",
-    #0xB3: "FLAG_DEFEATED_RENON",
-    #0xB3: "FLAG_DEFEATED_VINCENT",
+    0x14F: "FLAG_DEFEATED_WHITE_DRAGONS",
+    0xCC: "FLAG_DEFEATED_JA_OLDREY",
+    0xCA: "FLAG_DEFEATED_UNDEAD_MAIDEN",
+    0x5E: "FLAG_DEFEATED_LIZARD_MEN_TRIO",
+    0x1A3: "FLAG_DEFEATED_BEHEMOTH",
+    0x1BB: "FLAG_DEFEATED_ROSA",
+    0x1B9: "FLAG_DEFEATED_CAMILLA",
+    0x87: "FLAG_DEFEATED_WERE_JAGUAR",
+    0x86: "FLAG_DEFEATED_WEREWOLF",
+    0x85: "FLAG_DEFEATED_WERE_BULL",
+    0x84: "FLAG_DEFEATED_DUEL_TOWER_WERE_TIGER",
+    0xB9: "FLAG_DEFEATED_DEATH",
+    0xB8: "FLAG_DEFEATED_ACTRISE",
+    0xBE: "FLAG_DEFEATED_RENON",
+    0xBD: "FLAG_DEFEATED_VINCENT",
 }
 
 DEATHLINK_AREA_NUMBERS = [0, 1, 1, 2, 2, 2, 2, 3, 4, 5, 5, 5, 5, 5, 5, 5,
@@ -47,12 +49,15 @@ class Castlevania64Client(BizHawkClient):
     game = "Castlevania 64"
     system = "N64"
     patch_suffix = ".apcv64"
-    self_induced_death = False
-    time_of_sent_death = None
-    received_deathlinks = 0
-    death_causes = []
-    currently_shopping = False
-    local_checked_locations: Set[int]
+    sent_initial_packets: bool
+    self_induced_death: bool
+    time_of_sent_death: float | None
+    received_deathlinks: int
+    death_causes: list[str]
+    client_set_events = dict[str, int]
+    currently_shopping: bool
+    current_map_id: int
+    local_checked_locations: set[int]
 
     def __init__(self) -> None:
         super().__init__()
@@ -89,6 +94,17 @@ class Castlevania64Client(BizHawkClient):
     async def set_auth(self, ctx: "BizHawkClientContext") -> None:
         auth_raw = (await bizhawk.read(ctx.bizhawk_ctx, [(0xBFBFE0, 16, "ROM")]))[0]
         ctx.auth = base64.b64encode(auth_raw).decode("utf-8")
+        # Initialize all the local client attributes here so that nothing will be carried over from a previous CV64 if
+        # the player tried changing CV64 ROMs without resetting their Bizhawk Client instance.
+        self.sent_initial_packets = False
+        self.self_induced_death = False
+        self.time_of_sent_death = None
+        self.received_deathlinks = 0
+        self.death_causes = []
+        self.client_set_events = {flag_name: False for flag, flag_name in EVENT_FLAG_MAP.items()}
+        self.currently_shopping = False
+        self.current_map_id = 0xFF
+        self.local_checked_locations = set()
 
     def on_package(self, ctx: "BizHawkClientContext", cmd: str, args: dict) -> None:
         if cmd != "Bounced":
@@ -111,15 +127,26 @@ class Castlevania64Client(BizHawkClient):
             self.death_causes.append(cause)
 
     async def game_watcher(self, ctx: "BizHawkClientContext") -> None:
+        if ctx.server is None or ctx.server.socket.closed or ctx.slot is None:
+            return
 
         try:
+            # Get our Set events upon initial connection.
+            if not self.sent_initial_packets:
+                await ctx.send_msgs([{
+                    "cmd": "Get",
+                    "keys": [f"castlevania_64_events_{ctx.team}_{ctx.slot}"]
+                }])
+                self.sent_initial_packets = True
+
             read_state = await bizhawk.read(ctx.bizhawk_ctx, [(0x342084, 4, "RDRAM"),
                                                               (0x389BDE, 6, "RDRAM"),
                                                               (0x389BE4, 224, "RDRAM"),
                                                               (0x389EFB, 1, "RDRAM"),
                                                               (0x389EEF, 1, "RDRAM"),
                                                               (0xBFBFDE, 2, "ROM"),
-                                                              (PLAYER_COORDINATES_START, 0xC, "RDRAM")])
+                                                              # (PLAYER_COORDINATES_START, 0xC, "RDRAM")
+                                                              ])
 
             game_state = int.from_bytes(read_state[0], "big")
             save_struct = read_state[2]
@@ -129,7 +156,9 @@ class Castlevania64Client(BizHawkClient):
             current_menu = int.from_bytes(read_state[4], "big")
             num_received_items = int.from_bytes(bytearray(save_struct[0xDA:0xDC]), "big")
             rom_flags = int.from_bytes(read_state[5], "big")
-            player_coords = read_state[6]
+            current_map_id = save_struct[0xAD]
+            current_entrance_id = save_struct[0xAF]
+            # player_coords = read_state[6] TODO: Implement some kind of position checking.
 
             # Make sure we are in the Gameplay or Credits states before detecting sent locations and/or DeathLinks.
             # If we are in any other state, such as the Game Over state, set self_induced_death to false, so we can once
@@ -146,9 +175,21 @@ class Castlevania64Client(BizHawkClient):
             if rom_flags & 0x0001 and ctx.locations_info == {}:
                 await ctx.send_msgs([{
                         "cmd": "LocationScouts",
-                        "locations": [base_id + i for i in range(0x1C8, 0x1CF)],
+                        "locations": [BASE_ID + i for i in range(0x1C8, 0x1CF)],
                         "create_as_hint": 0
                     }])
+
+            # Check to see if the player's current map changed. If it did, notify the server so the PopTracker map can
+            # auto-change.
+            if 0xFF != current_map_id != self.current_map_id:
+                await ctx.send_msgs([{
+                    "cmd": "Set",
+                    "key": f"castlevania_64_current_map_{ctx.team}_{ctx.slot}",
+                    "default": 0,
+                    "want_reply": False,
+                    "operations": [{"operation": "replace", "value": current_map_id}],
+                }])
+                self.current_map_id = current_map_id
 
             # Send a DeathLink if we died on our own independently of receiving another one.
             if "DeathLink" in ctx.tags and save_struct[0xA4] & 0x80 and not self.self_induced_death and not \
@@ -158,11 +199,11 @@ class Castlevania64Client(BizHawkClient):
                 # If the player died at the Castle Keep exterior map on one of the Room of Clocks boss towers
                 # (determinable by checking the entrance value as well as the map value), consider Room of Clocks the
                 # actual area of death.
-                if save_struct[0xAD] == 0x14 and save_struct[0xAF] in [0, 1]:
+                if current_map_id == 0x14 and current_entrance_id in [0, 1]:
                     area_of_death = DEATHLINK_AREA_NAMES[10]
                 # Otherwise, determine what area the player perished in from the current map ID.
                 else:
-                    area_of_death = DEATHLINK_AREA_NAMES[DEATHLINK_AREA_NUMBERS[save_struct[0xAD]]]
+                    area_of_death = DEATHLINK_AREA_NAMES[DEATHLINK_AREA_NUMBERS[current_map_id]]
 
                 # If we had the Vamp status while dying, use a special message.
                 if save_struct[0xA4] & 0x08:
@@ -229,16 +270,20 @@ class Castlevania64Client(BizHawkClient):
             flag_bytes = bytearray(save_struct[0x00:0x44]) + bytearray(save_struct[0x90:0x9F])
             locs_to_send = set()
 
-            # Check for set location flags.
+            # Check each bit in each flag byte for set Location and event flags.
+            checked_set_events = {flag_name: False for flag, flag_name in EVENT_FLAG_MAP.items()}
             for byte_i, byte in enumerate(flag_bytes):
                 for i in range(8):
                     and_value = 0x80 >> i
                     if byte & and_value != 0:
                         flag_id = byte_i * 8 + i
 
-                        location_id = flag_id + base_id
+                        location_id = flag_id + BASE_ID
                         if location_id in ctx.server_locations:
                             locs_to_send.add(location_id)
+
+                        if flag_id in EVENT_FLAG_MAP:
+                            checked_set_events[EVENT_FLAG_MAP[flag_id]] = True
 
             # Send locations if there are any to send.
             if locs_to_send != self.local_checked_locations:
@@ -271,6 +316,22 @@ class Castlevania64Client(BizHawkClient):
                     "cmd": "StatusUpdate",
                     "status": ClientStatus.CLIENT_GOAL
                 }])
+
+            # Update the tracker event flags
+            if checked_set_events != self.client_set_events and ctx.slot is not None:
+                event_bitfield = 0
+                for index, (flag, flag_name) in enumerate(EVENT_FLAG_MAP.items()):
+                    if checked_set_events[flag_name]:
+                        event_bitfield |= 1 << index
+
+                await ctx.send_msgs([{
+                    "cmd": "Set",
+                    "key": f"castlevania_64_events_{ctx.team}_{ctx.slot}",
+                    "default": 0,
+                    "want_reply": False,
+                    "operations": [{"operation": "or", "value": event_bitfield}],
+                }])
+                self.client_set_events = checked_set_events
 
         except bizhawk.RequestFailedError:
             # Exit handler and return to main loop to reconnect.

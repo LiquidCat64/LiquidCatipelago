@@ -4,7 +4,7 @@ from .options import CV64Options, SubWeaponShuffle, DraculasCondition, RenonFigh
 
 from typing import Dict, Optional, Union, List, Tuple
 
-base_id = 0xC64000
+BASE_ID = 0xC64000
 
 
 class CV64Location(Location):
@@ -664,7 +664,7 @@ def get_location_info(location: str, info: str) -> Union[int, str, List[str], No
 
 
 def get_location_names_to_ids() -> Dict[str, int]:
-    return {name: get_location_info(name, "code")+base_id for name in location_info if get_location_info(name, "code")
+    return {name: get_location_info(name, "code") + BASE_ID for name in location_info if get_location_info(name, "code")
             is not None}
 
 
@@ -693,7 +693,7 @@ def verify_locations(options: CV64Options, locations: List[str]) -> Tuple[Dict[s
         if loc_code is None:
             events[loc] = get_location_info(loc, "event")
         else:
-            loc_code += base_id
+            loc_code += BASE_ID
         verified_locations.update({loc: loc_code})
 
     return verified_locations, events

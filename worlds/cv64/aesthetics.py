@@ -4,7 +4,7 @@ from BaseClasses import ItemClassification, Location, Item
 from .data import iname, rname
 from .options import CV64Options, BackgroundMusic, Countdown, IceTrapAppearance, InvisibleItems, CharacterStages
 from .stages import vanilla_stage_order, get_stage_info
-from .locations import get_location_info, base_id
+from .locations import get_location_info, BASE_ID
 from .regions import get_region_info
 from .items import get_item_info, item_info
 
@@ -452,13 +452,13 @@ def get_location_data(world: "CV64World", active_locations: Iterable[Location]) 
             location_bytes[get_location_info(loc.name, "offset") - 1] = 0x12  # Roses are minors
 
         # If it's a PermaUp, change the item's model to a big PowerUp no matter what.
-        if loc.item.game == "Castlevania 64" and loc.item.code == 0x10C + base_id:
+        if loc.item.game == "Castlevania 64" and loc.item.code == 0x10C + BASE_ID:
             location_bytes[get_location_info(loc.name, "offset") - 1] = 0x0B
 
         # If it's an Ice Trap, change its model to one of the appearances we determined before.
         # Unless it's an NPC item, in which case use the Ice Trap's regular ID so that it won't decrement the majors
         # Countdown due to how I set up the NPC items to work.
-        if loc.item.game == "Castlevania 64" and loc.item.code == 0x12 + base_id:
+        if loc.item.game == "Castlevania 64" and loc.item.code == 0x12 + BASE_ID:
             if loc_type == "npc":
                 location_bytes[get_location_info(loc.name, "offset") - 1] = 0x12
             else:

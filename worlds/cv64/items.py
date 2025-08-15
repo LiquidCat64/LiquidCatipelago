@@ -1,6 +1,6 @@
 from BaseClasses import Item
 from .data import iname
-from .locations import base_id, get_location_info
+from .locations import BASE_ID, get_location_info
 from .options import DraculasCondition, SpareKeys
 
 from typing import TYPE_CHECKING, Dict, Union
@@ -17,7 +17,7 @@ class CV64Item(Item):
 
 # # #    KEY    # # #
 # "code" = The unique part of the Item's AP code attribute, as well as the value to call the in-game "prepare item
-#          textbox" function with to give the Item in-game. Add this + base_id to get the actual AP code.
+#          textbox" function with to give the Item in-game. Add this + BASE_ID to get the actual AP code.
 # "default classification" = The AP Item Classification that gets assigned to instances of that Item in create_item
 #                            by default, unless I deliberately override it (as is the case for some Special1s).
 # "inventory offset" = What offset from the start of the in-game inventory array (beginning at 0x80389C4B) stores the
@@ -103,7 +103,8 @@ def get_item_info(item: str, info: str) -> Union[str, int, None]:
 
 
 def get_item_names_to_ids() -> Dict[str, int]:
-    return {name: get_item_info(name, "code")+base_id for name in item_info if get_item_info(name, "code") is not None}
+    return {name: get_item_info(name, "code") + BASE_ID for name in item_info
+            if get_item_info(name, "code") is not None}
 
 
 def get_item_counts(world: "CV64World") -> Dict[str, Dict[str, int]]:

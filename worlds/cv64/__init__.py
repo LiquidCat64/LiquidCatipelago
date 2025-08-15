@@ -6,7 +6,7 @@ import logging
 
 from BaseClasses import Item, Region, Tutorial, ItemClassification
 from .items import CV64Item, filler_item_names, get_item_info, get_item_names_to_ids, get_item_counts
-from .locations import CV64Location, get_location_info, verify_locations, get_location_names_to_ids, base_id
+from .locations import CV64Location, get_location_info, verify_locations, get_location_names_to_ids, BASE_ID
 from .entrances import verify_entrances, get_warp_entrances
 from .options import CV64Options, cv64_option_groups, CharacterStages, DraculasCondition, SubWeaponShuffle
 from .stages import get_locations_from_stage, get_normal_stage_exits, vanilla_stage_order, \
@@ -205,7 +205,7 @@ class CV64World(World):
 
         code = get_item_info(name, "code")
         if code is not None:
-            code += base_id
+            code += BASE_ID
 
         created_item = CV64Item(name, classification, code, self.player)
 
