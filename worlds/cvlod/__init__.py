@@ -3,22 +3,23 @@ import typing
 import settings
 import base64
 import logging
+import json
 
-from BaseClasses import Item, Region, Tutorial, ItemClassification
-from .items import CVLoDItem, filler_item_names, get_item_info, get_item_names_to_ids, get_item_counts
-from .locations import CVLoDLocation, get_location_info, verify_locations, get_location_names_to_ids, base_id
+from BaseClasses import Region, Tutorial, ItemClassification
+from .items import CVLoDItem, ALL_CVLOD_ITEMS, POSSIBLE_EXTRA_FILLER, get_item_names_to_ids, get_item_pool
+from .locations import CVLoDLocation, get_locations_to_create, get_location_name_groups, get_location_names_to_ids
 from .entrances import verify_entrances, get_warp_entrances
-from .options import CVLoDOptions, CharacterStages, DraculasCondition, SubWeaponShuffle
-from .stages import get_locations_from_stage, get_normal_stage_exits, vanilla_stage_order, \
-    shuffle_stages, generate_warps, get_region_names
-from .regions import get_region_info
+from .options import CVLoDOptions, DraculasCondition, SubWeaponShuffle
+from .stages import get_active_stages, shuffle_stages, get_stage_exits, get_active_warps, \
+    get_regions_from_all_active_stages, verify_branches, CVLoDActiveStage, MISC_REGIONS, ALL_CVLOD_REGIONS
 from .rules import CVLoDRules
-from .data import iname, rname, ename
+from .data import item_names, reg_names, ent_names, stage_names
 from worlds.AutoWorld import WebWorld, World
 from .aesthetics import randomize_lighting, shuffle_sub_weapons, randomize_music, get_start_inventory_data,\
-    get_location_data, randomize_shop_prices, get_loading_zone_bytes,  get_countdown_numbers,\
-    randomize_fountain_puzzle, randomize_charnel_prize_coffin
-from .rom import RomData, write_patch, get_base_rom_path, CVLoDProcedurePatch, CVLOD_US_HASH
+    get_location_write_values, randomize_shop_prices, get_transition_write_values,  get_countdown_numbers,\
+    randomize_fountain_puzzle, randomize_charnel_prize_coffin, get_location_text
+from .rom import CVLoDRomHandler, write_patch, get_base_rom_path, CVLoDProcedurePatch, CVLOD_US_HASH, \
+    ARCHIPELAGO_PATCH_IDENTIFIER
 from .client import CastlevaniaLoDClient
 
 
@@ -55,11 +56,11 @@ class CVLoDWorld(World):
     """
     game = "Castlevania - Legacy of Darkness"
     item_name_groups = {
-        "Bomb": {iname.nitro, iname.mandragora},
-        "Ingredient": {iname.nitro, iname.mandragora},
-        "Crest": {iname.crest_a, iname.crest_b},
+        "Bomb": {item_names.quest_nitro, item_names.quest_mandragora},
+        "Ingredient": {item_names.quest_nitro, item_names.quest_mandragora},
+        "Crest": {item_names.quest_crest_a, item_names.quest_crest_b},
     }
-    location_name_groups = {stage: set(get_locations_from_stage(stage)) for stage in vanilla_stage_order}
+    location_name_groups = get_location_name_groups()
     options_dataclass = CVLoDOptions
     options: CVLoDOptions
     settings: typing.ClassVar[CVLoDSettings]
@@ -68,20 +69,12 @@ class CVLoDWorld(World):
     item_name_to_id = get_item_names_to_ids()
     location_name_to_id = get_location_names_to_ids()
 
-    active_stage_exits: typing.Dict[str, typing.Dict]
-    active_stage_list: typing.List[str]
-    active_warp_list: typing.List[str]
+    active_stage_info: list[CVLoDActiveStage]
+    active_warp_list: list[str]
 
     # Default values to possibly be updated in generate_early
-    reinhardt_stages: bool = True
-    carrie_stages: bool = True
-    branching_stages: bool = False
-    starting_stage: str = rname.forest_of_silence
-    total_s1s: int = 7
-    s1s_per_warp: int = 1
-    total_s2s: int = 0
     required_s2s: int = 0
-    drac_condition: int = 0
+    total_available_bosses: int = 0
 
     auth: bytearray
 
@@ -91,129 +84,138 @@ class CVLoDWorld(World):
         # Generate the player's unique authentication
         self.auth = bytearray(self.random.getrandbits(8) for _ in range(16))
 
+        # Set the total and required Special2s to the specified YAML numbers if it's Specials, or to 0 if not.
+        if self.options.draculas_condition == DraculasCondition.option_specials:
+            self.options.total_special2s.value = self.options.total_special2s.value
+            self.required_s2s = int(self.options.percent_special2s_required.value / 100 *
+                                    self.options.total_special2s.value)
+        else:
+            self.options.total_special2s.value = 0
+            self.required_s2s = 0
+
+        stage_1_blacklist = {}
+
+        # Prevent Clock Tower from being Stage 1 if more than 4 Special1s are needed to warp out of it and 3HBs are off.
+        # This start is simply too constrained for the generator to handle when many S1s are needed to warp.
+        if self.options.special1s_per_warp > 4 and not self.options.multi_hit_breakables:
+            stage_1_blacklist[stage_names.CLOCK] = ("Too many Special1s needed to warp out for the generator to handle "
+                                                    "with Multi Hit Breakables disabled.")
+
+        # Get the slot's "intended" stage list in the order said stages appear in.
+        active_stage_order = get_active_stages(self, stage_1_blacklist)
+
+        # If Dracula's Condition is Crystal, check to see if Castle Center is in the stage list. If it's not, then we'll
+        # have to change it to something else.
+        if self.options.draculas_condition == DraculasCondition.option_crystal \
+                and stage_names.CENTER not in active_stage_order:
+            logging.warning(f"[{self.player_name}] Dracula's Condition cannot be Crystal if Castle Center is not "
+                            f"present in the stage list. It will be changed to None instead.")
+            self.options.draculas_condition.value = DraculasCondition.option_none
+
+        # Validate the chosen stage branch options with the chosen stage list.
+        verify_branches(self, active_stage_order)
+
+        # Shuffle the stages if the option is on and the list is not just Castle Keep.
+        if self.options.stage_shuffle and active_stage_order != [stage_names.KEEP]:
+            active_stage_order = shuffle_stages(self, active_stage_order, stage_1_blacklist)
+
+        # Add Castle Keep onto the end if it isn't present.
+        if stage_names.KEEP not in active_stage_order:
+            active_stage_order.append(stage_names.KEEP)
+
+        # Get the final list of stage infos that we will save for later generation stages.
+        self.active_stage_info = get_stage_exits(self.options, active_stage_order)
+
+        # Create the seed's list of warps.
+        self.active_warp_list = get_active_warps(self)
+
         # If there are more S1s needed to unlock the whole warp menu than there are S1s in total, drop S1s per warp to
-        # something manageable.
-        #if self.s1s_per_warp * 7 > self.total_s1s:
-        #    self.s1s_per_warp = self.total_s1s // 7
-        #    logging.warning(f"[{self.multiworld.player_name[self.player]}] Too many required Special1s "
-        #                    f"({self.options.special1s_per_warp.value * 7}) for Special1s Per Warp setting: "
-        #                    f"{self.options.special1s_per_warp.value} with Total Special1s setting: "
-        #                    f"{self.options.total_special1s.value}. Lowering Special1s Per Warp to: "
-        #                    f"{self.s1s_per_warp}")
-        #    self.options.special1s_per_warp.value = self.s1s_per_warp
-
-        # Set the total and required Special2s to 1 if the drac condition is the Crystal, to the specified YAML numbers
-        # if it's Specials, or to 0 if it's None or Bosses. The boss totals will be figured out later.
-        #if self.drac_condition == DraculasCondition.option_crystal:
-        #    self.total_s2s = 1
-        #    self.required_s2s = 1
-        #elif self.drac_condition == DraculasCondition.option_specials:
-        #    self.total_s2s = self.options.total_special2s.value
-        #    self.required_s2s = int(self.options.percent_special2s_required.value / 100 * self.total_s2s)
-
-        # Enable/disable character stages and branching paths accordingly
-        #if self.options.character_stages == CharacterStages.option_reinhardt_only:
-        #    self.carrie_stages = False
-        #elif self.options.character_stages == CharacterStages.option_carrie_only:
-        #    self.reinhardt_stages = False
-        #elif self.options.character_stages == CharacterStages.option_both:
-        #    self.branching_stages = True
-
-        self.active_stage_exits = get_normal_stage_exits(self)
-
-        stage_1_blacklist = []
-
-        # Prevent Clock Tower from being Stage 1 if more than 4 S1s are needed to warp out of it.
-        if self.s1s_per_warp > 4 and not self.options.multi_hit_breakables:
-            stage_1_blacklist.append(rname.clock_tower)
-
-        # Shuffle the stages if the option is on.
-        #if self.options.stage_shuffle:
-        #    self.active_stage_exits, self.starting_stage, self.active_stage_list = \
-        #        shuffle_stages(self, stage_1_blacklist)
-        #else:
-        self.active_stage_list = [stage for stage in vanilla_stage_order if stage in self.active_stage_exits]
-
-        # Create a list of warps from the active stage list. They are in a random order by default and will never
-        # include the starting stage.
-        # self.active_warp_list = generate_warps(self)
+        # the highest valid number.
+        if self.options.special1s_per_warp * (len(self.active_warp_list) - 1) > self.options.total_special1s:
+            new_s1s_per_warp = self.options.total_special1s // (len(self.active_warp_list) - 1)
+            logging.warning(f"[{self.player_name}] Too many required Special1s "
+                            f"({self.options.special1s_per_warp.value * (len(self.active_warp_list) - 1)}) for "
+                            f"Special1s Per Warp setting: {self.options.special1s_per_warp.value} with Total Special1s "
+                            f"setting: {self.options.total_special1s.value}. Lowering Special1s Per Warp to: "
+                            f"{new_s1s_per_warp}")
+            self.options.special1s_per_warp.value = new_s1s_per_warp
 
     def create_regions(self) -> None:
-        # Add the Menu Region.
-        created_regions = [Region("Menu", self.player, self.multiworld)]
+        # Create the Menu Region and all Stage Regions.
+        created_regions = [Region(reg_names.menu, self.player, self.multiworld)] \
+                          + get_regions_from_all_active_stages(self)
 
-        # Add every stage Region by checking to see if that stage is active.
-        created_regions.extend([Region(name, self.player, self.multiworld)
-                                for name in get_region_names(self.active_stage_exits)])
-
-        # Add the Renon's shop Region if shopsanity is on.
+        # Create Renon's shop Region if shopsanity is on.
         #if self.options.shopsanity:
         #    created_regions.append(Region(rname.renon, self.player, self.multiworld))
 
-        # Add the Dracula's chamber (the end) Region.
-        created_regions.append(Region(rname.ck_drac_chamber, self.player, self.multiworld))
-
-        # Set up the Regions correctly.
+        # Attach the Regions to the Multiworld.
         self.multiworld.regions.extend(created_regions)
 
-        # Add the warp Entrances to the Menu Region (the one always at the start of the Region list).
-        # created_regions[0].add_exits(get_warp_entrances(self.active_warp_list))
-        created_regions[0].add_exits({rname.fl_start: "Start stage"})
+        # Add the warp Entrances to the Menu Region (the one always at the start of our created Regions list).
+        created_regions[0].add_exits(get_warp_entrances(self.active_warp_list))
 
+        # Loop over every Region and create and add its Locations and Entrances.
         for reg in created_regions:
 
-            # Add the Entrances to all the Regions.
-            ent_names = get_region_info(reg.name, "entrances")
-            if ent_names is not None:
-                reg.add_exits(verify_entrances(self.options, ent_names, self.active_stage_exits))
+            # Add the Entrances to the Region (if it has any).
+            if ALL_CVLOD_REGIONS[reg.name]["entrances"]:
+                reg.add_exits(verify_entrances(self.options, ALL_CVLOD_REGIONS[reg.name]["entrances"],
+                                               self.active_stage_info))
 
-            # Add the Locations to all the Regions.
-            loc_names = get_region_info(reg.name, "locations")
-            if loc_names is None:
+            # Add the Locations to the Region (if it has any).
+            reg_loc_names = ALL_CVLOD_REGIONS[reg.name]["locations"]
+            if reg_loc_names is None:
                 continue
-            verified_locs, events = verify_locations(self.options, loc_names)
-            reg.add_locations(verified_locs, CVLoDLocation)
+            locations_with_ids, locked_pairs = get_locations_to_create(reg_loc_names, self.options)
+            reg.add_locations(locations_with_ids, CVLoDLocation)
 
-            # Place event Items on all of their associated Locations.
-            for event_loc, event_item in events.items():
-                self.get_location(event_loc).place_locked_item(self.create_item(event_item, "progression"))
-                # If we're looking at a boss kill trophy, increment the total S2s and, if we're not already at the
-                # set number of required bosses, the total required number. This way, we can prevent gen failures
-                # should the player set more bosses required than there are total.
-                #if event_item == iname.trophy:
-                #    self.total_s2s += 1
-                #    if self.required_s2s < self.options.bosses_required.value:
-                #        self.required_s2s += 1
+            # Place locked Items on all of their associated Locations (if any Locations have any).
+            for locked_loc, locked_item in locked_pairs.items():
+                self.get_location(locked_loc).place_locked_item(self.create_item(locked_item,
+                                                                                 ItemClassification.progression))
 
-        # If Dracula's Condition is Bosses and there are less calculated required S2s than the value specified by the
-        # player (meaning there weren't enough bosses to reach the player's setting), throw a warning and lower the
-        # option value.
-        #if self.options.draculas_condition == DraculasCondition.option_bosses and self.required_s2s < \
-        #        self.options.bosses_required.value:
-        #    logging.warning(f"[{self.multiworld.player_name[self.player]}] Not enough bosses for Bosses Required "
-        #                    f"setting: {self.options.bosses_required.value}. Lowering to: {self.required_s2s}")
-        #    self.options.bosses_required.value = self.required_s2s
+                # If we're looking at a boss kill Trophy, increment the total available bosses. This way, we can catch
+                # gen failures should the player set more bosses required than there are total.
+                if locked_item == item_names.event_trophy:
+                    self.total_available_bosses += 1
 
-    def create_item(self, name: str, force_classification=None) -> Item:
+        # If Dracula's Condition is Bosses and there are fewer bosses total than the required number specified by the
+        # player, throw a warning and lower the option value to something valid.
+        if self.options.draculas_condition == DraculasCondition.option_bosses and self.total_available_bosses < \
+                self.options.bosses_required.value:
+            # If we have absolutely no bosses available at all, meaning we have no active stages with bosses and the
+            # Renon and Vincent fights are both disabled, let the player know of this and change Dracula's Condition to
+            # None. Otherwise, throw a regular warning and lower the required bosses.
+            if not self.total_available_bosses:
+                logging.warning(f"[{self.multiworld.player_name[self.player]}] Dracula's Condition cannot be Bosses "
+                                f"because there are absolutely no stages present in the stage list with bosses at all. "
+                                f"It will be changed to None instead.")
+                self.options.draculas_condition.value = DraculasCondition.option_none
+            else:
+                logging.warning(f"[{self.multiworld.player_name[self.player]}] Not enough bosses available for a "
+                                f"{self.options.bosses_required.value}-boss requirement. Bosses Required will be "
+                                f"lowered to {self.total_available_bosses}.")
+                self.options.bosses_required.value = self.total_available_bosses
+
+    def create_item(self, name: str, force_classification: ItemClassification | None = None) -> CVLoDItem:
         if force_classification is not None:
-            classification = getattr(ItemClassification, force_classification)
+            classification = force_classification
         else:
-            classification = getattr(ItemClassification, get_item_info(name, "default classification"))
+            classification = ALL_CVLOD_ITEMS[name].default_classification
 
-        code = get_item_info(name, "code")
-        if code is not None:
-            code += base_id
+        if name in ALL_CVLOD_ITEMS:
+            code = ALL_CVLOD_ITEMS[name].item_id
+        else:
+            code = None
 
         created_item = CVLoDItem(name, classification, code, self.player)
 
         return created_item
 
     def create_items(self) -> None:
-        item_counts = get_item_counts(self)
-
-        # Set up the items correctly
-        self.multiworld.itempool += [self.create_item(item, classification) for classification in item_counts for item
-                                     in item_counts[classification] for _ in range(item_counts[classification][item])]
+        # Set up the Items correctly and submit them to the multiworld's Item pool.
+        self.multiworld.itempool += get_item_pool(self)
 
     def set_rules(self) -> None:
         # Set all the Entrance rules properly.
@@ -222,44 +224,74 @@ class CVLoDWorld(World):
     def generate_output(self, output_directory: str) -> None:
         active_locations = self.multiworld.get_locations(self.player)
 
-        # Location data and shop names, descriptions, and colors
-        offset_data, shop_name_list, shop_colors_list, shop_desc_list = \
-            get_location_data(self, active_locations)
+        # Prepare the slot info to write to a JSON inside the AP patch file.
+        slot_patch_info = {"options":
+                               {"villa_branching_paths": self.options.villa_branching_paths.value,
+                                "castle_center_branching_paths": self.options.castle_center_branching_paths.value,
+                                "special1s_per_warp": self.options.special1s_per_warp.value,
+                                "total_special1s": self.options.total_special1s.value,
+                                "castle_wall_state": self.options.castle_wall_state.value,
+                                "villa_state": self.options.villa_state.value,
+                                "draculas_condition": self.options.draculas_condition.value,
+                                "total_special2s": self.options.total_special2s.value,
+                                "required_special2s": self.required_s2s,
+                                "bosses_required": self.options.bosses_required.value,
+                                "lizard_locker_items": self.options.lizard_locker_items.value,
+                                "renon_fight_condition": self.options.renon_fight_condition.value,
+                                "vincent_fight_condition": self.options.vincent_fight_condition.value,
+                                "castle_keep_ending_sequence": self.options.castle_keep_ending_sequence.value,
+                                "increase_item_limit": self.options.increase_item_limit.value,
+                                "nerf_healing_items": self.options.nerf_healing_items.value,
+                                "loading_zone_heals": self.options.loading_zone_heals.value,
+                                "permanent_powerups": self.options.permanent_powerups.value,
+                                "disable_time_restrictions": self.options.disable_time_restrictions.value,
+                                "skip_gondolas": self.options.skip_gondolas.value,
+                                "skip_waterway_blocks": self.options.skip_waterway_blocks.value,
+                                "countdown": self.options.countdown.value,
+                                "window_color_r": self.options.window_color_r.value,
+                                "window_color_g": self.options.window_color_g.value,
+                                "window_color_b": self.options.window_color_b.value,
+                                "window_color_a": self.options.window_color_a.value},
+                           "start inventory": get_start_inventory_data(self.player, self.options,
+                                                                       self.multiworld.precollected_items[self.player]),
+                           "stages": self.active_stage_info,
+                           "warps": self.active_warp_list,
+                           "location values": get_location_write_values(self, active_locations),
+                           "location text": get_location_text(self, active_locations),
+                           "transition values": get_transition_write_values(self.options, self.active_stage_info),
+                           # Randomize which Forest Charnel House coffin is the prize one.
+                           "prize coffin id": self.random.randint(0, 4),
+                           # Cornell Villa fountain puzzle order to be randomized.
+                           "fountain order": ["O", "M", "H", "V"],
+                           "patch version": ARCHIPELAGO_PATCH_IDENTIFIER,
+                           "auth": base64.b64encode(self.auth).decode()}
+
+        # Randomize the fountain order.
+        self.random.shuffle(slot_patch_info["fountain order"])
+
+        # If Sub-weapons are shuffled amongst themselves, update the location values with them.
+        if self.options.sub_weapon_shuffle == SubWeaponShuffle.option_own_pool:
+            slot_patch_info["location values"].update(shuffle_sub_weapons(self))
+
         # Shop prices
         #if self.options.shop_prices:
         #    offset_data.update(randomize_shop_prices(self))
         # Map lighting
         #if self.options.map_lighting:
         #    offset_data.update(randomize_lighting(self))
-        # Sub-weapons
-        if self.options.sub_weapon_shuffle == SubWeaponShuffle.option_own_pool:
-            offset_data.update(shuffle_sub_weapons(self))
         # Music
         #if self.options.background_music:
         #    offset_data.update(randomize_music(self))
-        # Loading zones
-        # offset_data.update(get_loading_zone_bytes(self.options, self.starting_stage, self.active_stage_exits))
-        # Countdown
-        if self.options.countdown:
-            offset_data.update(get_countdown_numbers(self.options, active_locations))
-        # Start Inventory
-        offset_data.update(get_start_inventory_data(self.player, self.options,
-                                                    self.multiworld.precollected_items[self.player]))
-        # Forest Charnel prize coffin
-        offset_data.update(randomize_charnel_prize_coffin(self))
-        # Villa fountain puzzle
-        offset_data.update(randomize_fountain_puzzle(self))
 
+        # Create and write the patch file.
         patch = CVLoDProcedurePatch(player=self.player, player_name=self.multiworld.player_name[self.player])
-        write_patch(self, patch, offset_data, shop_name_list, shop_desc_list, shop_colors_list, active_locations)
+        patch.write_file("slot_patch_info.json", json.dumps(slot_patch_info).encode('utf-8'))
 
-        rom_path = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}"
-                                                  f"{patch.patch_file_ending}")
-
-        patch.write(rom_path)
+        patch.write(os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}"
+                                                   f"{patch.patch_file_ending}"))
 
     def get_filler_item_name(self) -> str:
-        return self.random.choice(filler_item_names)
+        return self.random.choice(POSSIBLE_EXTRA_FILLER)
 
     #def extend_hint_information(self, hint_data: typing.Dict[int, typing.Dict[int, str]]):
         # Attach each location's stage's position to its hint information if Stage Shuffle is on.

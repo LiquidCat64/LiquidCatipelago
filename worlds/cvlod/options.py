@@ -1,16 +1,25 @@
 from dataclasses import dataclass
-from Options import Choice, DefaultOnToggle, Range, Toggle, PerGameCommonOptions, StartInventoryPool
+from Options import OptionGroup, Choice, DefaultOnToggle, PerGameCommonOptions, Range, Toggle, TextChoice, FreeText, \
+    StartInventoryPool, DeathLink
 
 
-class CharacterStages(Choice):
-    """Whether to include Reinhardt-only stages, Carrie-only stages, or both with or without branching paths at the end
-    of Villa and Castle Center."""
-    display_name = "Character Stages"
-    option_both = 0
-    option_branchless_both = 1
-    option_reinhardt_only = 2
-    option_carrie_only = 3
-    default = 0
+class StageLayout(TextChoice):
+    """Which stages in the game appear in the slot and in what order.
+    Supports creating a custom layout by typing the name of each stage separated by a semicolon.
+    Note that because Castle Keep is always at the end, there is no need to specify it. That is, unless you intend to play a slot that is ONLY it...
+    Example: Room of Clocks;Art Tower;Foggy Lake creates a layout of Room of Clocks followed by Art Tower followed by Foggy Lake.
+    If Villa branches are enabled, the next 2, 3, or 5 non-Castle Center stages in the list after Villa will represent the branching path stages.
+    Example: Villa;Forest of Silence;Foggy Lake;Clock Tower;Castle Wall;Duel Tower results in Villa followed by Forest of Silence on branch 1, Foggy Lake on branch 2, and Clock Tower, Castle Wall, and Duel Tower making up the Cornell path.
+    If Castle Center branches are enabled, the next 4 non-Villa stages after Castle Center will represent the branching path stages.
+    Example: Castle Center;Tower of Ruins;Tunnel;The Outer Wall;Tower of Science results in Castle Center followed by Tower of Ruins and Tunnel on branch 1, and The Outer Wall and Tower of Science on branch 2."""
+    display_name = "Stage Layout"
+    option_cornell_only = 0
+    option_reinhardt_only = 1
+    option_carrie_only = 2
+    option_henry_only = 3
+    option_reinhardt_carrie = 4
+    option_all = 5
+    default = 5
 
 
 class StageShuffle(Toggle):
@@ -20,9 +29,9 @@ class StageShuffle(Toggle):
     display_name = "Stage Shuffle"
 
 
-class StartingStage(Choice):
+class ShuffledStartingStage(Choice):
     """Which stage to start at if Stage Shuffle is turned on."""
-    display_name = "Starting Stage"
+    display_name = "Shuffled Starting Stage"
     option_foggy_lake = 0
     option_forest_of_silence = 1
     option_castle_wall = 2
@@ -42,13 +51,37 @@ class StartingStage(Choice):
     default = "random"
 
 
+class VillaBranchingPaths(Choice):
+    """Whether Villa is immediately followed by two diverging stage paths, three diverging stage paths, or three diverging stage paths with the third leading to two more stages that connect directly to the end of Castle Center.
+    The latter option is only available if Castle Center is also enabled. If two paths are available, entering the Villa end coffin at day or night will send you to one path or the other.
+    If three are available, entering within the following times will send you to path 1, 2, or 3 respectively: 12:01 AM - 8:00 AM, 8:01 AM - 4:00 PM, and 4:01 PM - 12:00 PM."""
+    display_name = "Villa Branching Paths"
+    option_one = 0
+    option_two = 1
+    option_three = 2
+    option_three_with_cornell_path = 3
+    default = 3
+
+
+class CastleCenterBranchingPaths(Choice):
+    """Whether Castle Center is immediately followed by two diverging stage paths of two stages each.
+    Both bridges at the end of Castle Center leading to both exits will be intact if Two enabled, or just the ones for Reinhardt or Carrie if a One option is chosen."""
+    display_name = "Castle Center Branching Paths"
+    option_one_reinhardt = 0
+    option_one_carrie = 1
+    option_two = 2
+    default = 2
+
+
+
 class WarpOrder(Choice):
-    """Arranges the warps in the warp menu in whichever stage order chosen,
-    thereby changing the order they are unlocked in."""
+    """Arranges the warps in the Z + R + START warp menu in whichever stage order chosen, thereby affecting the order they are unlocked in.
+    Set Order only matters if using a custom Warp Layout; otherwise, Seed Stage Order will be deferred to."""
     display_name = "Warp Order"
-    option_seed_stage_order = 0
-    option_vanilla_stage_order = 1
-    option_randomized_order = 2
+    option_set_order = 0
+    option_seed_stage_order = 1
+    option_vanilla_stage_order = 2
+    option_randomized_order = 3
     default = 0
 
 
@@ -77,19 +110,35 @@ class HardItemPool(Toggle):
     display_name = "Hard Item Pool"
 
 
+class TotalRandomWarps(Range):
+    """How many randomly-chosen warps to later stages are available. Will be ignored if a custom Warp Layout is being used."""
+    display_name = "Total Random Warps"
+    range_start = 0
+    range_end = 16
+    default = 7
+
+
+class WarpLayout(FreeText):
+    """Allows specifying a custom set of warps to be used, rather than it being a specific number of random ones.
+    Type the names of each stage that you want to have a warp, separated by a semicolon. The starting stage does not need to be included.
+    Example: Castle Center;Duel Tower;The Outer Wall creates warps for Castle Wall, Duel Tower, and The Outer Wall, unlocked in that order if Warp Order is set to Seed Stage Order.
+    If left blank or an invalid list is provided, a random selection will be used instead, the number of which can be specified in Total Random Warps."""
+    display_name = "Warp Layout"
+
+
 class Special1sPerWarp(Range):
-    """Sets how many Special1 jewels are needed per warp menu option unlock.
-    This will decrease until the number x 7 is less than or equal to the Total Specail1s if it isn't already."""
-    range_start = 1
-    range_end = 10
+    """How many Special1 jewels are needed per warp menu option unlock.
+    Does not apply if Total Available Warps is 0."""
+    range_start = 0
+    range_end = 6
     default = 1
     display_name = "Special1s Per Warp"
 
 
 class TotalSpecial1s(Range):
-    """Sets how many Speical1 jewels are in the pool in total."""
-    range_start = 7
-    range_end = 70
+    """How many Speical1 jewels are available to be found in the multiworld item pool. Will auto-increase to Total Available Warps x Special1s Per Warp if lower."""
+    range_start = 0
+    range_end = 99
     default = 7
     display_name = "Total Special1s"
 
@@ -119,7 +168,7 @@ class PercentSpecial2sRequired(Range):
 class TotalSpecial2s(Range):
     """How many Speical2 jewels are in the pool in total when Dracula's Condition is Special2s."""
     range_start = 1
-    range_end = 70
+    range_end = 99
     default = 25
     display_name = "Total Special2s"
 
@@ -135,7 +184,7 @@ class BossesRequired(Range):
 
 class CarrieLogic(Toggle):
     """Adds the 2 checks inside Underground Waterway's crawlspace to the pool.
-    If you (and everyone else if racing the same seed) are planning to only ever play Reinhardt, don't enable this.
+    If you (and everyone else if playing the same slot) are planning to only ever play Reinhardt, don't enable this.
     Can be combined with Hard Logic to include Carrie-only tricks."""
     display_name = "Carrie Logic"
 
@@ -174,6 +223,33 @@ class Shopsanity(Toggle):
     display_name = "Shopsanity"
 
 
+class CastleWallState(Choice):
+    """Which character's state Castle Wall should be in. Hybrid will have it be a combination of both Reinhardt/Carrie and Cornell's versions, with both Left Tower Key and Winch Lever required to progress past it."""
+    display_name = "Castle Wall State"
+    option_reinhardt_carrie = 0
+    option_cornell = 1
+    option_hybrid = 2
+    default = 2
+
+
+class VillaState(Choice):
+    """Which character's state Villa should be in. Hybrid will have it be a combination of both Reinhardt/Carrie and Cornell's versions, with blockages, events, and fights from both.
+    Rose Garden Key will be needed to unlock the maze's middle dividing doors."""
+    display_name = "Villa State"
+    option_reinhardt_carrie = 0
+    option_cornell = 1
+    option_hybrid = 2
+    default = 2
+
+
+class VillaMazeKid(Choice):
+    """Which kid is found and rescued from the maze, regardless of the Villa state."""
+    display_name = "Villa Bedroom Vampire"
+    option_malus = 0
+    option_henry = 1
+    default = 0
+
+
 class ShopPrices(Choice):
     """Randomizes the amount of gold each item costs in Renon's shop.
     Use the below options to control how much or little an item can cost."""
@@ -200,23 +276,29 @@ class MaximumGoldPrice(Range):
 
 
 class PostBehemothBoss(Choice):
-    """Sets which boss is fought in the vampire triplets' room in Castle Center by which characters after defeating
-    Behemoth."""
+    """Sets which boss is fought in the vampire triplets' room in Castle Center after defeating Behemoth."""
     display_name = "Post-Behemoth Boss"
-    option_vanilla = 0
-    option_inverted = 1
-    option_always_rosa = 2
-    option_always_camilla = 3
+    option_character_dependant = 0
+    option_rosa = 1
+    option_camilla = 2
+    default = 0
+
+class DuelTowerFinalBoss(Choice):
+    """Sets which boss is fought at the fourth Duel Tower arena."""
+    display_name = "Duel Tower Final Boss"
+    option_character_dependant = 0
+    option_were_tiger = 1
+    option_giant_werewolf = 2
     default = 0
 
 
 class RoomOfClocksBoss(Choice):
-    """Sets which boss is fought at Room of Clocks by which characters."""
+    """Sets which boss is fought at Room of Clocks."""
     display_name = "Room of Clocks Boss"
-    option_vanilla = 0
-    option_inverted = 1
-    option_always_death = 2
-    option_always_actrise = 3
+    option_character_dependant = 0
+    option_death = 1
+    option_actrise = 2
+    option_ortega = 3
     default = 0
 
 
@@ -238,13 +320,15 @@ class VincentFightCondition(Choice):
     default = 1
 
 
-class BadEndingCondition(Choice):
-    """Sets the condition on which the currently-controlled character's Bad Ending will trigger."""
-    display_name = "Bad Ending Condition"
-    option_never = 0
-    option_kill_vincent = 1
-    option_always = 2
-    default = 1
+class CastleKeepEndingSequence(Choice):
+    """Which character final boss and ending sequence you will go through at Castle Keep upon making it inside Dracula's chamber.
+    Reinhardt Carrie Timed = You will receive either their good or bad ending depending on whether you took 16 in-game days to reach the end."""
+    display_name = "Castle Keep Ending Sequence"
+    option_reinhardt_carrie_good = 0
+    option_reinhardt_carrie_bad = 1
+    option_reinhardt_carrie_timed = 2
+    option_cornell = 3
+    default = 0
 
 
 class IncreaseItemLimit(DefaultOnToggle):
@@ -421,11 +505,11 @@ class WindowColorA(Range):
     default = 6
 
 
-class DeathLink(Choice):
-    """When you die, everyone dies. Of course the reverse is true too.
-    Explosive: Makes received DeathLinks kill you via the Magical Nitro explosion
-    instead of the normal death animation."""
-    display_name = "DeathLink"
+class CVLoDDeathLink(Choice):
+    __doc__ = (DeathLink.__doc__ + "\n\n    Explosive: Makes received death links kill you via the Magical Nitro " +
+               "explosion instead of the normal death animation.")
+
+    display_name = "Death Link"
     option_off = 0
     alias_no = 0
     alias_true = 1
@@ -433,23 +517,28 @@ class DeathLink(Choice):
     option_on = 1
     option_explosive = 2
 
-
 @dataclass
 class CVLoDOptions(PerGameCommonOptions):
     start_inventory_from_pool: StartInventoryPool
-    # character_stages: CharacterStages
-    # stage_shuffle: StageShuffle
-    # starting_stage: StartingStage
-    # warp_order: WarpOrder
+    stage_layout: StageLayout
+    villa_branching_paths: VillaBranchingPaths
+    castle_center_branching_paths: CastleCenterBranchingPaths
+    stage_shuffle: StageShuffle
+    shuffled_starting_stage: ShuffledStartingStage
+    warp_layout: WarpLayout
+    warp_order: WarpOrder
+    total_random_warps: TotalRandomWarps
+    special1s_per_warp: Special1sPerWarp
+    total_special1s: TotalSpecial1s
+    castle_wall_state: CastleWallState
+    villa_state: VillaState
     sub_weapon_shuffle: SubWeaponShuffle
     spare_keys: SpareKeys
     # hard_item_pool: HardItemPool
-    special1s_per_warp: Special1sPerWarp
-    total_special1s: TotalSpecial1s
     draculas_condition: DraculasCondition
     percent_special2s_required: PercentSpecial2sRequired
     total_special2s: TotalSpecial2s
-    # bosses_required: BossesRequired
+    bosses_required: BossesRequired
     carrie_logic: CarrieLogic
     hard_logic: HardLogic
     multi_hit_breakables: MultiHitBreakables
@@ -459,22 +548,23 @@ class CVLoDOptions(PerGameCommonOptions):
     # shop_prices: ShopPrices
     # minimum_gold_price: MinimumGoldPrice
     # maximum_gold_price: MaximumGoldPrice
-    # post_behemoth_boss: PostBehemothBoss
-    # room_of_clocks_boss: RoomOfClocksBoss
-    # renon_fight_condition: RenonFightCondition
-    # vincent_fight_condition: VincentFightCondition
-    # bad_ending_condition: BadEndingCondition
+    post_behemoth_boss: PostBehemothBoss
+    duel_tower_final_boss: DuelTowerFinalBoss
+    room_of_clocks_boss: RoomOfClocksBoss
+    renon_fight_condition: RenonFightCondition
+    vincent_fight_condition: VincentFightCondition
+    castle_keep_ending_sequence: CastleKeepEndingSequence
     increase_item_limit: IncreaseItemLimit
-    # nerf_healing_items: NerfHealingItems
-    # loading_zone_heals: LoadingZoneHeals
+    nerf_healing_items: NerfHealingItems
+    loading_zone_heals: LoadingZoneHeals
     # invisible_items: InvisibleItems
     # drop_previous_sub_weapon: DropPreviousSubWeapon
-    # permanent_powerups: PermanentPowerUps
+    permanent_powerups: PermanentPowerUps
     # ice_trap_percentage: IceTrapPercentage
     # ice_trap_appearance: IceTrapAppearance
-    # disable_time_restrictions: DisableTimeRestrictions
-    # skip_gondolas: SkipGondolas
-    # skip_waterway_blocks: SkipWaterwayBlocks
+    disable_time_restrictions: DisableTimeRestrictions
+    skip_gondolas: SkipGondolas
+    skip_waterway_blocks: SkipWaterwayBlocks
     countdown: Countdown
     # big_toss: BigToss
     # panther_dash: PantherDash
@@ -487,3 +577,23 @@ class CVLoDOptions(PerGameCommonOptions):
     window_color_b: WindowColorB
     window_color_a: WindowColorA
     # death_link: DeathLink
+
+
+cvlod_option_groups = [
+    OptionGroup("castle wall state", [
+        WindowColorR, WindowColorG, WindowColorB, WindowColorA, BackgroundMusic, MapLighting
+    ], start_collapsed=True),
+    OptionGroup("villa state", [
+        WindowColorR, WindowColorG, WindowColorB, WindowColorA, BackgroundMusic, MapLighting
+    ], start_collapsed=True),
+    OptionGroup("gameplay tweaks", [
+        HardItemPool, ShopPrices, MinimumGoldPrice, MaximumGoldPrice, PostBehemothBoss, RoomOfClocksBoss,
+        RenonFightCondition, VincentFightCondition, CastleKeepEndingSequence, IncreaseItemLimit, NerfHealingItems,
+        LoadingZoneHeals, InvisibleItems, DropPreviousSubWeapon, PermanentPowerUps, IceTrapPercentage,
+        IceTrapAppearance, DisableTimeRestrictions, SkipGondolas, SkipWaterwayBlocks, Countdown, BigToss, PantherDash,
+        IncreaseShimmySpeed, FallGuard, CVLoDDeathLink
+    ]),
+    OptionGroup("cosmetics", [
+        WindowColorR, WindowColorG, WindowColorB, WindowColorA, BackgroundMusic, MapLighting
+    ])
+]

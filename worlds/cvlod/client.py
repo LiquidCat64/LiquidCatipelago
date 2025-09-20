@@ -1,5 +1,4 @@
 from typing import TYPE_CHECKING, Set
-from .locations import base_id
 from .cvlod_text import cvlod_text_wrap, cvlod_string_to_bytearray
 
 from NetUtils import ClientStatus
@@ -169,7 +168,7 @@ class CastlevaniaLoDClient(BizHawkClient):
                         if flag_id == 0x18D:  # The "found a hidden path" cutscene flag
                             found_a_hidden_path = True
 
-                        location_id = flag_id + base_id
+                        location_id = flag_id
                         if location_id in ctx.server_locations:
                             locs_to_send.add(location_id)
 
