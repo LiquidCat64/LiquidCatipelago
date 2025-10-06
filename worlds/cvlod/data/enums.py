@@ -210,6 +210,7 @@ class ObjectExecutionFlags(IntFlag):
 class Objects(IntEnum):
     GAME_STATE_MGR = 0x01
     DMAMGR = 0x04
+    TEST_GRID_SPAWN_ENABLER = 0x06
     GAMEPLAY_MGR = 0x07
     PLAYER_LOADER = 0x08
     MAP_SETUP = 0x09

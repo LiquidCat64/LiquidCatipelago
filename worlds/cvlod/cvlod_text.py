@@ -17,11 +17,11 @@ CVLOD_ASCII_DIFFERENCE = 0x20
 CVLOD_STRING_END_CHARACTER = b"\xFF\xFF"
 CVLOD_TEXT_POOL_END_CHARACTER = b"\xB5\x00"
 
-CVLOD_COMMAND_CHARS = {"↗": 0xA0,  # Jump ahead to a corresponding A1 character in the text pool. Arg = Which one.
-                       "↘": 0xA1,  # Spot to jump to from a corresponding A0 character. Arg = Which one.
+CVLOD_COMMAND_CHARS = {"↗": 0xA0,  # Jump ahead to a corresponding 0xA1 character in the text pool. Arg = Which one.
+                       "↘": 0xA1,  # Spot to jump to from a corresponding 0xA0 character. Arg = Which one.
                        "✨":  0xA2,  # Toggle yellow text.
-                       "⏸": 0xA3,  # Pause text. Arg = How many frames to wait on. If 0, the game will wait for the
-                                   # player to manually press A instead.
+                       "🅰": 0xA3,  # Make the player press A to advance past here. Arg = Instead auto-advance after
+                                    # that number of frames if not 0.
                        "⬘": 0xA7,  # Pin a string on the current text line, typically a speaking character's name.
                                    # Arg = Pin if 0, unpin if 1.
                        "▶": 0xAA,  # Start set of selectable options text. Arg = Default option ID.
@@ -29,14 +29,14 @@ CVLOD_COMMAND_CHARS = {"↗": 0xA0,  # Jump ahead to a corresponding A1 characte
                        "◀": 0xAC,  # End set of selectable options text.
                        "👉": 0xAD,  # Start player character-exclusive text. Arg = character ID.
                        "👈": 0xAE,  # End player character-exclusive text.
-                       "\v": 0xAF,  # Similar to newline but with additional stuff?
+                       "⏸": 0xAF,  # Pause text and insert newline. Arg = How many frames to wait on.
                        "\f": 0xB2,  # Clear the text currently in the textbox (without closing it).
                        "\r": 0xB5,  # Close entire textbox. Typically used to mark the end of a text pool.
-                       "\n": 0xB6,  # Insert newline.
+                       "\n": 0xB6,  # Insert newline (without pausing).
                        " ": 0xB7}  # Insert space.
 CVLOD_COMMAND_CHARS_INV = {value: key for key, value in CVLOD_COMMAND_CHARS.items()}
 
-ARG_CHARS = {"↗", "↘", "⏸", "⬘", "▶", "◆", "👉"}
+ARG_CHARS = {"↗", "↘", "🅰", "⏸", "⬘", "▶", "◆", "👉"}
 ARG_END_CHAR = "/"
 
 NON_ASCII_MAPPINGS = {"◊": 0x5F, "「": 0x60, "」": 0x61, "。": 0x62, "•": 0x63, "—": 0x64, "▷": 0x65, "₀": 0x66,
@@ -44,7 +44,7 @@ NON_ASCII_MAPPINGS = {"◊": 0x5F, "「": 0x60, "」": 0x61, "。": 0x62, "•":
                       "〃": 0x70, "°": 0x71, "∞": 0x72, "、": 0x73}
 NON_ASCII_MAPPINGS_INV = {value: key for key, value in NON_ASCII_MAPPINGS.items()}
 
-LINE_RESET_CHARS = {"\n", "\r", "\f", "\v", "◆"}
+LINE_RESET_CHARS = {"\n", "\r", "\f", "⏸", "◆"}
 
 UNICODE_ASCII_START = 0x21
 UNICODE_ASCII_END = 0x7E
@@ -114,6 +114,9 @@ def cvlod_string_to_bytearray(cvlod_text: str, len_limit: int = LEN_LIMIT_MAP_TE
             # If it's a command character followed by an argument, turn on ctrl arg mode for the next few loops.
             if char in ARG_CHARS:
                 ctrl_arg_mode = True
+            # Otherwise, consider the control arg byte 00.
+            else:
+                text_bytes.extend([0x00])
             continue
 
         # If the current character has a mapping in the non-ASCII characters dict, append that character's mapping said
@@ -147,16 +150,16 @@ def cvlod_bytes_to_string(cvlod_str_bytes: bytes) -> str:
 
     for char_start in range(0, len(cvlod_str_bytes), 2):
         # Check the remaining string length to see if there are at least two bytes ahead. If there's not, meaning
-        # there's only one, then throw a warning and break the loop; the input string bytes should REALLY be an even
+        # there's only one, then throw an error and break the loop; the input string bytes should REALLY be an even
         # length!
-        if len(cvlod_str_bytes[char_start:]) < 2:
-            logging.warning(f"The following CVLoD string bytes are of an odd length when they should be even: "
-                            f"{cvlod_str_bytes}")
+        if len(cvlod_str_bytes[char_start:]) % 2:
+            logging.error(f"The following CVLoD string bytes are of an odd length when they should be even: "
+                          f"{cvlod_str_bytes}")
             break
 
         char_bytes = cvlod_str_bytes[char_start: char_start + 2]
 
-        # Check if the upper byte is a command character. If it is, get the Python string character that we have mapped
+        # Check if the upper byte is a command character. If it is, get the Python string character that we are using
         # for that command character.
         if char_bytes[0] in CVLOD_COMMAND_CHARS_INV:
             command_char = CVLOD_COMMAND_CHARS_INV[char_bytes[0]]
@@ -298,7 +301,7 @@ def cvlod_text_wrap(cvlod_text: str, textbox_len_limit: int, max_lines: int, tex
                 # textbox character, place the A advance character along with the next textbox character. Otherwise,
                 # place only the next textbox character.
                 if cvlod_text[i] != "\f":
-                    newline_char = "⏸0/\f"
+                    newline_char = "🅰0/\f"
                 else:
                     newline_char = "\f"
                 num_lines = 1
