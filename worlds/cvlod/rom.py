@@ -17,7 +17,7 @@ import os
 from .data import patches, loc_names
 from .data.enums import Scenes, NIFiles, Objects, ObjectExecutionFlags, ActorSpawnFlags, Items, Pickups, PickupFlags, \
     DoorFlags
-from .patcher import CVLoDRomPatcher, CVLoDSceneTextEntry, CVLoDNormalActorEntry
+from .patcher import CVLoDRomPatcher, CVLoDSceneTextEntry, CVLoDNormalActorEntry, CVLoDDoorEntry, CVLoDPillarActorEntry, CVLoDLoadingZoneEntry, CVLoDEnemyPillarEntry, CVLoD1HitBreakableEntry, CVLoD3HitBreakableEntry, CVLoDSpawnEntranceEntry
 # from .stages import CVLOD_STAGE_INFO
 from .cvlod_text import cvlod_string_to_bytearray, cvlod_text_wrap, cvlod_bytes_to_string, CVLOD_STRING_END_CHARACTER, \
     CVLOD_TEXT_POOL_END_CHARACTER
@@ -61,18 +61,26 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32(0x66C, 0x00000000)
         patcher.write_int32(0x678, 0x00000000)
 
-        for scene in patcher.scenes:
-            if not scene.overlay:
-                continue
-            scene.actor_lists["init"].append(CVLoDNormalActorEntry(start_addr=None, delete_primed=False, spawn_flags=0, status_flags=0, x_pos=0.0, y_pos=0.0, z_pos=0.0, execution_flags=0, object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0, var_c=Pickups.THREE_HUNDRED_GOLD, var_d=0, extra_condition_ptr=0))
-            scene.actor_lists["distance"].append(CVLoDNormalActorEntry(start_addr=None, delete_primed=False, spawn_flags=0, status_flags=0, x_pos=0.0, y_pos=0.0, z_pos=0.0, execution_flags=0, object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0, var_c=Pickups.SPECIAL2, var_d=0, extra_condition_ptr=0))
-            if "room 0" in scene.actor_lists:
-                scene.actor_lists["distance"].append(
-                    CVLoDNormalActorEntry(start_addr=None, delete_primed=False, spawn_flags=0, status_flags=0,
-                                          x_pos=0.0, y_pos=0.0, z_pos=0.0, execution_flags=0,
-                                          object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
-                                          var_c=Pickups.MAGICAL_NITRO, var_d=0, extra_condition_ptr=0))
-            scene.scene_text.append(CVLoDSceneTextEntry(start_addr=None, delete_primed=False, text="Have some more text!"))
+        patcher.scenes[Scenes.INTRO_NARRATION].actor_lists["distance"] += \
+            [CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=0.0, y_pos=4.8, z_pos=0.0, execution_flags=0,
+                                   object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                   var_c=Pickups.LEFT_TOWER_KEY, var_d=0, extra_condition_ptr=0),
+             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=-7.0, y_pos=2.3, z_pos=0.0, execution_flags=0,
+                                   object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                   var_c=Pickups.STOREROOM_KEY, var_d=0, extra_condition_ptr=0),
+             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=7.0, y_pos=2.3, z_pos=0.0, execution_flags=0,
+                                   object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                   var_c=Pickups.COPPER_KEY, var_d=0, extra_condition_ptr=0),
+             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=-7.0, y_pos=-2.7, z_pos=0.0, execution_flags=0,
+                                   object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                   var_c=Pickups.CHAMBER_KEY, var_d=0, extra_condition_ptr=0),
+             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=7.0, y_pos=-2.7, z_pos=0.0, execution_flags=0,
+                                   object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                   var_c=Pickups.EXECUTION_KEY, var_d=0, extra_condition_ptr=0),
+             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=0.0, y_pos=-5.2, z_pos=0.0, execution_flags=0,
+                                   object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                   var_c=Pickups.ARCHIVES_KEY, var_d=0, extra_condition_ptr=0),
+             ]
 
         return patcher.get_output_rom()
 

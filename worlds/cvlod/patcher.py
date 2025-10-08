@@ -2,7 +2,7 @@ import logging
 import zlib
 import struct
 
-from typing import Collection, TypedDict
+from typing import Collection, TypedDict, NotRequired
 from .data.enums import Scenes, Objects, ObjectExecutionFlags, ActorSpawnFlags, Items, Pickups, PickupFlags, \
     DoorFlags
 from .cvlod_text import cvlod_string_to_bytearray, cvlod_bytes_to_string, CVLOD_STRING_END_CHARACTER, \
@@ -42,8 +42,8 @@ EXTENDED_DATA_ACTORS: dict[int, str] = {Objects.ONE_HIT_BREAKABLE: "1hb",
 class CVLoDSceneDataEntry(TypedDict):
     """Base class that all CVLoD scene data entries inherit from."""
 
-    start_addr: int | None  # Where in the RDRAM the data entry starts, if it's vanilla. For easier debugging.
-    delete_primed: bool  # Whether the entry should be deleted when it comes time to reinsert the list.
+    start_addr: NotRequired[int]  # Where in the RDRAM the data entry starts, if it's vanilla. For easier debugging.
+    delete: NotRequired[bool]  # Whether the entry should be deleted when it comes time to reinsert the list.
 
 
 class CVLoDNormalActorEntry(CVLoDSceneDataEntry):
@@ -419,7 +419,6 @@ class CVLoDRomPatcher:
                         rotation=struct.unpack('>h', enemy_pillar_data[0x0A:0x0C])[0],
                         flag_id=int.from_bytes(enemy_pillar_data[0x0C:], "big"),
                         start_addr=current_enemy_pillar_start + SCENE_OVERLAY_RDRAM_START,
-                        delete_primed=False
                     )
 
                     # If the pillar has a lower actor list start address than the lowest one we've found, save the new
@@ -463,7 +462,6 @@ class CVLoDRomPatcher:
                         var_d=struct.unpack('>h', pillar_actor_data[0x0E:0x10])[0],
                         flag_id=int.from_bytes(pillar_actor_data[0x14:], "big"),
                         start_addr=current_enemy_pillar_actor_start + SCENE_OVERLAY_RDRAM_START,
-                        delete_primed=False
                     )
                     # Check if the actor has a documented entry in the actors enum.
                     if pillar_actor["object_id"] in Objects:
@@ -514,7 +512,6 @@ class CVLoDRomPatcher:
                         flag_id=int.from_bytes(one_hit_data[0x04:0x08], "big"),
                         pickup_flags=int.from_bytes(one_hit_data[0x08:0x0A], "big"),
                         start_addr=current_one_hit_start + SCENE_OVERLAY_RDRAM_START,
-                        delete_primed=False
                     )
 
                     # Check if the pickup ID has an entry in the pickups enum.
@@ -555,7 +552,6 @@ class CVLoDRomPatcher:
                         pickup_array_start=int.from_bytes(three_hit_data[0x04:0x08], "big"),
                         flag_id=int.from_bytes(three_hit_data[0x08:], "big"),
                         start_addr=current_three_hit_start + SCENE_OVERLAY_RDRAM_START,
-                        delete_primed=False
                     )
 
                     # If the 3HB has a lower pickup array start address than the lowest one we've found, save the new
@@ -628,7 +624,6 @@ class CVLoDRomPatcher:
                         half_28=int.from_bytes(door_data[0x28:0x2A], "big"),
                         half_2a=int.from_bytes(door_data[0x2A:], "big"),
                         start_addr=current_door_start + SCENE_OVERLAY_RDRAM_START,
-                        delete_primed=False
                     )
 
                     # Check if the door has an item ID with an entry in the items enum.
@@ -673,7 +668,6 @@ class CVLoDRomPatcher:
                         max_y_pos=struct.unpack('>h',loading_zone_data[0x10:0x12])[0],
                         max_z_pos=struct.unpack('>h',loading_zone_data[0x12:])[0],
                         start_addr=current_loading_zone_start + SCENE_OVERLAY_RDRAM_START,
-                        delete_primed=False
                     )
 
                     # Check if the zone's destination scene has a scene ID with an entry in the scenes enum.
@@ -709,8 +703,7 @@ class CVLoDRomPatcher:
                     if scene_text_char == CVLOD_STRING_END_CHARACTER:
                         converted_text = CVLoDSceneTextEntry(text=cvlod_bytes_to_string(raw_scene_text),
                                                              start_addr=current_string_start + \
-                                                                        SCENE_OVERLAY_RDRAM_START,
-                                                             delete_primed=False)
+                                                                        SCENE_OVERLAY_RDRAM_START)
                         # Add the string's length to the total original size of the text pool + 1 for the end char.
                         self.scenes[scene_id].scene_text_orig_size += len(converted_text["text"]) + 1
 
@@ -765,8 +758,7 @@ class CVLoDRomPatcher:
                     focus_y_pos=struct.unpack('>h', spawn_entrances_data[0x12:0x14])[0],
                     focus_z_pos=struct.unpack('>h', spawn_entrances_data[0x14:])[0],
                     start_addr=(spawn_entrances_start + (spawn_id * SCENE_SPAWN_LENGTH)) \
-                               - COMMON_SEGMENT_ROM_START + COMMON_SEGMENT_RDRAM_START,
-                    delete_primed=False
+                               - COMMON_SEGMENT_ROM_START + COMMON_SEGMENT_RDRAM_START
                 )
 
                 # Append the spawn entrance to the end of the list.
@@ -863,7 +855,6 @@ class CVLoDRomPatcher:
                 var_d=struct.unpack('>h', actor_data[0x1A:0x1C])[0],
                 extra_condition_ptr=int.from_bytes(actor_data[0x1C:], "big"),
                 start_addr=curr_addr + SCENE_OVERLAY_RDRAM_START,
-                delete_primed=False
             )
             # Check if the actor has a documented entry in the actors enum.
             if actor["object_id"] in Objects:
@@ -949,7 +940,7 @@ class CVLoDRomPatcher:
             # # # ACTOR LISTS # # #
             # Create the final actor lists with all entries primed for deletion removed.
             new_actor_lists = {list_name: [actor_entry for actor_entry in actor_list
-                                           if not actor_entry["delete_primed"]]
+                                           if "delete" not in actor_entry]
                                for list_name, actor_list in self.scenes[scene_id].actor_lists.items()}
 
             # Loop over each actor list, convert each one to binary data, and insert them back in the map overlay.
@@ -988,10 +979,10 @@ class CVLoDRomPatcher:
                                   b'\xFF\xFF\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
 
                 # Get the size of the original actor list by counting the number of entries in the list without entries
-                # deleted that don't have None for the start address. If the new actor data is the same size or smaller
+                # deleted that have a defined start address. If the new actor data is the same size or smaller
                 # than it was before, write it back where it was originally (if we even have a list to begin with).
                 if len(actor_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].actor_lists[list_name]
-                                           if orig_entry["start_addr"] is not None]):
+                                           if "start_addr" in orig_entry]):
                     if actor_list:
                         self.scenes[scene_id].write_ovl_bytes(self.scenes[scene_id].actor_lists[
                                                                   list_name][0]["start_addr"] \
@@ -1014,19 +1005,22 @@ class CVLoDRomPatcher:
                     elif "room" in list_name:
                         room_list_ptrs_start = self.read_bytes(SCENE_ACTOR_PTRS_START + 12 + (scene_id * 0x10), 4,
                                                                return_as_int=True) - SCENE_OVERLAY_RDRAM_START
-                        self.scenes[scene_id].write_ovl_int32(self.scenes[scene_id].read_ovl_bytes(
-                            room_list_ptrs_start + (int(list_name[5] * 4)), 4, return_as_int=True), new_actor_list_addr)
+
+                        self.scenes[scene_id].write_ovl_int32(room_list_ptrs_start + (int(list_name[5:]) * 4),
+                                                              new_actor_list_addr)
                     # Otherwise, if it's a 3HB pillar list, loop through every pillar data and update its actor pointer
                     # there.
                     else:
+                        old_actor_list_addr = self.scenes[scene_id].actor_lists["pillars"][0]["start_addr"]
                         for pillar_data in self.scenes[scene_id].enemy_pillars:
-                            pillar_data["actor_list_start"] += new_actor_list_addr - pillar_data["actor_list_start"]
+                            pillar_data["actor_list_start"] = new_actor_list_addr + (pillar_data["actor_list_start"] -
+                                                                                     old_actor_list_addr)
 
 
             # # # ENEMY PILLARS LIST # # #
             # Create the final enemy pillar list with all entries primed for deletion removed.
             new_pillar_list = [pillar_entry for pillar_entry in self.scenes[scene_id].enemy_pillars
-                               if not pillar_entry["delete_primed"]]
+                               if "delete" not in pillar_entry]
 
             # Loop over each enemy pillar, convert each one to binary data, and insert them back in the map overlay.
             list_data = bytearray(0)
@@ -1040,7 +1034,7 @@ class CVLoDRomPatcher:
             # If the new pillar data is the same size or smaller than it was before, write it back where it was
             # originally (if we even have a list to begin with).
             if len(new_pillar_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].enemy_pillars
-                                            if orig_entry["start_addr"] is not None]):
+                                            if "start_addr" in orig_entry]):
                 if new_pillar_list:
                     self.scenes[scene_id].write_ovl_bytes(self.scenes[scene_id].enemy_pillars[0]["start_addr"] \
                                                           - SCENE_OVERLAY_RDRAM_START, list_data)
@@ -1055,7 +1049,7 @@ class CVLoDRomPatcher:
             # # # 1-HIT BREAKABLES LIST # # #
             # Create the final 1-hit breakables list with all entries primed for deletion removed.
             new_1hb_list = [one_hit_entry for one_hit_entry in self.scenes[scene_id].one_hit_breakables
-                            if not one_hit_entry["delete_primed"]]
+                            if "delete" not in one_hit_entry]
 
             # Loop over each 1HB, convert each one to binary data, and insert them back in the map overlay.
             list_data = bytearray(0)
@@ -1068,7 +1062,7 @@ class CVLoDRomPatcher:
             # If the new 1HB data is the same size or smaller than it was before, write it back where it was originally
             # (if we even have a list to begin with).
             if len(new_1hb_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].one_hit_breakables
-                                            if orig_entry["start_addr"] is not None]):
+                                            if "start_addr" in orig_entry]):
                 if new_1hb_list:
                     self.scenes[scene_id].write_ovl_bytes(self.scenes[scene_id].one_hit_breakables[0]["start_addr"] \
                                                           - SCENE_OVERLAY_RDRAM_START, list_data)
@@ -1085,6 +1079,10 @@ class CVLoDRomPatcher:
             for three_hit_drop in self.scenes[scene_id].three_hit_drop_ids:
                 list_data += int.to_bytes(three_hit_drop, 2, "big")
 
+            # Pad the list data to be 4-aligned.
+            if len(list_data) % 4:
+                list_data += b'\x00\x00'
+
             # If the new array is the same size or smaller than it was before, write it back where it was originally
             # (if we even have an array to begin with).
             if len(self.scenes[scene_id].three_hit_drop_ids) <= self.scenes[scene_id].three_hit_drops_orig_len:
@@ -1096,14 +1094,15 @@ class CVLoDRomPatcher:
                 new_3hb_drop_list_addr = len(self.scenes[scene_id].overlay) + SCENE_OVERLAY_RDRAM_START
                 self.scenes[scene_id].overlay += list_data
                 for three_hit_data in self.scenes[scene_id].three_hit_breakables:
-                    three_hit_data["pickup_array_start"] += new_3hb_drop_list_addr - \
-                                                            three_hit_data["pickup_array_start"]
+                    three_hit_data["pickup_array_start"] = new_3hb_drop_list_addr + \
+                                                           (three_hit_data["pickup_array_start"] -
+                                                            self.scenes[scene_id].three_hit_drops_start)
 
 
             # # # 3-HIT BREAKABLES LIST # # #
             # Create the final 3-hit breakables list with all entries primed for deletion removed.
             new_3hb_list = [three_hit_entry for three_hit_entry in self.scenes[scene_id].three_hit_breakables
-                            if not three_hit_entry["delete_primed"]]
+                            if "delete" not in three_hit_entry]
 
             # Loop over each 3HB, convert each one to binary data, and insert them back in the map overlay.
             list_data = bytearray(0)
@@ -1116,7 +1115,7 @@ class CVLoDRomPatcher:
             # If the new 3HB data is the same size or smaller than it was before, write it back where it was
             # originally (if we even have a list to begin with).
             if len(new_3hb_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].three_hit_breakables
-                                            if orig_entry["start_addr"] is not None]):
+                                            if "start_addr" in orig_entry]):
                 if new_3hb_list:
                     self.scenes[scene_id].write_ovl_bytes(self.scenes[scene_id].three_hit_breakables[0]["start_addr"] \
                                                           - SCENE_OVERLAY_RDRAM_START, list_data)
@@ -1130,7 +1129,7 @@ class CVLoDRomPatcher:
             # # # DOORS LIST # # #
             # Create the final doors list with all entries primed for deletion removed.
             new_door_list = [door_entry for door_entry in self.scenes[scene_id].doors
-                             if not door_entry["delete_primed"]]
+                             if "delete" not in door_entry]
 
             # Loop over each door, convert each one to binary data, and insert them back in the map overlay.
             door_data = bytearray(0)
@@ -1159,7 +1158,7 @@ class CVLoDRomPatcher:
             # If the new door data is the same size or smaller than it was before, write it back where it was
             # originally (if we even have a list to begin with).
             if len(new_door_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].doors
-                                          if orig_entry["start_addr"] is not None]):
+                                          if "start_addr" in orig_entry]):
                 if new_door_list:
                     self.scenes[scene_id].write_ovl_bytes(self.scenes[scene_id].doors[0]["start_addr"] \
                                                           - SCENE_OVERLAY_RDRAM_START, door_data)
@@ -1173,7 +1172,7 @@ class CVLoDRomPatcher:
             # # # LOADING ZONES LIST # # #
             # Create the final loading zones list with all entries primed for deletion removed.
             new_loading_zone_list = [loading_zone_entry for loading_zone_entry in self.scenes[scene_id].loading_zones
-                                     if not loading_zone_entry["delete_primed"]]
+                                     if "delete" not in loading_zone_entry]
 
             # Loop over each loading zone, convert each one to binary data, and insert them back in the map overlay.
             loading_zone_data = bytearray(0)
@@ -1193,7 +1192,7 @@ class CVLoDRomPatcher:
             # If the new loading zone data is the same size or smaller than it was before, write it back where it was
             # originally (if we even have a list to begin with).
             if len(new_loading_zone_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].loading_zones
-                                                  if orig_entry["start_addr"] is not None]):
+                                                  if "start_addr" in orig_entry]):
                 if new_loading_zone_list:
                     self.scenes[scene_id].write_ovl_bytes(self.scenes[scene_id].loading_zones[0]["start_addr"] \
                                                           - SCENE_OVERLAY_RDRAM_START, loading_zone_data)
@@ -1207,7 +1206,7 @@ class CVLoDRomPatcher:
             # # # TEXT # # #
             # Create the final text list with all entries primed for deletion removed.
             new_text_list = [text_entry for text_entry in self.scenes[scene_id].scene_text
-                             if not text_entry["delete_primed"]]
+                             if "delete" not in text_entry]
 
             # Loop over each text, convert each one to binary data, and insert them back in the map overlay.
             text_data = bytearray(0)
@@ -1239,7 +1238,7 @@ class CVLoDRomPatcher:
             # # # SPAWN SPOTS # # #
             # Create the final spawn spots list with all entries primed for deletion removed.
             new_spawn_list = [spawn_entry for spawn_entry in self.scenes[scene_id].spawn_spots
-                              if not spawn_entry["delete_primed"]]
+                              if "delete" not in spawn_entry]
 
             # Loop over each spawn spot, convert each one to binary data, and insert them back in the map overlay.
             spawn_data = bytearray(0)
@@ -1256,10 +1255,14 @@ class CVLoDRomPatcher:
                                struct.pack(">h", spawn["focus_y_pos"]) +
                                struct.pack(">h", spawn["focus_z_pos"]))
 
+            # Pad the list data to be 4-aligned.
+            if len(spawn_data) % 4:
+                spawn_data += b'\x00\x00'
+
             # If the new spawn spot data is the same size or smaller than it was before, write it back where it was
             # in the common segment originally (if we even have a list to begin with).
             if len(new_spawn_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].spawn_spots
-                                                  if orig_entry["start_addr"] is not None]):
+                                                  if "start_addr" in orig_entry]):
                 if new_spawn_list:
                     self.write_bytes(self.scenes[scene_id].spawn_spots[0]["start_addr"] \
                                                           - COMMON_SEGMENT_RDRAM_START + COMMON_SEGMENT_ROM_START,
