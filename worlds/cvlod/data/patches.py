@@ -1989,7 +1989,7 @@ sea_monster_sunk_path_flag_unsetter = [
     0x3C08801D,  # LUI   T0, 0x801D
     0x9109AA8B,  # LBU   T1, 0xAA8B (T0)
     0x312900F7,  # ANDI  T1, T1, 0x00F7
-    0x08001231,  # J     0x800048C4
+    0x03200008,  # JR    T9
     0xA109AA8B   # SB    T1, 0xAA8B (T0)
 ]
 

@@ -8,7 +8,7 @@ import Utils
 from BaseClasses import Location
 from worlds.Files import APProcedurePatch, APTokenMixin, APTokenTypes, APPatchExtension
 from abc import ABC
-from typing import List, Dict, Union, Iterable, Collection, TYPE_CHECKING, NamedTuple, TypedDict
+from typing import List, Dict, Union, Iterable, TYPE_CHECKING
 
 import hashlib
 import os
@@ -18,7 +18,7 @@ from .data import patches, loc_names
 from .data.enums import Scenes, NIFiles, Objects, ObjectExecutionFlags, ActorSpawnFlags, Items, Pickups, PickupFlags, \
     DoorFlags
 from .patcher import CVLoDRomPatcher, CVLoDSceneTextEntry, CVLoDNormalActorEntry, CVLoDDoorEntry, CVLoDPillarActorEntry, CVLoDLoadingZoneEntry, CVLoDEnemyPillarEntry, CVLoD1HitBreakableEntry, CVLoD3HitBreakableEntry, CVLoDSpawnEntranceEntry
-# from .stages import CVLOD_STAGE_INFO
+from .stages import CVLOD_STAGE_INFO
 from .cvlod_text import cvlod_string_to_bytearray, cvlod_text_wrap, cvlod_bytes_to_string, CVLOD_STRING_END_CHARACTER, \
     CVLOD_TEXT_POOL_END_CHARACTER
 # from .aesthetics import renon_item_dialogue
@@ -55,44 +55,42 @@ class CVLoDPatchExtensions(APPatchExtension):
     game = "Castlevania - Legacy of Darkness"
 
     @staticmethod
-    def patch_rom(caller: APProcedurePatch, input_rom: bytes, slot_patch_info) -> bytes:
+    def patch_rom(caller: APProcedurePatch, input_rom: bytes, slot_patch_file) -> bytes:
         patcher = CVLoDRomPatcher(bytearray(input_rom))
+        slot_patch_info = json.loads(caller.get_file(slot_patch_file).decode("utf-8"))
+
+
+        # # # # # # # # #
+        # GENERAL EDITS #
+        # # # # # # # # #
+
         # NOP out the CRC BNEs
         patcher.write_int32(0x66C, 0x00000000)
         patcher.write_int32(0x678, 0x00000000)
 
-        patcher.scenes[Scenes.INTRO_NARRATION].actor_lists["distance"] += \
-            [CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=0.0, y_pos=4.8, z_pos=0.0, execution_flags=0,
-                                   object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
-                                   var_c=Pickups.LEFT_TOWER_KEY, var_d=0, extra_condition_ptr=0),
-             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=-7.0, y_pos=2.3, z_pos=0.0, execution_flags=0,
-                                   object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
-                                   var_c=Pickups.STOREROOM_KEY, var_d=0, extra_condition_ptr=0),
-             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=7.0, y_pos=2.3, z_pos=0.0, execution_flags=0,
-                                   object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
-                                   var_c=Pickups.COPPER_KEY, var_d=0, extra_condition_ptr=0),
-             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=-7.0, y_pos=-2.7, z_pos=0.0, execution_flags=0,
-                                   object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
-                                   var_c=Pickups.CHAMBER_KEY, var_d=0, extra_condition_ptr=0),
-             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=7.0, y_pos=-2.7, z_pos=0.0, execution_flags=0,
-                                   object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
-                                   var_c=Pickups.EXECUTION_KEY, var_d=0, extra_condition_ptr=0),
-             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=0.0, y_pos=-5.2, z_pos=0.0, execution_flags=0,
-                                   object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
-                                   var_c=Pickups.ARCHIVES_KEY, var_d=0, extra_condition_ptr=0),
-             ]
+        # Add keys in an AP logo formation to the title screen.
+        patcher.scenes[Scenes.INTRO_NARRATION].actor_lists["distance"] += [
+            CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=0.0, y_pos=3.8, z_pos=0.0, execution_flags=0,
+                                  object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                  var_c=Pickups.LEFT_TOWER_KEY, var_d=0, extra_condition_ptr=0),
+            CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=-3.6, y_pos=1.8, z_pos=-2.8, execution_flags=0,
+                                  object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                  var_c=Pickups.STOREROOM_KEY, var_d=0, extra_condition_ptr=0),
+            CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=3.6, y_pos=1.8, z_pos=2.8, execution_flags=0,
+                                  object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                  var_c=Pickups.COPPER_KEY, var_d=0, extra_condition_ptr=0),
+            CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=-3.6, y_pos=-2.2, z_pos=-2.8, execution_flags=0,
+                                  object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                  var_c=Pickups.CHAMBER_KEY, var_d=0, extra_condition_ptr=0),
+            CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=3.6, y_pos=-2.2, z_pos=2.8, execution_flags=0,
+                                  object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                  var_c=Pickups.EXECUTION_KEY, var_d=0, extra_condition_ptr=0),
+            CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=0.0, y_pos=-4.2, z_pos=0.0, execution_flags=0,
+                                  object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                  var_c=Pickups.ARCHIVES_KEY, var_d=0, extra_condition_ptr=0),
+            ]
 
-        return patcher.get_output_rom()
-
-
-
-
-        options = json.loads(caller.get_file(options_file).decode("utf-8"))
-        ni_edits = json.loads(caller.get_file(ni_edits).decode("utf-8"))
-
-
-
-        # Unlock Hard Mode and all characters and costumes from the start
+        # Unlock Hard Mode and all characters and costumes from the start.
         patcher.write_int32(0x244, 0x00000000, NIFiles.OVERLAY_CHARACTER_SELECT)
         patcher.write_int32(0x1DE4, 0x00000000, NIFiles.OVERLAY_NECRONOMICON)
         patcher.write_int32(0x1E28, 0x00000000, NIFiles.OVERLAY_FILE_SELECT_CONTROLLER)
@@ -103,46 +101,20 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32(0x994, 0x00000000, NIFiles.OVERLAY_CHARACTER_SELECT)
         patcher.write_int32(0x9C0, 0x00000000, NIFiles.OVERLAY_CHARACTER_SELECT)
         patcher.write_int32s(0x18E8, [0x3C0400FF,
-                                       0x3484FF00,
-                                       0x00045025], NIFiles.OVERLAY_FILE_SELECT_CONTROLLER)
+                                      0x3484FF00,
+                                      0x00045025], NIFiles.OVERLAY_FILE_SELECT_CONTROLLER)
         patcher.write_int32s(0x19A0, [0x3C0400FF,
-                                       0x3484FF00,
-                                       0x00044025], NIFiles.OVERLAY_FILE_SELECT_CONTROLLER)
+                                      0x3484FF00,
+                                      0x00044025], NIFiles.OVERLAY_FILE_SELECT_CONTROLLER)
 
-        # NOP the store instructions that clear fields 0x02 in the actor entries
-        # so the rando can use field 0x02 to "delete" actors.
-        patcher.write_int32(0xC232C, 0x00000000)
-        patcher.write_int32(0xC236C, 0x00000000)
-        patcher.write_int32(0xC300C, 0x00000000)
-        patcher.write_int32(0xC3284, 0x00000000)
-
-        # Check for exactly 0x8000 in the first actor field to tell if the actor list should terminate rather than if
-        # the 0x8000 flag is there, period. This will free it up for a different usage.
-        patcher.write_int32s(0xC28B0, [0x00000000,   # NOP
-                                        0x340F8000,   # ORI   T7, R0, 0x8000
-                                        0x544FFFCA])  # BNEL  V0, T7, [backward 0x36]
-        patcher.write_int32s(0xC2DAC, [0x00000000,   # NOP
-                                        0x340F8000,   # ORI   T7, R0, 0x8000
-                                        0x548FFFF5])  # BNEL  A0, T7, [backward 0x0B]
-        patcher.write_int32s(0xC2320, [0x00000000,   # NOP
-                                        0x340F8000,   # ORI   T7, R0, 0x8000
-                                        0x546FFFF8])  # BNEL  V1, T7, [backward 0x08]
-        patcher.write_int32s(0xC2360, [0x00000000,   # NOP
-                                        0x340F8000,   # ORI   T7, R0, 0x8000
-                                        0x546FFFF8])  # BNEL  V1, T7, [backward 0x08]
-        patcher.write_int32s(0xC2570, [0x00000000,   # NOP
-                                        0x340F8000,   # ORI   T7, R0, 0x8000
-                                        0x544FFFD6])  # BNEL  V0, T7, [backward 0x2A]
-        patcher.write_int32s(0xC3000, [0x00000000,   # NOP
-                                        0x340F8000,   # ORI   T7, R0, 0x8000
-                                        0x546FFFF8])  # BNEL  V1, T7, [backward 0x08]
-        patcher.write_int32s(0xC26C0, [0x00000000,   # NOP
-                                        0x340F8000,   # ORI   T7, R0, 0x8000
-                                        0x544FFFCA])  # BNEL  V0, T7, [backward 0x36]
-
-        # Hack to check if an actor should spawn based on what "era" we're in (event flag 0x05BF being set or not).
-        patcher.write_int32(0xC2C30, 0x080FF3BC)  # J 0x803FCEF0
-        patcher.write_int32s(0xFFCEF0, patches.actor_era_spawn_checker)
+        # Prevent event flags from pre-setting themselves in Henry Mode.
+        patcher.write_byte(0x22F, 0x04, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
+        # Give Henry all the time in the world just like everyone else.
+        patcher.write_byte(0x86DDF, 0x04)
+        # Make the Henry warp jewels work for everyone at the expense of the light effect surrounding them.
+        # The code that creates and renders it is exclusively inside Henry's overlay, so it must go for it to function
+        # for the rest of the characters, sadly.
+        patcher.write_int32(0xF6A5C, 0x00000000)  # NOP
 
         # Custom data-loading code
         patcher.write_int32(0x18A94, 0x0800793D)  # J 0x8001E4F4
@@ -153,57 +125,75 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32s(0xFFC000, patches.remote_item_giver)
         patcher.write_int32s(0xFFE190, patches.subweapon_surface_checker)
 
-        # Make it possible to change the starting level.
-        patcher.write_byte(0x15D3, 0x10, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        # Change the starting stage to whatever stage the player is actually starting at.
+        patcher.write_byte(0x15DB, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_scene_id,
+                           NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15D3, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_spawn_id,
+                           NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        #patcher.write_byte(0x15DB, 0x11, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        #patcher.write_byte(0x15D3, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        # Change the instruction that stores the Foggy Lake intro cutscene value to store a 0 (from R0) instead.
+        patcher.write_int32(0x1614, 0xAC402BCC, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON) # SW  R0, 0x2BCC (V0)
+        # Instead of always 0 as the spawn entrance, store the aftermentined cutscene value as it.
+        patcher.write_int32(0x1618, 0xA04B2BBB, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON) # SB  T3, 0x2BBB (V0)
+        # Make the starting level the same for Henry as everyone else.
         patcher.write_byte(0x15D5, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15DB, 0x10, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
 
-        # Prevent flags from pre-setting in Henry Mode.
-        patcher.write_byte(0x22F, 0x04, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
+        # Active cutscene checker routines for certain actors.
+        patcher.write_int32s(0xFFCDA0, patches.cutscene_active_checkers)
 
-        # Give Henry all the time in the world just like everyone else.
-        patcher.write_byte(0x86DDF, 0x04)
-        # Make the Henry warp jewels work for everyone at the expense of the light effect surrounding them.
-        # The code that creates and renders it is exclusively inside Henry's overlay, so it must go for it to function
-        # for the rest of the characters, sadly.
-        patcher.write_int32(0xF6A5C, 0x00000000)  # NOP
 
+        # # # # # # # # # # #
+        # FOGGY LAKE EDITS  #
+        # # # # # # # # # # #
         # Lock the door in Foggy Lake below decks leading out to above decks with the Deck Key.
         # It's the same door in-universe as the above decks one but on a different map.
-        patcher.write_int16(0x7C1BD4, 0x5100)
-        patcher.write_int16(0x7C1BDC, 0x028E)
-        patcher.write_byte(0x7C1BE3, 0x22)
-        patcher.write_int16(0x7C1BE6, 0x0001)
-        # Custom text for the new locked door instance.
-        patcher.write_bytes(0x7C1B14, cvlod_string_to_bytearray("Locked in!\n"
-                                                                 "You need Deck Key.»\t"
-                                                                 "Deck Key\n"
-                                                                 "       has been used.»\t", wrap=False)[0])
-        # Prevent the Foggy Lake cargo hold door from locking.
-        patcher.write_int16(0x7C1C00, 0x0000)
+        patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["door_flags"] = \
+            DoorFlags.UNLOCK_AND_SET_FLAG | DoorFlags.DISREGARD_IF_FLAG_SET | DoorFlags.ITEM_COST_IF_FLAG_UNSET
+        patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["flag_id"] = 0x28E  # Deck Door unlocked flag
+        patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["item_id"] = Items.DECK_KEY
+        patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["cant_open_text_id"] = 0x01
+        patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["unlocked_text_id"] = 0x02
+        patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].scene_text += [
+            CVLoDSceneTextEntry(text="You're locked in!\n"
+                                     "Looks like you will need\n"
+                                     "the Deck Key...🅰0/"),
+            CVLoDSceneTextEntry(text="Deck Key\n"
+                                     "       has been used.🅰0/")
+        ]
 
-        # Disable the Foggy Lake Pier save jewel checking for one of the ship sinking cutscene flags to spawn.
+        # Make the Foggy Lake cargo hold door openable only from the outside instead of it locking permanently after
+        # going through it once.
+        patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[1]["door_flags"] = DoorFlags.LOCK_FROM_BACK_SIDE
+
+        # Disable the Foggy Lake Pier save jewel checking for one of the ship sinking cutscene flags to spawn in case
+        # we find the stage from the end point.
         # To preserve the cutscene director's vision, we'll put it on our custom "not in a cutscene" check instead!
-        patcher.write_byte(0x7C67F5, 0x08)
-        patcher.write_int16(0x7C6806, 0x0000)
-        patcher.write_int32(0x7C6810, 0x803FCDBC)
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][76]["spawn_flags"] = \
+            ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][76]["flag_id"] = 0
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][76]["extra_condition_ptr"] = 0x803FCDBC
         # Prevent the Sea Monster from respawning if you leave the pier map and return.
-        patcher.write_byte(0x7C67B5, 0x80)
-        patcher.write_int16(0x7C67C6, 0x015D)
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][74]["spawn_flags"] = \
+            ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][74]["flag_id"] = 0x15D
         # Un-set the "debris path sunk" flag after the Sea Monster is killed and when the door flag is set.
-        patcher.write_int16(0x725A, 0x8040, NIFiles.OVERLAY_SEA_MONSTER)
-        patcher.write_int16(0x725E, 0xCB90, NIFiles.OVERLAY_SEA_MONSTER)
-        patcher.write_int32s(0xFFCB90, patches.sea_monster_sunk_path_flag_unsetter)
+        patcher.write_int32(0x7268, 0x0FC04164, NIFiles.OVERLAY_SEA_MONSTER)  # JAL 0x0F010590
+        patcher.write_int32s(0x10590, patches.sea_monster_sunk_path_flag_unsetter, NIFiles.OVERLAY_SEA_MONSTER)
         # Disable the two pier statue items checking each other's flags being not set as an additional spawn condition.
-        patcher.write_byte(0x7C6815, 0x00)
-        patcher.write_int16(0x7C6826, 0x0000)
-        patcher.write_byte(0x7C6835, 0x00)
-        patcher.write_int16(0x7C6846, 0x0000)
-        patcher.write_byte(0x7C6855, 0x00)
-        patcher.write_int16(0x7C6866, 0x0000)
-        patcher.write_byte(0x7C6875, 0x00)
-        patcher.write_int16(0x7C6886, 0x0000)
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][77]["spawn_flags"] ^= \
+            ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][77]["flag_id"] = 0
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][80]["spawn_flags"] ^= \
+            ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][80]["flag_id"] = 0
 
+        return patcher.get_output_rom()
+
+
+        # # # # # # # # # # # # # #
+        # FOREST OF SILENCE EDITS #
+        # # # # # # # # # # # # # #
         # Make coffins 01-04 in the Forest Charnel Houses never spawn items (as in, the RNG for them will never pass).
         patcher.write_int32(0x76F440, 0x10000005)  # B [forward 0x05]
         # Make coffin 00 always try spawning the same consistent three items regardless of whether we previously broke
@@ -424,8 +414,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Set the Tower of Ruins end loading zone destination to the Castle Center top elevator White Jewel.
         patcher.write_int16(0x8128EE, 0x0F03)
 
-        # Make the Cornell intro cutscene actors in Castle Center spawn only when we are actually in a cutscene.
-        patcher.write_int32s(0xFFCDA0, patches.cutscene_active_checkers)
         # Basement
         patcher.write_byte(0x7AA2A5, 0x0A)
         patcher.write_int32(0x7AA2C0, 0x803FCDBC)
