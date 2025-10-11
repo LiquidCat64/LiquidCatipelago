@@ -17,6 +17,7 @@ import os
 from .data import patches, loc_names
 from .data.enums import Scenes, NIFiles, Objects, ObjectExecutionFlags, ActorSpawnFlags, Items, Pickups, PickupFlags, \
     DoorFlags
+from .locations import CVLOD_LOCATIONS_INFO
 from .patcher import CVLoDRomPatcher, CVLoDSceneTextEntry, CVLoDNormalActorEntry, CVLoDDoorEntry, CVLoDPillarActorEntry, CVLoDLoadingZoneEntry, CVLoDEnemyPillarEntry, CVLoD1HitBreakableEntry, CVLoD3HitBreakableEntry, CVLoDSpawnEntranceEntry
 from .stages import CVLOD_STAGE_INFO
 from .cvlod_text import cvlod_string_to_bytearray, cvlod_text_wrap, cvlod_bytes_to_string, CVLOD_STRING_END_CHARACTER, \
@@ -48,6 +49,10 @@ START_INVENTORY_FURN_START = 0x6A72B4
 START_INVENTORY_WHIPS_START = 0x6A72B8
 START_INVENTORY_MAX_START = 0x6A72BA
 
+FOREST_OVL_CHARNEL_ITEMS_START = 0x7C60
+CHARNEL_ITEM_LEN = 0xC
+FIRST_CHARNEL_LID_ACTOR = 72
+
 WARP_SCENE_OFFSETS = [0xADF67, 0xADF77, 0xADF87, 0xADF97, 0xADFA7, 0xADFBB, 0xADFCB, 0xADFDF]
 
 
@@ -63,7 +68,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # # # # # # # # #
         # GENERAL EDITS #
         # # # # # # # # #
-
         # NOP out the CRC BNEs
         patcher.write_int32(0x66C, 0x00000000)
         patcher.write_int32(0x678, 0x00000000)
@@ -130,8 +134,8 @@ class CVLoDPatchExtensions(APPatchExtension):
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_spawn_id,
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        #patcher.write_byte(0x15DB, 0x11, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        #patcher.write_byte(0x15D3, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15DB, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15D3, 0x05, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         # Change the instruction that stores the Foggy Lake intro cutscene value to store a 0 (from R0) instead.
         patcher.write_int32(0x1614, 0xAC402BCC, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON) # SW  R0, 0x2BCC (V0)
         # Instead of always 0 as the spawn entrance, store the aftermentined cutscene value as it.
@@ -142,6 +146,56 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Active cutscene checker routines for certain actors.
         patcher.write_int32s(0xFFCDA0, patches.cutscene_active_checkers)
 
+        # Enable being able to carry multiple Special jewels, Nitros, Mandragoras, and Key Items simultaneously
+        # Special1
+        patcher.write_int32s(0x904B8, [0x90C8AB47,  # LBU   T0, 0xAB47 (A2)
+                                        0x00681821,  # ADDU  V1, V1, T0
+                                        0xA0C3AB47])  # SB    V1, 0xAB47 (A2)
+        patcher.write_int32(0x904C8, 0x24020001)  # ADDIU V0, R0, 0x0001
+        # Special2
+        patcher.write_int32s(0x904CC, [0x90C8AB48,  # LBU   T0, 0xAB48 (A2)
+                                        0x00681821,  # ADDU  V1, V1, T0
+                                        0xA0C3AB48])  # SB    V1, 0xAB48 (A2)
+        patcher.write_int32(0x904DC, 0x24020001)  # ADDIU V0, R0, 0x0001
+        # Special3 (NOP this one for usage as the AP item)
+        patcher.write_int32(0x904E8, 0x00000000)
+        # Magical Nitro
+        patcher.write_int32(0x9071C, 0x10000004)  # B [forward 0x04]
+        patcher.write_int32s(0x90734, [0x25430001,  # ADDIU	V1, T2, 0x0001
+                                        0x10000003])  # B [forward 0x03]
+        # Mandragora
+        patcher.write_int32(0x906D4, 0x10000004)  # B [forward 0x04]
+        patcher.write_int32s(0x906EC, [0x25030001,  # ADDIU	V1, T0, 0x0001
+                                        0x10000003])  # B [forward 0x03]
+        # Key Items
+        patcher.write_byte(0x906C7, 0x63)
+        # Increase Use Item capacity to 99 if "Increase Item Limit" is turned on
+        if slot_patch_info["options"]["increase_item_limit"]:
+            patcher.write_byte(0x90617, 0x63)  # Most items
+            patcher.write_byte(0x90767, 0x63)  # Sun/Moon cards
+
+        # Rename the Special3 to "AP Item"
+        patcher.write_bytes(0xB89AA, cvlod_string_to_bytearray("AP Item "))
+        # Change the Special3's appearance to that of a spinning contract.
+        patcher.write_int32s(0x11770A, [0x63583F80, 0x0000FFFF])
+        # Disable spinning on the Special1 and 2 pickup models so colorblind people can more easily identify them.
+        patcher.write_byte(0x1176F5, 0x00)  # Special1
+        patcher.write_byte(0x117705, 0x00)  # Special2
+        # Make the Special2 the same size as a Red jewel(L) to further distinguish them.
+        patcher.write_int32(0x1176FC, 0x3FA66666)
+        # Capitalize the "k" in "Archives key" and "Rose Garden key" to be consistent with...
+        # literally every other key name!
+        patcher.write_byte(0xB8AFF, 0x2B)
+        patcher.write_byte(0xB8BCB, 0x2B)
+        # Make the "PowerUp" textbox appear even if you already have two.
+        patcher.write_int32(0x87E34, 0x00000000)  # NOP
+
+        # Enable changing the item model/visibility on any item instance.
+        patcher.write_int32s(0x107740, [0x0C0FF0C0,  # JAL   0x803FC300
+                                         0x25CFFFFF])  # ADDIU T7, T6, 0xFFFF
+        patcher.write_int32s(0xFFC300, patches.item_customizer)
+        patcher.write_int32(0x1078D0, 0x0C0FF0CB),  # JAL   0x803FC32C
+        patcher.write_int32s(0xFFC32C, patches.item_appearance_switcher)
 
         # # # # # # # # # # #
         # FOGGY LAKE EDITS  #
@@ -150,7 +204,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # It's the same door in-universe as the above decks one but on a different map.
         patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["door_flags"] = \
             DoorFlags.UNLOCK_AND_SET_FLAG | DoorFlags.DISREGARD_IF_FLAG_SET | DoorFlags.ITEM_COST_IF_FLAG_UNSET
-        patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["flag_id"] = 0x28E  # Deck Door unlocked flag
+        patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["flag_id"] = 0x28E  # Deck Door unlocked flag.
         patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["item_id"] = Items.DECK_KEY
         patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["cant_open_text_id"] = 0x01
         patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["unlocked_text_id"] = 0x02
@@ -188,52 +242,97 @@ class CVLoDPatchExtensions(APPatchExtension):
             ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
         patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][80]["flag_id"] = 0
 
-        return patcher.get_output_rom()
-
 
         # # # # # # # # # # # # # #
         # FOREST OF SILENCE EDITS #
         # # # # # # # # # # # # # #
-        # Make coffins 01-04 in the Forest Charnel Houses never spawn items (as in, the RNG for them will never pass).
-        patcher.write_int32(0x76F440, 0x10000005)  # B [forward 0x05]
-        # Make coffin 00 always try spawning the same consistent three items regardless of whether we previously broke
+        # Make coffins 1-4 in the Forest Charnel Houses never spawn items
+        # (as in, the RNG check for them will never pass).
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int32(0x2740, 0x10000005)  # B [forward 0x05]
+        # Make coffin 0 always try spawning the same consistent three items regardless of whether we previously broke
         # it or not and regardless of difficulty.
-        patcher.write_int32(0x76F478, 0x00000000)  # NOP-ed Hard difficulty check
-        patcher.write_byte(0x76FAC3, 0x00)  # No event flag set for coffin 00.
-        patcher.write_int32(0x76F4B4, 0x00000000)  # NOP-ed Not Easy difficulty check
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int32(0x2778, 0x00000000)  # NOP-ed Hard difficulty check
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(0x2DC3, 0x00)  # No event flag set for coffin 00.
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int32(0x27B4, 0x00000000)  # NOP-ed Not Easy difficulty check
         # Use the current loop iteration to tell what entry in the table to spawn.
-        patcher.write_int32(0x76F4D4, 0x264E0000)  # ADDIU T6, S2, 0x0000
-        # Assign the event flags and remove the "vanish timer" flag on each of the three coffin item entries we'll use.
-        patcher.write_int16(0x774966, 0x0011)
-        patcher.write_byte(0x774969, 0x00)
-        patcher.write_int16(0x774972, 0x0012)
-        patcher.write_byte(0x774975, 0x00)
-        patcher.write_int16(0x7749C6, 0x0013)
-        patcher.write_byte(0x7749C9, 0x00)
-        # Turn the Forest Henry child actor into a torch check with all necessary parameters assigned.
-        patcher.write_int16(0x7758DE, 0x0022)  # Dropped item flag ID
-        patcher.write_byte(0x7782D5, 0x00)     # Flag check unassignment
-        patcher.write_int16(0x7782E4, 0x01D9)  # Candle actor ID
-        patcher.write_int16(0x7782E6, 0x0000)  # Flag check unassignment
-        patcher.write_int16(0x7782E8, 0x0000)  # Flag check unassignment
-        patcher.write_int16(0x7782EC, 0x000C)  # Candle ID
-        # Set Flag 0x23 on the item King Skeleton 2 leaves behind, and prevent it from being the possible Henry drop.
-        patcher.write_int32(0x43F8, 0x10000006, NIFiles.OVERLAY_KING_SKELETON)
-        patcher.write_int32s(0x444C, [0x3C088040,  # LUI   T0, 0x8040
-                                       0x2508CBB0,  # ADDIU T0, T0, 0xCBB0
-                                       0x0100F809,  # JALR  RA, T0
-                                       0x00000000], NIFiles.OVERLAY_KING_SKELETON)
-        patcher.write_int32s(0xFFCBB0, patches.king_skeleton_chicken_flag_setter)
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int32(0x27D4, 0x264E0000)  # ADDIU T6, S2, 0x0000
+        # Assign the event flags, remove the "vanish timer" flag on each of the three coffin item entries we'll use,
+        # and write their pickups.
+        # Entry 0
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+            FOREST_OVL_CHARNEL_ITEMS_START + 2, slot_patch_info["location values"][loc_names.forest_charnel_1])
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+            FOREST_OVL_CHARNEL_ITEMS_START + 6, CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id)
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(FOREST_OVL_CHARNEL_ITEMS_START + 9, 0x00)
+        # Entry 1
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+            FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 2,
+            slot_patch_info["location values"][loc_names.forest_charnel_2])
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+            FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 6,
+            CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_2].flag_id)
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 9,
+                                                                0x00)
+        # Entry 8
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+            FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 2,
+            slot_patch_info["location values"][loc_names.forest_charnel_3])
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+            FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 6,
+            CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_3].flag_id)
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(
+            FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 9, 0x00)
+        # If the chosen prize coffin is not coffin 0, swap the actor var C's of the lids of coffin 0 and the coffin that
+        # did get chosen.
+        if slot_patch_info["prize coffin id"]:
+            patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][
+                FIRST_CHARNEL_LID_ACTOR]["var_c"] = slot_patch_info["prize coffin id"]
+            patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][
+                FIRST_CHARNEL_LID_ACTOR + slot_patch_info["prize coffin id"]]["var_c"] = 0
+        # Turn the Forest Henry child actor into a freestanding pickup check with all necessary parameters assigned.
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][122]["spawn_flags"] = 0
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][122]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][122]["execution_flags"] = 0
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][122]["flag_id"] = 0
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][122]["var_a"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.forest_child_ledge].flag_id
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][122]["var_c"] = \
+            slot_patch_info["location values"][loc_names.forest_child_ledge]
+
+        # Ensure King Skeleton 2 will never drop his secret beef for beating him as Henry without running
+        # (yes, this is ACTUALLY a thing!)
+        patcher.write_int32(0x43F8, 0x10000006, NIFiles.OVERLAY_KING_SKELETON)  # B [forward 0x06]
+        # Set Flag 0x23 on the item King Skeleton 2 otherwise leaves behind if the above condition isn't fulfilled, and
+        # prevent it from expiring.
+        patcher.write_int32s(0x444C, [0x0FC0307C,  # JAL 0x0F00C1F0
+                                      0x8E2C001C], # LW  T4, 0x001C (S1)
+                             NIFiles.OVERLAY_KING_SKELETON)
+        patcher.write_int32s(0xC1F0, [(0x24080000 +  # ADDIU T0, R0, 0x0023
+                                       CVLOD_LOCATIONS_INFO[loc_names.forest_skelly_mouth].flag_id),
+                                      0xA4480014,  # SH  T0, 0x0014 (V0)
+                                      0xA0400017,  # SB  R0, 0x0017 (V0)
+                                      0x03E00008,  # JR  RA
+                                      0x3C010040], # LUI AT, 0x0040
+                             NIFiles.OVERLAY_KING_SKELETON)
+        # Turn the item that drops into what it should be.
+        patcher.write_int16(0x43CA, slot_patch_info["location values"][loc_names.forest_skelly_mouth],
+                            NIFiles.OVERLAY_KING_SKELETON)
         # Add the backup King Skeleton jaws item that will spawn only if the player orphans it the first time.
-        patcher.write_byte(0x778415, 0x20)
-        patcher.write_int32s(0x778418, [0x3D000000, 0x00000000, 0xC4B2C000])
-        patcher.write_int16(0x778426, 0x002C)
-        patcher.write_int16(0x778428, 0x0023)
-        patcher.write_int16(0x77842A, 0x0000)
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"].append(
+            CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos= 0.03125,
+                                  y_pos=0, z_pos=-1430,execution_flags=0, object_id=Objects.PICKUP_ITEM,
+                                  flag_id=0x2C,  # Drawbridge lowering cutscene flag.
+                                  var_a=CVLOD_LOCATIONS_INFO[loc_names.forest_skelly_mouth].flag_id, var_b=0,
+                                  var_c=slot_patch_info["location values"][loc_names.forest_skelly_mouth], var_d=0,
+                                  extra_condition_ptr=0)
+        )
+
         # Make the drawbridge cutscene's end behavior its Henry end behavior for everyone.
         # The "drawbridge lowered" flag should be set so that Forest's regular end zone is easily accessible, and no
         # separate cutscene should play in the next map.
         patcher.write_int32(0x1294, 0x1000000C, NIFiles.OVERLAY_CS_DRAWBRIDGE_LOWERS)
+
+        return patcher.get_output_rom()
 
         # Make the final Cerberus in Villa Front Yard
         # un-set the Villa entrance portcullis closed flag for all characters (not just Henry).
@@ -651,57 +750,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_byte(0xD9D83, 0x74)
         # patcher.write_int32(0xD9D84, 0x080FF14D)  # J 0x803FC534
         # patcher.write_int32s(0xBFC534, patches.coffin_time_checker)
-
-        # Enable being able to carry multiple Special jewels, Nitros, Mandragoras, and Key Items simultaneously
-        # Special1
-        patcher.write_int32s(0x904B8, [0x90C8AB47,  # LBU   T0, 0xAB47 (A2)
-                                        0x00681821,  # ADDU  V1, V1, T0
-                                        0xA0C3AB47])  # SB    V1, 0xAB47 (A2)
-        patcher.write_int32(0x904C8, 0x24020001)  # ADDIU V0, R0, 0x0001
-        # Special2
-        patcher.write_int32s(0x904CC, [0x90C8AB48,  # LBU   T0, 0xAB48 (A2)
-                                        0x00681821,  # ADDU  V1, V1, T0
-                                        0xA0C3AB48])  # SB    V1, 0xAB48 (A2)
-        patcher.write_int32(0x904DC, 0x24020001)  # ADDIU V0, R0, 0x0001
-        # Special3 (NOP this one for usage as the AP item)
-        patcher.write_int32(0x904E8, 0x00000000)
-        # Magical Nitro
-        patcher.write_int32(0x9071C, 0x10000004)  # B [forward 0x04]
-        patcher.write_int32s(0x90734, [0x25430001,  # ADDIU	V1, T2, 0x0001
-                                        0x10000003])  # B [forward 0x03]
-        # Mandragora
-        patcher.write_int32(0x906D4, 0x10000004)  # B [forward 0x04]
-        patcher.write_int32s(0x906EC, [0x25030001,  # ADDIU	V1, T0, 0x0001
-                                        0x10000003])  # B [forward 0x03]
-        # Key Items
-        patcher.write_byte(0x906C7, 0x63)
-        # Increase Use Item capacity to 99 if "Increase Item Limit" is turned on
-        if options["increase_item_limit"]:
-            patcher.write_byte(0x90617, 0x63)  # Most items
-            patcher.write_byte(0x90767, 0x63)  # Sun/Moon cards
-
-        # Rename the Special3 to "AP Item"
-        patcher.write_bytes(0xB89AA, cvlod_string_to_bytearray("AP Item ")[0])
-        # Change the Special3's appearance to that of a spinning contract.
-        patcher.write_int32s(0x11770A, [0x63583F80, 0x0000FFFF])
-        # Disable spinning on the Special1 and 2 pickup models so colorblind people can more easily identify them.
-        patcher.write_byte(0x1176F5, 0x00)  # Special1
-        patcher.write_byte(0x117705, 0x00)  # Special2
-        # Make the Special2 the same size as a Red jewel(L) to further distinguish them.
-        patcher.write_int32(0x1176FC, 0x3FA66666)
-        # Capitalize the "k" in "Archives key" and "Rose Garden key" to be consistent with...
-        # literally every other key name!
-        patcher.write_byte(0xB8AFF, 0x2B)
-        patcher.write_byte(0xB8BCB, 0x2B)
-        # Make the "PowerUp" textbox appear even if you already have two.
-        patcher.write_int32(0x87E34, 0x00000000)  # NOP
-
-        # Enable changing the item model/visibility on any item instance.
-        patcher.write_int32s(0x107740, [0x0C0FF0C0,  # JAL   0x803FC300
-                                         0x25CFFFFF])  # ADDIU T7, T6, 0xFFFF
-        patcher.write_int32s(0xFFC300, patches.item_customizer)
-        patcher.write_int32(0x1078D0, 0x0C0FF0CB),  # JAL   0x803FC32C
-        patcher.write_int32s(0xFFC32C, patches.item_appearance_switcher)
 
         # Disable the 3HBs checking and setting flags when breaking them and enable their individual items checking and
         # setting flags instead.

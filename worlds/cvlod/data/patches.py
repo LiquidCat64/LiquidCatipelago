@@ -1993,19 +1993,6 @@ sea_monster_sunk_path_flag_unsetter = [
     0xA109AA8B   # SB    T1, 0xAA8B (T0)
 ]
 
-king_skeleton_chicken_flag_setter = [
-    # Sets Flag 0x23 on the chicken that spawns from King Skeleton's mouth after beating him the second time.
-    # Also clears the "vanishes after a few seconds" bit from the item.
-    0x24080023,  # ADDIU T0, R0, 0x0023
-    0xA4480014,  # SH    T0, 0x0014 (V0)
-    0x8E2C001C,  # LW    T4, 0x001C (S1)
-    0x3C010040,  # LUI   AT, 0x0040
-    0x01816825,  # OR    T5, T4, AT
-    0xAE2D001C,  # SW    T5, 0x001C (S1)
-    0x03E00008,  # JR    RA
-    0xA0400017   # SB    R0, 0x0017 (V0)
-]
-
 gondola_spider_cutscene_checker = [
     # Checks for flag 0xAD (the Spider Women cutscene flag) before activating the Tunnel gondolas, restoring their
     # original behavior from CV64.

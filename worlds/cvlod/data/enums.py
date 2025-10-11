@@ -56,9 +56,9 @@ class Items(IntEnum):
     CLOCKTOWER_KEY_E = 0x2B
     CLOCKTOWER_KEY_A = 0x2C
     CLOCKTOWER_KEY_B = 0x2D
-    ONE_HUNDRED_GOLD = 0x2E
+    FIVE_HUNDRED_GOLD = 0x2E
     THREE_HUNDRED_GOLD = 0x2F
-    FIVE_HUNDRED_GOLD = 0x30
+    ONE_HUNDRED_GOLD = 0x30
 
 # The pickup actor IDs sometimes differ from the regular item IDs. So they all have to be defined separately.
 class Pickups(IntEnum):
@@ -88,9 +88,9 @@ class Pickups(IntEnum):
     CREST_HALF_A = 0x18
     CREST_HALF_B = 0x19
     ROSE_BROOCH = 0x1A
-    ONE_HUNDRED_GOLD = 0x1B
+    FIVE_HUNDRED_GOLD = 0x1B
     THREE_HUNDRED_GOLD = 0x1C
-    FIVE_HUNDRED_GOLD = 0x1D
+    ONE_HUNDRED_GOLD = 0x1D
     ARCHIVES_KEY = 0x1E
     LEFT_TOWER_KEY = 0x1F
     STOREROOM_KEY = 0x20
