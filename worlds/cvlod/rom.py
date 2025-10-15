@@ -55,6 +55,9 @@ FIRST_CHARNEL_LID_ACTOR = 72
 
 WARP_SCENE_OFFSETS = [0xADF67, 0xADF77, 0xADF87, 0xADF97, 0xADFA7, 0xADFBB, 0xADFCB, 0xADFDF]
 
+SPECIAL_1HBS = [Objects.FOGGY_LAKE_ABOVE_DECKS_BARREL, Objects.FOGGY_LAKE_BELOW_DECKS_BARREL,
+                Objects.SORCERY_CYAN_DIAMOND]
+
 
 class CVLoDPatchExtensions(APPatchExtension):
     game = "Castlevania - Legacy of Darkness"
@@ -73,7 +76,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32(0x678, 0x00000000)
 
         # Add keys in an AP logo formation to the title screen.
-        patcher.scenes[Scenes.INTRO_NARRATION].actor_lists["distance"] += [
+        patcher.scenes[Scenes.INTRO_NARRATION].actor_lists["proxy"] += [
             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=0.0, y_pos=3.8, z_pos=0.0, execution_flags=0,
                                   object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
                                   var_c=Pickups.LEFT_TOWER_KEY, var_d=0, extra_condition_ptr=0),
@@ -134,8 +137,8 @@ class CVLoDPatchExtensions(APPatchExtension):
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_spawn_id,
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15DB, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15D3, 0x05, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15DB, 0x10, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15D3, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         # Change the instruction that stores the Foggy Lake intro cutscene value to store a 0 (from R0) instead.
         patcher.write_int32(0x1614, 0xAC402BCC, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON) # SW  R0, 0x2BCC (V0)
         # Instead of always 0 as the spawn entrance, store the aftermentined cutscene value as it.
@@ -223,24 +226,24 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Disable the Foggy Lake Pier save jewel checking for one of the ship sinking cutscene flags to spawn in case
         # we find the stage from the end point.
         # To preserve the cutscene director's vision, we'll put it on our custom "not in a cutscene" check instead!
-        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][76]["spawn_flags"] = \
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["proxy"][76]["spawn_flags"] = \
             ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
-        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][76]["flag_id"] = 0
-        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][76]["extra_condition_ptr"] = 0x803FCDBC
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["proxy"][76]["flag_id"] = 0
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["proxy"][76]["extra_condition_ptr"] = 0x803FCDBC
         # Prevent the Sea Monster from respawning if you leave the pier map and return.
-        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][74]["spawn_flags"] = \
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["proxy"][74]["spawn_flags"] = \
             ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
-        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][74]["flag_id"] = 0x15D
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["proxy"][74]["flag_id"] = 0x15D
         # Un-set the "debris path sunk" flag after the Sea Monster is killed and when the door flag is set.
         patcher.write_int32(0x7268, 0x0FC04164, NIFiles.OVERLAY_SEA_MONSTER)  # JAL 0x0F010590
         patcher.write_int32s(0x10590, patches.sea_monster_sunk_path_flag_unsetter, NIFiles.OVERLAY_SEA_MONSTER)
         # Disable the two pier statue items checking each other's flags being not set as an additional spawn condition.
-        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][77]["spawn_flags"] ^= \
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["proxy"][77]["spawn_flags"] ^= \
             ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
-        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][77]["flag_id"] = 0
-        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][80]["spawn_flags"] ^= \
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["proxy"][77]["flag_id"] = 0
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["proxy"][80]["spawn_flags"] ^= \
             ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
-        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["distance"][80]["flag_id"] = 0
+        patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["proxy"][80]["flag_id"] = 0
 
 
         # # # # # # # # # # # # # #
@@ -285,19 +288,19 @@ class CVLoDPatchExtensions(APPatchExtension):
         # If the chosen prize coffin is not coffin 0, swap the actor var C's of the lids of coffin 0 and the coffin that
         # did get chosen.
         if slot_patch_info["prize coffin id"]:
-            patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][
+            patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][
                 FIRST_CHARNEL_LID_ACTOR]["var_c"] = slot_patch_info["prize coffin id"]
-            patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][
+            patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][
                 FIRST_CHARNEL_LID_ACTOR + slot_patch_info["prize coffin id"]]["var_c"] = 0
+
         # Turn the Forest Henry child actor into a freestanding pickup check with all necessary parameters assigned.
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][122]["spawn_flags"] = 0
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][122]["object_id"] = Objects.PICKUP_ITEM
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][122]["execution_flags"] = 0
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][122]["flag_id"] = 0
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][122]["var_a"] = \
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["spawn_flags"] = 0
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["execution_flags"] = 0
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["flag_id"] = 0
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["var_a"] = \
             CVLOD_LOCATIONS_INFO[loc_names.forest_child_ledge].flag_id
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"][122]["var_c"] = \
-            slot_patch_info["location values"][loc_names.forest_child_ledge]
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["var_c"] = Pickups.ONE_HUNDRED_GOLD
 
         # Ensure King Skeleton 2 will never drop his secret beef for beating him as Henry without running
         # (yes, this is ACTUALLY a thing!)
@@ -318,19 +321,64 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int16(0x43CA, slot_patch_info["location values"][loc_names.forest_skelly_mouth],
                             NIFiles.OVERLAY_KING_SKELETON)
         # Add the backup King Skeleton jaws item that will spawn only if the player orphans it the first time.
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["distance"].append(
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"].append(
             CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos= 0.03125,
                                   y_pos=0, z_pos=-1430,execution_flags=0, object_id=Objects.PICKUP_ITEM,
                                   flag_id=0x2C,  # Drawbridge lowering cutscene flag.
                                   var_a=CVLOD_LOCATIONS_INFO[loc_names.forest_skelly_mouth].flag_id, var_b=0,
-                                  var_c=slot_patch_info["location values"][loc_names.forest_skelly_mouth], var_d=0,
-                                  extra_condition_ptr=0)
+                                  var_c=Pickups.ROAST_CHICKEN, var_d=0, extra_condition_ptr=0)
         )
 
         # Make the drawbridge cutscene's end behavior its Henry end behavior for everyone.
         # The "drawbridge lowered" flag should be set so that Forest's regular end zone is easily accessible, and no
         # separate cutscene should play in the next map.
         patcher.write_int32(0x1294, 0x1000000C, NIFiles.OVERLAY_CS_DRAWBRIDGE_LOWERS)
+
+        # Loop over every name in the slot's dict of names to values to write and write every "normal" one that has an
+        # actor associated with it in its location info.
+        for loc_name, loc_value in slot_patch_info["location values"].items():
+            if not CVLOD_LOCATIONS_INFO[loc_name].actor:
+                continue
+
+            # Get the specific actor associated with the Location and see what object the actor is.
+            loc_actor = patcher.scenes[CVLOD_LOCATIONS_INFO[loc_name].scene_id].actor_lists[
+                CVLOD_LOCATIONS_INFO[loc_name].actor[0]][CVLOD_LOCATIONS_INFO[loc_name].actor[1]]
+
+            # Set all difficulty spawn flags on the actor to make it universal to all difficulties.
+            loc_actor["spawn_flags"] |= ActorSpawnFlags.EASY | ActorSpawnFlags.NORMAL | ActorSpawnFlags.HARD
+
+            # If the actor is a freestanding pickup, change that pickup into what it really is in this slot by writing
+            # the new value in its Var C.
+            if loc_actor["object_id"] == Objects.PICKUP_ITEM:
+                loc_actor["var_c"] = loc_value
+            # If the actor is a one-hit breakable, take its Var C to figure out which 1HB data in the scene is
+            # associated to that 1HB and write the location value in that.
+            elif loc_actor["object_id"] in SPECIAL_1HBS + [Objects.ONE_HIT_BREAKABLE]:
+                # If it's a regular 1HB, take the entry from the regular 1HBs list.
+                if loc_actor["object_id"] == Objects.ONE_HIT_BREAKABLE:
+                    loc_one_hit = patcher.scenes[CVLOD_LOCATIONS_INFO[loc_name].scene_id].one_hit_breakables[
+                        loc_actor["var_c"]]
+                # Otherwise, if it's a special 1HB, take the entry from the special 1HBs list.
+                else:
+                    loc_one_hit = patcher.scenes[CVLOD_LOCATIONS_INFO[loc_name].scene_id].one_hit_special_breakables[
+                        loc_actor["var_c"]]
+                loc_one_hit["pickup_id"] = loc_value
+                # Un-set the Expire flag on the pickup if it's set.
+                loc_one_hit["pickup_flags"] ^= PickupFlags.EXPIRE
+
+        # Loop over EVERY actor in EVERY list and check to see if it's A. an item-associated actor and B. if it's
+        # specific to non-Normal difficulties. If both are true, mark it for deletion.
+        for scene in patcher.scenes:
+            for name, actor_list in scene.actor_lists.items():
+                # Skip if it's an enemy pillar actor list.
+                if name == "pillars":
+                    continue
+                for actor in actor_list:
+                    if actor["object_id"] in [Objects.ONE_HIT_BREAKABLE, Objects.THREE_HIT_BREAKABLE,
+                                              Objects.PICKUP_ITEM] + SPECIAL_1HBS and \
+                            actor["spawn_flags"] & (ActorSpawnFlags.EASY | ActorSpawnFlags.HARD) and \
+                            not actor["spawn_flags"] & ActorSpawnFlags.NORMAL:
+                        actor["delete"] = True
 
         return patcher.get_output_rom()
 

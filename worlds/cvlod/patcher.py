@@ -35,9 +35,16 @@ SCENE_SPAWN_LENGTH = 0x16
 
 EXTENDED_DATA_ACTORS: dict[int, str] = {Objects.ONE_HIT_BREAKABLE: "1hb",
                                         Objects.THREE_HIT_BREAKABLE: "3hb",
+                                        Objects.FOGGY_LAKE_ABOVE_DECKS_BARREL: "1hb special",
+                                        Objects.FOGGY_LAKE_BELOW_DECKS_BARREL: "1hb special",
+                                        Objects.SORCERY_CYAN_DIAMOND: "1hb special",
                                         Objects.ENEMY_GENERATOR_PILLAR: "pillar",
                                         Objects.DOOR: "door",
                                         Objects.LOADING_ZONE: "load"}
+
+SPECIAL_1HB_HARDCODED_PTRS_ADDRS: dict[int, int] = {Scenes.FOGGY_LAKE_ABOVE_DECKS: 0xC4,  # 0x802E3C34
+                                                    Scenes.FOGGY_LAKE_BELOW_DECKS: 0xC4,  # 0x802E3C34
+                                                    Scenes.TOWER_OF_SORCERY: 0x3FA4}  # 0x802E7B14
 
 class CVLoDSceneDataEntry(TypedDict):
     """Base class that all CVLoD scene data entries inherit from."""
@@ -61,7 +68,7 @@ class CVLoDNormalActorEntry(CVLoDSceneDataEntry):
                   # spawn flags 0x0020 or 0x0080 are set on it.
                   # For pillar: 32-bit struct for a flag to check to see if the pillar should spawn the actor. If the
                   # 80000000 bitflag is set, check the flag ID being set. If 40000000 is set, check it being un-set.
-    var_a: int  # Extra signed int16 parameters that apply to the actor (exactly what these mean vary per actor).
+    var_a: int  # Extra int16 parameters that apply to the actor (exactly what these mean vary per actor).
     var_b: int
     var_c: int
     var_d: int
@@ -81,7 +88,7 @@ class CVLoDPillarActorEntry(CVLoDSceneDataEntry):
                   # spawn flags 0x0020 or 0x0080 are set on it.
                   # For pillar: 32-bit struct for a flag to check to see if the pillar should spawn the actor. If the
                   # 80000000 bitflag is set, check the flag ID being set. If 40000000 is set, check it being un-set.
-    var_c: int  # Extra signed int16 parameters that apply to the actor (exactly what these mean vary per actor).
+    var_c: int  # Extra int16 parameters that apply to the actor (exactly what these mean vary per actor).
     var_a: int  # (Yes, these are out of order in the actual game's structs).
     var_b: int
     var_d: int
@@ -192,6 +199,9 @@ class CVLoDScene:
     spawn_spots: list[CVLoDSpawnEntranceEntry]  # Spawn entrances in the scene.
     enemy_pillars: list[CVLoDEnemyPillarEntry]  # 3HB enemy pillars in the scene.
     one_hit_breakables: list[CVLoD1HitBreakableEntry]  # 1-hit breakables in the scene.
+    one_hit_special_breakables: list[CVLoD1HitBreakableEntry]  # Special 1HBs that aren't the regular 1HB actor, like
+                                                               # the Foggy Lake barrels and Sorcery diamonds. Always
+                                                               # scene-specific with hardcoded ptrs to their datatables.
     three_hit_drop_ids: list[int]  # Array of item IDs that the 3HBs on the scene can drop.
     three_hit_drops_start: int  # Spot in RDRAM where the scene's 3HB drop IDs array begins.
     three_hit_drops_orig_len: int  # Original length of the 3HB drop IDs array.
@@ -200,7 +210,7 @@ class CVLoDScene:
     scene_text_orig_size: int  # Original size of the scene's text pool.
     doors: list[CVLoDDoorEntry]  # Doors in the scene.
     loading_zones: list[CVLoDLoadingZoneEntry]  # Loading zones in the scene.
-    # Dict of the normal init/distance/room actor lists in the scene mapped to which one it is.
+    # Dict of the normal init/proxy/room actor lists in the scene mapped to which one it is.
     actor_lists: dict[str, list[CVLoDNormalActorEntry | CVLoDPillarActorEntry]]
     highest_ids: dict[str, int]  # Highest IDs for specific data like 1-hit breakables, determined from the actors.
     start_addr: int | None  # Where in RDRAM the scene's data starts when loaded, if it's vanilla. For easier debugging.
@@ -216,6 +226,7 @@ class CVLoDScene:
         self.spawn_spots = []
         self.enemy_pillars = []
         self.one_hit_breakables = []
+        self.one_hit_special_breakables = []
         self.three_hit_drop_ids = []
         self.three_hit_breakables = []
         self.scene_text = []
@@ -351,7 +362,7 @@ class CVLoDRomPatcher:
             self.scenes[scene_id].overlay = self.rom[scene_overlay_start: scene_overlay_end]
 
             # Extract the scene's init actor list (the one that spawns all of its contents upon the scene initializing
-            # and keeps them spawned regardless of both the player's distance to them and what room they're in). Take
+            # and keeps them spawned regardless of both the player's proximity to them and what room they're in). Take
             # the third pointer in the scene's entry in the game's table of loaded scene actor list starts and determine
             # how far in it is relative to the start of the overlay in RDRAM.
             init_actors_start = self.read_bytes(SCENE_ACTOR_PTRS_START + 8 + (scene_id * 0x10), 4,
@@ -359,16 +370,16 @@ class CVLoDRomPatcher:
             self.scenes[scene_id].actor_lists["init"] = self.extract_normal_scene_actor_list(scene_id,
                                                                                              init_actors_start)
 
-            # Extract the scene's distance actor list (the one that will spawn its things ONLY while the player is
-            # within a certain distance from them and is also not tied to any room). This is the second pointer in the
+            # Extract the scene's proxy actor list (the one that will spawn its things ONLY while the player is
+            # within a certain proximity from them and is also not tied to any room). This is the second pointer in the
             # scene's entry in the above-mentioned table.
-            distance_actors_start = self.read_bytes(SCENE_ACTOR_PTRS_START + 4 + (scene_id * 0x10),
-                                                    4, return_as_int=True) - SCENE_OVERLAY_RDRAM_START
-            self.scenes[scene_id].actor_lists["distance"] = self.extract_normal_scene_actor_list(scene_id,
-                                                                                                 distance_actors_start)
+            proxy_actors_start = self.read_bytes(SCENE_ACTOR_PTRS_START + 4 + (scene_id * 0x10),
+                                                 4, return_as_int=True) - SCENE_OVERLAY_RDRAM_START
+            self.scenes[scene_id].actor_lists["proxy"] = self.extract_normal_scene_actor_list(scene_id,
+                                                                                                 proxy_actors_start)
 
             # Extract the scene's room actor lists (the ones that will spawn their things only while their designated
-            # rooms are loaded and, much like the init list, don't care about the player's distance). Not every scene
+            # rooms are loaded and, much like the init list, don't care about the player's proximity). Not every scene
             # has these; in fact, most don't. To see if the current scene we're looking at has one, we will check if the
             # fourth pointer in the scene's table entry is not 00000000.
             room_actor_ptrs_start = self.read_bytes(SCENE_ACTOR_PTRS_START + 0xC + (scene_id * 0x10), 4,
@@ -456,10 +467,10 @@ class CVLoDRomPatcher:
                         z_pos=struct.unpack('>h', pillar_actor_data[0x04:0x06])[0],
                         execution_flags=object_id >> 0xB,
                         object_id=object_id & 0x7FF,
-                        var_c=struct.unpack('>h', pillar_actor_data[0x08:0x0A])[0],
-                        var_a=struct.unpack('>h', pillar_actor_data[0x0A:0x0C])[0],
-                        var_b=struct.unpack('>h', pillar_actor_data[0x0C:0x0E])[0],
-                        var_d=struct.unpack('>h', pillar_actor_data[0x0E:0x10])[0],
+                        var_c=struct.unpack('>H', pillar_actor_data[0x08:0x0A])[0],
+                        var_a=struct.unpack('>H', pillar_actor_data[0x0A:0x0C])[0],
+                        var_b=struct.unpack('>H', pillar_actor_data[0x0C:0x0E])[0],
+                        var_d=struct.unpack('>H', pillar_actor_data[0x0E:0x10])[0],
                         flag_id=int.from_bytes(pillar_actor_data[0x14:], "big"),
                         start_addr=current_enemy_pillar_actor_start + SCENE_OVERLAY_RDRAM_START,
                     )
@@ -529,6 +540,58 @@ class CVLoDRomPatcher:
 
                 # Save the complete 1HB list.
                 self.scenes[scene_id].one_hit_breakables = one_hit_list
+
+            # Extract the special 1-hit breakables data if special 1HB data exists (highest found 1HB special ID is 0
+            # or higher).
+            if self.scenes[scene_id].highest_ids["1hb special"] > -1:
+                # Get the start address of the scene's 1HB special data in the overlay. This is hardcoded in the overlay
+                # of every map that has one, so we will need to read the lower halves of two separate instructions and
+                # put them together (it's an LUI followed by an ADDIU into the same register in every case).
+                upper_addr_half = self.scenes[scene_id].read_ovl_bytes(SPECIAL_1HB_HARDCODED_PTRS_ADDRS[scene_id] + 2,
+                                                                       2, return_as_int= True)
+                lower_addr_half = self.scenes[scene_id].read_ovl_bytes(SPECIAL_1HB_HARDCODED_PTRS_ADDRS[scene_id] + 6,
+                                                                       2, return_as_int= True)
+                # If the lower half is 0x8000 or higher, subtract 1 from the upper half. ADDIU-ing a signed negative
+                # decrements the upper half of the number being added into by 1 normally.
+                if lower_addr_half >= 0x8000:
+                    upper_addr_half -= 1
+
+                # Put the two halves together to form the complete address.
+                special_one_hit_breakables_start = (upper_addr_half << 0x10) + lower_addr_half \
+                                                   - SCENE_OVERLAY_RDRAM_START
+
+                # Loop over every special 1HB data that is known to exist based on how high the highest ID is. It is
+                # formatted exactly the same way as regular 1HB data in every case.
+                special_one_hit_list = []
+                for special_one_hit_id in range(self.scenes[scene_id].highest_ids["1hb special"] + 1):
+                    current_special_one_hit_start = special_one_hit_breakables_start + (special_one_hit_id *
+                                                                                        ONE_HIT_BREAKABLE_ENTRY_LENGTH)
+                    special_one_hit_data = self.scenes[scene_id].read_ovl_bytes(current_special_one_hit_start,
+                                                                        ONE_HIT_BREAKABLE_ENTRY_LENGTH)
+
+                    special_one_hit = CVLoD1HitBreakableEntry(
+                        appearance_id=int.from_bytes(special_one_hit_data[0x00:0x02], "big"),
+                        pickup_id=int.from_bytes(special_one_hit_data[0x02:0x04], "big"),
+                        flag_id=int.from_bytes(special_one_hit_data[0x04:0x08], "big"),
+                        pickup_flags=int.from_bytes(special_one_hit_data[0x08:0x0A], "big"),
+                        start_addr=current_special_one_hit_start + SCENE_OVERLAY_RDRAM_START,
+                    )
+
+                    # Check if the pickup ID has an entry in the pickups enum.
+                    if special_one_hit["pickup_id"] in Pickups:
+                        special_one_hit["pickup_id"] = Pickups(special_one_hit["pickup_id"])
+
+                    # Loop over every pickup flag and see if we have any of them set and documented.
+                    for flag_index in range(0x16):
+                        flag_to_check = special_one_hit["pickup_flags"] & (1 << flag_index)
+                        if flag_to_check in PickupFlags:
+                            special_one_hit["pickup_flags"] |= PickupFlags(flag_to_check)
+
+                    # Append the special 1HB to the end of the list.
+                    special_one_hit_list.append(special_one_hit)
+
+                # Save the complete special 1HB list.
+                self.scenes[scene_id].one_hit_special_breakables = special_one_hit_list
 
             # Extract the 3-hit breakables data if 3HB data exists (highest found 3HB ID is 0 or higher).
             if self.scenes[scene_id].highest_ids["3hb"] > -1:
@@ -849,10 +912,10 @@ class CVLoDRomPatcher:
                 execution_flags=object_id >> 0xB,
                 object_id=object_id & 0x7FF,
                 flag_id=int.from_bytes(actor_data[0x12:0x14], "big"),
-                var_a=struct.unpack('>h', actor_data[0x14:0x16])[0],
-                var_b=struct.unpack('>h', actor_data[0x16:0x18])[0],
-                var_c=struct.unpack('>h', actor_data[0x18:0x1A])[0],
-                var_d=struct.unpack('>h', actor_data[0x1A:0x1C])[0],
+                var_a=struct.unpack('>H', actor_data[0x14:0x16])[0],
+                var_b=struct.unpack('>H', actor_data[0x16:0x18])[0],
+                var_c=struct.unpack('>H', actor_data[0x18:0x1A])[0],
+                var_d=struct.unpack('>H', actor_data[0x1A:0x1C])[0],
                 extra_condition_ptr=int.from_bytes(actor_data[0x1C:], "big"),
                 start_addr=curr_addr + SCENE_OVERLAY_RDRAM_START,
             )
@@ -881,7 +944,7 @@ class CVLoDRomPatcher:
             if actor["object_id"] == Objects.END_OF_ACTOR_LIST:
                 return actor_list
 
-            # If the actor is in the dict of actors with extended data, check the data ID in param 3 against the highest
+            # If the actor is in the dict of actors with extended data, check the data ID in Var C against the highest
             # one we've found so far for that actor on this scene. If it's higher, then consider it the new highest.
             if actor["object_id"] in EXTENDED_DATA_ACTORS.keys():
                 extended_data_type = EXTENDED_DATA_ACTORS[actor["object_id"]]
@@ -953,10 +1016,10 @@ class CVLoDRomPatcher:
                                      struct.pack(">h", entry["y_pos"]) + \
                                      struct.pack(">h", entry["z_pos"]) + \
                                      int.to_bytes(entry["object_id"] | (entry["execution_flags"] << 0xB), 2, "big") + \
-                                     struct.pack(">h", entry["var_c"]) + \
-                                     struct.pack(">h", entry["var_a"]) + \
-                                     struct.pack(">h", entry["var_b"]) + \
-                                     struct.pack(">h", entry["var_d"]) + b'\x00\x00\x00\x00' + \
+                                     struct.pack(">H", entry["var_c"]) + \
+                                     struct.pack(">H", entry["var_a"]) + \
+                                     struct.pack(">H", entry["var_b"]) + \
+                                     struct.pack(">H", entry["var_d"]) + b'\x00\x00\x00\x00' + \
                                      int.to_bytes(entry["flag_id"], 4, "big")
                 # Otherwise, get it in the normal actor list format.
                 else:
@@ -968,10 +1031,10 @@ class CVLoDRomPatcher:
                                      struct.pack(">f", entry["z_pos"]) + \
                                      int.to_bytes(entry["object_id"] | (entry["execution_flags"] << 0xB), 2, "big") + \
                                      int.to_bytes(entry["flag_id"], 2, "big") + \
-                                     struct.pack(">h", entry["var_a"]) + \
-                                     struct.pack(">h", entry["var_b"]) + \
-                                     struct.pack(">h", entry["var_c"]) + \
-                                     struct.pack(">h", entry["var_d"]) + \
+                                     struct.pack(">H", entry["var_a"]) + \
+                                     struct.pack(">H", entry["var_b"]) + \
+                                     struct.pack(">H", entry["var_c"]) + \
+                                     struct.pack(">H", entry["var_d"]) + \
                                      int.to_bytes(entry["extra_condition_ptr"], 4, "big")
 
                     # Append the list end entry for all normal actor lists.
@@ -997,8 +1060,8 @@ class CVLoDRomPatcher:
                     # start of the overlay in RDRAM.
                     if list_name == "init":
                         self.write_int32(SCENE_ACTOR_PTRS_START + 8 + (scene_id * 0x10), new_actor_list_addr)
-                    # If it's a distance list, the pointer to update is the second pointer in the above-mentioned table.
-                    elif list_name == "distance":
+                    # If it's a proxy list, the pointer to update is the second pointer in the above-mentioned table.
+                    elif list_name == "proxy":
                         self.write_int32(SCENE_ACTOR_PTRS_START + 4 + (scene_id * 0x10), new_actor_list_addr)
                     # If it's a room list, take the fourth pointer in the table to arrive at the scene's list of room
                     # actor list pointers, and then offset into it by the room number.
@@ -1071,6 +1134,46 @@ class CVLoDRomPatcher:
                 new_1hb_list_addr = len(self.scenes[scene_id].overlay) + SCENE_OVERLAY_RDRAM_START
                 self.scenes[scene_id].overlay += list_data
                 self.write_int32(SCENE_1HB_PTRS_START + (scene_id * 4), new_1hb_list_addr)
+
+
+            # # # SPECIAL 1-HIT BREAKABLES LIST # # #
+            # Create the final special 1-hit breakables list with all entries primed for deletion removed.
+            new_special_1hb_list = [special_one_hit_entry for special_one_hit_entry in
+                                    self.scenes[scene_id].one_hit_special_breakables
+                                    if "delete" not in special_one_hit_entry]
+
+            # Loop over each special 1HB, convert each one to binary data, and insert them back in the map overlay.
+            list_data = bytearray(0)
+            for special_one_hit in new_special_1hb_list:
+                list_data += int.to_bytes(special_one_hit["appearance_id"], 2, "big") + \
+                             int.to_bytes(special_one_hit["pickup_id"], 2, "big") + \
+                             int.to_bytes(special_one_hit["flag_id"], 4, "big") + \
+                             int.to_bytes(special_one_hit["pickup_flags"], 2, "big") + b'\x00\x00'
+
+            # If the new special 1HB data is the same size or smaller than it was before, write it back where it was
+            # originally (if we even have a list to begin with).
+            if len(new_special_1hb_list) <= len([orig_entry for orig_entry in
+                                                 self.scenes[scene_id].one_hit_special_breakables
+                                                 if "start_addr" in orig_entry]):
+                if new_special_1hb_list:
+                    self.scenes[scene_id].write_ovl_bytes(
+                        self.scenes[scene_id].one_hit_special_breakables[0]["start_addr"] \
+                        - SCENE_OVERLAY_RDRAM_START, list_data)
+            # If it's larger, however, put it on the end of the overlay and update the pointer to it.
+            else:
+                new_special_1hb_list_addr = len(self.scenes[scene_id].overlay) + SCENE_OVERLAY_RDRAM_START
+                self.scenes[scene_id].overlay += list_data
+
+                # Split the pointer up into an upper and lower half and write them separately onto the hardcoded
+                # instructions for that scene.
+                upper_addr_half = new_special_1hb_list_addr >> 0x10
+                lower_addr_half = new_special_1hb_list_addr & 0xFFFF
+                # Increment the upper half if the lower is 0x8000 or higher.
+                if lower_addr_half >= 0x8000:
+                    upper_addr_half += 1
+
+                self.scenes[scene_id].write_ovl_int16(SPECIAL_1HB_HARDCODED_PTRS_ADDRS[scene_id] + 2, upper_addr_half)
+                self.scenes[scene_id].write_ovl_int16(SPECIAL_1HB_HARDCODED_PTRS_ADDRS[scene_id] + 6, lower_addr_half)
 
 
             # # # 3HB DROP IDS LIST # # #

@@ -118,7 +118,7 @@ CVLOD_STAGE_INFO = {
                                                                             loc_names.forest_flea_trail,
                                                                             loc_names.forest_leap,
                                                                             loc_names.forest_descent,
-                                                                            loc_names.forest_tunnel,
+                                                                            loc_names.forest_passage,
                                                                             loc_names.forest_child_ledge],
                                                                  entrances=[ent_names.forest_dbridge_gate]),
 
