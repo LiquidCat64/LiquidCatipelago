@@ -75,6 +75,40 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32(0x66C, 0x00000000)
         patcher.write_int32(0x678, 0x00000000)
 
+        # Initial Countdown numbers and Start Inventory
+        patcher.write_int32(0x90DBC, 0x080FF200)  # J	0x803FC800
+        patcher.write_int32s(0xFFC800, patches.new_game_extras)
+
+        # Everything related to the Countdown counter.
+        if slot_patch_info["options"]["countdown"]:
+            patcher.write_int32(0x1C670, 0x080FF141)  # J 0x803FC504
+            patcher.write_int32(0x1F11C, 0x080FF147)  # J 0x803FC51C
+            patcher.write_int32s(0xFFC3C0, patches.countdown_number_displayer)
+            patcher.write_int32s(0xFFC4D0, patches.countdown_number_manager)
+            patcher.write_int32(0x877E0, 0x080FF18D)  # J 0x803FC634
+            patcher.write_int32(0x878F0, 0x080FF188)  # J 0x803FC620
+            patcher.write_int32s(0x8BFF0, [0x0C0FF192,  # JAL 0x803FC648
+                                            0xA2090000])  # SB  T1, 0x0000 (S0)
+            patcher.write_int32s(0x8C028, [0x0C0FF199,  # JAL 0x803FC664
+                                            0xA20E0000])  # SB  T6, 0x0000 (S0)
+            patcher.write_int32(0x108D80, 0x0C0FF1A0)  # JAL 0x803FC680
+
+        # Kills the pointer to the Countdown number, resets the "in a demo?" value whenever changing/reloading the
+        # game state, and mirrors the current game state value in a spot that's easily readable.
+        patcher.write_int32(0x1168, 0x08007938)  # J 0x8001E4E0
+        patcher.write_int32s(0x1F0E0, [0x3C08801D,  # LUI   T0, 0x801D
+                                        0xA104AA30,  # SB    A0, 0xAA30 (T0)
+                                        0xA100AA4A,  # SB    R0, 0xAA4A (T0)
+                                        0x03E00008,  # JR    RA
+                                        0xFD00AA40])  # SD    R0, 0xAA40 (T0)
+
+        # Make changing the map ID to 0xFF reset the map (helpful to work around a bug wherein the camera gets stuck
+        # when entering a loading zone that doesn't change the map) or changing the spawn ID to 0x40 or 0x80 to go to a
+        # decoupled version of the Spider Queen or Medusa arena respectively.
+        patcher.write_int32s(0x1C3B4, [0x0C0FF304,    # JAL   0x803FCC10
+                                        0x24840008]),  # ADDIU A0, A0, 0x0008
+        patcher.write_int32s(0xFFCC10, patches.map_refresher)
+
         # Add keys in an AP logo formation to the title screen.
         patcher.scenes[Scenes.INTRO_NARRATION].actor_lists["proxy"] += [
             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=0.0, y_pos=3.8, z_pos=0.0, execution_flags=0,
@@ -118,9 +152,9 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_byte(0x22F, 0x04, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
         # Give Henry all the time in the world just like everyone else.
         patcher.write_byte(0x86DDF, 0x04)
-        # Make the Henry warp jewels work for everyone at the expense of the light effect surrounding them.
-        # The code that creates and renders it is exclusively inside Henry's overlay, so it must go for it to function
-        # for the rest of the characters, sadly.
+        # Make the Henry teleport jewels work for everyone at the expense of the light effect surrounding them.
+        # The code that creates and renders it is exclusively inside Henry's overlay, so it must be tossed for the actor
+        # to function for the rest of the characters, sadly.
         patcher.write_int32(0xF6A5C, 0x00000000)  # NOP
 
         # Custom data-loading code
@@ -137,7 +171,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_spawn_id,
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15DB, 0x10, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15DB, 0x08, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         # Change the instruction that stores the Foggy Lake intro cutscene value to store a 0 (from R0) instead.
         patcher.write_int32(0x1614, 0xAC402BCC, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON) # SW  R0, 0x2BCC (V0)
@@ -148,6 +182,10 @@ class CVLoDPatchExtensions(APPatchExtension):
 
         # Active cutscene checker routines for certain actors.
         patcher.write_int32s(0xFFCDA0, patches.cutscene_active_checkers)
+
+        # Ambience silencing fix
+        patcher.write_int32(0x1BB20, 0x080FF280)  # J 0x803FCA00
+        patcher.write_int32s(0xFFCA00, patches.ambience_silencer)
 
         # Enable being able to carry multiple Special jewels, Nitros, Mandragoras, and Key Items simultaneously
         # Special1
@@ -199,6 +237,29 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32s(0xFFC300, patches.item_customizer)
         patcher.write_int32(0x1078D0, 0x0C0FF0CB),  # JAL   0x803FC32C
         patcher.write_int32s(0xFFC32C, patches.item_appearance_switcher)
+
+        # Enable the Game Over's "Continue" menu starting the cursor on whichever checkpoint is most recent
+        patcher.write_int32s(0x82120, [0x0C0FF2B4,  # JAL 0x803FCAD0
+                                        0x91830024])  # LBU V1, 0x0024 (T4)
+        patcher.write_int32s(0xFFCAD0, patches.continue_cursor_start_checker)
+        patcher.write_int32(0x1D4A8, 0x080FF2C5)  # J   0x803FCB14
+        patcher.write_int32s(0xFFCB14, patches.savepoint_cursor_updater)
+        patcher.write_int32(0x1D344, 0x080FF2C0)  # J   0x803FCB00
+        patcher.write_int32s(0xFFCB00, patches.stage_start_cursor_updater)
+        patcher.write_byte(0x21C7, 0xFF, NIFiles.OVERLAY_GAME_OVER_SCREEN)
+        # Multiworld buffer clearer/"death on load" safety checks.
+        patcher.write_int32s(0x1D314, [0x080FF2D0,  # J   0x803FCB40
+                                        0x24040000])  # ADDIU A0, R0, 0x0000
+        patcher.write_int32s(0x1D3B4, [0x080FF2D0,  # J   0x803FCB40
+                                        0x24040001])  # ADDIU A0, R0, 0x0001
+        patcher.write_int32s(0xFFCB40, patches.load_clearer)
+
+        # Write the specified window colors
+        patcher.write_byte(0x8881A, slot_patch_info["options"]["window_color_r"] << 4)
+        patcher.write_byte(0x8881B, slot_patch_info["options"]["window_color_g"] << 4)
+        patcher.write_byte(0x8881E, slot_patch_info["options"]["window_color_b"] << 4)
+        patcher.write_byte(0x8881F, slot_patch_info["options"]["window_color_a"] << 4)
+
 
         # # # # # # # # # # #
         # FOGGY LAKE EDITS  #
@@ -333,6 +394,134 @@ class CVLoDPatchExtensions(APPatchExtension):
         # The "drawbridge lowered" flag should be set so that Forest's regular end zone is easily accessible, and no
         # separate cutscene should play in the next map.
         patcher.write_int32(0x1294, 0x1000000C, NIFiles.OVERLAY_CS_DRAWBRIDGE_LOWERS)
+
+        # Make Reinhardt/Carrie/Cornell's White Jewels universal to everyone and remove Henry's.
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][123]["spawn_flags"] = 0
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][124]["spawn_flags"] = 0
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][125]["spawn_flags"] = 0
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][126]["spawn_flags"] = 0
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][127]["spawn_flags"] = 0
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][128]["delete"] = True
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][129]["delete"] = True
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][130]["delete"] = True
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][131]["delete"] = True
+
+
+        # # # # # # # # #
+        # TUNNEL EDITS  #
+        # # # # # # # # #
+        # Make the Tunnel gondolas check for the Spider Women cutscene like they do in CV64.
+        patcher.write_int32(0x79B8CC, 0x0C0BADF4)  # JAL  0x802EB7D0
+        patcher.scenes[Scenes.TUNNEL].write_ovl_int32s(0x7C60, patches.gondola_spider_cutscene_checker)
+
+        # Turn the Tunnel Henry child actor into a freestanding pickup check with all necessary parameters assigned.
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][131]["spawn_flags"] = 0
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][131]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][131]["execution_flags"] = 0
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][131]["flag_id"] = 0
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][131]["var_a"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.tunnel_shovel_mdoor_c].flag_id
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][131]["var_b"] = 0
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][131]["var_c"] = Pickups.ONE_HUNDRED_GOLD
+
+        # Set the Tunnel end zone spawn ID to the ID for the decoupled Spider Queen arena.
+        patcher.scenes[Scenes.TUNNEL].loading_zones[0]["spawn_id"] |= 0x40
+
+        # Make the Spider Women introduction cutscene trigger universal to everyone.
+        patcher.scenes[Scenes.TUNNEL].actor_lists["init"][7]["spawn_flags"] = 0
+        # Make Henry's teleport jewel universal to everyone.
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][215]["spawn_flags"] = 0
+        # Make Reinhardt/Carrie/Cornell's White Jewels universal to everyone and remove Henry's.
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][132]["spawn_flags"] = 0
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][133]["spawn_flags"] = 0
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][134]["spawn_flags"] = 0
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][135]["spawn_flags"] = 0
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][136]["spawn_flags"] = 0
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][137]["spawn_flags"] = 0
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][138]["spawn_flags"] = 0
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][139]["delete"] = True
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][140]["delete"] = True
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][141]["delete"] = True
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][142]["delete"] = True
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][143]["delete"] = True
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][144]["delete"] = True
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][145]["delete"] = True
+
+
+        # # # # # # # # # # # # # # # #
+        # UNDERGROUND WATERWAY EDITS  #
+        # # # # # # # # # # # # # # # #
+        # Turn the Waterway Henry child actor into a freestanding pickup with all necessary parameters assigned.
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][70]["spawn_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][70]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][70]["execution_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][70]["flag_id"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][70]["var_a"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.uw_waterfall_child].flag_id
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][70]["var_b"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][70]["var_c"] = Pickups.ONE_HUNDRED_GOLD
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][70]["extra_condition_ptr"] = 0
+
+        # Set the Waterway end zone destination ID to the ID for the decoupled Medusa arena.
+        patcher.scenes[Scenes.WATERWAY].loading_zones[0]["spawn_id"] |= 0x80
+
+        # Make the "I Smell Poison" and lizard-men cutscene triggers and all text spots universal to everyone.
+        patcher.scenes[Scenes.WATERWAY].actor_lists["init"][1]["spawn_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["init"][2]["spawn_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["init"][3]["spawn_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["init"][4]["spawn_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["init"][5]["spawn_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["init"][6]["spawn_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["init"][7]["spawn_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["init"][8]["spawn_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["init"][9]["spawn_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["init"][10]["spawn_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["init"][12]["spawn_flags"] = 0
+        # Make Henry's teleport jewel universal to everyone.
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][103]["spawn_flags"] = 0
+        # Make Reinhardt/Carrie/Cornell's White Jewels universal to everyone and remove Henry's.
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][71]["spawn_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][72]["spawn_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][73]["spawn_flags"] = 0
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][74]["delete"] = True
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][75]["delete"] = True
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][76]["delete"] = True
+
+
+        # # # # # # # # # # # # # # # #
+        # TUNNEL/WATERWAY ARENA EDITS #
+        # # # # # # # # # # # # # # # #
+        # Make different end loading zones spawn depending on whether the 0x2A1 or 0x2A2 flags are set
+        # (specifically, Reinhardt and Carrie's ones).
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][12]["spawn_flags"] = \
+            ActorSpawnFlags.SPAWN_IF_FLAG_SET
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][12]["flag_id"] = 0x02A1  # Tunnel flag ID
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][13]["spawn_flags"] = \
+            ActorSpawnFlags.SPAWN_IF_FLAG_SET
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][13]["flag_id"] = 0x02A2  # Waterway flag ID
+
+        # Delete the end sun door for Reinhardt/Carrie/Cornell and keep the regular door for Henry.
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][6]["delete"] = True
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][7]["spawn_flags"] ^= ActorSpawnFlags.HENRY
+        # Delete the end zone specific to Henry and the start zones specific to Reinhardt/Carrie, and make the Henry
+        # start zones universal to everyone.
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][8]["delete"] = True
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][9]["delete"] = True
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][10]["spawn_flags"] ^= ActorSpawnFlags.HENRY
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][11]["spawn_flags"] ^= ActorSpawnFlags.HENRY
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][14]["delete"] = True
+        # Delete the boss instances specific to Reinhardt and Carrie and make Henry's spawn for everyone
+        # (without removing the flag checks).
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][2]["delete"] = True
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][4]["delete"] = True
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][3]["spawn_flags"] ^= ActorSpawnFlags.HENRY
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].actor_lists["proxy"][5]["spawn_flags"] ^= ActorSpawnFlags.HENRY
+
+        # Remove the cutscene setting ID on the Reinhardt and Carrie end loading zone data so that said cutscenes won't
+        # cause us to get teleported to the void should the loading zones' destinations change.
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].loading_zones[1]["cutscene_settings_id"] = 0
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].loading_zones[3]["cutscene_settings_id"] = 0
+
 
         # Loop over every name in the slot's dict of names to values to write and write every "normal" one that has an
         # actor associated with it in its location info.
@@ -476,38 +665,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_byte(0x797D6C, 0x52)
         patcher.write_int32(0x797D70, 0x802E4C34)
 
-        # Make the Tunnel gondolas check for the Spider Women cutscene like they do in CV64.
-        patcher.write_int32(0x79B8CC, 0x0C0FF2F8)  # JAL	0x803FCBE0
-        patcher.write_int32s(0xFFCBE0, patches.gondola_spider_cutscene_checker)
-        # Turn the Tunnel Henry child actor into a torch check with all necessary parameters assigned.
-        patcher.write_int16(0x79EF8E, 0x0024)  # Dropped item flag ID
-        patcher.write_byte(0x7A1469, 0x00)     # Flag check unassignment
-        patcher.write_int16(0x7A1478, 0x01D9)  # Candle actor ID
-        patcher.write_int16(0x7A147A, 0x0000)  # Flag check unassignment
-        patcher.write_int16(0x7A147C, 0x0000)  # Flag check unassignment
-        patcher.write_int16(0x7A147E, 0x0000)  # Rotation unassignment
-        patcher.write_int16(0x7A1480, 0x000F)  # Candle ID
-        # Set the Tunnel end zone destination ID to the ID for the decoupled Spider Queen arena.
-        patcher.write_byte(0x79FD8F, 0x40)
-
-        # Turn the Waterway Henry child actor into a torch check with all necessary parameters assigned.
-        patcher.write_int16(0x7A409E, 0x0025)  # Dropped item flag ID
-        patcher.write_byte(0x7A5759, 0x00)     # Flag check unassignment
-        patcher.write_int16(0x7A5768, 0x01D9)  # Candle actor ID
-        patcher.write_int16(0x7A576A, 0x0000)  # Flag check unassignment
-        patcher.write_int16(0x7A576C, 0x0000)  # Flag check unassignment
-        patcher.write_int16(0x7A576E, 0x0000)  # Rotation unassignment
-        patcher.write_int16(0x7A5770, 0x0000)  # Candle ID
-        patcher.write_int32(0x7A5774, 0x00000000)  # Removed special spawn check address
-        # Set the Waterway end zone destination ID to the ID for the decoupled Medusa arena.
-        patcher.write_byte(0x7A4A0B, 0x80)
-
-        # Make different Tunnel/Waterway boss arena end loading zones spawn depending on whether the 0x2A1 or 0x2A2
-        # flags are set.
-        patcher.write_byte(0x7C87B5, 0x20)  # Flag check assignment
-        patcher.write_int16(0x7C87C6, 0x02A1)  # Tunnel flag ID
-        patcher.write_byte(0x7C87D5, 0x20)  # Flag check assignment
-        patcher.write_int16(0x7C87E6, 0x02A2)  # Underground Waterway flag ID
 
         # Turn the Outer Wall Henry child actor into a torch check with all necessary parameters assigned.
         patcher.write_int16(0x833A9E, 0x0026)  # Dropped item flag ID
@@ -782,13 +939,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # #patcher.write_int32(0x97244, 0x803FDD60)
         # #patcher.write_int32s(0xBFDD60, patches.forest_cw_villa_intro_cs_player)
 
-        # Make changing the map ID to 0xFF reset the map (helpful to work around a bug wherein the camera gets stuck
-        # when entering a loading zone that doesn't change the map) or changing the map ID to 0x53 or 0x93 to go to a
-        # decoupled version of the Spider Queen or Medusa arena respectively.
-        patcher.write_int32s(0x1C3B4, [0x0C0FF304,    # JAL   0x803FCC10
-                                        0x24840008]),  # ADDIU A0, A0, 0x0008
-        patcher.write_int32s(0xFFCC10, patches.map_refresher)
-
         # Enable swapping characters when loading into a map by holding L.
         # patcher.write_int32(0x97294, 0x803FDFC4)
         # patcher.write_int32(0x19710, 0x080FF80E)  # J 0x803FE038
@@ -801,7 +951,7 @@ class CVLoDPatchExtensions(APPatchExtension):
 
         # Disable the 3HBs checking and setting flags when breaking them and enable their individual items checking and
         # setting flags instead.
-        if options["multi_hit_breakables"]:
+        if slot_patch_info["options"]["multi_hit_breakables"]:
             patcher.write_int16(0xE3488, 0x1000)
             patcher.write_int32(0xE3800, 0x24050000)  # ADDIU	A1, R0, 0x0000
             patcher.write_byte(0xE39EB, 0x00)
@@ -830,32 +980,9 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int16(0x82CC8A, 0x0330)  # CT beneath final slide
 
         # If the empty breakables are on, write all data associated with them.
-        if options["empty_breakables"]:
+        if slot_patch_info["options"]["empty_breakables"]:
             for offset in patches.empty_breakables_data:
                 patcher.write_bytes(offset, patches.empty_breakables_data[offset])
-
-        # Kills the pointer to the Countdown number, resets the "in a demo?" value whenever changing/reloading the
-        # game state, and mirrors the current game state value in a spot that's easily readable.
-        patcher.write_int32(0x1168, 0x08007938)  # J 0x8001E4E0
-        patcher.write_int32s(0x1F0E0, [0x3C08801D,  # LUI   T0, 0x801D
-                                        0xA104AA30,  # SB    A0, 0xAA30 (T0)
-                                        0xA100AA4A,  # SB    R0, 0xAA4A (T0)
-                                        0x03E00008,  # JR    RA
-                                        0xFD00AA40])  # SD    R0, 0xAA40 (T0)
-
-        # Everything related to the Countdown counter.
-        if options["countdown"]:
-            patcher.write_int32(0x1C670, 0x080FF141)  # J 0x803FC504
-            patcher.write_int32(0x1F11C, 0x080FF147)  # J 0x803FC51C
-            patcher.write_int32s(0xFFC3C0, patches.countdown_number_displayer)
-            patcher.write_int32s(0xFFC4D0, patches.countdown_number_manager)
-            patcher.write_int32(0x877E0, 0x080FF18D)  # J 0x803FC634
-            patcher.write_int32(0x878F0, 0x080FF188)  # J 0x803FC620
-            patcher.write_int32s(0x8BFF0, [0x0C0FF192,  # JAL 0x803FC648
-                                            0xA2090000])  # SB  T1, 0x0000 (S0)
-            patcher.write_int32s(0x8C028, [0x0C0FF199,  # JAL 0x803FC664
-                                            0xA20E0000])  # SB  T6, 0x0000 (S0)
-            patcher.write_int32(0x108D80, 0x0C0FF1A0)  # JAL 0x803FC680
 
         # Skip the "There is a white jewel" text so checking one saves the game instantly.
         # patcher.write_int32s(0xEFC72, [0x00020002 for _ in range(37)])
@@ -962,22 +1089,6 @@ class CVLoDPatchExtensions(APPatchExtension):
 
         # Ensure the vampire Nitro check will always pass, so they'll never not spawn and crash the Villa cutscenes
         # patcher.write_byte(0xA6253D, 0x03)
-
-        # Enable the Game Over's "Continue" menu starting the cursor on whichever checkpoint is most recent
-        patcher.write_int32s(0x82120, [0x0C0FF2B4,  # JAL 0x803FCAD0
-                                        0x91830024])  # LBU V1, 0x0024 (T4)
-        patcher.write_int32s(0xFFCAD0, patches.continue_cursor_start_checker)
-        patcher.write_int32(0x1D4A8, 0x080FF2C5)  # J   0x803FCB14
-        patcher.write_int32s(0xFFCB14, patches.savepoint_cursor_updater)
-        patcher.write_int32(0x1D344, 0x080FF2C0)  # J   0x803FCB00
-        patcher.write_int32s(0xFFCB00, patches.stage_start_cursor_updater)
-        patcher.write_byte(0x21C7, 0xFF, NIFiles.OVERLAY_GAME_OVER_SCREEN)
-        # Multiworld buffer clearer/"death on load" safety checks.
-        patcher.write_int32s(0x1D314, [0x080FF2D0,  # J   0x803FCB40
-                                        0x24040000])  # ADDIU A0, R0, 0x0000
-        patcher.write_int32s(0x1D3B4, [0x080FF2D0,  # J   0x803FCB40
-                                        0x24040001])  # ADDIU A0, R0, 0x0001
-        patcher.write_int32s(0xFFCB40, patches.load_clearer)
 
         # Make the Special1 and 2 play sounds when you reach milestones with them.
         # patcher.write_int32s(0xBFDA50, patches.special_sound_notifs)
@@ -1261,9 +1372,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # if options.skip_waterway_blocks.value:
         # patcher.write_int32(0x6C7E2C, 0x00000000)  # NOP
 
-        # Ambience silencing fix
-        patcher.write_int32(0x1BB20, 0x080FF280)  # J 0x803FCA00
-        patcher.write_int32s(0xFFCA00, patches.ambience_silencer)
         # Fix for the door sliding sound playing infinitely if leaving the fan meeting room before the door closes entirely.
         # Hooking this in the ambience silencer code does nothing for some reason.
         # patcher.write_int32s(0xAE10C, [0x08004FAB,  # J   0x80013EAC
@@ -1336,10 +1444,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         #                            0x03200008,  # JR  T9
         #                            0x00000000])  # NOP
         # patcher.write_int32s(0xBFE4C0, patches.freeze_verifier)
-
-        # Initial Countdown numbers and Start Inventory
-        patcher.write_int32(0x90DBC, 0x080FF200)  # J	0x803FC800
-        patcher.write_int32s(0xFFC800, patches.new_game_extras)
 
         # Everything related to shopsanity
         # if options.shopsanity.value:
@@ -1440,12 +1544,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Write "Z + R + START" over the Special1 description.
         patcher.write_bytes(0x3B7C, cvlod_string_to_bytearray("Z + R + START\t")[0], NIFiles.OVERLAY_PAUSE_MENU)
 
-        # Write the specified window colors
-        patcher.write_byte(0x8881A, options["window_color_r"] << 4)
-        patcher.write_byte(0x8881B, options["window_color_g"] << 4)
-        patcher.write_byte(0x8881E, options["window_color_b"] << 4)
-        patcher.write_byte(0x8881F, options["window_color_a"] << 4)
-
         # if loc.item.player != player:
         #        inject_address = 0xBB7164 + (256 * (loc.address & 0xFFF))
         #        wrapped_name, num_lines = cvlod_text_wrap(item_name + "\nfor " + multiworld.get_player_name(
@@ -1461,11 +1559,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32s(0xBFE23C, patches.multiworld_item_name_loader)
         # patcher.write_bytes(0x10F188, [0x00 for _ in range(264)])
         # patcher.write_bytes(0x10F298, [0x00 for _ in range(264)])
-
-        # Write all the edits to the Nisitenma-Ichigo files decided during generation.
-        for file in ni_edits:
-            for offset in ni_edits[file]:
-                patcher.write_bytes(int(offset), base64.b64decode(ni_edits[file][offset].encode()), int(file))
 
         return patcher.get_output_rom()
 
@@ -1493,22 +1586,6 @@ def write_patch(world: "CVLoDWorld", patch: CVLoDProcedurePatch, offset_data: Di
     #active_warp_list = world.active_warp_list
     #s1s_per_warp = world.s1s_per_warp
 
-    # Compressed Nisitenma-Ichigo file edits.
-    ni_edits: Dict[int, Dict[int, str]] = {}
-
-    # Write all the new item/loading zone/shop/lighting/music/etc. values.
-    for offset, data in offset_data.items():
-        # If the offset is an int, write the data as a token to the main buffer.
-        if isinstance(offset, int):
-            patch.write_token(APTokenTypes.WRITE, offset, data)
-        # If the offset is a tuple, the second element in said tuple will be the compressed NI file number to write to
-        # and the first will be the offset in said file. Add the edit to the NI edits dict under the specified file
-        # number.
-        elif isinstance(offset, tuple):
-            if offset[1] not in ni_edits:
-                ni_edits[offset[1]] = {offset[0]: base64.b64encode(data).decode()}
-            else:
-                ni_edits[offset[1]].update({offset[0]: base64.b64encode(data).decode()})
 
     # Write the seed's warp destination IDs.
     # for i in range(len(active_warp_list)):
@@ -1555,60 +1632,15 @@ def write_patch(world: "CVLoDWorld", patch: CVLoDProcedurePatch, offset_data: Di
         mary_text += f"send this {mary_loc.item.name} to {world.multiworld.get_player_name(mary_loc.item.player)}."
     mary_text += "\nGood luck out there!"
 
-    mary_text = cvlod_text_wrap(mary_text, 254)
+    # mary_text = cvlod_text_wrap(mary_text, 254)
 
-    patch.write_token(APTokenTypes.WRITE, 0x78EAE0,
-                      bytes(cvlod_string_to_bytearray(mary_text[0] + (" " * (866 - len(mary_text[0]))))[0]))
+    #patch.write_token(APTokenTypes.WRITE, 0x78EAE0,
+    #                  bytes(cvlod_string_to_bytearray(mary_text[0] + (" " * (866 - len(mary_text[0]))))[0]))
 
     # Write the secondary name the client will use to distinguish a vanilla ROM from an AP one.
-    patch.write_token(APTokenTypes.WRITE, 0xFFBFD0, "ARCHIPELAG01".encode("utf-8"))
+    #patch.write_token(APTokenTypes.WRITE, 0xFFBFD0, "ARCHIPELAG01".encode("utf-8"))
     # Write the slot authentication
-    patch.write_token(APTokenTypes.WRITE, 0xFFBFE0, bytes(world.auth))
-
-    patch.write_file("token_data.bin", patch.get_token_binary())
-
-    # Write these slot options to a JSON.
-    options_dict = {
-        # "character_stages": world.options.character_stages.value,
-        # "vincent_fight_condition": world.options.vincent_fight_condition.value,
-        # "renon_fight_condition": world.options.renon_fight_condition.value,
-        # "bad_ending_condition": world.options.bad_ending_condition.value,
-        "increase_item_limit": world.options.increase_item_limit.value,
-        # "nerf_healing_items": world.options.nerf_healing_items.value,
-        # "loading_zone_heals": world.options.loading_zone_heals.value,
-        # "disable_time_restrictions": world.options.disable_time_restrictions.value,
-        # "death_link": world.options.death_link.value,
-        # "draculas_condition": world.options.draculas_condition.value,
-        # "invisible_items": world.options.invisible_items.value,
-        # "post_behemoth_boss": world.options.post_behemoth_boss.value,
-        # "room_of_clocks_boss": world.options.room_of_clocks_boss.value,
-        # "skip_gondolas": world.options.skip_gondolas.value,
-        # "skip_waterway_blocks": world.options.skip_waterway_blocks.value,
-        # "s1s_per_warp": world.options.special1s_per_warp.value,
-        # "required_s2s": world.required_s2s,
-        # "total_s2s": world.total_s2s,
-        # "total_special1s": world.options.total_special1s.value,
-        # "increase_shimmy_speed": world.options.increase_shimmy_speed.value,
-        # "fall_guard": world.options.fall_guard.value,
-        # "permanent_powerups": world.options.permanent_powerups.value,
-        # "background_music": world.options.background_music.value,
-        "multi_hit_breakables": world.options.multi_hit_breakables.value,
-        "empty_breakables": world.options.empty_breakables.value,
-        # "drop_previous_sub_weapon": world.options.drop_previous_sub_weapon.value,
-        "countdown": world.options.countdown.value,
-        # "shopsanity": world.options.shopsanity.value,
-        # "panther_dash": world.options.panther_dash.value,
-        # "big_toss": world.options.big_toss.value,
-        "window_color_r": world.options.window_color_r.value,
-        "window_color_g": world.options.window_color_g.value,
-        "window_color_b": world.options.window_color_b.value,
-        "window_color_a": world.options.window_color_a.value,
-    }
-
-    patch.write_file("options.json", json.dumps(options_dict).encode('utf-8'))
-
-    # Write all of our Nisitenma-Ichigo file edits to another JSON.
-    patch.write_file("ni_edits.json", json.dumps(ni_edits).encode('utf-8'))
+    #patch.write_token(APTokenTypes.WRITE, 0xFFBFE0, bytes(world.auth))
 
 
 def get_base_rom_bytes(file_name: str = "") -> bytes:
