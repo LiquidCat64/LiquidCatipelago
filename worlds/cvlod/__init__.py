@@ -235,6 +235,7 @@ class CVLoDWorld(World):
                                 "total_special2s": self.options.total_special2s.value,
                                 "required_special2s": self.required_s2s,
                                 "bosses_required": self.options.bosses_required.value,
+                                "empty_breakables": self.options.empty_breakables.value,
                                 "lizard_locker_items": self.options.lizard_locker_items.value,
                                 "renon_fight_condition": self.options.renon_fight_condition.value,
                                 "vincent_fight_condition": self.options.vincent_fight_condition.value,

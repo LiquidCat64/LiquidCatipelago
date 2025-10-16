@@ -171,7 +171,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_spawn_id,
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15DB, 0x08, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15DB, 0x2A, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         # Change the instruction that stores the Foggy Lake intro cutscene value to store a 0 (from R0) instead.
         patcher.write_int32(0x1614, 0xAC402BCC, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON) # SW  R0, 0x2BCC (V0)
@@ -523,6 +523,105 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].loading_zones[3]["cutscene_settings_id"] = 0
 
 
+        # # # # # # # # # # # # #
+        # THE OUTER WALL EDITS  #
+        # # # # # # # # # # # # #
+        # Turn the Outer Wall Henry child actor into a freestanding pickup check with all necessary parameters assigned.
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["spawn_flags"] = 0
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["execution_flags"] = 0
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["flag_id"] = 0
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["var_a"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.towse_child].flag_id
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["var_b"] = 0
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["var_c"] = Pickups.ONE_HUNDRED_GOLD
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["extra_condition_ptr"] = 0
+
+        # Make the Outer Wall end loading zone send you to the start of Art Tower by default instead of the fan map, as
+        # well as heal the player.
+        patcher.scenes[Scenes.THE_OUTER_WALL].loading_zones[10]["scene_id"] = Scenes.ART_TOWER_MUSEUM
+        patcher.scenes[Scenes.THE_OUTER_WALL].loading_zones[10]["spawn_id"] = 0
+        patcher.scenes[Scenes.THE_OUTER_WALL].loading_zones[10]["heal_player"] = True
+
+        # Make the Harpy cutscene trigger universal for everyone.
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["init"][1]["spawn_flags"] = 0
+        # Make Henry's teleport jewel universal for everyone.
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][114]["spawn_flags"] = 0
+        # Make the candle normally containing the Wall Key universal for everyone.
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][42]["spawn_flags"] = 0
+        # Make Cornell's White Jewels universal to everyone and remove Henry's.
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][43]["spawn_flags"] = 0
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][44]["spawn_flags"] = 0
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][45]["spawn_flags"] = 0
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][46]["spawn_flags"] = 0
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][47]["delete"] = True
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][48]["delete"] = True
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][49]["delete"] = True
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][50]["delete"] = True
+
+        # If the empty breakables are on, write all data associated with them.
+        if slot_patch_info["options"]["empty_breakables"]:
+            # Assign every empty 1HB a unique 1HB ID.
+            # For our purposes, we will be using the Outer Wall's Easy/Hard-specific 1HB data.
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][103]["var_c"] = 0x8
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][102]["var_c"] = 0x6
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][105]["var_c"] = 0xB
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][104]["var_c"] = 0xA
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][107]["var_c"] = 0xD
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][106]["var_c"] = 0xC
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][109]["var_c"] = 0x10
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][108]["var_c"] = 0xF
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][111]["var_c"] = 0x13
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][110]["var_c"] = 0x12
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][113]["var_c"] = 0x19
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][112]["var_c"] = 0x18
+
+            # Change the flag IDs in the 1HB data we are using to be the actual unique flags for the new locations.
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0x8]["flag_id"] = \
+                CVLOD_LOCATIONS_INFO[loc_names.towf_start_entry_l].flag_id
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0x6]["flag_id"] = \
+                CVLOD_LOCATIONS_INFO[loc_names.towf_start_entry_r].flag_id
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0xB]["flag_id"] = \
+                CVLOD_LOCATIONS_INFO[loc_names.towf_start_elevator_l].flag_id
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0xA]["flag_id"] = \
+                CVLOD_LOCATIONS_INFO[loc_names.towf_start_elevator_r].flag_id
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0xD]["flag_id"] = \
+                CVLOD_LOCATIONS_INFO[loc_names.towse_key_entry_l].flag_id
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0xC]["flag_id"] = \
+                CVLOD_LOCATIONS_INFO[loc_names.towse_key_entry_r].flag_id
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0x10]["flag_id"] = \
+                CVLOD_LOCATIONS_INFO[loc_names.towse_locked_door_l].flag_id
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0xF]["flag_id"] = \
+                CVLOD_LOCATIONS_INFO[loc_names.towse_locked_door_r].flag_id
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0x13]["flag_id"] = \
+                CVLOD_LOCATIONS_INFO[loc_names.towf_retract_elevator_l].flag_id
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0x12]["flag_id"] = \
+                CVLOD_LOCATIONS_INFO[loc_names.towf_retract_elevator_r].flag_id
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0x19]["flag_id"] = \
+                CVLOD_LOCATIONS_INFO[loc_names.towh_boulders_elevator_l].flag_id
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0x18]["flag_id"] = \
+                CVLOD_LOCATIONS_INFO[loc_names.towh_boulders_elevator_r].flag_id
+
+            # Change the appearance value of each 1HB data to be a wall-mounted candle.
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0x8]["appearance_id"] = 1
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0x6]["appearance_id"] = 1
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0xB]["appearance_id"] = 1
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0xA]["appearance_id"] = 1
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0xD]["appearance_id"] = 1
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0xC]["appearance_id"] = 1
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0x10]["appearance_id"] = 1
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0xF]["appearance_id"] = 1
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0x13]["appearance_id"] = 1
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0x12]["appearance_id"] = 1
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0x19]["appearance_id"] = 1
+            patcher.scenes[Scenes.THE_OUTER_WALL].one_hit_breakables[0x18]["appearance_id"] = 1
+
+            # Move these specific 1HB actors slightly so that they don't just drop their contents into the abyss.
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][103]["z_pos"] = -169.5
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][105]["z_pos"] = -129.5
+            patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][107]["z_pos"] = -1149.5
+
+
         # Loop over every name in the slot's dict of names to values to write and write every "normal" one that has an
         # actor associated with it in its location info.
         for loc_name, loc_value in slot_patch_info["location values"].items():
@@ -665,20 +764,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_byte(0x797D6C, 0x52)
         patcher.write_int32(0x797D70, 0x802E4C34)
 
-
-        # Turn the Outer Wall Henry child actor into a torch check with all necessary parameters assigned.
-        patcher.write_int16(0x833A9E, 0x0026)  # Dropped item flag ID
-        patcher.write_byte(0x834B15, 0x00)     # Flag check unassignment
-        patcher.write_int16(0x834B24, 0x01D9)  # Candle actor ID
-        patcher.write_int16(0x834B26, 0x0000)  # Flag check unassignment
-        patcher.write_int16(0x834B28, 0x0000)  # Flag check unassignment
-        patcher.write_int16(0x834B2A, 0x0000)  # Rotation unassignment
-        patcher.write_int16(0x834B2C, 0x0002)  # Candle ID
-        patcher.write_int32(0x834B30, 0x00000000)  # Removed special spawn check address
-        # Make the Outer Wall end loading zone send you to the start of Art Tower instead of the fan map, as well as
-        # heal the player.
-        patcher.write_int16(0x834448, 0x0001)
-        patcher.write_int16(0x83444A, 0x2500)
 
         # Make the Art Tower start loading zone send you to the end of The Outer Wall instead of the fan map.
         patcher.write_int16(0x818DF2, 0x2A0B)
@@ -978,11 +1063,6 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int16(0x7D0DC6, 0x032A)  # CT gear climb top corner slab
             patcher.write_int16(0x829A16, 0x032D)  # CT giant chasm farside climb
             patcher.write_int16(0x82CC8A, 0x0330)  # CT beneath final slide
-
-        # If the empty breakables are on, write all data associated with them.
-        if slot_patch_info["options"]["empty_breakables"]:
-            for offset in patches.empty_breakables_data:
-                patcher.write_bytes(offset, patches.empty_breakables_data[offset])
 
         # Skip the "There is a white jewel" text so checking one saves the game instantly.
         # patcher.write_int32s(0xEFC72, [0x00020002 for _ in range(37)])
