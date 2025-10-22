@@ -7,7 +7,6 @@ import Utils
 
 from BaseClasses import Location
 from worlds.Files import APProcedurePatch, APTokenMixin, APTokenTypes, APPatchExtension
-from abc import ABC
 from typing import List, Dict, Union, Iterable, TYPE_CHECKING
 
 import hashlib
@@ -18,7 +17,7 @@ from .data import patches, loc_names
 from .data.enums import Scenes, NIFiles, Objects, ObjectExecutionFlags, ActorSpawnFlags, Items, Pickups, PickupFlags, \
     DoorFlags
 from .locations import CVLOD_LOCATIONS_INFO
-from .patcher import CVLoDRomPatcher, CVLoDSceneTextEntry, CVLoDNormalActorEntry, CVLoDDoorEntry, CVLoDPillarActorEntry, CVLoDLoadingZoneEntry, CVLoDEnemyPillarEntry, CVLoD1HitBreakableEntry, CVLoD3HitBreakableEntry, CVLoDSpawnEntranceEntry
+from .patcher import CVLoDRomPatcher, CVLoDSceneTextEntry, CVLoDNormalActorEntry, CVLoDDoorEntry, CVLoDPillarActorEntry, CVLoDLoadingZoneEntry, CVLoDEnemyPillarEntry, CVLoD1HitBreakableEntry, CVLoD3HitBreakableEntry, CVLoDSpawnEntranceEntry, SCENE_OVERLAY_RDRAM_START
 from .stages import CVLOD_STAGE_INFO
 from .cvlod_text import cvlod_string_to_bytearray, cvlod_text_wrap, cvlod_bytes_to_string, CVLOD_STRING_END_CHARACTER, \
     CVLOD_TEXT_POOL_END_CHARACTER
@@ -171,7 +170,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_spawn_id,
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15DB, 0x2A, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15DB, 0x26, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         # Change the instruction that stores the Foggy Lake intro cutscene value to store a 0 (from R0) instead.
         patcher.write_int32(0x1614, 0xAC402BCC, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON) # SW  R0, 0x2BCC (V0)
@@ -622,6 +621,114 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][107]["z_pos"] = -1149.5
 
 
+        # # # # # # # # # #
+        # ART TOWER EDITS #
+        # # # # # # # # # #
+        # Make the Art Tower start loading zone send you to the end of The Outer Wall instead of the fan map.
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].loading_zones[0]["scene_id"] = Scenes.THE_OUTER_WALL
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].loading_zones[0]["spawn_id"] = 0x0B
+
+        # Make the loading zone leading from Art Tower museum -> conservatory slightly smaller.
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].loading_zones[1]["min_z_pos"] = -488
+        # Duplicate the player spawn position data coming from Art Tower conservatory -> museum and change its player
+        # spawn coordinates coming from Art Tower conservatory -> museum to start them behind the Key 2 door, so they
+        # will need Key 2 to come this way.
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].spawn_spots.append(
+            patcher.scenes[Scenes.ART_TOWER_MUSEUM].spawn_spots[1].copy())
+        del patcher.scenes[Scenes.ART_TOWER_MUSEUM].spawn_spots[5]["start_addr"]
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].spawn_spots[5]["player_z_pos"] = -478
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].spawn_spots[5]["camera_x_pos"] = 0
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].spawn_spots[5]["camera_z_pos"] = -496
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].spawn_spots[5]["focus_z_pos"] = -478
+        # Duplicate the Art Tower conservatory -> museum loading zone data and change its spawn ID to the new one above
+        # for the museum.
+        patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].loading_zones.append(
+            patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].loading_zones[0].copy())
+        patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].loading_zones[2]["spawn_id"] = 5
+        del patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].loading_zones[2]["start_addr"]
+        # Duplicate the loading zone actor for Art Tower conservatory -> museum, change its zone ID that of the new one
+        # we just made, and make it spawn only when the Art Tower Door 2 Unlocked flag is CLEARED.
+        patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].actor_lists["proxy"].append(
+            patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].actor_lists["proxy"][59].copy())
+        del patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].actor_lists["proxy"][61]["start_addr"]
+        patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].actor_lists["proxy"][61]["spawn_flags"] = \
+            ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
+        patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].actor_lists["proxy"][61]["flag_id"] = 0x299  # Art Door 2 flag ID
+        patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].actor_lists["proxy"][61]["var_c"] = 2
+        # Make the original loading zone actor spawn only when the Art Tower Door 2 Unlocked flag is SET. With this
+        # setup, depending on if the door is locked or unlocked, the player should be placed at the new spawn spot
+        # behind Door 2 in the museum scene or the vanilla one before it.
+        patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].actor_lists["proxy"][59]["spawn_flags"] = \
+            ActorSpawnFlags.SPAWN_IF_FLAG_SET
+        patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].actor_lists["proxy"][59]["flag_id"] = 0x299 # Art Door 2 flag ID
+
+        # Prevent the Hell Knights in the middle Art Tower hallway from spawning and locking the doors if the player
+        # spawns in our new spawn location until they actually go through the doors.
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].actor_lists["room 10"][3]["spawn_flags"] |= \
+            ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].actor_lists["room 10"][4]["spawn_flags"] |= \
+            ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].actor_lists["room 10"][5]["spawn_flags"] |= \
+            ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
+        at_knight_check_spot = len(patcher.scenes[Scenes.ART_TOWER_MUSEUM].overlay) + SCENE_OVERLAY_RDRAM_START
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].actor_lists["room 10"][3]["extra_condition_ptr"] = at_knight_check_spot
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].actor_lists["room 10"][4]["extra_condition_ptr"] = at_knight_check_spot
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].actor_lists["room 10"][5]["extra_condition_ptr"] = at_knight_check_spot
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].write_ovl_int32s(at_knight_check_spot - SCENE_OVERLAY_RDRAM_START,
+                                                                 patches.art_tower_knight_spawn_check)
+
+        # Put the left item on top of the Art Tower conservatory doorway on its correct flag.
+        patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].actor_lists["proxy"][55]["var_a"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.atc_doorway_l].flag_id
+
+        # Prevent the middle item on top of the Art Tower conservatory doorway from self-modifying itself.
+        patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].actor_lists["proxy"][54]["spawn_flags"] ^= \
+            ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
+        patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].actor_lists["proxy"][54]["extra_condition_ptr"] = 0
+
+        # Make Cornell's Loading Zones universal to everyone.
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].actor_lists["proxy"][14]["spawn_flags"] = 0
+        patcher.scenes[Scenes.ART_TOWER_CONSERVATORY].actor_lists["proxy"][60]["spawn_flags"] = 0
+
+
+        # # # # # # # # # # # # #
+        # TOWER OF RUINS EDITS  #
+        # # # # # # # # # # # # #
+        # Remove the Tower of Science pickup flag checks from the invisible Tower of Ruins statue items.
+        # Yeah, your guess as to what the devs may have been thinking with this is as good as mine.
+        patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 7"][13]["spawn_flags"] ^= \
+            ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
+        patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 7"][13]["flag_id"] = 0
+        patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 13"][11]["spawn_flags"] ^= \
+            ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
+        patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 13"][11]["flag_id"] = 0
+
+        # Clone the maze end gate actor and turn it around the other way. These actors normally only have
+        # collision on one side, so if you were coming the other way you could very easily sequence break.
+        patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 18"].append(
+            patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 18"][0].copy()
+        )
+        patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 18"][11]["x_pos"] = 438.0
+        patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 18"][11]["y_pos"] = 75.0
+        patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 18"][11]["z_pos"] = 144.0
+        patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 18"][11]["var_b"] = 0x8000
+        patcher.write_byte(0x809925, 0x00)     # Flag check unassignment
+        patcher.write_int32s(0x809928, [0x43DB0000, 0x42960000, 0x43100000])  # XYZ coordinates
+        patcher.write_int16(0x809934, 0x01B9)  # Special door actor ID
+        patcher.write_int16(0x809936, 0x0000)  # Flag check unassignment
+        patcher.write_int16(0x809938, 0x0000)  # Flag check unassignment
+        patcher.write_int16(0x80993A, 0x8000)  # Rotation
+        patcher.write_int16(0x80993C, 0x0002)  # Door ID
+
+        # Make Cornell's Loading Zones universal to everyone.
+        patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 25"][1]["spawn_flags"] = 0
+        patcher.scenes[Scenes.RUINS_DARK_CHAMBERS].actor_lists["room 6"][0]["spawn_flags"] = 0
+
+        # Set the Tower of Ruins end loading zone destination to the Castle Center top elevator White Jewel by default.
+        patcher.scenes[Scenes.RUINS_DARK_CHAMBERS].loading_zones[1]["scene_id"] = Scenes.CASTLE_CENTER_TOP_ELEV
+        patcher.scenes[Scenes.RUINS_DARK_CHAMBERS].loading_zones[1]["spawn_id"] = 3
+
+
         # Loop over every name in the slot's dict of names to values to write and write every "normal" one that has an
         # actor associated with it in its location info.
         for loc_name, loc_value in slot_patch_info["location values"].items():
@@ -763,45 +870,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32(0x797BB8, 0x802E4C34)
         patcher.write_byte(0x797D6C, 0x52)
         patcher.write_int32(0x797D70, 0x802E4C34)
-
-
-        # Make the Art Tower start loading zone send you to the end of The Outer Wall instead of the fan map.
-        patcher.write_int16(0x818DF2, 0x2A0B)
-        # Make the loading zone leading from Art Tower museum -> conservatory slightly smaller.
-        patcher.write_int16(0x818E10, 0xFE18)
-        # Change the player spawn coordinates coming from Art Tower conservatory -> museum to start them behind the
-        # Key 2 door, so they will need Key 2 to come this way.
-        patcher.write_int16(0x1103E4, 0xFE22)  # Player Z position
-        patcher.write_int16(0x1103E8, 0x000D)  # Camera X position
-        patcher.write_int16(0x1103EC, 0xFE10)  # Camera Z position
-        patcher.write_int16(0x1103F2, 0xFE22)  # Focus point Z position
-        # Prevent the Hell Knights in the middle Art Tower hallway from locking the doors until defeated.
-        patcher.write_byte(0x81A5B0, 0x00)
-        patcher.write_byte(0x81A5D0, 0x02)
-        patcher.write_byte(0x81A5F0, 0x02)
-        # Put the left item on top of the Art Tower conservatory doorway on its correct flag.
-        patcher.write_int16(0x81DDB4, 0x02AF)
-        # Prevent the middle item on top of the Art Tower conservatory doorway from self-modifying itself.
-        patcher.write_byte(0x81DD81, 0x80)
-        patcher.write_int32(0x81DD9C, 0x00000000)
-
-        # Remove the Tower of Science item flag checks from the invisible Tower of Ruins statue items.
-        # Yeah, your guess as to what the devs may have been thinking with this is as good as mine.
-        patcher.write_byte(0x808C65, 0x00)
-        patcher.write_int16(0x808C76, 0x0000)
-        patcher.write_byte(0x809185, 0x00)
-        patcher.write_int16(0x809196, 0x0000)
-        # Clone the third Tower of Ruins gate actor and turn it around the other way. These actors normally only have
-        # collision on one side, so if you were coming the other way you could very easily sequence break.
-        patcher.write_byte(0x809925, 0x00)     # Flag check unassignment
-        patcher.write_int32s(0x809928, [0x43DB0000, 0x42960000, 0x43100000])  # XYZ coordinates
-        patcher.write_int16(0x809934, 0x01B9)  # Special door actor ID
-        patcher.write_int16(0x809936, 0x0000)  # Flag check unassignment
-        patcher.write_int16(0x809938, 0x0000)  # Flag check unassignment
-        patcher.write_int16(0x80993A, 0x8000)  # Rotation
-        patcher.write_int16(0x80993C, 0x0002)  # Door ID
-        # Set the Tower of Ruins end loading zone destination to the Castle Center top elevator White Jewel.
-        patcher.write_int16(0x8128EE, 0x0F03)
 
         # Basement
         patcher.write_byte(0x7AA2A5, 0x0A)

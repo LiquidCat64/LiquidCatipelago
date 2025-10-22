@@ -2118,6 +2118,23 @@ map_name_year_switcher = [
     0x2484D020,  # ADDIU A0, A0, 0xD020
     0x08020FE8,  # J     0x80083FA0
     0x30A500FF,  # ANDI  A1, A1, 0x00FF
+    0x00000000
+]
+
+art_tower_knight_spawn_check = [
+    # Checks if the player's current Z position is higher than -476.375f and, if it is, returns 0 to allow an actor
+    # assigned to this check to spawn. Used for the Hell Knights in Art Tower's hallway between the two key doors to
+    # ensure they don't lock the doors with the player behind Door 2 in our new spawn spot there.
+    0x3C088019,  # LUI   T0, 0x8019
+    0x8D0860E8,  # LW    T0, 0x60E8 (T0)
+    0x3C09C3EE,  # LUI   T1, 0xC3EE
+    0x35293000,  # ORI   T1, T1, 0x3000
+    0x0128502A,  # SLT   T2, T1, T0
+    0x24020000,  # ADDIU V0, R0, 0x0000
+    0x51400001,  # BEQZL T2,     [forward 0x01]
+    0x24020001,  # ADDIU V0, R0, 0x0001
+    0x03E00008,  # JR    RA
+    0x00000000
 ]
 
 always_actor_edits = {
