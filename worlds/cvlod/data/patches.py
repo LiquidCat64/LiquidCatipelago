@@ -223,104 +223,6 @@ npc_item_hack = [
     0x03E00008,  # JR    RA
 ]
 
-overlay_modifiers = [
-    # Whenever a compressed overlay gets decompressed and mapped in the 0F or 0E domains, this thing will check the
-    # number ID in the T0 register to tell which one it is and overwrite some instructions in it on-the-fly accordingly
-    # to said number before it runs. Confirmed to NOT be a foolproof solution on console and Simple64; the instructions
-    # may not be properly overwritten on the first execution of the overlay.
-
-    # Prevent being able to throw Nitro into the Hazardous Waste Disposals
-    0x3C0A2402,  # LUI   T2, 0x2402
-    0x254A0001,  # ADDIU T2, T2, 0x0001
-    0x24090023,  # ADDIU T1, R0, 0x0023
-    0x15090003,  # BNE   T0, T1, [forward 0x03]
-    0x00000000,  # NOP
-    0x03200008,  # JR    T9
-    0xAF2A01D4,  # SW    T2, 0x01D4 (T9)
-    # Make it so nothing can be taken from the Nitro or Mandragora shelves through the textboxes
-    0x24090022,  # ADDIU T1, R0, 0x0022
-    0x11090002,  # BEQ   T0, T1, [forward 0x02]
-    0x24090021,  # ADDIU T1, R0, 0x0021
-    0x15090003,  # BNE   T0, T1, [forward 0x03]
-    0x254AFFFF,  # ADDIU T2, T2, 0xFFFF
-    0x03200008,  # JR    T9
-    0xAF2A0194,  # SW    T2, 0x0194 (T9)
-    # Fix to allow placing both bomb components at a cracked wall at once while having multiple copies of each, and
-    # prevent placing them at the downstairs crack altogether until the seal is removed. Also enables placing both in
-    # one interaction.
-    0x24090024,  # ADDIU T1, R0, 0x0024
-    0x15090012,  # BNE   T0, T1, [forward 0x12]
-    0x240A0040,  # ADDIU T2, R0, 0x0040
-    0x240BC338,  # ADDIU T3, R0, 0xC338
-    0x240CC3D4,  # ADDIU T4, R0, 0xC3D4
-    0x240DC38C,  # ADDIU T5, R0, 0xC38C
-    0xA32A030F,  # SB    T2, 0x030F (T9)
-    0xA72B0312,  # SH    T3, 0x0312 (T9)
-    0xA32A033F,  # SB    T2, 0x033F (T9)
-    0xA72B0342,  # SH    T3, 0x0342 (T9)
-    0xA32A03E3,  # SB    T2, 0x03E3 (T9)
-    0xA72C03E6,  # SH    T4, 0x03E6 (T9)
-    0xA32A039F,  # SB    T2, 0x039F (T9)
-    0xA72D03A2,  # SH    T5, 0x03A2 (T9)
-    0xA32A03CB,  # SB    T2, 0x03CB (T9)
-    0xA72D03CE,  # SH    T5, 0x03CE (T9)
-    0xA32A05CF,  # SB    T2, 0x05CF (T9)
-    0x240EE074,  # ADDIU T6, R0, 0xE074
-    0xA72E05D2,  # SH    T6, 0x05D2 (T9)
-    0x03200008,  # JR    T9
-    # Disable the costume and Hard Mode flag checks so that pressing Up on the Player Select screen will always allow
-    # the characters' alternate costumes to be used as well as Hard Mode being selectable without creating save data.
-    0x2409012E,  # ADDIU T1, R0, 0x012E
-    0x1509000A,  # BNE   T0, T1, [forward 0x0A]
-    0x3C0A3C0B,  # LUI   T2, 0x3C0B
-    0x254A8000,  # ADDIU T2, T2, 0x8000
-    0x240B240E,  # ADDIU T3, R0, 0x240E
-    0x240C240F,  # ADDIU T4, R0, 0x240F
-    0x240D0024,  # ADDIU T5, R0, 0x0024
-    0xAF2A0C78,  # SW    T2, 0x0C78 (T9)
-    0xA72B0CA0,  # SH    T3, 0x0CA0 (T9)
-    0xA72C0CDC,  # SH    T4, 0x0CDC (T9)
-    0xA32D0168,  # SB    T5, 0x0024 (T9)
-    0x03200008,  # JR    T9
-    # Overwrite instructions in the Forest end cutscene script to store a spawn position ID instead of a cutscene ID.
-    0x2409002E,  # ADDIU T1, R0, 0x002E
-    0x15090005,  # BNE   T0, T1, [forward 0x05]
-    0x3C0AA058,  # LUI   T2, 0xA058
-    0x254A642B,  # ADDIU T2, T2, 0x642B
-    0xAF2A0D88,  # SW    T2, 0x0D88 (T9)
-    0xAF200D98,  # SW    R0, 0x0D98 (T9)
-    0x03200008,  # JR    T9
-    # Disable the rapid flashing effect in the CC planetarium cutscene to ensure it won't trigger seizures.
-    0x2409003E,  # ADDIU T1, R0, 0x003E
-    0x1509000C,  # BNE   T0, T1, [forward 0x0C]
-    0x00000000,  # NOP
-    0xAF200C5C,  # SW    R0, 0x0C5C
-    0xAF200CD0,  # SW    R0, 0x0CD0
-    0xAF200C64,  # SW    R0, 0x0C64
-    0xAF200C74,  # SW    R0, 0x0C74
-    0xAF200C80,  # SW    R0, 0x0C80
-    0xAF200C88,  # SW    R0, 0x0C88
-    0xAF200C90,  # SW    R0, 0x0C90
-    0xAF200C9C,  # SW    R0, 0x0C9C
-    0xAF200CB4,  # SW    R0, 0x0CB4
-    0xAF200CC8,  # SW    R0, 0x0CC8
-    0x03200008,  # JR    T9
-    0x24090134,  # ADDIU T1, R0, 0x0134
-    0x15090005,  # BNE   T0, T1, [forward 0x05]
-    0x340B8040,  # ORI   T3, R0, 0x8040
-    0x340CDD20,  # ORI   T4, R0, 0xDD20
-    0xA72B1D1E,  # SH    T3, 0x1D1E (T9)
-    0xA72C1D22,  # SH    T4, 0x1D22 (T9)
-    0x03200008,  # JR    T9
-    # Make the Ice Trap model check branch properly
-    0x24090125,  # ADDIU T1, R0, 0x0125
-    0x15090003,  # BNE   T0, T1, [forward 0x03]
-    0x3C0B3C19,  # LUI   T3, 0x3C19
-    0x356B803F,  # ORI   T3, T3, 0x803F
-    0xAF2B04D0,  # SW    T3, 0x04D0 (T9)
-    0x03200008   # JR    T9
-]
-
 double_component_checker = [
     # When checking to see if a bomb component can be placed at a cracked wall, this will run if the code lands at the
     # "no need to set 2" outcome to see if the other can be set.
@@ -342,7 +244,9 @@ double_component_checker = [
     0x240C0001,  # ADDIU T4, R0, 0x0001
     0x03E00008,  # JR    RA
     0xA60C004C,  # SH    T4, 0x004C (S0)
-    0x0800078C,  # J     0x80001E30
+    0x3C0A8000,  # LUI   T2, 0x8000
+    0x354A1E30,  # ORI   T2, T2, 0x1E30
+    0x01400008,  # JR    T2
     0x00000000,  # NOP
     # Nitro checker
     # Check the "set Magical Nitro" flag for the wall we are currently looking at.
@@ -361,7 +265,9 @@ double_component_checker = [
     0x240C0001,  # ADDIU T4, R0, 0x0001
     0x03E00008,  # JR    RA
     0xA60C004E,  # SH    T4, 0x004E (S0)
-    0x0800078C,  # J     0x80001E30
+    0x3C0A8000,  # LUI   T2, 0x8000
+    0x354A1E30,  # ORI   T2, T2, 0x1E30
+    0x01400008,  # JR    T2
     0x00000000,  # NOP
 ]
 
@@ -371,19 +277,49 @@ basement_seal_checker = [
     # vanilla game, Magical Nitro and Mandragora is not replenish-able, so an anti-softlock measure is necessary to
     # ensure they aren't wasted trying to blow up a currently-impervious wall.
     0x8E080054,  # LW    T0, 0x0054 (S0)
-    0x15000009,  # BNEZ  T0,     [forward 0x09]
+    0x1500000B,  # BNEZ  T0,     [forward 0x0B]
     0x3C09801D,  # LUI   T1, 0x801D
     0x9129AA7D,  # LBU   T1, 0xAA7D (T1)
     0x31290001,  # ANDI  T1, T1, 0x0001
-    0x15200005,  # BNEZ  T1,     [forward 0x05]
+    0x15200007,  # BNEZ  T1,     [forward 0x07]
     0x00000000,  # NOP
     0x26040008,  # ADDIU A0, S0, 0x0008
     0x2605000E,  # ADDIU A1, S0, 0x000E
-    0x0800078C,  # J     0x80001E30
-    0x24060008,  # ADDIU A2, R0, 0x0008
-    0x3C0A0E00,  # LUI   T2, 0x0E00
-    0x254A02C0,  # ADDIU T2, T2, 0x02C0
+    0x3C0A8000,  # LUI   T2, 0x8000
+    0x354A1E30,  # ORI   T2, T2, 0x1E30
     0x01400008,  # JR    T2
+    0x24060008,  # ADDIU A2, R0, 0x0008
+    0x0B8000B0,  # J     0x0E0002C0
+    0x00000000,  # NOP
+]
+
+mandragora_with_nitro_setter = [
+    # When setting a Nitro, if Mandragora is in the inventory too and the wall's "Mandragora set" flag is not set, this
+    # will automatically subtract a Mandragora from the inventory and set its flag so the wall can be blown up in just
+    # one interaction instead of two.
+    0x8E080054,  # LW    T0, 0x0054 (S0)
+    0x15000004,  # BNEZ  T0,     [forward 0x04]
+    0x3C09801C,  # LUI   T1, 0x801C
+    0x340AAA7E,  # ORI   T2, R0, 0xAA7E
+    0x10000003,  # B             [forward 0x03]
+    0x240B0040,  # ADDIU T3, R0, 0x0040
+    0x340AAA84,  # ORI   T2, R0, 0xAA84
+    0x240B0080,  # ADDIU T3, R0, 0x0080
+    0x012A6025,  # OR    T4, T1, T2
+    0x918D0000,  # LBU   T5, 0x0000 (T4)
+    0x01AB7024,  # AND   T6, T5, T3
+    0x15C00007,  # BNEZ  T6,     [forward 0x07]
+    0x3C09801D,  # LUI   T1, 0x801D
+    0x912FAB56,  # LBU   T7, 0xAB56 (T1)
+    0x11E00004,  # BEQZ  T7,     [forward 0x04]
+    0x25EFFFFF,  # ADDIU T7, T7, 0xFFFF
+    0xA12FAB56,  # SB    T7, 0xAB56 (T1)
+    0x016DC025,  # OR    T8, T3, T5
+    0xA1980000,  # SB    T8, 0x0000 (T4)
+    0x3C0A8000,  # LUI   T2, 0x8000
+    0x354A48C4,  # ORI   T2, T2, 0x48C4
+    0x01400008,  # JR    T2
+    0x00000000,  # NOP
 ]
 
 cutscene_active_checkers = [
@@ -646,14 +582,20 @@ load_clearer = [
 ]
 
 elevator_flag_checker = [
-    # Prevents the top elevator in Castle Center from activating if the bottom elevator switch is not turned on.
-    0x3C088039,  # LUI   T0, 0x8039
-    0x91089C07,  # LBU   T0, 0x9C07 (T0)
-    0x31080002,  # ANDI  T0, T0, 0x0002
-    0x15000002,  # BNEZ  T0,     [forward 0x02]
-    0x848E004C,  # LH    T6, 0x004C (A0)
-    0x240E0000,  # ADDIU T6, R0, 0x0000
-    0x03E00008   # JR    RA
+    # Extension to the map-specific elevator checks code that prevents the top elevator in Castle Center from
+    # activating if the bottom elevator switch is not turned on.
+
+    # Check if we are in Scene 0x0F (Castle Center Top Elevator Room). If we aren't, skip to the jump back.
+    0x2408000F,  # ADDIU T1, R0, 0x000F
+    0x15030005,  # BNE   T0, V1, [forward 0x05]
+    # Check if Flag 0x105 is set (Castle Center elevator activated). If it isn't, replace the return value 0
+    # (elevator awaiting player) with 2 (elevator will not work at all).
+    0x3C09801D,  # LUI   T1, 0x801D
+    0x9129AA80,  # LBU   T1, 0xAA80 (T1)
+    0x312A0004,  # ANDI  T2, T1, 0x0004
+    0x51400001,  # BEQZL T2,     [forward 0x01]
+    0x24020002,  # ADDIU V0, R0, 0x0002
+    0x08055CFC   # J     0x801573F0
 ]
 
 crystal_special2_giver = [
@@ -1750,32 +1692,6 @@ gondola_skipper = [
     0x25AD0010,  # ADDIU T5, T5, 0x0010
     0xAD0D9EE8,  # SW    T5, 0x9EE8 (T0)
     0x08063E68   # J     0x8018F9A0
-]
-
-mandragora_with_nitro_setter = [
-    # When setting a Nitro, if Mandragora is in the inventory too and the wall's "Mandragora set" flag is not set, this
-    # will automatically subtract a Mandragora from the inventory and set its flag so the wall can be blown up in just
-    # one interaction instead of two.
-    0x8E080054,  # LW    T0, 0x0054 (S0)
-    0x15000004,  # BNEZ  T0,     [forward 0x04]
-    0x3C09801C,  # LUI   T1, 0x801C
-    0x340AAA7E,  # ORI   T2, R0, 0xAA7E
-    0x10000003,  # B             [forward 0x03]
-    0x240B0040,  # ADDIU T3, R0, 0x0040
-    0x340AAA84,  # ORI   T2, R0, 0xAA84
-    0x240B0080,  # ADDIU T3, R0, 0x0080
-    0x012A6025,  # OR    T4, T1, T2
-    0x918D0000,  # LBU   T5, 0x0000 (T4)
-    0x01AB7024,  # AND   T6, T5, T3
-    0x15C00007,  # BNEZ  T6,     [forward 0x07]
-    0x3C09801D,  # LUI   T1, 0x801D
-    0x912FAB56,  # LBU   T7, 0xAB56 (T1)
-    0x11E00004,  # BEQZ  T7,     [forward 0x04]
-    0x25EFFFFF,  # ADDIU T7, T7, 0xFFFF
-    0xA12FAB56,  # SB    T7, 0xAB56 (T1)
-    0x016DC025,  # OR    T8, T3, T5
-    0xA1980000,  # SB    T8, 0x0000 (T4)
-    0x08001231,  # J     0x800048C4
 ]
 
 ambience_silencer = [

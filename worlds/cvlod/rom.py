@@ -23,8 +23,9 @@ from .cvlod_text import cvlod_string_to_bytearray, cvlod_text_wrap, cvlod_bytes_
     CVLOD_TEXT_POOL_END_CHARACTER
 # from .aesthetics import renon_item_dialogue
 # from .locations import CVLOD_LOCATIONS_INFO
-# from .options import StageLayout, VincentFightCondition, RenonFightCondition, PostBehemothBoss, RoomOfClocksBoss, \
-#     CastleKeepEndingSequence, DeathLink, DraculasCondition, InvisibleItems, Countdown, PantherDash
+from .options import StageLayout, VincentFightCondition, RenonFightCondition, PostBehemothBoss, RoomOfClocksBoss, \
+    DuelTowerFinalBoss, CastleKeepEndingSequence, DeathLink, DraculasCondition, InvisibleItems, Countdown, \
+    PantherDash, VillaBranchingPaths, CastleCenterBranchingPaths
 from settings import get_settings
 
 if TYPE_CHECKING:
@@ -56,6 +57,11 @@ WARP_SCENE_OFFSETS = [0xADF67, 0xADF77, 0xADF87, 0xADF97, 0xADFA7, 0xADFBB, 0xAD
 
 SPECIAL_1HBS = [Objects.FOGGY_LAKE_ABOVE_DECKS_BARREL, Objects.FOGGY_LAKE_BELOW_DECKS_BARREL,
                 Objects.SORCERY_CYAN_DIAMOND]
+
+CC_CORNELL_INTRO_ACTOR_LISTS = {Scenes.CASTLE_CENTER_BASEMENT: "room 1",
+                                Scenes.CASTLE_CENTER_BOTTOM_ELEV: "init",
+                                Scenes.CASTLE_CENTER_FACTORY: "room 1",
+                                Scenes.CASTLE_CENTER_LIZARD_LAB: "room 2"}
 
 
 class CVLoDPatchExtensions(APPatchExtension):
@@ -170,7 +176,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_spawn_id,
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15DB, 0x26, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15DB, 0x0A, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         # Change the instruction that stores the Foggy Lake intro cutscene value to store a 0 (from R0) instead.
         patcher.write_int32(0x1614, 0xAC402BCC, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON) # SW  R0, 0x2BCC (V0)
@@ -706,8 +712,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Clone the maze end gate actor and turn it around the other way. These actors normally only have
         # collision on one side, so if you were coming the other way you could very easily sequence break.
         patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 18"].append(
-            patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 18"][0].copy()
-        )
+            patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 18"][0].copy())
+        del patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 18"][11]["start_addr"]
         patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 18"][11]["x_pos"] = 438.0
         patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 18"][11]["y_pos"] = 75.0
         patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 18"][11]["z_pos"] = 144.0
@@ -729,6 +735,264 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.RUINS_DARK_CHAMBERS].loading_zones[1]["spawn_id"] = 3
 
 
+        # # # # # # # # # # # #
+        # CASTLE CENTER EDITS #
+        # # # # # # # # # # # #
+        # Make the Behemoth and crying blood statue cutscene triggers universal for everyone.
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["init"][7]["spawn_flags"] ^= \
+            ActorSpawnFlags.REINHARDT_AND_CARRIE
+        patcher.scenes[Scenes.CASTLE_CENTER_BOTTOM_ELEV].actor_lists["init"][5]["spawn_flags"] ^= \
+            ActorSpawnFlags.REINHARDT_AND_CARRIE
+
+        # Before doing anything else to this stage, loop over the specific actor lists for the Castle Center scenes that
+        # appear in Cornell's intro cutscene and check the character flags on each one.
+        for scene_id, list_name in CC_CORNELL_INTRO_ACTOR_LISTS.items():
+            for actor in patcher.scenes[scene_id].actor_lists[list_name]:
+                # Is it exclusive to Cornell and NOT Reinhardt or Carrie? If so, make it universal to everyone and put
+                # the custom "In a cutscene?" check on it because we are only meant to see it in Cornell's intro.
+                if actor["spawn_flags"] & ActorSpawnFlags.CORNELL and not \
+                        (actor["spawn_flags"] & ActorSpawnFlags.REINHARDT |
+                         actor["spawn_flags"] & ActorSpawnFlags.CARRIE):
+                    actor["spawn_flags"] &= ActorSpawnFlags.NO_CHARACTERS
+                    actor["spawn_flags"] |= ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
+                    actor["extra_condition_ptr"] = 0x803FCDA0
+                # Is it exclusive to Reinhardt or Carrie and NOT Cornell? If so, put the custom "Not in a cutscene?"
+                # check on it because it's a Reinhardt/Carrie actor we are NOT meant to see in Cornell's intro.
+                elif not actor["spawn_flags"] & ActorSpawnFlags.CORNELL and \
+                        (actor["spawn_flags"] & ActorSpawnFlags.REINHARDT |
+                         actor["spawn_flags"] & ActorSpawnFlags.CARRIE):
+                    actor["spawn_flags"] |= ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
+                    actor["extra_condition_ptr"] = 0x803FCDBC
+
+                    # Only make it character-universal if it's truly exclusive to both Reinhardt AND Carrie; don't touch
+                    # it if it's only one character or the other.
+                    if actor["spawn_flags"] & ActorSpawnFlags.REINHARDT_AND_CARRIE == \
+                            ActorSpawnFlags.REINHARDT_AND_CARRIE:
+                        actor["spawn_flags"] &= ActorSpawnFlags.NO_CHARACTERS
+
+        # Set the Cerberuses in the basement to trigger for Cornell in addition to Reinhardt. The Motorskellies here
+        # are already set up to spawn for Carrie and, interestingly enough, Henry, so we shall mirror that for Cornell.
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 1"][34]["spawn_flags"] |= \
+            ActorSpawnFlags.CORNELL
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 1"][35]["spawn_flags"] |= \
+            ActorSpawnFlags.CORNELL
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 1"][36]["spawn_flags"] |= \
+            ActorSpawnFlags.CORNELL
+
+        # Change some shelf decoration Nitros and Mandragoras into actual items.
+        # Mandragora shelf right
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][14]["x_pos"] = -4.0
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][14]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][14]["var_a"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.ccb_mandrag_shelf_r].flag_id
+        # Mandragora shelf left
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][15]["x_pos"] = -4.0
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][15]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][15]["var_a"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.ccb_mandrag_shelf_l].flag_id
+        # Nitro shelf Heinrich side
+        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["x_pos"] = -320.0
+        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["var_a"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_h].flag_id
+        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["var_b"] = 0
+        # Nitro shelf invention side
+        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["x_pos"] = -306.0
+        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["var_a"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_i].flag_id
+        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["var_b"] = 0
+
+        # Restore the Castle Center library bookshelf item by moving its actor entry in room 2's list (the planetarium)
+        # into room 0's list (the lower floor library) instead, and taking it off of its own-pickup-flag-set check.
+        patcher.scenes[Scenes.CASTLE_CENTER_LIBRARY].actor_lists["room 0"].append(
+            patcher.scenes[Scenes.CASTLE_CENTER_LIBRARY].actor_lists["room 2"][4].copy())
+        del patcher.scenes[Scenes.CASTLE_CENTER_LIBRARY].actor_lists["room 0"][15]["start_addr"]
+        patcher.scenes[Scenes.CASTLE_CENTER_LIBRARY].actor_lists["room 0"][15]["spawn_flags"] ^= \
+            ActorSpawnFlags.SPAWN_IF_FLAG_SET | ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
+        # Delete the actor entry from the original list.
+        patcher.scenes[Scenes.CASTLE_CENTER_LIBRARY].actor_lists["room 2"][4]["delete"] = True
+
+        # Clear the Reinhardt and Carrie-only settings from the post-Behemoth boss cutscenes in the universal cutscene
+        # settings table so anyone will be allowed to trigger them (a hangover from Ye Olde CV64 Days when the actor
+        # system wasn't as awesome). We'll instead simply assign each cutscene trigger actor its correct characters.
+        patcher.write_byte(0x118139, 0x00)
+        patcher.write_byte(0x118165, 0x00)
+        # If Rosa was chosen for the post-Behemoth boss, delete the trigger for Camilla's battle intro cutscene and
+        # make Rosa's universal for everyone.
+        if slot_patch_info["options"]["post_behemoth_boss"] == PostBehemothBoss.option_rosa:
+            patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["init"][6]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["init"][5]["spawn_flags"] ^= \
+                ActorSpawnFlags.REINHARDT
+        # If Camilla was chosen for the post-Behemoth boss, delete the trigger for Rosa's battle intro cutscene and
+        # make Camilla's universal for everyone.
+        elif slot_patch_info["options"]["post_behemoth_boss"] == PostBehemothBoss.option_camilla:
+            patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["init"][5]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["init"][6]["spawn_flags"] ^= \
+                ActorSpawnFlags.CARRIE
+        # Otherwise, if Character Dependant was chosen, set up Rosa's to trigger for Reinhardt and Cornell and
+        # Camilla's to trigger for Carrie and Henry.
+        else:
+            patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["init"][5]["spawn_flags"] |= \
+                ActorSpawnFlags.CORNELL
+            patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["init"][6]["spawn_flags"] |= \
+                ActorSpawnFlags.HENRY
+
+        # Make it possible to fix or break both Castle Center top elevator bridges universally for all characters by
+        # putting 1 or 0 in their var_c respectively.
+        patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].write_ovl_int32(0xEC, 0x51200004)  # BEQZL  T1, [forward 0x04]
+        # If CC Branching Paths is set to One Reinhardt, break Carrie's bridge and fix Reinhardt's.
+        if slot_patch_info["options"]["castle_center_branching_paths"] == \
+                CastleCenterBranchingPaths.option_one_reinhardt:
+            patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].actor_lists["proxy"][1]["var_c"] = 1
+            patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].actor_lists["proxy"][2]["var_c"] = 0
+            # Loop through every actor in the scene and make all Reinhardt ones universal while killing all Carrie ones.
+            for actor in patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].actor_lists["proxy"]:
+                if actor["spawn_flags"] & ActorSpawnFlags.REINHARDT:
+                    actor["spawn_flags"] ^= ActorSpawnFlags.REINHARDT
+                elif actor["spawn_flags"] & ActorSpawnFlags.CARRIE:
+                    actor["delete"] = True
+        # If set to One Carrie, break Reinhardt's bridge and fix Carrie's.
+        elif slot_patch_info["options"]["castle_center_branching_paths"] == \
+                CastleCenterBranchingPaths.option_one_carrie:
+            patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].actor_lists["proxy"][1]["var_c"] = 0
+            patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].actor_lists["proxy"][2]["var_c"] = 1
+            # Loop through every actor in the scene and make all Carrie ones universal while killing all Reinhardt ones.
+            for actor in patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].actor_lists["proxy"]:
+                if actor["spawn_flags"] & ActorSpawnFlags.CARRIE:
+                    actor["spawn_flags"] ^= ActorSpawnFlags.CARRIE
+                elif actor["spawn_flags"] & ActorSpawnFlags.REINHARDT:
+                    actor["delete"] = True
+        # Otherwise, if set to Two, fix both bridge for everyone and make all character-specific actors universal.
+        else:
+            patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].actor_lists["proxy"][1]["var_c"] = 1
+            patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].actor_lists["proxy"][2]["var_c"] = 1
+            for actor in patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].actor_lists["proxy"]:
+                if actor["spawn_flags"] & ActorSpawnFlags.REINHARDT_AND_CARRIE:
+                    actor["spawn_flags"] &= ActorSpawnFlags.NO_CHARACTERS
+
+        # Prevent the CC elevator from working from the top if the elevator switch is not activated.
+        patcher.write_int32(0xD7A74, 0x080FF0B0)  # J 0x803FC2C0
+        patcher.write_int32s(0xFFC2C0, patches.elevator_flag_checker)
+        # Put said elevator on the map-specific checks so our custom one will actually work.
+        patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].write_ovl_byte(0x72F, 0x01)
+
+        # Prevent taking Nitro or Mandragora through their shelf text.
+        patcher.write_int32(0x1F0, 0x240C0000, NIFiles.OVERLAY_TAKE_NITRO_TEXTBOX)  # ADDIU T4, R0, 0x0000
+        patcher.write_int32(0x22C, 0x240F0000, NIFiles.OVERLAY_TAKE_MANDRAGORA_TEXTBOX)  # ADDIU T7, R0, 0x0000
+        # Custom message for when trying to activate the "Take Nitro?" text box, explaining why we can't take them.
+        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].scene_text[5]["text"] = (
+            "Huh!? Someone super glued\n"
+            "all these Magical Nitro bottles\n"
+            "to the shelf!🅰0/\n"
+            "Better find some elsewhere;\n"
+            "without a certain coyote's\n"
+            "toon DNA, trying to force-\n"
+            "remove one could prove fatal!🅰0/")
+        # Custom message for when trying to activate the "Take Mandragora?" text box, explaining why we can't take them.
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].scene_text[13]["text"] = (
+            "These Mandragora bottles\n"
+            "are empty, and a note was\n"
+            "left behind:🅰0/\f"
+            "\"Come 2035, and the Count\n"
+            "will be in for a very LOUD\n"
+            "surprise! Hehehehe!\"🅰0/\n"
+            "Sounds like whichever poor\n"
+            "soul battles Dracula then may\n"
+            "have an easier time...🅰0/")
+
+        # Ensure the vampire Nitro check will always pass, so they'll never not spawn and crash the Villa cutscenes.
+        patcher.write_int32(0x128, 0x24020001, NIFiles.OVERLAY_VAMPIRE_SPAWNER)  # ADDIU V0, R0, 0x0001
+
+        # Prevent throwing Nitro in the Hazardous Materials Disposals.
+        patcher.write_int32(0x1E4, 0x24020001, NIFiles.OVERLAY_NITRO_DISPOSAL_TEXTBOX)  # ADDIU V0, R0, 0x0001
+        # Custom messages for when trying to interact with each of the Hazardous Materials Disposals, explaining why we
+        # can't use any of them.
+        patcher.scenes[Scenes.CASTLE_CENTER_BOTTOM_ELEV].scene_text[8]["text"] = (
+            "\"Hazardous materials\n"
+            " disposal.\"🅰0/\n"
+            "You stare inside its darkness\n"
+            "only to see a terrifying\n"
+            "smiling face entity stare back!\n"
+            "Yeah, let's...leave it alone.🅰0/")
+        patcher.scenes[Scenes.CASTLE_CENTER_FACTORY].scene_text[3]["text"] = (
+            "\"Hazardous materials\n"
+            " disposal.\"\n"
+            "It seems jammed shut.🅰0/\f"
+            "Some graffiti is scrawled on:\n"
+            "\"This'll teach you to not be a\n"
+            "COWARD transporting Nitro\n"
+            "through here!\"🅰0/")
+        patcher.scenes[Scenes.CASTLE_CENTER_LIZARD_LAB].scene_text[4]["text"] = (
+            "\"Hazardous materials\n"
+            " disposal.\"\n"
+            "There's a sticky note\n"
+            "attached:🅰0/\f"
+            "\"Usage of this unit suspended\n"
+            "until further notice after D-573\n"
+            "attempted to escape through it.\n"
+            "-Dr. [       ]\"🅰0/\f"
+            "The writer's name is blacked\n"
+            "out and there's an insignia\n"
+            "with three arrows that you've\n"
+            "never seen before.🅰30/.🅰30/.🅰30/.🅰30/.🅰30/\n"
+            "yet it feels eerily familiar!?🅰0/")
+
+        # Allow placing both bomb components at a cracked wall at once while having multiple copies of each, prevent
+        # placing them at the downstairs crack altogether until the seal is removed, and enable placing both in one
+        # interaction.
+        # Add the three separate patches onto the end of the Ingredient Set Textbox overlay and record their start \
+        # addresses.
+        double_comp_check_location = patcher.get_decompressed_file_size(NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX) + \
+                                     0x0E000000
+        patcher.write_int32s(double_comp_check_location - 0x0E000000, patches.double_component_checker,
+                             NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        basement_seal_check_location = patcher.get_decompressed_file_size(NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX) + \
+                                       0x0E000000
+        patcher.write_int32s(basement_seal_check_location - 0x0E000000, patches.basement_seal_checker,
+                             NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        mandrag_with_nitro_location = patcher.get_decompressed_file_size(NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX) + \
+                                      0x0E000000
+        patcher.write_int32s(mandrag_with_nitro_location - 0x0E000000, patches.mandragora_with_nitro_setter,
+                             NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        # Update the following jump pointers in the overlay's code to go to our new hacks instead. Some are two separate
+        # instructions, one loading the upper half of the address and then the other the lower.
+        patcher.write_int32(0xEE8, basement_seal_check_location, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        patcher.write_int16(0x34A, double_comp_check_location >> 0x10, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        patcher.write_int16(0x34E, double_comp_check_location & 0xFFFF, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        patcher.write_int16(0x38A, double_comp_check_location >> 0x10, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        patcher.write_int16(0x38E, double_comp_check_location & 0xFFFF, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        patcher.write_int16(0x3F6, double_comp_check_location >> 0x10, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        patcher.write_int16(0x3FA, (double_comp_check_location & 0xFFFF) + 0x4C, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        patcher.write_int16(0x436, double_comp_check_location >> 0x10, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        patcher.write_int16(0x43A, (double_comp_check_location & 0xFFFF) + 0x4C, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        patcher.write_int16(0x646, mandrag_with_nitro_location >> 0x10, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        patcher.write_int16(0x64A, mandrag_with_nitro_location & 0xFFFF, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        patcher.write_int16(0x65E, mandrag_with_nitro_location >> 0x10, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        patcher.write_int16(0x662, mandrag_with_nitro_location & 0xFFFF, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
+        patcher.write_int32s(0xFFCDE0, patches.mandragora_with_nitro_setter)
+
+        # Custom message for if you try checking the downstairs Castle Center crack before removing the seal, explaining
+        # why we can't do that.
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].scene_text[17]["text"] = ("The Furious Nerd Curse\n" 
+                                                                                "prevents you from setting\n" 
+                                                                                "anything until the seal\n" 
+                                                                                "is removed!🅰0/")
+
+        # Disable the rapid flashing effect in the CC planetarium cutscene to ensure it won't trigger seizures.
+        # TODO: Make this an option.
+        #patcher.write_int32(0xC5C, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
+        #patcher.write_int32(0xCD0, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
+        #patcher.write_int32(0xC64, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
+        #patcher.write_int32(0xC74, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
+        #patcher.write_int32(0xC80, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
+        #patcher.write_int32(0xC88, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
+        #patcher.write_int32(0xC90, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
+        #patcher.write_int32(0xC9C, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
+        #patcher.write_int32(0xCB4, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
+        #patcher.write_int32(0xCC8, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
+
+
         # Loop over every name in the slot's dict of names to values to write and write every "normal" one that has an
         # actor associated with it in its location info.
         for loc_name, loc_value in slot_patch_info["location values"].items():
@@ -740,7 +1004,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                 CVLOD_LOCATIONS_INFO[loc_name].actor[0]][CVLOD_LOCATIONS_INFO[loc_name].actor[1]]
 
             # Set all difficulty spawn flags on the actor to make it universal to all difficulties.
-            loc_actor["spawn_flags"] |= ActorSpawnFlags.EASY | ActorSpawnFlags.NORMAL | ActorSpawnFlags.HARD
+            loc_actor["spawn_flags"] |= ActorSpawnFlags.ALL_DIFFICULTIES
 
             # If the actor is a freestanding pickup, change that pickup into what it really is in this slot by writing
             # the new value in its Var C.
@@ -871,168 +1135,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_byte(0x797D6C, 0x52)
         patcher.write_int32(0x797D70, 0x802E4C34)
 
-        # Basement
-        patcher.write_byte(0x7AA2A5, 0x0A)
-        patcher.write_int32(0x7AA2C0, 0x803FCDBC)
-        patcher.write_byte(0x7AA2C5, 0x0A)
-        patcher.write_int32(0x7AA2E0, 0x803FCDBC)
-        patcher.write_byte(0x7AA2E5, 0x0A)
-        patcher.write_int32(0x7AA300, 0x803FCDBC)
-        patcher.write_byte(0x7AA305, 0x0A)
-        patcher.write_int32(0x7AA320, 0x803FCDBC)
-        patcher.write_byte(0x7AA325, 0x0A)
-        patcher.write_int32(0x7AA340, 0x803FCDBC)
-        patcher.write_byte(0x7AA345, 0x0A)
-        patcher.write_int32(0x7AA360, 0x803FCDBC)
-        patcher.write_byte(0x7AA365, 0x08)
-        patcher.write_int32(0x7AA380, 0x803FCDBC)
-        patcher.write_byte(0x7AA405, 0x08)
-        patcher.write_int32(0x7AA420, 0x803FCDA0)
-        patcher.write_byte(0x7AA425, 0x08)
-        patcher.write_int32(0x7AA440, 0x803FCDA0)
-        patcher.write_byte(0x7AA445, 0x08)
-        patcher.write_int32(0x7AA460, 0x803FCDA0)
-        patcher.write_byte(0x7AA465, 0x08)
-        patcher.write_int32(0x7AA480, 0x803FCDA0)
-        patcher.write_byte(0x7AA485, 0x08)
-        patcher.write_int32(0x7AA4A0, 0x803FCDA0)
-        patcher.write_byte(0x7AA4A5, 0x08)
-        patcher.write_int32(0x7AA4C0, 0x803FCDA0)
-        # Factory Floor
-        patcher.write_byte(0x7B1369, 0x08)
-        patcher.write_int32(0x7B1384, 0x803FCDA0)
-        patcher.write_byte(0x7B1389, 0x08)
-        patcher.write_int32(0x7B13A4, 0x803FCDA0)
-        patcher.write_byte(0x7B13A9, 0x08)
-        patcher.write_int32(0x7B13C4, 0x803FCDA0)
-        patcher.write_byte(0x7B13C9, 0x08)
-        patcher.write_int32(0x7B13E4, 0x803FCDA0)
-        patcher.write_byte(0x7B13E9, 0x08)
-        patcher.write_int32(0x7B1404, 0x803FCDA0)
-        patcher.write_byte(0x7B1429, 0x08)
-        patcher.write_int32(0x7B1444, 0x803FCDBC)
-        patcher.write_byte(0x7B1449, 0x08)
-        patcher.write_int32(0x7B1464, 0x803FCDBC)
-        patcher.write_byte(0x7B1469, 0x08)
-        patcher.write_int32(0x7B1484, 0x803FCDBC)
-        # Lizard Lab
-        patcher.write_byte(0x7B4309, 0x88)
-        patcher.write_int32(0x7B4324, 0x803FCDBC)
-        patcher.write_byte(0x7B4349, 0x08)
-        patcher.write_int32(0x7B4364, 0x803FCDBC)
-        patcher.write_byte(0x7B4369, 0x08)
-        patcher.write_int32(0x7B4384, 0x803FCDBC)
-        patcher.write_byte(0x7B4389, 0x08)
-        patcher.write_int32(0x7B43A4, 0x803FCDBC)
-        # Change some shelf decoration Nitros and Mandragoras into actual items.
-        patcher.write_int32(0x7A9BE8, 0xC0800000)  # X position
-        patcher.write_int32(0x7A9C08, 0xC0800000)  # X position
-        patcher.write_int16(0x7A9BF4, 0x0027)  # Interactable actor ID
-        patcher.write_int16(0x7A9C14, 0x0027)  # Interactable actor ID
-        patcher.write_int16(0x7A9BF8, 0x0346)  # Flag ID
-        patcher.write_int16(0x7A9C18, 0x0345)  # Flag ID
-        patcher.write_int32(0x7B8940, 0xC3A00000)  # X position
-        patcher.write_int32(0x7B89A0, 0xC3990000)  # X position
-        patcher.write_int16(0x7B894C, 0x0027)  # Interactable actor ID
-        patcher.write_int16(0x7B89AC, 0x0027)  # Interactable actor ID
-        patcher.write_int16(0x7B8950, 0x0347)  # Flag ID
-        patcher.write_int16(0x7B89B0, 0x0348)  # Flag ID
-        patcher.write_int16(0x7B8952, 0x0000)  # Param unassignment
-        patcher.write_int16(0x7B89B2, 0x0000)  # Param unassignment
-        # Restore the Castle Center library bookshelf item by moving its actor entry into the main library actor list.
-        patcher.write_bytes(0x7B6620, patcher.read_bytes(0x7B6720, 0x20))
-        patcher.write_byte(0x7B6621, 0x80)
-        # Make the Castle Center post-Behemoth boss cutscenes trigger-able by anyone.
-        patcher.write_byte(0x118139, 0x00)
-        patcher.write_byte(0x118165, 0x00)
-        # Fix both Castle Center elevator bridges for both characters unless enabling only one character's stages.
-        # At which point one bridge will be always broken and one always repaired instead.
-        patcher.write_int32(0x7B938C, 0x51200004)  # BEQZL  T1, [forward 0x04]
-        patcher.write_byte(0x7B9B8D, 0x01)  # Reinhardt bridge
-        patcher.write_byte(0x7B9BAD, 0x01)  # Carrie bridge
-        # if options.character_stages.value == options.character_stages.option_reinhardt_only:
-        # patcher.write_int32(0x6CEAA0, 0x240B0000)  # ADDIU T3, R0, 0x0000
-        # elif options.character_stages.value == options.character_stages.option_carrie_only == 3:
-        # patcher.write_int32(0x6CEAA0, 0x240B0001)  # ADDIU T3, R0, 0x0001
-        # else:
-        # patcher.write_int32(0x6CEAA0, 0x240B0001)  # ADDIU T3, R0, 0x0001
-        # patcher.write_int32(0x6CEAA4, 0x240D0001)  # ADDIU T5, R0, 0x0001
-
-        # Prevent taking Nitro or Mandragora through their shelf text.
-        patcher.write_int32(0x1F0, 0x240C0000, NIFiles.OVERLAY_TAKE_NITRO_TEXTBOX)  # ADDIU T4, R0, 0x0000
-        patcher.write_bytes(0x7B7406, cvlod_string_to_bytearray("Huh!? Someone super glued\n"
-                                                                 "all these Magical Nitro bottles\n"
-                                                                 "to the shelf!»\n"
-                                                                 "Better find some elsewhere,\n"
-                                                                 "lest you suffer the fate of an\n"
-                                                                 "insane lunatic coyote in trying\n"
-                                                                 "to force-remove one...»\t\t")[0])
-        patcher.write_int32(0x22C, 0x240F0000, NIFiles.OVERLAY_TAKE_MANDRAGORA_TEXTBOX)  # ADDIU T7, R0, 0x0000
-        patcher.write_bytes(0x7A8FFC, cvlod_string_to_bytearray("\tThese Mandragora bottles\n"
-                                                                 "are empty, and a note was\n"
-                                                                 "left behind:»\n"
-                                                                 "\"Come 2035, and the Boss\n"
-                                                                 "will be in for a very LOUD\n"
-                                                                 "surprise! Hehehehe!\"»\n"
-                                                                 "Whoever battles Dracula then\n"
-                                                                 "may have an easy time...»\t")[0])
-
-        # Ensure the vampire Nitro check will always pass, so they'll never not spawn and crash the Villa cutscenes.
-        patcher.write_int32(0x128, 0x24020001, NIFiles.OVERLAY_VAMPIRE_SPAWNER)  # ADDIU V0, R0, 0x0001
-
-        # Prevent throwing Nitro in the Hazardous Materials Disposals.
-        patcher.write_int32(0x1E4, 0x24020001, NIFiles.OVERLAY_NITRO_DISPOSAL_TEXTBOX)  # ADDIU V0, R0, 0x0001
-        patcher.write_bytes(0x7ADCCE, cvlod_string_to_bytearray("\t\"Hazardous materials disposal.\"»\n"
-                                                                 "\"DO NOT OPERATE:\n"
-                                                                 "Traces of gelatinous bloody "
-                                                                 "tears need cleaning.\"»    \t")[0])
-        patcher.write_bytes(0x7B0770, cvlod_string_to_bytearray("\t\"Hazardous materials disposal.\"»\n"
-                                                                 "\"DO NOT OPERATE:\n"
-                                                                 "Jammed shut by repeated use "
-                                                                 "from COWARDS.\"»     \t")[0])
-        patcher.write_bytes(0x7B2B2A, cvlod_string_to_bytearray("\t\"Hazardous materials disposal.\"»\n"
-                                                                 "\"DO NOT OPERATE:\n"
-                                                                 "Busted by Henrich attempting "
-                                                                 "to escape through it.\"»  \t")[0])
-
-        # Allow placing both bomb components at a cracked wall at once while having multiple copies of each, prevent
-        # placing them at the downstairs crack altogether until the seal is removed, and enable placing both in one
-        # interaction.
-        patcher.write_int32(0xEE8, 0x803FCD50, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
-        patcher.write_int16(0x34A, 0x8040, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
-        patcher.write_int16(0x34E, 0xCCC0, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
-        patcher.write_int16(0x38A, 0x8040, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
-        patcher.write_int16(0x38E, 0xCCC0, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
-        patcher.write_int16(0x3F6, 0x8040, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
-        patcher.write_int16(0x3FA, 0xCD00, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
-        patcher.write_int16(0x436, 0x8040, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
-        patcher.write_int16(0x43A, 0xCD00, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
-        patcher.write_int32s(0xFFCCC0, patches.double_component_checker)
-        patcher.write_int32s(0xFFCD50, patches.basement_seal_checker)
-        patcher.write_int16(0x646, 0x8040, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
-        patcher.write_int16(0x64A, 0xCDE0, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
-        patcher.write_int16(0x65E, 0x8040, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
-        patcher.write_int16(0x662, 0xCDE0, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
-        patcher.write_int32s(0xFFCDE0, patches.mandragora_with_nitro_setter)
-
-        # Custom message for if you try checking the downstairs Castle Center crack before removing the seal.
-        patcher.write_bytes(0x7A924C, cvlod_string_to_bytearray("The Furious Nerd Curse\n"
-                                                                 "prevents you from setting\n"
-                                                                 "anything until the seal\n"
-                                                                 "is removed!»\t")[0])
-
-        # Disable the rapid flashing effect in the CC planetarium cutscene to ensure it won't trigger seizures.
-        # TODO: Make this an option.
-        #patcher.write_int32(0xC5C, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xCD0, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xC64, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xC74, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xC80, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xC88, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xC90, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xC9C, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xCB4, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xCC8, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
 
         # Make one of the lone turret room doors in Tower of Science display an unused message if you try to open it
         # before blowing up said turret.
@@ -1264,10 +1366,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # for stage in active_stage_exits:
         #    for offset in get_stage_info(stage, "save number offsets"):
         # patcher.write_byte(offset, active_stage_exits[stage]["position"])
-
-        # CC top elevator switch check
-        # patcher.write_int32(0x6CF0A0, 0x0C0FF0B0)  # JAL 0x803FC2C0
-        # patcher.write_int32s(0xBFC2C0, patches.elevator_flag_checker)
 
         # Disable time restrictions
         # if options.disable_time_restrictions.value:

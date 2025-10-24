@@ -971,6 +971,13 @@ class CVLoDRomPatcher:
         self.compressed_files[file_num] = bytearray((0x80000004 + len(compressed_file)).to_bytes(4, "big")) \
             + bytearray(compressed_file)
 
+    def get_decompressed_file_size(self, file_num: int) -> int:
+        """Gets the current size of a Nisitenma-Ichigo file when decompressed. The file will be decompressed if it isn't already.
+        Otherwise, the size of the file (with all current modifications) will be returned as-is."""
+        if file_num not in self.decompressed_files:
+            self.decompress_file(file_num)
+        return len(self.decompressed_files[file_num])
+
     def find_space_and_write_file(self, file: bytearray) -> int:
         """Finds a space in the ROM to write a given file and writes it, returning the start address the file was written to.
         Files will be written one after the other every time this method is called, from where the map overlays normally are first,
