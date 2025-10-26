@@ -135,9 +135,11 @@ class ActorSpawnFlags(IntFlag):
     ALL_DIFFICULTIES =            EASY | NORMAL | HARD
 
 class PickupFlags(IntFlag):
-    EXPIRE =    0x0001
-    INVISIBLE = 0x0800
-    GRAVITY =   0x4000
+    EXPIRE =      0x0001
+    INVISIBLE =   0x0800
+    GRAVITY =     0x4000
+    DONT_EXPIRE = 0xFFFF ^ EXPIRE
+    VISIBLE =     0xFFFF ^ INVISIBLE
 
 class DoorFlags(IntFlag):
     LOCK_ALWAYS =              0x0001  # Can be unlocked if it has a disregard flag set on it and its event flag is set.
@@ -317,8 +319,8 @@ class Objects(IntEnum):
     TITLE_GRAPHICS = 0x190
     FILE_SELECT_CONTROLLER = 0x194
     CHARACTER_SELECT = 0x196
-    ENTRANCE_DISPLAY = 0x19F
-    HENRY_DAYS_LEFT = 0x1A2
+    STAGE_NAME_DISPLAY = 0x19F
+    HENRY_DAYS_TRACKER = 0x1A2
     TEXTBOX = 0x1A7
     TEXTBOX_SELECT_ARROW = 0x1A8
     MAP_GENERAL_MGR = 0x1AB

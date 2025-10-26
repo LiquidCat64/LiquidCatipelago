@@ -199,15 +199,15 @@ def shuffle_sub_weapons(world: "CVLoDWorld") -> dict[str, int]:
 
     # Get every active sub-weapon Location in the world by looping over each active stage and checking all its
     # Locations. Sub-weapon Locations will not normally have been created.
-    all_locs_dict = {loc: ALL_CVLOD_ITEMS[CVLOD_LOCATIONS_INFO[loc].normal_item].pickup_id
+    all_locs_dict = {CVLOD_LOCATIONS_INFO[loc].flag_id: ALL_CVLOD_ITEMS[CVLOD_LOCATIONS_INFO[loc].normal_item].pickup_id
                      for stage, stage_info in CVLOD_STAGE_INFO.items() for reg, reg_info in stage_info.regions.items()
                      for loc in reg_info["locations"] if loc in CVLOD_LOCATIONS_INFO}
 
     # Filter all Locations that have a sub-weapon normally.
     sub_weapon_dict = {}
-    for loc, item in all_locs_dict.items():
-        if CVLOD_LOCATIONS_INFO[loc].normal_item in SUB_WEAPON_IDS:
-            sub_weapon_dict[loc] = item
+    for loc_id, item in all_locs_dict.items():
+        if CVLOD_LOCATIONS_INFO[loc_id].normal_item in SUB_WEAPON_IDS:
+            sub_weapon_dict[loc_id] = item
 
     # Shuffle the values in the sub-weapon dict and return it.
     sub_bytes = list(sub_weapon_dict.values())
@@ -346,7 +346,7 @@ def get_countdown_numbers(options: CVLoDOptions, active_locations: Iterable[Loca
     return countdown_array
 
 
-def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Location]) -> dict[str, int]:
+def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Location]) -> dict[int, int]:
     """Gets ALL the Item values to write on each Location in the ROM. Item values consists of two bytes: the first
     (upper) byte dictates the appearance of the item, while the second (lower) determines what the Item actually is when
     picked up. All Items from other worlds will be AP Items that do nothing when picked up other than set their flag,
@@ -434,8 +434,8 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
                 world.options.countdown.value == Countdown.option_all_locations:
             appearance_byte |= 0x80
 
-        # Put the appearance and item bytes together to get the final item value to write in the ROM.
-        location_values[loc.name] = (appearance_byte << 8) + item_byte
+        # Put the appearance and item bytes together to get the final item value to write on that Location.
+        location_values[loc.address] = (appearance_byte << 8) + item_byte
 
     # Return the final dict of Location values.
     return location_values

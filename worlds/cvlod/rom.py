@@ -72,6 +72,10 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher = CVLoDRomPatcher(bytearray(input_rom))
         slot_patch_info = json.loads(caller.get_file(slot_patch_file).decode("utf-8"))
 
+        # Get the dictionary of item values mapped to their location IDs out of the slot patch info and convert each
+        # location ID key from a string into an int.
+        loc_values = {int(loc_id): item_value for loc_id, item_value in slot_patch_info["location values"].items()}
+
 
         # # # # # # # # #
         # GENERAL EDITS #
@@ -329,14 +333,14 @@ class CVLoDPatchExtensions(APPatchExtension):
         # and write their pickups.
         # Entry 0
         patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
-            FOREST_OVL_CHARNEL_ITEMS_START + 2, slot_patch_info["location values"][loc_names.forest_charnel_1])
+            FOREST_OVL_CHARNEL_ITEMS_START + 2, loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id])
         patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
             FOREST_OVL_CHARNEL_ITEMS_START + 6, CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id)
         patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(FOREST_OVL_CHARNEL_ITEMS_START + 9, 0x00)
         # Entry 1
         patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
             FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 2,
-            slot_patch_info["location values"][loc_names.forest_charnel_2])
+            loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_2].flag_id])
         patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
             FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 6,
             CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_2].flag_id)
@@ -345,7 +349,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Entry 8
         patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
             FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 2,
-            slot_patch_info["location values"][loc_names.forest_charnel_3])
+            loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_3].flag_id])
         patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
             FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 6,
             CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_3].flag_id)
@@ -384,7 +388,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                                       0x3C010040], # LUI AT, 0x0040
                              NIFiles.OVERLAY_KING_SKELETON)
         # Turn the item that drops into what it should be.
-        patcher.write_int16(0x43CA, slot_patch_info["location values"][loc_names.forest_skelly_mouth],
+        patcher.write_int16(0x43CA, loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_skelly_mouth].flag_id],
                             NIFiles.OVERLAY_KING_SKELETON)
         # Add the backup King Skeleton jaws item that will spawn only if the player orphans it the first time.
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"].append(
@@ -993,51 +997,54 @@ class CVLoDPatchExtensions(APPatchExtension):
         #patcher.write_int32(0xCC8, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
 
 
-        # Loop over every name in the slot's dict of names to values to write and write every "normal" one that has an
-        # actor associated with it in its location info.
-        for loc_name, loc_value in slot_patch_info["location values"].items():
-            if not CVLOD_LOCATIONS_INFO[loc_name].actor:
-                continue
-
-            # Get the specific actor associated with the Location and see what object the actor is.
-            loc_actor = patcher.scenes[CVLOD_LOCATIONS_INFO[loc_name].scene_id].actor_lists[
-                CVLOD_LOCATIONS_INFO[loc_name].actor[0]][CVLOD_LOCATIONS_INFO[loc_name].actor[1]]
-
-            # Set all difficulty spawn flags on the actor to make it universal to all difficulties.
-            loc_actor["spawn_flags"] |= ActorSpawnFlags.ALL_DIFFICULTIES
-
-            # If the actor is a freestanding pickup, change that pickup into what it really is in this slot by writing
-            # the new value in its Var C.
-            if loc_actor["object_id"] == Objects.PICKUP_ITEM:
-                loc_actor["var_c"] = loc_value
-            # If the actor is a one-hit breakable, take its Var C to figure out which 1HB data in the scene is
-            # associated to that 1HB and write the location value in that.
-            elif loc_actor["object_id"] in SPECIAL_1HBS + [Objects.ONE_HIT_BREAKABLE]:
-                # If it's a regular 1HB, take the entry from the regular 1HBs list.
-                if loc_actor["object_id"] == Objects.ONE_HIT_BREAKABLE:
-                    loc_one_hit = patcher.scenes[CVLOD_LOCATIONS_INFO[loc_name].scene_id].one_hit_breakables[
-                        loc_actor["var_c"]]
-                # Otherwise, if it's a special 1HB, take the entry from the special 1HBs list.
-                else:
-                    loc_one_hit = patcher.scenes[CVLOD_LOCATIONS_INFO[loc_name].scene_id].one_hit_special_breakables[
-                        loc_actor["var_c"]]
-                loc_one_hit["pickup_id"] = loc_value
-                # Un-set the Expire flag on the pickup if it's set.
-                loc_one_hit["pickup_flags"] ^= PickupFlags.EXPIRE
-
-        # Loop over EVERY actor in EVERY list and check to see if it's A. an item-associated actor and B. if it's
-        # specific to non-Normal difficulties. If both are true, mark it for deletion.
+        # Loop over EVERY actor in EVERY list, find all Location-associated instances, and either delete them if they
+        # are exclusive to non-Normal difficulties or try writing an Item they should have onto them if they aren't.
         for scene in patcher.scenes:
-            for name, actor_list in scene.actor_lists.items():
-                # Skip if it's an enemy pillar actor list.
-                if name == "pillars":
-                    continue
+            for list_name, actor_list in scene.actor_lists.items():
                 for actor in actor_list:
-                    if actor["object_id"] in [Objects.ONE_HIT_BREAKABLE, Objects.THREE_HIT_BREAKABLE,
-                                              Objects.PICKUP_ITEM] + SPECIAL_1HBS and \
-                            actor["spawn_flags"] & (ActorSpawnFlags.EASY | ActorSpawnFlags.HARD) and \
-                            not actor["spawn_flags"] & ActorSpawnFlags.NORMAL:
-                        actor["delete"] = True
+                    # If the actor is not a Location-associated actor, or if it's already marked for deletion, skip it.
+                    if actor["object_id"] not in [Objects.ONE_HIT_BREAKABLE, Objects.THREE_HIT_BREAKABLE,
+                                                  Objects.PICKUP_ITEM] + SPECIAL_1HBS or "delete" in actor:
+                        continue
+
+                    # If it's not an enemy pillar actor, check its spawn flags for what difficulties it spawns on.
+                    # If it spawns on Easy and/or Hard but NOT on Normal, mark it for deletion and skip it.
+                    if list_name != "pillars":
+                        if actor["spawn_flags"] & (ActorSpawnFlags.EASY | ActorSpawnFlags.HARD) and not \
+                                actor["spawn_flags"] & ActorSpawnFlags.NORMAL:
+                            actor["delete"] = True
+                            continue
+                        # If it is a Normal actor, set all difficulty flags to make it more visible in the actor list.
+                        else:
+                            actor["spawn_flags"] |= ActorSpawnFlags.ALL_DIFFICULTIES
+
+                    # If we make it here, then the actor is safe to write a rando Item onto. In which case, do what must
+                    # be done for that actor to retrieve its associated item event flag.
+
+                    # If it's a freestanding pickup, the flag to check is in its Var A.
+                    if actor["object_id"] == Objects.PICKUP_ITEM:
+                        # Check if the flag ID has location values associated with it in the slot patch info. If it
+                        # does, write that value in the pickup's Var C.
+                        if actor["var_a"] in loc_values:
+                            actor["var_c"] = loc_values[actor["var_a"]]
+                            # Un-set the Expire bit in its pickup flags in Var B.
+                            actor["var_b"] &= PickupFlags.DONT_EXPIRE
+                    # If it's a regular 1HB, the flag to check AND the value to write the new Item over is in the 1HB
+                    # data for the scene specified in the actor's Var C.
+                    if actor["object_id"] == Objects.ONE_HIT_BREAKABLE:
+                        if scene.one_hit_breakables[actor["var_c"]]["flag_id"] in loc_values:
+                            scene.one_hit_breakables[actor["var_c"]]["pickup_id"] = \
+                                loc_values[scene.one_hit_breakables[actor["var_c"]]["flag_id"]]
+                            # Un-set the Expire bit in its pickup flags.
+                            scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.DONT_EXPIRE
+                    # If it's a special 1HB, then it's similar to the regular 1HB but in the special 1HB data instead.
+                    if actor["object_id"] in SPECIAL_1HBS:
+                        if scene.one_hit_special_breakables[actor["var_c"]]["flag_id"] in loc_values:
+                            scene.one_hit_special_breakables[actor["var_c"]]["pickup_id"] = \
+                                loc_values[scene.one_hit_special_breakables[actor["var_c"]]["flag_id"]]
+                            # Un-set the Expire bit in its pickup flags.
+                            scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.DONT_EXPIRE
+
 
         return patcher.get_output_rom()
 
