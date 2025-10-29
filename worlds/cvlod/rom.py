@@ -56,7 +56,7 @@ FIRST_CHARNEL_LID_ACTOR = 72
 WARP_SCENE_OFFSETS = [0xADF67, 0xADF77, 0xADF87, 0xADF97, 0xADFA7, 0xADFBB, 0xADFCB, 0xADFDF]
 
 SPECIAL_1HBS = [Objects.FOGGY_LAKE_ABOVE_DECKS_BARREL, Objects.FOGGY_LAKE_BELOW_DECKS_BARREL,
-                Objects.SORCERY_CYAN_DIAMOND]
+                Objects.SORCERY_BLUE_DIAMOND]
 
 CC_CORNELL_INTRO_ACTOR_LISTS = {Scenes.CASTLE_CENTER_BASEMENT: "room 1",
                                 Scenes.CASTLE_CENTER_BOTTOM_ELEV: "init",
@@ -180,7 +180,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_spawn_id,
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15DB, 0x0A, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15DB, 0x1D, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         # Change the instruction that stores the Foggy Lake intro cutscene value to store a 0 (from R0) instead.
         patcher.write_int32(0x1614, 0xAC402BCC, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON) # SW  R0, 0x2BCC (V0)
@@ -818,8 +818,9 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.CASTLE_CENTER_LIBRARY].actor_lists["room 2"][4]["delete"] = True
 
         # Clear the Reinhardt and Carrie-only settings from the post-Behemoth boss cutscenes in the universal cutscene
-        # settings table so anyone will be allowed to trigger them (a hangover from Ye Olde CV64 Days when the actor
-        # system wasn't as awesome). We'll instead simply assign each cutscene trigger actor its correct characters.
+        # trigger settings table so anyone will be allowed to trigger them (a hangover from Ye Olde CV64 Days when the
+        # actor system wasn't as awesome). We'll instead simply assign each cutscene trigger actor its correct
+        # characters.
         patcher.write_byte(0x118139, 0x00)
         patcher.write_byte(0x118165, 0x00)
         # If Rosa was chosen for the post-Behemoth boss, delete the trigger for Camilla's battle intro cutscene and
@@ -997,6 +998,146 @@ class CVLoDPatchExtensions(APPatchExtension):
         #patcher.write_int32(0xCC8, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
 
 
+        # # # # # # # # # # # # # #
+        # TOWER OF SCIENCE EDITS  #
+        # # # # # # # # # # # # # #
+        # Prevent Turret 4 (the one in the first room) from locking the doors while active, so that the message on
+        # Door 2 when locked works properly.
+        patcher.scenes[Scenes.SCIENCE_LABS].write_ovl_int32(0x2AB4, 0x00000000)
+        # Touch up the message to clarify the room number (to try and minimize confusion if the player approaches the
+        # door from the other side).
+        turret_door_text = patcher.scenes[Scenes.SCIENCE_LABS].scene_text[0]["text"]
+        patcher.scenes[Scenes.SCIENCE_LABS].scene_text[0]["text"] = \
+            turret_door_text[0:65] + "Room 1\ncannon " + turret_door_text[72:]
+
+        # Change the Security Crystal's "play sound" function call into a "set song to play" call when it tries to play
+        # its music theme, so it will actually play correctly when entering the fight from the rear entrance.
+        patcher.scenes[Scenes.SCIENCE_LABS].write_ovl_int16(0x10F46, 0x7274)
+
+        # Make it so checking the Control Room doors will play the map's song, in the event the player tries going
+        # backwards after killing the Security Crystal and having there be no music.
+        science_door_music_player_start = len(patcher.scenes[Scenes.SCIENCE_LABS].overlay)
+        patcher.scenes[Scenes.SCIENCE_LABS].write_ovl_int32s(science_door_music_player_start,
+                                                             patches.door_map_music_player)
+        patcher.scenes[Scenes.SCIENCE_LABS].doors[10]["door_flags"] |= DoorFlags.EXTRA_CHECK_FUNC_ENABLED
+        patcher.scenes[Scenes.SCIENCE_LABS].doors[10]["extra_condition_ptr"] = \
+            science_door_music_player_start + SCENE_OVERLAY_RDRAM_START
+        patcher.scenes[Scenes.SCIENCE_LABS].doors[11]["door_flags"] |= DoorFlags.EXTRA_CHECK_FUNC_ENABLED
+        patcher.scenes[Scenes.SCIENCE_LABS].doors[11]["extra_condition_ptr"] = \
+            science_door_music_player_start + SCENE_OVERLAY_RDRAM_START
+
+        # Make Carrie's loading zones universal to everyone and remove Cornell's.
+        patcher.scenes[Scenes.SCIENCE_CONVEYORS].actor_lists["proxy"][96]["spawn_flags"] = 0
+        patcher.scenes[Scenes.SCIENCE_CONVEYORS].actor_lists["proxy"][98]["delete"] = True
+        patcher.scenes[Scenes.SCIENCE_LABS].actor_lists["proxy"][166]["spawn_flags"] = 0
+        patcher.scenes[Scenes.SCIENCE_LABS].actor_lists["proxy"][167]["delete"] = True
+        # Make Carrie's White Jewels universal to everyone and remove Cornell's.
+        patcher.scenes[Scenes.SCIENCE_CONVEYORS].actor_lists["proxy"][77]["delete"] = True
+        patcher.scenes[Scenes.SCIENCE_CONVEYORS].actor_lists["proxy"][78]["spawn_flags"] = 0
+        patcher.scenes[Scenes.SCIENCE_LABS].actor_lists["proxy"][101]["delete"] = True
+        patcher.scenes[Scenes.SCIENCE_LABS].actor_lists["proxy"][102]["delete"] = True
+        patcher.scenes[Scenes.SCIENCE_LABS].actor_lists["proxy"][103]["spawn_flags"] = 0
+        patcher.scenes[Scenes.SCIENCE_LABS].actor_lists["proxy"][104]["spawn_flags"] = 0
+
+
+        # # # # # # # # # # #
+        # DUEL TOWER EDITS  #
+        # # # # # # # # # # #
+        # Clear the Cornell-only setting from the Giant Werewolf boss intro cutscene in the universal cutscene settings
+        # table so anyone will be allowed to trigger it. Just like with the Castle Center bosses, we'll instead rely
+        # entirely on the actor system to ensure the trigger only spawns for the correct characters.
+        patcher.write_byte(0x118349, 0x00)
+        # Make specific changes depending on what was chosen for the Duel Tower Final Boss (unless Character Dependant
+        # was chosen, in which case we do nothing).
+        # If Giant Werewolf was chosen, prevent the hardcoded Not Cornell check on Arena 4 from passing for non-Cornell
+        # characters and make the Giant Werewolf cutscene trigger universal to everyone.
+        if slot_patch_info["options"]["duel_tower_final_boss"] == DuelTowerFinalBoss.option_giant_werewolf:
+            patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32(0x58D0, 0x00000000)  # NOP
+            patcher.scenes[Scenes.DUEL_TOWER].actor_lists["init"][2]["spawn_flags"] = 0
+        # If Were-Tiger was chosen, make the hardcoded Not Cornell check on Arena 4 pass even for Cornell and delete
+        # the Giant Werewolf cutscene trigger actor entirely.
+        elif slot_patch_info["options"]["duel_tower_final_boss"] == DuelTowerFinalBoss.option_were_tiger:
+            patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32(0x58D0, 0x10000003)  # B [forward 0x03]
+            patcher.scenes[Scenes.DUEL_TOWER].actor_lists["init"][2]["delete"] = True
+
+        # Make Reinhardt's White Jewels universal to everyone and remove Cornell's.
+        patcher.scenes[Scenes.DUEL_TOWER].actor_lists["proxy"][117]["delete"] = True
+        patcher.scenes[Scenes.DUEL_TOWER].actor_lists["proxy"][118]["spawn_flags"] = 0
+        patcher.scenes[Scenes.DUEL_TOWER].actor_lists["proxy"][119]["delete"] = True
+        patcher.scenes[Scenes.DUEL_TOWER].actor_lists["proxy"][120]["spawn_flags"] = 0
+        # Make Reinhardt's loading zones universal to everyone and remove Cornell's.
+        patcher.scenes[Scenes.DUEL_TOWER].actor_lists["proxy"][157]["spawn_flags"] = 0
+        patcher.scenes[Scenes.DUEL_TOWER].actor_lists["proxy"][158]["spawn_flags"] = 0
+        patcher.scenes[Scenes.DUEL_TOWER].actor_lists["proxy"][159]["delete"] = True
+        patcher.scenes[Scenes.DUEL_TOWER].actor_lists["proxy"][160]["delete"] = True
+
+
+        # # # # # # # # # # # # # # #
+        # TOWER OF EXECUTION EDITS  #
+        # # # # # # # # # # # # # # #
+        # Make the Tower of Execution 3HB pillars that spawn 1HBs not set their flags, and have said 1HBs
+        # set the flags instead.
+        patcher.scenes[Scenes.EXECUTION_MAIN].enemy_pillars[0]["flag_id"] = 0
+        patcher.scenes[Scenes.EXECUTION_MAIN].enemy_pillars[3]["flag_id"] = 0
+        patcher.scenes[Scenes.EXECUTION_MAIN].enemy_pillars[4]["flag_id"] = 0
+        patcher.scenes[Scenes.EXECUTION_MAIN].one_hit_breakables[10]["flag_id"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.toe_first_pillar].flag_id
+        patcher.scenes[Scenes.EXECUTION_MAIN].one_hit_breakables[11]["flag_id"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.toe_last_pillar].flag_id
+
+        # Make Reinhardt's White Jewels universal to everyone and remove Cornell's.
+        patcher.scenes[Scenes.EXECUTION_MAIN].actor_lists["proxy"][99]["delete"] = True
+        patcher.scenes[Scenes.EXECUTION_MAIN].actor_lists["proxy"][100]["delete"] = True
+        patcher.scenes[Scenes.EXECUTION_MAIN].actor_lists["proxy"][101]["delete"] = True
+        patcher.scenes[Scenes.EXECUTION_MAIN].actor_lists["proxy"][102]["spawn_flags"] = 0
+        patcher.scenes[Scenes.EXECUTION_MAIN].actor_lists["proxy"][103]["spawn_flags"] = 0
+        patcher.scenes[Scenes.EXECUTION_MAIN].actor_lists["proxy"][104]["spawn_flags"] = 0
+        patcher.scenes[Scenes.EXECUTION_SIDE_ROOMS_1].actor_lists["proxy"][78]["delete"] = True
+        patcher.scenes[Scenes.EXECUTION_SIDE_ROOMS_1].actor_lists["proxy"][79]["spawn_flags"] = 0
+        patcher.scenes[Scenes.EXECUTION_SIDE_ROOMS_2].actor_lists["proxy"][86]["delete"] = True
+        patcher.scenes[Scenes.EXECUTION_SIDE_ROOMS_2].actor_lists["proxy"][87]["delete"] = True
+        patcher.scenes[Scenes.EXECUTION_SIDE_ROOMS_2].actor_lists["proxy"][88]["delete"] = True
+        patcher.scenes[Scenes.EXECUTION_SIDE_ROOMS_2].actor_lists["proxy"][89]["spawn_flags"] = 0
+        patcher.scenes[Scenes.EXECUTION_SIDE_ROOMS_2].actor_lists["proxy"][90]["spawn_flags"] = 0
+        patcher.scenes[Scenes.EXECUTION_SIDE_ROOMS_2].actor_lists["proxy"][91]["spawn_flags"] = 0
+        # Make Reinhardt's loading zones universal to everyone and remove Cornell's.
+        patcher.scenes[Scenes.EXECUTION_MAIN].actor_lists["proxy"][148]["spawn_flags"] = 0
+        patcher.scenes[Scenes.EXECUTION_MAIN].actor_lists["proxy"][155]["delete"] = True
+        patcher.scenes[Scenes.EXECUTION_SIDE_ROOMS_2].actor_lists["proxy"][135]["spawn_flags"] = 0
+        patcher.scenes[Scenes.EXECUTION_SIDE_ROOMS_2].actor_lists["proxy"][136]["delete"] = True
+
+
+        # # # # # # # # # # # # # #
+        # TOWER OF SORCERY EDITS  #
+        # # # # # # # # # # # # # #
+        # Make the pink diamond always drop the same 3 items, prevent it from setting its own flag when broken, and
+        # have it set individual flags on each of its drops.
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int32(0x3E94, 0x00106040)  # SLL   T4, S0, 1
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int32(0x369C, 0x00000000)  # NOP
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int32(0x366C, 0x0C0BAB10)  # JAL   0x802EAC30
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int32s(0x70C0, patches.pink_sorcery_diamond_customizer)
+        # Write the randomizer items manually here.
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(
+            0x5400, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_1].flag_id])
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(
+            0x5402, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_2].flag_id])
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(
+            0x5404, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_3].flag_id])
+
+        # Make Carrie's White Jewels universal to everyone and remove Cornell's.
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][128]["delete"] = True
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][129]["delete"] = True
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][130]["delete"] = True
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][131]["spawn_flags"] = 0
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][132]["spawn_flags"] = 0
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][133]["spawn_flags"] = 0
+        # Make Carrie's loading zones universal to everyone and remove Cornell's.
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][144]["spawn_flags"] = 0
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][145]["spawn_flags"] = 0
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][146]["delete"] = True
+        patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][147]["delete"] = True
+
+
         # Loop over EVERY actor in EVERY list, find all Location-associated instances, and either delete them if they
         # are exclusive to non-Normal difficulties or try writing an Item they should have onto them if they aren't.
         for scene in patcher.scenes:
@@ -1142,39 +1283,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_byte(0x797D6C, 0x52)
         patcher.write_int32(0x797D70, 0x802E4C34)
 
-
-        # Make one of the lone turret room doors in Tower of Science display an unused message if you try to open it
-        # before blowing up said turret.
-        patcher.write_byte(0x803E28, 0x00)
-        patcher.write_byte(0x803E54, 0x00)
-        # Touch up the message to clarify the room number (to try and minimize confusion if the player approaches the
-        # door from the other side).
-        patcher.write_bytes(0x803C12, cvlod_string_to_bytearray("Room 1\ncannon ")[0] +
-                             patcher.read_bytes(0x803C20, 0xE6))
-        # Change the Security Crystal's play sound function call into a set song to play call when it tries to play its
-        # music theme, so it will actually play correctly when coming in from a different stage with a different song.
-        patcher.write_int16(0x800526, 0x7274)
-        # Make it so checking the Control Room doors will play the map's song, in the event the player tries going
-        # backwards after killing the Security Crystal and having there be no music.
-        patcher.write_int16(0x803F74, 0x5300)
-        patcher.write_int32(0x803F78, 0x803FCE40)
-        patcher.write_int16(0x803FA0, 0x5300)
-        patcher.write_int32(0x803FA4, 0x803FCE40)
-        patcher.write_int32s(0xFFCE40, patches.door_map_music_player)
-
-        # Make the Tower of Execution 3HB pillars with 1HB breakables not set their flags, and have said 1HB breakables
-        # set the flags instead.
-        patcher.write_int16(0x7E0A66, 0x0000)
-        patcher.write_int16(0x7E0B26, 0x01B5)
-        patcher.write_int16(0x7E0A96, 0x0000)
-        patcher.write_int16(0x7E0B32, 0x01B8)
-
-        # Make the Tower of Sorcery pink diamond always drop the same 3 items, prevent it from setting its own flag when
-        # broken, and have it set individual flags on each of its drops.
-        patcher.write_int32(0x7DD624, 0x00106040)  # SLL   T4, S0, 1
-        patcher.write_int32(0x7DCE2C, 0x00000000)  # NOP
-        patcher.write_int32(0x7DCDFC, 0x0C0FF3A4)  # JAL   0x803FCE90
-        patcher.write_int32s(0xFFCE80, patches.pink_sorcery_diamond_customizer)
 
         # Lock the door in Clock Tower workshop leading out to the grand abyss map with Clocktower Key D.
         # It's the same door in-universe as Clocktower Door D but on a different map.

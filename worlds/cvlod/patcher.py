@@ -159,11 +159,13 @@ class CVLoDDoorEntry(CVLoDSceneDataEntry):
     item_id: int  # Int32 ID for what item is used to open the door if door flag 0x0100 is enabled.
     front_room_id: int  # Int8 ID for which room to load when opening the door from the back. 80 if not applicable.
     back_room_id: int  # Int8 ID for which room to load when opening the door from the front. 80 if not applicable.
-    cant_open_text_id: int  # Int8 ID for what text in the scene's text pool to display if the player tries opening the
-                            # door when they can't. 80 if nothing.
-    unlocked_text_id: int  # Int8 ID for what text in the scene's text pool to display if the player unlocks the door.
-                           # 80 if nothing.
-    byte_1c: int  # Something??? 80 if not applicable.
+    flag_locked_text_id: int  # Int8 ID for what text in the scene's text pool to display if the player tries opening
+                              # the door when they can't due to the door flags preventing it. 80 if nothing.
+    unlocked_text_id: int  # Int8 ID for what text in the scene's text pool to display if the player opens the door via
+                           # their unlocking animation. 80 if nothing.
+    enemy_locked_text_id: int  # Int8 ID for what text in the scene's text pool to display if the player tries opening
+                               # the door when they can't due to there being enemies around that lock all doors until
+                               # defeated (like the Castle Center vampires). 80 if not applicable.
     opening_sound_id: int  # Int16 ID for what sound to play when the door starts opening.
     half_20: int
     closing_sound_id: int  # Int16 ID for what sound to play when the door starts closing.
@@ -676,9 +678,9 @@ class CVLoDRomPatcher:
                         item_id=int.from_bytes(door_data[0x14:0x18], "big"),
                         front_room_id=door_data[0x18],
                         back_room_id=door_data[0x19],
-                        cant_open_text_id=door_data[0x1A],
+                        flag_locked_text_id=door_data[0x1A],
                         unlocked_text_id=door_data[0x1B],
-                        byte_1c=door_data[0x1C],
+                        enemy_locked_text_id=door_data[0x1C],
                         opening_sound_id=int.from_bytes(door_data[0x1E:0x20], "big"),
                         half_20=int.from_bytes(door_data[0x20:0x22], "big"),
                         closing_sound_id=int.from_bytes(door_data[0x22:0x24], "big"),
@@ -1254,9 +1256,9 @@ class CVLoDRomPatcher:
                               int.to_bytes(door["item_id"], 4, "big") +
                               int.to_bytes(door["front_room_id"], 1, "big") +
                               int.to_bytes(door["back_room_id"], 1, "big") +
-                              int.to_bytes(door["cant_open_text_id"], 1, "big") +
+                              int.to_bytes(door["flag_locked_text_id"], 1, "big") +
                               int.to_bytes(door["unlocked_text_id"], 1, "big") +
-                              int.to_bytes(door["byte_1c"], 1, "big") + b'\x00' +
+                              int.to_bytes(door["enemy_locked_text_id"], 1, "big") + b'\x00' +
                               int.to_bytes(door["opening_sound_id"], 2, "big") +
                               int.to_bytes(door["half_20"], 2, "big") +
                               int.to_bytes(door["closing_sound_id"], 2, "big") +

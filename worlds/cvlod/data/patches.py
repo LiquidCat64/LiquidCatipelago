@@ -1940,15 +1940,15 @@ door_map_music_player = [
 pink_sorcery_diamond_customizer = [
     # Gives each item that drops from the pink Tower of Sorcery diamond its own unique flag and additional settings
     # attributes.
-    0x03494001,
-    0x034A4001,
-    0x034B4001,
+    0x03494000,
+    0x034A4000,
+    0x034B4000,
     0x00000000,
     0x00104080,  # SLL   T0, S0, 2
-    0x3C098040,  # LUI   T1, 0x8040
+    0x3C09802F,  # LUI   T1, 0x802F
     0x01094821,  # ADDU  T1, T0, T1
-    0x952ACE80,  # LHU   T2, 0xCE80 (T1)
-    0x9527CE82,  # LHU   A3, 0xCE82 (T1)
+    0x952AAC30,  # LHU   T2, 0xAC30 (T1)
+    0x9527AC32,  # LHU   A3, 0xAC32 (T1)
     0x08058E56,  # J     0x80163958
     0xAFAA0010   # SW    T2, 0x0010 (SP)
 ]
