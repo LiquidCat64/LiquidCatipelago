@@ -37,7 +37,7 @@ EXTENDED_DATA_ACTORS: dict[int, str] = {Objects.ONE_HIT_BREAKABLE: "1hb",
                                         Objects.THREE_HIT_BREAKABLE: "3hb",
                                         Objects.FOGGY_LAKE_ABOVE_DECKS_BARREL: "1hb special",
                                         Objects.FOGGY_LAKE_BELOW_DECKS_BARREL: "1hb special",
-                                        Objects.SORCERY_CYAN_DIAMOND: "1hb special",
+                                        Objects.SORCERY_BLUE_DIAMOND: "1hb special",
                                         Objects.ENEMY_GENERATOR_PILLAR: "pillar",
                                         Objects.DOOR: "door",
                                         Objects.LOADING_ZONE: "load"}

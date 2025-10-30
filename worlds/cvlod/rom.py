@@ -180,7 +180,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_spawn_id,
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15DB, 0x1D, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15DB, 0x15, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         # Change the instruction that stores the Foggy Lake intro cutscene value to store a 0 (from R0) instead.
         patcher.write_int32(0x1614, 0xAC402BCC, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON) # SW  R0, 0x2BCC (V0)
@@ -275,11 +275,10 @@ class CVLoDPatchExtensions(APPatchExtension):
         # # # # # # # # # # #
         # Lock the door in Foggy Lake below decks leading out to above decks with the Deck Key.
         # It's the same door in-universe as the above decks one but on a different map.
-        patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["door_flags"] = \
-            DoorFlags.UNLOCK_AND_SET_FLAG | DoorFlags.DISREGARD_IF_FLAG_SET | DoorFlags.ITEM_COST_IF_FLAG_UNSET
+        patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["door_flags"] = DoorFlags.LOCKED_BY_KEY
         patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["flag_id"] = 0x28E  # Deck Door unlocked flag.
         patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["item_id"] = Items.DECK_KEY
-        patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["cant_open_text_id"] = 0x01
+        patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["flag_locked_text_id"] = 0x01
         patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].doors[0]["unlocked_text_id"] = 0x02
         patcher.scenes[Scenes.FOGGY_LAKE_BELOW_DECKS].scene_text += [
             CVLoDSceneTextEntry(text="You're locked in!\n"
@@ -414,6 +413,16 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][129]["delete"] = True
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][130]["delete"] = True
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][131]["delete"] = True
+
+
+        # # # # # # # #
+        # VILLA EDITS #
+        # # # # # # # #
+        # Give Child Henry his Cornell behavior for everyone.
+        patcher.write_int32(0x1B8, 0x24020002, NIFiles.OVERLAY_CHILD_HENRY)  # ADDIU V0, R0, 0x0002
+        patcher.write_byte(0x613, 0x04, NIFiles.OVERLAY_CHILD_HENRY)
+        patcher.write_int32(0x844, 0x240F0002, NIFiles.OVERLAY_CHILD_HENRY)  # ADDIU T7, R0, 0x0002
+        patcher.write_int32(0x8B8, 0x240F0002, NIFiles.OVERLAY_CHILD_HENRY)  # ADDIU T7, R0, 0x0002
 
 
         # # # # # # # # #
@@ -1049,16 +1058,22 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_byte(0x118349, 0x00)
         # Make specific changes depending on what was chosen for the Duel Tower Final Boss (unless Character Dependant
         # was chosen, in which case we do nothing).
-        # If Giant Werewolf was chosen, prevent the hardcoded Not Cornell check on Arena 4 from passing for non-Cornell
+        # If Giant Werewolf was chosen, prevent the hardcoded Not Cornell checks on Arena 4 from passing for non-Cornell
         # characters and make the Giant Werewolf cutscene trigger universal to everyone.
         if slot_patch_info["options"]["duel_tower_final_boss"] == DuelTowerFinalBoss.option_giant_werewolf:
             patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32(0x58D0, 0x00000000)  # NOP
             patcher.scenes[Scenes.DUEL_TOWER].actor_lists["init"][2]["spawn_flags"] = 0
-        # If Were-Tiger was chosen, make the hardcoded Not Cornell check on Arena 4 pass even for Cornell and delete
+            # Prevent the ceiling from falling in Arena 4 for everyone.
+            patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32(0x1A5C, 0x340D0002)  # ORI T5, R0, 0x0002
+            patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32(0x5B4C, 0x340E0002)  # ORI T6, R0, 0x0002
+        # If Were-Tiger was chosen, make the hardcoded Not Cornell checks on Arena 4 pass even for Cornell and delete
         # the Giant Werewolf cutscene trigger actor entirely.
         elif slot_patch_info["options"]["duel_tower_final_boss"] == DuelTowerFinalBoss.option_were_tiger:
             patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32(0x58D0, 0x10000003)  # B [forward 0x03]
             patcher.scenes[Scenes.DUEL_TOWER].actor_lists["init"][2]["delete"] = True
+            # Make the ceiling fall in Arena 4 for everyone.
+            patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32(0x1A5C, 0x340D0000)  # ORI T5, R0, 0x0000
+            patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32(0x5B4C, 0x340E0000)  # ORI T6, R0, 0x0000
 
         # Make Reinhardt's White Jewels universal to everyone and remove Cornell's.
         patcher.scenes[Scenes.DUEL_TOWER].actor_lists["proxy"][117]["delete"] = True
@@ -1138,6 +1153,235 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][147]["delete"] = True
 
 
+        # # # # # # # # # # # # #
+        # ROOM OF CLOCKS EDITS  #
+        # # # # # # # # # # # # #
+        # Depending on what was chosen for the Room of Clocks Boss option, make only one character's elevator loading
+        # zone (the one corresponding to that boss) universal and remove the other two.
+        if slot_patch_info["options"]["room_of_clocks_boss"] == RoomOfClocksBoss.option_death:
+            patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][35]["spawn_flags"] = 0  # Reinhardt (Death)
+            patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][38]["delete"] = True    # Carrie (Actrise)
+            patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][41]["delete"] = True    # Cornell (Ortega)
+        elif slot_patch_info["options"]["room_of_clocks_boss"] == RoomOfClocksBoss.option_actrise:
+            patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][35]["delete"] = True    # Reinhardt (Death)
+            patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][38]["spawn_flags"] = 0  # Carrie (Actrise)
+            patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][41]["delete"] = True    # Cornell (Ortega)
+        elif slot_patch_info["options"]["room_of_clocks_boss"] == RoomOfClocksBoss.option_ortega:
+            patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][35]["delete"] = True    # Reinhardt (Death)
+            patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][38]["delete"] = True    # Carrie (Actrise)
+            patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][41]["spawn_flags"] = 0  # Cornell (Ortega)
+        # Henry normally doesn't have a boss here. So if Character Dependent is chosen, we'll give him Death.
+        # Otherwise, don't touch Carrie and Cornell's elevator zones.
+        else:
+            patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][35]["spawn_flags"] |= ActorSpawnFlags.HENRY
+
+        # Make Reinhardt and Carrie's White Jewel universal for everyone and remove Cornell's.
+        patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][18]["delete"] = True
+        patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][19]["spawn_flags"] = 0
+        # Make Reinhardt's start/end loading zones universal to everyone and remove Carrie and Cornell's.
+        patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][34]["spawn_flags"] = 0
+        patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][36]["spawn_flags"] = 0
+        patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][37]["delete"] = True
+        patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][39]["delete"] = True
+        patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][40]["delete"] = True
+        patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][42]["delete"] = True
+        # Make the elevator zones to Room of Clocks in Castle Keep Exterior universal to everyone as well.
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["proxy"][55]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["proxy"][56]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["proxy"][57]["spawn_flags"] = 0
+
+
+        # # # # # # # # # # #
+        # CLOCK TOWER EDITS #
+        # # # # # # # # # # #
+        # Lock the door in Clock Tower Face leading out to the grand abyss scene with Clocktower Key D.
+        # It's the same door in-universe as Clocktower Door D but on a different scene.
+        patcher.scenes[Scenes.CLOCK_TOWER_FACE].doors[5]["door_flags"] = DoorFlags.LOCKED_BY_KEY
+        patcher.scenes[Scenes.CLOCK_TOWER_FACE].doors[5]["flag_id"] = 0x29E  # Clocktower Door D unlocked flag.
+        patcher.scenes[Scenes.CLOCK_TOWER_FACE].doors[5]["item_id"] = Items.CLOCKTOWER_KEY_D
+        patcher.scenes[Scenes.CLOCK_TOWER_FACE].doors[5]["flag_locked_text_id"] = 0x04
+        patcher.scenes[Scenes.CLOCK_TOWER_FACE].doors[5]["unlocked_text_id"] = 0x05
+        # Custom text for the new locked door instance (copy the Door E text and change the E's to D's).
+        patcher.scenes[Scenes.CLOCK_TOWER_FACE].scene_text += [
+            CVLoDSceneTextEntry(text=patcher.scenes[Scenes.CLOCK_TOWER_FACE].scene_text[1]["text"][0:33] + "D" + \
+                                     patcher.scenes[Scenes.CLOCK_TOWER_FACE].scene_text[1]["text"][34:]),
+            CVLoDSceneTextEntry(text=patcher.scenes[Scenes.CLOCK_TOWER_FACE].scene_text[2]["text"][0:20] + "D" + \
+                                     patcher.scenes[Scenes.CLOCK_TOWER_FACE].scene_text[2]["text"][21:])
+        ]
+
+        # Make Reinhardt and Carrie's White Jewels universal for everyone and remove Cornell's.
+        patcher.scenes[Scenes.CLOCK_TOWER_GEAR_CLIMB].actor_lists["room 1"][3]["delete"] = True
+        patcher.scenes[Scenes.CLOCK_TOWER_GEAR_CLIMB].actor_lists["room 1"][4]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CLOCK_TOWER_ABYSS].actor_lists["proxy"][24]["delete"] = True
+        patcher.scenes[Scenes.CLOCK_TOWER_ABYSS].actor_lists["proxy"][25]["delete"] = True
+        patcher.scenes[Scenes.CLOCK_TOWER_ABYSS].actor_lists["proxy"][26]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CLOCK_TOWER_ABYSS].actor_lists["proxy"][27]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CLOCK_TOWER_FACE].actor_lists["room 0"][17]["delete"] = True
+        patcher.scenes[Scenes.CLOCK_TOWER_FACE].actor_lists["room 0"][18]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CLOCK_TOWER_FACE].actor_lists["room 0"][19]["delete"] = True
+        patcher.scenes[Scenes.CLOCK_TOWER_FACE].actor_lists["room 0"][20]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CLOCK_TOWER_FACE].actor_lists["room 1"][22]["delete"] = True
+        patcher.scenes[Scenes.CLOCK_TOWER_FACE].actor_lists["room 1"][23]["spawn_flags"] = 0
+
+
+        # # # # # # # # # # #
+        # CASTLE KEEP EDITS #
+        # # # # # # # # # # #
+        # Make the Renon's Departure cutscene trigger universal to everyone (including Henry, whom it's normally set to
+        # not spawn for) and stop it from spawning if in the castle escape sequence.
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][1]["spawn_flags"] = \
+            ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][1]["flag_id"] = 0x17D  # Castle escape flag
+        # If the Renon Fight Condition is Never, then make every money spent check in the Renon's Departure cutscene
+        # always assume the player spent nothing so the fight should never trigger with the appropriate dialogue.
+        if slot_patch_info["options"]["renon_fight_condition"] == RenonFightCondition.option_never:
+            patcher.write_int32(0x294,  0x34180000, NIFiles.OVERLAY_CS_RENONS_DEPARTURE)  # ORI  T8, R0, 0x0000
+            patcher.write_int32(0x2C4,  0x34080000, NIFiles.OVERLAY_CS_RENONS_DEPARTURE)  # ORI  T0, R0, 0x0000
+            patcher.write_int32(0x3E4,  0x34180000, NIFiles.OVERLAY_CS_RENONS_DEPARTURE)  # ORI  T8, R0, 0x0000
+            patcher.write_int32(0x434,  0x340F0000, NIFiles.OVERLAY_CS_RENONS_DEPARTURE)  # ORI  T7, R0, 0x0000
+            patcher.write_int32(0x6A8,  0x340D0000, NIFiles.OVERLAY_CS_RENONS_DEPARTURE)  # ORI  T5, R0, 0x0000
+            patcher.write_int32(0x18CC, 0x34090000, NIFiles.OVERLAY_CS_RENONS_DEPARTURE)  # ORI  T1, R0, 0x0000
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int32(0x13C0, 0x34090000)  # ORI  T1, R0, 0x0000
+        # If the Renon Fight Condition is Always, then make every money spent check in the Renon's Departure cutscene
+        # always assume the player spent 30K so the fight should always trigger with the appropriate dialogue.
+        elif slot_patch_info["options"]["renon_fight_condition"] == RenonFightCondition.option_always:
+            patcher.write_int32(0x294,  0x34187531, NIFiles.OVERLAY_CS_RENONS_DEPARTURE)  # ORI  T8, R0, 0x7531
+            patcher.write_int32(0x2C4,  0x34087531, NIFiles.OVERLAY_CS_RENONS_DEPARTURE)  # ORI  T0, R0, 0x7531
+            patcher.write_int32(0x3E4,  0x34187531, NIFiles.OVERLAY_CS_RENONS_DEPARTURE)  # ORI  T8, R0, 0x7531
+            patcher.write_int32(0x434,  0x340F7531, NIFiles.OVERLAY_CS_RENONS_DEPARTURE)  # ORI  T7, R0, 0x7531
+            patcher.write_int32(0x6A8,  0x340D7531, NIFiles.OVERLAY_CS_RENONS_DEPARTURE)  # ORI  T5, R0, 0x7531
+            patcher.write_int32(0x18CC, 0x34097531, NIFiles.OVERLAY_CS_RENONS_DEPARTURE)  # ORI  T1, R0, 0x7531
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int32(0x13C0, 0x34097531)  # ORI  T1, R0, 0x7531
+        # Otherwise, If the Renon Fight Condition option is Spend 30K, put the cutscene trigger actor for it on the
+        # custom Renon spawn check as well and don't touch any of the money spent checks.
+        else:
+            renon_cutscene_check_location = len(patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].overlay)
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int32s(renon_cutscene_check_location,
+                                                                         patches.renon_cutscene_checker)
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][1]["extra_condition_ptr"] = \
+                renon_cutscene_check_location + SCENE_OVERLAY_RDRAM_START
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][1]["spawn_flags"] |= \
+                ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
+
+        # If the Vincent Fight Condition is Always, make the Vincent fight intro cutscene trigger universal to everyone
+        # and remove the "16 days passed?" check in its cutscene trigger settings.
+        if slot_patch_info["options"]["vincent_fight_condition"] == VincentFightCondition.option_always:
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][2]["spawn_flags"] = 0
+            patcher.write_int16(0x1181A4,  0x0000)
+        # If the Vincent Fight Condition is Never, remove the cutscene trigger entirely.
+        elif slot_patch_info["options"]["vincent_fight_condition"] == VincentFightCondition.option_never:
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][2]["delete"] = True
+        # Otherwise, if it's Wait 16 Days, simply make the trigger universal and do nothing further to it.
+        else:
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][2]["spawn_flags"] = 0
+
+        # Make the escape sequence Malus cutscene triggers universal to everyone.
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][3]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][4]["spawn_flags"] = 0
+        # Remove Cornell's White Jewel from Dracula's chamber and make Reinhardt and Carrie's universal.
+        patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["proxy"][4]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["proxy"][5]["delete"] = True
+
+        # If the Castle Keep Ending Sequence option is Cornell, make Cornell's cutscene trigger in Dracula's chamber
+        # universal to everyone and remove Reinhardt and Carrie's.
+        if slot_patch_info["options"]["castle_keep_ending_sequence"] == CastleKeepEndingSequence.option_cornell:
+            patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["init"][0]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["init"][1]["spawn_flags"] = 0
+            # Force Dracula to have all his Cornell behaviors for Reinhardt/Carrie/Henry.
+            patcher.write_int32(0x904, 0x34050002, NIFiles.OVERLAY_CS_FAKE_DRACULA_BATTLE_INTRO)  # ORI  A1, R0, 0x0002
+            # Red high energy ring.
+            patcher.write_int32(0x40C, 0x34030002, NIFiles.OVERLAY_DRACULA_ENERGY_RING)  # ORI  V1, R0, 0x0002
+            # Red low energy ring.
+            patcher.write_int32(0x650, 0x34030002, NIFiles.OVERLAY_DRACULA_ENERGY_RING)  # ORI  V1, R0, 0x0002
+            # Move pool with electric attacks and no flamethrower.
+            patcher.write_int32(0x9388, 0x34020002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0002
+            # Blue fire bats.
+            patcher.write_int32(0xB83C, 0x34030002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V1, R0, 0x0002
+            # Cutscene when beaten by Cornell.
+            patcher.write_int32(0x90FC, 0x34020002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0002
+            patcher.write_int32(0x9138, 0x34020002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0002
+
+        # Otherwise, if a Reinhardt/Carrie option was chosen, remove Cornell's trigger, make Reinhardt and Carrie's
+        # universal, and force the good ending check after Fake Dracula to always pass.
+        else:
+            patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["init"][0]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["init"][1]["delete"] = True
+            # Force Fake Dracula to have all his Reinhardt/Carrie behaviors for Cornell/Henry.
+            patcher.write_int32(0x904, 0x34050000, NIFiles.OVERLAY_CS_FAKE_DRACULA_BATTLE_INTRO)  # ORI  A1, R0, 0x0000
+            # Blue high energy ring.
+            patcher.write_int32(0x40C, 0x34030000, NIFiles.OVERLAY_DRACULA_ENERGY_RING)  # ORI  V1, R0, 0x0000
+            # Blue low energy ring.
+            patcher.write_int32(0x650, 0x34030000, NIFiles.OVERLAY_DRACULA_ENERGY_RING)  # ORI  V1, R0, 0x0000
+            # Move pool with flamethrower attack and no electric attacks.
+            patcher.write_int32(0x9388, 0x34020000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0000
+            # Orange fire bats.
+            patcher.write_int32(0xB83C, 0x34030000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V1, R0, 0x0000
+            # Cutscene when beaten by Reinhardt/Carrie.
+            patcher.write_int32(0x90FC, 0x34020000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0000
+            patcher.write_int32(0x9138, 0x34020000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0000
+            # If the Castle Keep Ending Sequence option is Reinhardt Carrie Good, make the White Jewel clear the
+            # Bad Ending flag upon spawning to ensure we will never get it.
+            if slot_patch_info["options"]["castle_keep_ending_sequence"] == \
+                    CastleKeepEndingSequence.option_reinhardt_carrie_good:
+                patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["proxy"][4]["spawn_flags"] = \
+                    ActorSpawnFlags.CLEAR_FLAG_ON_SPAWN
+                patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["proxy"][4]["flag_id"] = 0x1A8
+            # If the Castle Keep Ending Sequence option is Reinhardt Carrie Bad, make the White Jewel set the
+            # Bad Ending flag upon spawning to ensure we will always get it. Otherwise, if it's Reinhardt Carrie Timed,
+            # don't modify this any further.
+            elif slot_patch_info["options"]["castle_keep_ending_sequence"] == \
+                    CastleKeepEndingSequence.option_reinhardt_carrie_bad:
+                patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["proxy"][4]["spawn_flags"] = \
+                    ActorSpawnFlags.SET_FLAG_ON_SPAWN
+                patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["proxy"][4]["flag_id"] = 0x1A8
+
+        # Make the castle crumbling cutscene send Cornell and Henry to their respective endings.
+        # NOP the branch instruction that skips starting a different cutscene if the player isn't Reinhardt or Carrie.
+        # Reinhardt's routine should run for the other two characters.
+        patcher.write_int32(0x1CF4, 0x00000000, NIFiles.OVERLAY_CS_CASTLE_CRUMBLING)
+        # At the end of Reinhardt's ending cutscene setter routine, jump to a hack that switches it to Cornell or Henry
+        # instead.
+        patcher.write_int32(0x1DB4, 0x0B80107C, NIFiles.OVERLAY_CS_CASTLE_CRUMBLING) # J 0x0E0041F0
+        patcher.write_int32s(0x41F0, patches.castle_crumbling_cornell_henry_checker,
+                             NIFiles.OVERLAY_CS_CASTLE_CRUMBLING)
+
+        # Make the Bad Ending Malus Appears cutscene send Cornell and Henry to their own respective bad ends.
+        patcher.write_int32(0xBD0, 0x0B800580, NIFiles.OVERLAY_CS_BAD_ENDING_MALUS_APPEARS) # J 0x0E001600
+        patcher.write_int32s(0x1600, patches.malus_bad_end_cornell_henry_checker,
+                             NIFiles.OVERLAY_CS_BAD_ENDING_MALUS_APPEARS)
+
+        # Make the Dracula Ultimate Defeated cutscene send all non-Cornell characters to their respective good ends.
+        patcher.write_int32(0x4EFC, 0x0B801A18, NIFiles.OVERLAY_CS_DRACULA_ULTIMATE_DEFEATED) # J 0x0E006860
+        patcher.write_int32s(0x6860, patches.dracula_ultimate_non_cornell_checker,
+                             NIFiles.OVERLAY_CS_DRACULA_ULTIMATE_DEFEATED)
+
+        # Make all children rescued checks in Henry's ending either pass or fail depending on if the Reinhardt/Carrie
+        # Bad Ending flag is set or not.
+        patcher.write_int16(0x2C6, 0x01A8, NIFiles.OVERLAY_CS_HENRY_ENDING)
+        patcher.write_int32(0x2C8, 0x54400008, NIFiles.OVERLAY_CS_HENRY_ENDING)  # BNEZL  V0, [forward 0x08]
+        patcher.write_int16(0x2FA, 0x01A8, NIFiles.OVERLAY_CS_HENRY_ENDING)
+        patcher.write_int32(0x2FC, 0x1440000B, NIFiles.OVERLAY_CS_HENRY_ENDING)  # BNEZ   V0, [forward 0x0B]
+        patcher.write_int16(0x33E, 0x01A8, NIFiles.OVERLAY_CS_HENRY_ENDING)
+        patcher.write_int32(0x340, 0x14400009, NIFiles.OVERLAY_CS_HENRY_ENDING)  # BNEZ   V0, [forward 0x09]
+        patcher.write_int16(0x3CA, 0x01A8, NIFiles.OVERLAY_CS_HENRY_ENDING)
+        patcher.write_int32(0x3CC, 0x54400007, NIFiles.OVERLAY_CS_HENRY_ENDING)  # BNEZL  V0, [forward 0x07]
+        patcher.write_int16(0x3FA, 0x01A8, NIFiles.OVERLAY_CS_HENRY_ENDING)
+        patcher.write_int32(0x3FC, 0x1440000B, NIFiles.OVERLAY_CS_HENRY_ENDING)  # BNEZ   V0, [forward 0x0B]
+        patcher.write_int16(0x43E, 0x01A8, NIFiles.OVERLAY_CS_HENRY_ENDING)
+        patcher.write_int32(0x440, 0x14400008, NIFiles.OVERLAY_CS_HENRY_ENDING)  # BNEZ   V0, [forward 0x08]
+        patcher.write_int16(0x24A, 0x01A8, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)
+        patcher.write_int32(0x258, 0x14400005, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)  # BNEZ   V0, [forward 0x05]
+        patcher.write_int16(0x276, 0x01A8, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)
+        patcher.write_int32(0x278, 0x14400005, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)  # BNEZ   V0, [forward 0x05]
+        patcher.write_int16(0x296, 0x01A8, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)
+        patcher.write_int32(0x298, 0x14400005, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)  # BNEZ   V0, [forward 0x05]
+        patcher.write_int16(0x2B6, 0x01A8, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)
+        patcher.write_int32(0x2B8, 0x14400005, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)  # BNEZ   V0, [forward 0x05]
+        patcher.write_int16(0x2D6, 0x01A8, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)
+        patcher.write_int32(0x2D8, 0x14400005, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)  # BNEZ   V0, [forward 0x05]
+        patcher.write_int16(0x2F6, 0x01A8, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)
+        patcher.write_int32(0x2F8, 0x14400004, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)  # BNEZ   V0, [forward 0x04]
+
         # Loop over EVERY actor in EVERY list, find all Location-associated instances, and either delete them if they
         # are exclusive to non-Normal difficulties or try writing an Item they should have onto them if they aren't.
         for scene in patcher.scenes:
@@ -1164,6 +1408,10 @@ class CVLoDPatchExtensions(APPatchExtension):
 
                     # If it's a freestanding pickup, the flag to check is in its Var A.
                     if actor["object_id"] == Objects.PICKUP_ITEM:
+                        # If the pickup is a text spot or a White Jewel (wherein Var A is actually a White Jewel ID,
+                        # not a flag ID), skip it.
+                        if actor["var_c"] == Pickups.WHITE_JEWEL or actor["var_c"] > len(Pickups) + 1:
+                            continue
                         # Check if the flag ID has location values associated with it in the slot patch info. If it
                         # does, write that value in the pickup's Var C.
                         if actor["var_a"] in loc_values:
@@ -1197,12 +1445,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32(0x490, 0x24020002, NIFiles.OVERLAY_GARDENER)  # ADDIU V0, R0, 0x0002
         patcher.write_int32(0xD20, 0x00000000, NIFiles.OVERLAY_GARDENER)
         patcher.write_int32(0x13CC, 0x00000000, NIFiles.OVERLAY_GARDENER)
-
-        # Give Child Henry his Cornell behavior for everyone.
-        patcher.write_int32(0x1B8, 0x24020002, NIFiles.OVERLAY_CHILD_HENRY)  # ADDIU V0, R0, 0x0002
-        patcher.write_byte(0x613, 0x04, NIFiles.OVERLAY_CHILD_HENRY)
-        patcher.write_int32(0x844, 0x240F0002, NIFiles.OVERLAY_CHILD_HENRY)  # ADDIU T7, R0, 0x0002
-        patcher.write_int32(0x8B8, 0x240F0002, NIFiles.OVERLAY_CHILD_HENRY)  # ADDIU T7, R0, 0x0002
 
         # Change the player spawn coordinates for Villa maze entrance 4 to put the player in front of the child escape
         # gate instead of the rear maze exit door.
@@ -1282,27 +1524,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32(0x797BB8, 0x802E4C34)
         patcher.write_byte(0x797D6C, 0x52)
         patcher.write_int32(0x797D70, 0x802E4C34)
-
-
-        # Lock the door in Clock Tower workshop leading out to the grand abyss map with Clocktower Key D.
-        # It's the same door in-universe as Clocktower Door D but on a different map.
-        patcher.write_int16(0x82D104, 0x5300)
-        patcher.write_int16(0x82D130, 0x5300)
-        patcher.write_int32(0x82D108, 0x803FCEC0)
-        patcher.write_int32(0x82D134, 0x803FCED4)
-        patcher.write_int16(0x82D10C, 0x029E)
-        patcher.write_byte(0x82D113, 0x26)
-        patcher.write_int16(0x82D116, 0x0102)
-        patcher.write_int32s(0xFFCEC0, patches.clock_tower_workshop_text_modifier)
-        # Custom text for the new locked door instance.
-        patcher.write_bytes(0x7C1B14, cvlod_string_to_bytearray("Locked in!\n"
-                                                                 "You need Deck Key.»\t"
-                                                                 "Deck Key\n"
-                                                                 "       has been used.»\t", wrap=False)[0])
-
-        # Prevent the Renon's Departure cutscene from triggering during the castle escape sequence.
-        patcher.write_byte(0x7CCFF1, 0x80)
-        patcher.write_int16(0x7CD002, 0x017D)
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
         # came before them
@@ -1395,39 +1616,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Lizard-man save proofing
         # patcher.write_int32(0xA99AC, 0x080FF0B8)  # J 0x803FC2E0
         # patcher.write_int32s(0xBFC2E0, patches.boss_save_stopper)
-
-        # Disable or guarantee vampire Vincent's fight
-        # if options.vincent_fight_condition.value == options.vincent_fight_condition.option_never:
-        # patcher.write_int32(0xAACC0, 0x24010001)  # ADDIU AT, R0, 0x0001
-        # patcher.write_int32(0xAACE0, 0x24180000)  # ADDIU T8, R0, 0x0000
-        # elif options.vincent_fight_condition.value == options.vincent_fight_condition.option_always:
-        # patcher.write_int32(0xAACE0, 0x24180010)  # ADDIU T8, R0, 0x0010
-        # else:
-        # patcher.write_int32(0xAACE0, 0x24180000)  # ADDIU T8, R0, 0x0000
-
-        # Disable or guarantee Renon's fight
-        # patcher.write_int32(0xAACB4, 0x080FF1A4)  # J 0x803FC690
-        # if options.renon_fight_condition.value == options.renon_fight_condition.option_never:
-        # patcher.write_byte(0xB804F0, 0x00)
-        # patcher.write_byte(0xB80632, 0x00)
-        # patcher.write_byte(0xB807E3, 0x00)
-        # patcher.write_byte(0xB80988, 0xB8)
-        # patcher.write_byte(0xB816BD, 0xB8)
-        # patcher.write_byte(0xB817CF, 0x00)
-        # patcher.write_int32s(0xBFC690, patches.renon_cutscene_checker_jr)
-        # elif options.renon_fight_condition.value == options.renon_fight_condition.option_always:
-        # patcher.write_byte(0xB804F0, 0x0C)
-        # patcher.write_byte(0xB80632, 0x0C)
-        # patcher.write_byte(0xB807E3, 0x0C)
-        # patcher.write_byte(0xB80988, 0xC4)
-        # patcher.write_byte(0xB816BD, 0xC4)
-        # patcher.write_byte(0xB817CF, 0x0C)
-        # patcher.write_int32s(0xBFC690, patches.renon_cutscene_checker_jr)
-        # else:
-        # patcher.write_int32s(0xBFC690, patches.renon_cutscene_checker)
-
-        # NOP the Easy Mode check when buying a thing from Renon, so he can be triggered even on this mode.
-        # patcher.write_int32(0xBD8B4, 0x00000000)
 
         # Disable or guarantee the Bad Ending
         # if options.bad_ending_condition.value == options.bad_ending_condition.option_never:

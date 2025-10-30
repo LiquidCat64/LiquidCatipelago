@@ -344,57 +344,16 @@ cutscene_active_checkers = [
 ]
 
 renon_cutscene_checker = [
-    # Prevents Renon's departure/pre-fight cutscene from playing if the player is either in the escape sequence or both
-    # did not spend the required 30K to fight him and lacks the required Special2s to fight Dracula.
-    0x15810002,  # BNE   T4, AT, [forward 0x02]
-    0x00000000,  # NOP
-    0x08049EB3,  # J     0x80127ACC
-    0x24090016,  # ADDIU T1, R0, 0x0016
-    0x11C90002,  # BEQ   T6, T1, [forward 0x02]
-    0x00000000,  # NOP
-    0x08049ECA,  # J     0x80127B28
-    0x24190000,  # ADDIU T9, R0, 0x0000
-    0x8C696208,  # LW    T1, 0x6208 (V1)
-    0x292A7531,  # SLTI  T2, T1, 0x7531
-    0x51400001,  # BEQZL T2,     [forward 0x01]
-    0x24190001,  # ADDIU T9, R0, 0x0001
-    0x3C0B8013,  # LUI   T3, 0x8013
-    0x916BAC9F,  # LBU   T3, 0xAC9F (T3)
-    0x906C6194,  # LBU   T4, 0x6194 (V1)
-    0x018B502A,  # SLT   T2, T4, T3
-    0x51400001,  # BEQZL T2,     [forward 0x01]
-    0x24190001,  # ADDIU T9, R0, 0x0001
-    0x90696142,  # LBU   T1, 0x6142 (V1)
-    0x31290002,  # ANDI  T1, T1, 0x0002
-    0x55200001,  # BNEZL T1,     [forward 0x01]
-    0x24190000,  # ADDIU T9, R0, 0x0000
-    0x17200003,  # BNEZ  T9,     [forward 0x03]
-    0x00000000,  # NOP
-    0x08049ECC,  # J     0x80127B30
-    0x00000000,  # NOP
-    0x08049ECA   # J     0x80127B28
-]
-
-renon_cutscene_checker_jr = [
-    # Like renon_cutscene_checker, but without the checks for the Special2 and spent money counters. Inserted instead if
-    # the player chooses to guarantee or disable the Renon fight on their YAML.
-    0x15810002,  # BNE   T4, AT, [forward 0x02]
-    0x00000000,  # NOP
-    0x08049EB3,  # J     0x80127ACC
-    0x24090016,  # ADDIU T1, R0, 0x0016
-    0x11C90002,  # BEQ   T6, T1, [forward 0x02]
-    0x00000000,  # NOP
-    0x08049ECA,  # J     0x80127B28
-    0x24190001,  # ADDIU T9, R0, 0x0001
-    0x90696142,  # LBU   T1, 0x6142 (V1)
-    0x31290002,  # ANDI  T1, T1, 0x0002
-    0x55200001,  # BNEZL T1,     [forward 0x01]
-    0x24190000,  # ADDIU T9, R0, 0x0000
-    0x17200003,  # BNEZ  T9,     [forward 0x03]
-    0x00000000,  # NOP
-    0x08049ECC,  # J     0x80127B30
-    0x00000000,  # NOP
-    0x08049ECA   # J     0x80127B28
+    # Custom spawn condition that blocks the Renon's departure/pre-fight cutscene trigger from spawning if the player
+    # did not spend the required 30K to fight him.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x8D08ABB0,  # LW    T0, 0xABB0 (T0)
+    0x29097531,  # SLTI  T1, T0, 0x7531
+    0x11200002,  # BEQZ  T1,     [forward 0x02]
+    0x24020000,  # ADDIU V0, R0, 0x0000
+    0x24020001,  # ADDIU V0, R0, 0x0001
+    0x03E00008,  # JR   RA
+    0x00000000,
 ]
 
 ck_door_music_player = [
@@ -418,22 +377,6 @@ ck_door_music_player = [
     0x08063DFD,  # J     0x8018F7F4
     0x00000000,  # NOP
     0x08063DF9   # J     0x8018F7E4
-]
-
-dracula_door_text_redirector = [
-    # Switches the standard pointer to the map text with one to a custom message for Dracula's chamber door if the
-    # current scene is Castle Keep exterior (Scene 0x14).
-    0x3C088039,  # LUI   T0, 0x8039
-    0x91089EE1,  # LBU   T0, 0x9EE1 (T0)
-    0x24090014,  # ADDIU T1, R0, 0x0014
-    0x15090006,  # BNE   T0, T1, [forward 0x06]
-    0x3C088014,  # LUI   T0, 0x8014
-    0x2508B9F4,  # ADDIU T0, T0, 0xB9F4
-    0x151F0003,  # BNE   T0, RA, [forward 0x03]
-    0x00000000,  # NOP
-    0x3C028040,  # LUI   V0, 0x8040
-    0x2442CC48,  # ADDIU V0, V0, 0xCC48
-    0x03E00008   # JR    RA
 ]
 
 coffin_time_checker = [
@@ -1968,30 +1911,6 @@ clock_tower_workshop_text_modifier = [
     0xA50963E4   # SH    T1, 0x6392 (T0)
 ]
 
-actor_era_spawn_checker = [
-    # If every character flag is set in an actor, this will then check for the 0x8000 flag. If it's set, then the actor
-    # will be called not fine to spawn if we're in the "past" (event flag 0x05BF is set). If flag 0x8000 is not set,
-    # then the actor will be called not fine if we're in the "future" (even tflag 0x05BF is not set). Otherwise,
-    # whatever the regular check actor spawn conditions function decided for that actor will apply.
-    0x92280000,  # LBU   T0, 0x0000 (S1)
-    0x31090078,  # ANDI  T1, T0, 0x0078
-    0x240A0078,  # ADDIU T2, R0, 0x0078
-    0x152A000C,  # BNE   T1, T2, [forward 0x0C]
-    0x3C0B801D,  # LUI   T3, 0x801D
-    0x916BAB17,  # LBU   T3, 0xAB17 (T3)
-    0x310C0080,  # ANDI  T4, T0, 0x0080
-    0x11600005,  # BEQZ  T3,     [forward 0x05]
-    0x00000000,  # NOP
-    0x11800006,  # BEQZ  T4,     [forward 0x06]
-    0x00000000,  # NOP
-    0x10000003,  # B             [forward 0x03]
-    0x00000000,  # NOP
-    0x15800002,  # BNEZ  T4,     [forward 0x02]
-    0x00000000,  # NOP
-    0x00001025,  # OR    V0, R0, R0
-    0x03E00008,  # JR    RA
-]
-
 rose_brooch_checker = [
     # Checks if the Rose Brooch is in the player's inventory and returns True if so or False if not. Custom door opening
     # condition for the "time gate" in the Villa.
@@ -2001,40 +1920,6 @@ rose_brooch_checker = [
     0x24020001,  # ADDIU V0, R0, 0x0001
     0x24020000,  # ADDIU V0, R0, 0x0000
     0x03E00008,  # JR   RA
-]
-
-era_switcher = [
-    # When going into a loading zone that has the (normally unused) 5th byte in its settings entry set, this will run
-    # once the fade-out starts. The flag byte for past/future will be toggled, and the "teleport" sound will play to
-    # signify that the player is time traveling.
-    0x8E080034,  # LW    T0, 0x0034 (S0)
-    0x91090005,  # LBU   T1, 0x0005 (T0)
-    0x15200003,  # BNEZ  T1,     [forward 0x03]
-    0x3C0A801D,  # LUI   T2, 0x801D
-    0x03E00008,  # JR    RA
-    0x00000000,  # NOP
-    0x914BAB17,  # LBU   T3, 0xAB17 (T2)
-    0x15600002,  # BNEZ  T3,     [forward 0x02]
-    0x240C0000,  # ADDIU T4, R0, 0x0000
-    0x240C0001,  # ADDIU T4, R0, 0x0001
-    0xA14CAB17,  # SB    T4, 0xAB17 (T2)
-    0x080059BE,  # J     0x800166F8
-    0x2404019B,  # ADDIU A0, R0, 0x019B
-]
-
-map_name_year_switcher = [
-    # If the text ID for the map name display message has a nonzero value in its high byte, this will redirect the
-    # text pointer to a different text pool for year number strings instead, with the exact year to display depending on
-    # the custom era flag being set or not. Used for the custom Villa time travel gate entrance.
-    0x30A8FF00,  # ANDI  T0, A1, 0xFF00
-    0x11000004,  # BEQZ  T0,     [forward 0x04]
-    0x3C09801D,  # LUI   T1, 0x801D
-    0x9125AB17,  # LBU   A1, 0xAB17 (T1)
-    0x3C048040,  # LUI   A0, 0x8040
-    0x2484D020,  # ADDIU A0, A0, 0xD020
-    0x08020FE8,  # J     0x80083FA0
-    0x30A500FF,  # ANDI  A1, A1, 0x00FF
-    0x00000000
 ]
 
 art_tower_knight_spawn_check = [
@@ -2051,6 +1936,88 @@ art_tower_knight_spawn_check = [
     0x24020001,  # ADDIU V0, R0, 0x0001
     0x03E00008,  # JR    RA
     0x00000000
+]
+
+castle_crumbling_cornell_henry_checker = [
+    # Teleports Cornell and Henry to their respective "good ending" cutscenes during the castle crumbling sequence
+    # after beating Centipede Dracula. Cornell's will simply be his regular ending while Henry's will be his
+    # "all children rescued" ending.
+
+    # Check the current character value for Cornell. If true, switch the scene to Cornell's ending forest and play
+    # his cutscene.
+    0x84482874,  # LH    T0, 0x2874 (V0)
+    0x34090002,  # ORI   T1, R0, 0x00002
+    0x15090006,  # BNE   T0, T1, [forward 0x06]
+    0x34090003,  # ORI   T1, R0, 0x0003
+    0x340A002D,  # ORI   T2, R0, 0x002D
+    0xA44A2BB8,  # SH    T2, 0x2BB8 (V0)
+    0x340A0030,  # ORI   T2, R0, 0x0030
+    0x0B8007A0,  # J     0x0E001E80
+    0xA44A2BCE,  # SH    T2, 0x2BCE (V0)
+    # Check the current character value for Henry. If true, switch the spawn point for the current map to 1
+    # (for blue skies) and play his cutscene.
+    0x15090004,  # BNE   T0, T1, [forward 0x04]
+    0x340A0031,  # ORI   T2, R0, 0x0031
+    0xA44A2BCE,  # SH    T2, 0x2BCE (V0)
+    0x340A0002,  # ORI   T2, R0, 0x0002
+    0xA44A2BBA,  # SH    T2, 0x2BBA (V0)
+    0x0B8007A0,  # J     0x0E001E80
+    0x00000000   # NOP
+]
+
+malus_bad_end_cornell_henry_checker = [
+    # Teleports Cornell and Henry to their respective "bad ending" cutscenes after Malus appears following Fake
+    # Dracula's defeat.  Cornell doesn't have a bad ending normally, so we'll just give him Reinhardt's. Henry will
+    # have his usual ending but with no children rescued.
+
+    # Check the current character value for Cornell. If true, play his cutscene.
+    0x340A0002,  # ORI   T2, R0, 0x0002
+    0x14CA0003,  # BNE   A2, T2, [forward 0x03]
+    0x340A0003,  # ORI   T2, R0, 0x0003
+    0x0B8002FA,  # J     0x0E000BE8
+    0xAC482BCC,  # SW    T0, 0x2BCC (V0)
+    # Check the current character value for Henry. If true, play his cutscene.
+    0x14CA0002,  # BNE   A2, T2, [forward 0x02]
+    0x34090031,  # ORI   T1, R0, 0x0031
+    0xAC492BCC,  # SW    T1, 0x2BCC (V0)
+    0x0B8002FA,  # J     0x0E000BE8
+    0x00000000   # NOP
+]
+
+dracula_ultimate_non_cornell_checker = [
+    # Teleports all non-Cornell characters to their respective "good ending" cutscenes during the Dracula Ultimate
+    # Defeated cutscene.
+
+    # Check the current character value for Reinhardt. If true, switch the scene to Reinhardt/Carrie/Henry's endings and
+    # play his cutscene.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9509AB34,  # LHU   T1, 0xAB34 (T0)
+    0x340A0000,  # ORI   T2, R0, 0x0000
+    0x152A0004,  # BNE   T1, T2, [forward 0x04]
+    0x340B001C,  # ORI   T3, R0, 0x001C
+    0x340C0000,  # ORI   T4, R0, 0x0000
+    0x1000000C,  # B             [forward 0x0C]
+    0x340D002E,  # ORI   T5, R0, 0x002E
+    # Check the current character value for Carrie. If true, switch the scene to Reinhardt/Carrie/Henry's endings and
+    # play her cutscene.
+    0x340A0001,  # ORI   T2, R0, 0x0001
+    0x152A0004,  # BNE   T1, T2, [forward 0x04]
+    0x340B001C,  # ORI   T3, R0, 0x001C
+    0x340C0002,  # ORI   T4, R0, 0x0012
+    0x10000006,  # B             [forward 0x06]
+    0x340D002C,  # ORI   T5, R0, 0x002C
+    # Check the current character value for Henry. If true, switch the scene to Reinhardt/Carrie/Henry's endings and
+    # play his cutscene.
+    0x340A0003,  # ORI   T2, R0, 0x0003
+    0x152A0006,  # BNE   T1, T2, [forward 0x06]
+    0x340B001C,  # ORI   T3, R0, 0x001C
+    0x340C0002,  # ORI   T4, R0, 0x0002
+    0x340D0031,  # ORI   T5, R0, 0x0031
+    0xA50BAE78,  # SH    T3, 0xAE78 (T0)
+    0xA50CAE7A,  # SH    T4, 0xAE7A (T0)
+    0xA50DAE8E,  # SH    T5, 0xAE8E (T0)
+    0x03E00008,  # JR    RA
+    0x00000000   # NOP
 ]
 
 always_actor_edits = {
