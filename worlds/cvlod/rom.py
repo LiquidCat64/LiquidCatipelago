@@ -25,7 +25,7 @@ from .cvlod_text import cvlod_string_to_bytearray, cvlod_text_wrap, cvlod_bytes_
 # from .locations import CVLOD_LOCATIONS_INFO
 from .options import StageLayout, VincentFightCondition, RenonFightCondition, PostBehemothBoss, RoomOfClocksBoss, \
     DuelTowerFinalBoss, CastleKeepEndingSequence, DeathLink, DraculasCondition, InvisibleItems, Countdown, \
-    PantherDash, VillaBranchingPaths, CastleCenterBranchingPaths
+    PantherDash, VillaBranchingPaths, CastleCenterBranchingPaths, CastleWallState, VillaState
 from settings import get_settings
 
 if TYPE_CHECKING:
@@ -413,6 +413,100 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][129]["delete"] = True
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][130]["delete"] = True
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][131]["delete"] = True
+
+
+        # # # # # # # # # # #
+        # CASTLE WALL EDITS #
+        # # # # # # # # # # #
+        # Remove the Castle Wall Henry child actor and make the candle actor there universal for everyone else.
+        patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][142]["delete"] = True
+        patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][162]["spawn_flags"] = 0
+        # Make Reinhardt/Carrie/Cornell's White Jewels universal to everyone and remove Henry's.
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][22]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][23]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][24]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][25]["delete"] = True
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][26]["delete"] = True
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][27]["delete"] = True
+        patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][156]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][157]["delete"] = True
+        # Remove the Cornell-specific pickups and breakables and make Reinhardt/Carrie's equivalent ones universal.
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][28]["delete"] = True
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][29]["delete"] = True
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][30]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][31]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][32]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][158]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][159]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][160]["delete"] = True
+        patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][161]["delete"] = True
+        # Make the Henry-only start loading zone universal to everyone.
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][59]["spawn_flags"] = 0
+
+        # If the Castle Wall State is Reinhardt/Carrie's, put the stage in Reinhardt and Carrie's state.
+        if slot_patch_info["options"]["castle_wall_state"] == CastleWallState.option_reinhardt_carrie:
+            # Right Tower switch spot is the non-lever missing version.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][9]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][10]["spawn_flags"] = 0
+            # Portcullises are Reinhardt/Carrie's versions.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][52]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][53]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][54]["delete"] = True
+            # Main area Right Tower door is a normal door. Left Tower door is a Left Tower Key door.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][55]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][56]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][57]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][58]["delete"] = True
+
+            # Left Tower interior top door is a moon door.
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][191]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][192]["delete"] = True
+            # Left Tower interior top loading zone plays the Fake Dracula taunt cutscene.
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][195]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][196]["delete"] = True
+        # If the Castle Wall State is Cornell's, put the stage in Reinhardt and Cornell's state.
+        if slot_patch_info["options"]["castle_wall_state"] == CastleWallState.option_cornell:
+            # Right Tower switch spot is the lever missing version.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][9]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][10]["delete"] = True
+            # Portcullises are Cornell's versions.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][52]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][53]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][54]["spawn_flags"] = 0
+            # Main area Right Tower door is a sun door. Left Tower door is a moon door.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][55]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][56]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][57]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][58]["spawn_flags"] = 0
+
+
+            # Left Tower interior top door is a regular door.
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][191]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][192]["spawn_flags"] = 0
+            # Left Tower interior top loading zone plays no cutscene.
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][195]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][196]["spawn_flags"] = 0
+        # Otherwise, if Hybrid was chosen, put the stage in a hybrid state.
+        else:
+            # Right Tower switch spot is the lever missing version.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][9]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][10]["delete"] = True
+            # Portcullises are Cornell's versions.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][52]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][53]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][54]["spawn_flags"] = 0
+            # Main area Right Tower door is a normal door. Left Tower door is a Left Tower Key door.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][55]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][56]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][57]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][58]["delete"] = True
+
+            # Left Tower interior top door is a regular door.
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][191]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][192]["spawn_flags"] = 0
+            # Left Tower interior top loading zone plays no cutscene.
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][195]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][196]["spawn_flags"] = 0
 
 
         # # # # # # # #
