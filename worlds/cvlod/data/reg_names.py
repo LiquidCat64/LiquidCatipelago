@@ -20,7 +20,6 @@ cw_drac_sw = "Castle Wall: Dracula cutscene switch area"
 cw_save_ramp = "Castle Wall: Save rampart"
 cw_descent = "Castle Wall: Main area descent"
 cw_exit = "Castle Wall: Exit room"
-# Castle Wall
 # Right tower
 cwr_rtower = "Castle Wall: Right tower"
 # Left tower
@@ -77,8 +76,9 @@ towsi_slaughter_int = "The Outer Wall: Slaughterhouse interior"
 # Bowling alley
 towb_bowling = "The Outer Wall: Bowling alley"
 # Harpy rooftops
-towh_saw_roof = "The Outer Wall: Sawblade rooftop"
-towh_end = "The Outer Wall: Harpy arena"
+towh_harpy_roof = "The Outer Wall: Harpy rooftops"
+# Fan room
+towfr_end = "The Outer Wall fan room"
 
 # Art Tower
 # Museum
@@ -97,6 +97,8 @@ torc_dark = "Tower of Ruins: Dark chambers"
 torc_end = "Tower of Ruins: End room top"
 
 # Castle Center
+# Fan room
+ccfr_fan_room = "Castle Center fan room"
 # Basement
 ccb_basement = "Castle Center basement: Main area"
 ccb_torture_chamber = "Castle Center basement: Torture chamber"

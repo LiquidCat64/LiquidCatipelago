@@ -34,7 +34,7 @@ class CVLoDRules:
             loc_names.villafy_fountain_shine: self.villa_can_get_fountain_shine,
             loc_names.villala_vincent: self.villa_can_meet_rosa,
             loc_names.villala_mary: self.villa_can_rescue_maze_kid,
-            loc_names.event_villa_child: self.villa_can_open_hybrid_rose_door,
+            loc_names.event_villa_child: self.villa_can_open_cornell_rose_door,
             loc_names.event_cc_crystal: self.cc_can_explode_lower_wall,
             loc_names.event_cc_elevator: self.cc_can_activate_crystal,
             loc_names.event_dracula: self.ck_can_enter_dracs_chamber
@@ -58,8 +58,7 @@ class CVLoDRules:
             ent_names.villam_to_main_maze_gate: self.villa_can_open_maze_main_gate,
             ent_names.villam_from_main_maze_gate: self.villa_can_open_maze_main_gate,
             ent_names.villam_copper_door: self.villa_can_open_copper_door,
-            ent_names.villam_front_divide: self.villa_can_open_hybrid_rose_door,
-            ent_names.villam_rear_divide: self.villa_can_open_hybrid_rose_door,
+            ent_names.villam_front_divide: self.villa_can_open_cornell_rose_door,
             ent_names.villam_to_servant_gate: self.villa_can_open_maze_side_gate,
             ent_names.villam_from_servant_gate: self.villa_can_open_maze_side_gate,
             ent_names.villam_thorn_fence: self.villa_can_open_thorn_fence,
@@ -128,12 +127,6 @@ class CVLoDRules:
         if self.villa_state == VillaState.option_reinhardt_carrie:
             return True
         return state.has(item_names.quest_key_rose, self.player)
-
-    def villa_can_open_hybrid_rose_door(self, state: CollectionState) -> bool:
-        """Rose Garden Key if the Villa state is Hybrid. Always True if Reinhardt/Carrie or Cornell."""
-        if self.villa_state == VillaState.option_hybrid:
-            return state.has(item_names.quest_key_rose, self.player)
-        return True
 
     def villa_can_meet_rosa(self, state: CollectionState) -> bool:
         """Able to meet Rosa at the Villa's rose garden at 3-6am."""

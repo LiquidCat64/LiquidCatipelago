@@ -147,15 +147,15 @@ CVLOD_ENTRANCE_INFO = {
     ent_names.towsi_door: CVLoDEntranceData(stage_names.OUTER, reg_names.towse_slaughter_ext_f),
     # Bowling Alley
     ent_names.towb_door: CVLoDEntranceData(stage_names.OUTER, reg_names.towf_face_desc),
-    ent_names.towb_elev: CVLoDEntranceData(stage_names.OUTER, reg_names.towh_saw_roof),
+    ent_names.towb_elev: CVLoDEntranceData(stage_names.OUTER, reg_names.towh_harpy_roof),
     # Harpy Rooftops
     ent_names.towh_bowling_elev: CVLoDEntranceData(stage_names.OUTER, reg_names.towb_bowling),
-    ent_names.towh_gondola: CVLoDEntranceData(stage_names.OUTER, reg_names.towh_end),
-    ent_names.towh_end: CVLoDEntranceData(stage_names.OUTER, reg_names.atm_museum, stage_connection="next"),
+    ent_names.towh_drop: CVLoDEntranceData(stage_names.OUTER, reg_names.towfr_end),
+    ent_names.towfr_end: CVLoDEntranceData(stage_names.OUTER, reg_names.atm_museum, stage_connection="next"),
 
     # Art Tower
     # Museum
-    ent_names.atm_start: CVLoDEntranceData(stage_names.ART, reg_names.towh_end, stage_connection="prev"),
+    ent_names.atm_start: CVLoDEntranceData(stage_names.ART, reg_names.towfr_end, stage_connection="prev"),
     ent_names.atm_to_door_1: CVLoDEntranceData(stage_names.ART, reg_names.atm_middle),
     ent_names.atm_from_door_1: CVLoDEntranceData(stage_names.ART, reg_names.atm_museum),
     ent_names.atm_to_door_2: CVLoDEntranceData(stage_names.ART, reg_names.atm_middle_door),
@@ -176,6 +176,8 @@ CVLOD_ENTRANCE_INFO = {
     ent_names.torc_end: CVLoDEntranceData(stage_names.RUINS, reg_names.toscic_factory, stage_connection="next"),
 
     # Castle Center
+    # Fan room
+    ent_names.ccfr_door_r: CVLoDEntranceData(stage_names.CENTER, reg_names.ccb_basement),
     # Basement
     ent_names.ccb_tc_door: CVLoDEntranceData(stage_names.CENTER, reg_names.ccb_torture_chamber),
     ent_names.ccb_wall: CVLoDEntranceData(stage_names.CENTER, reg_names.ccb_behemoth_crack),
@@ -361,7 +363,9 @@ SHUFFLEABLE_TRANSITIONS: dict[str, CVLoDTransitionData] = {
     ent_names.towb_door:            CVLoDTransitionData(Scenes.THE_OUTER_WALL, 0x08),
     ent_names.towb_elev:            CVLoDTransitionData(Scenes.THE_OUTER_WALL, 0x09),
     ent_names.towh_bowling_elev:    CVLoDTransitionData(Scenes.THE_OUTER_WALL, 0x0A),
-    ent_names.towh_end:             CVLoDTransitionData(Scenes.THE_OUTER_WALL, 0x0B),
+    ent_names.towh_drop:            CVLoDTransitionData(Scenes.THE_OUTER_WALL, 0x0E),
+    ent_names.towfr_back_warp:      CVLoDTransitionData(Scenes.FAN_MEETING_ROOM, 0xC1),
+    ent_names.towfr_end:            CVLoDTransitionData(Scenes.FAN_MEETING_ROOM, 0xC2),
 
     # Art Tower
     ent_names.atm_start:    CVLoDTransitionData(Scenes.ART_TOWER_MUSEUM, 0x00),
@@ -376,6 +380,8 @@ SHUFFLEABLE_TRANSITIONS: dict[str, CVLoDTransitionData] = {
     ent_names.torc_end:         CVLoDTransitionData(Scenes.RUINS_DARK_CHAMBERS, 0x01),
 
     # Castle Center
+    # ent_names.ccfr_door: CVLoDTransitionData(Scenes.FAN_MEETING_ROOM, 0x40),
+    ent_names.ccfr_door_r:              CVLoDTransitionData(Scenes.FAN_MEETING_ROOM, 0x42),
     # ent_names.ccb_stairs: CVLoDTransitionData(Scenes.CASTLE_CENTER_BASEMENT, 0x00),
     ent_names.ccb_stairs:             CVLoDTransitionData(Scenes.CASTLE_CENTER_BASEMENT, 0x01),
     ent_names.ccbe_downstairs:        CVLoDTransitionData(Scenes.CASTLE_CENTER_BOTTOM_ELEV, 0x00),

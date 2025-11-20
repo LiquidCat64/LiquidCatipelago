@@ -124,8 +124,10 @@ towb_door = "The Outer Wall bowling alley: Nearside door"
 towb_elev = "The Outer Wall bowling alley: Farside elevator"
 # Harpy Rooftops
 towh_bowling_elev = "The Outer Wall Harpy rooftops: Bowling alley elevator"
-towh_gondola = "The Outer Wall Harpy rooftops: Arena gondola"
-towh_end = "The Outer Wall Harpy rooftops: End arena drop"
+towh_drop = "The Outer Wall Harpy rooftops: Harpy arena drop-in"
+# Fan room
+towfr_back_warp = "The Outer Wall fan room: Warp to rooftops"
+towfr_end = "The Outer Wall fan room: End door"
 
 # Art Tower
 # Museum
@@ -151,6 +153,8 @@ torc_climb = "Tower of Ruins dark chambers: Climb to the heavens"
 torc_end = "Tower of Ruins end passage"
 
 # Castle Center
+# Fan room
+ccfr_door_r = "Castle Center fan room: Door into basement"
 # Basement
 ccb_tc_door = "Castle Center basement: Torture Chamber door"
 ccb_wall = "Castle Center basement: Lower cracked wall"

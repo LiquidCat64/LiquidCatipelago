@@ -6,7 +6,7 @@ from .data.enums import NIFiles, Scenes, Items
 from .options import CVLoDOptions, BackgroundMusic, Countdown, IceTrapAppearance, InvisibleItems, StageLayout, \
     CastleCenterBranchingPaths, VillaBranchingPaths
 from .stages import CVLOD_STAGE_INFO
-from .locations import CVLOD_LOCATIONS_INFO
+from .locations import CVLOD_LOCATIONS_INFO, NPC_LOCATIONS
 from .items import ALL_CVLOD_ITEMS, SUB_WEAPON_IDS
 from .cvlod_text import cvlod_string_to_bytearray
 
@@ -383,8 +383,9 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
         # the Location here. If it's the player's very own Item, it should actually be that Item. Otherwise, it should
         # be an Archipelago Item.
         if loc.item.player == world.player:
-            # If the Location does not give its Item via a pickup, write the Item's actual ID instead of its Pickup ID.
-            if CVLOD_LOCATIONS_INFO[loc.name].type in ["npc", "shop"]:
+            # If the Location does not give its Item via a pickup (read: it's either an NPC or a shop Item), write the
+            # Item's actual ID instead of its Pickup ID.
+            if loc.name in NPC_LOCATIONS:
                 item_byte = ALL_CVLOD_ITEMS[loc.item.name].item_id
             else:
                 item_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id
@@ -395,7 +396,7 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
         # Figure out the Item's appearance byte. If it's an N64-vania player's Item, change the multiworld Item's model
         # to match what it is. Otherwise, have it be an Archipelago Item. Do not write this if it's an NPC item, as that
         # would tell the majors only Countdown to decrease even if it's not a major.
-        if CVLOD_LOCATIONS_INFO[loc.name].type not in ["npc", "shop"]:
+        if loc not in NPC_LOCATIONS:
             # If the Item is a LoD Item, pick its Item ID.
             if loc.item.game == "Castlevania - Legacy of Darkness":
                 # If it's a PermaUp, change the Item's model to a big PowerUp.
@@ -441,28 +442,29 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
     return location_values
 
 
-def get_location_text(world: "CVLoDWorld", active_locations: Iterable[Location]) -> dict[int, str]:
-    """Gets all in-game text specific to every created Location. Text will be returned encoded in LoD's format and
-    mapped to their respective Location IDs."""
+def get_location_text(world: "CVLoDWorld", active_locations: Iterable[Location]) -> dict[int, tuple[str, str]]:
+    """Gets all in-game text specific to every created Location, both the Item's name and the Item's player's name.
+    Text will be returned mapped to their respective Location IDs."""
     location_text = {}
 
     for loc in active_locations:
-        # If the Location is Mary Oldrey's, create her entire custom dialogue. She should say what her Item is so
-        # players can then decide if the Villa maze kid is worth saving or not.
-        if loc.name == loc_names.villala_mary:
-            mary_text = "Save Henry, and I will "
-            # If it's a local Item, have her say she will give it to you.
-            if loc.item.player == world.player:
-                mary_text += f"give you this {loc.item.name}."
-            # If it's a nonlocal Item, have her say she will send it to that other player.
-            else:
-                mary_text += f"send this {loc.item.name} to {world.multiworld.get_player_name(loc.item.player)}."
-            mary_text += "\nGood luck out there!"
+        # Skip all Event Locations.
+        if not loc.address:
+            continue
 
-            # Convert the text.
-            mary_text = base64.b64encode(cvlod_string_to_bytearray(mary_text)).decode()
+        # If the Item is local, put a blank string for the player name.
+        if loc.item.player == world.player:
+            player_name = ""
+        # Otherwise, get the actual player name.
+        else:
+            player_name = world.multiworld.get_player_name(loc.item.player)
 
-            location_text.update({loc.address: mary_text})
+        # If the Item is progression, surround the Item name in the "color text" character.
+        item_name = loc.item.name
+        if loc.advancement:
+            item_name = "✨" + item_name + "✨"
+
+        location_text[loc.address] = (item_name, player_name)
 
     # Return the final dict of Location text.
     return location_text

@@ -231,6 +231,7 @@ class CVLoDWorld(World):
                                 "total_special1s": self.options.total_special1s.value,
                                 "castle_wall_state": self.options.castle_wall_state.value,
                                 "villa_state": self.options.villa_state.value,
+                                "villa_maze_kid": self.options.villa_maze_kid.value,
                                 "draculas_condition": self.options.draculas_condition.value,
                                 "total_special2s": self.options.total_special2s.value,
                                 "required_special2s": self.required_s2s,

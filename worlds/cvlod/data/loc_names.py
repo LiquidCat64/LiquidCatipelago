@@ -538,6 +538,7 @@ ctga_far_alcove = "Clock Tower: Grand abyss far side door alcove"
 ctga_far_slab1 = "Clock Tower: Grand abyss far side slab - Item 1"
 ctga_far_slab2 = "Clock Tower: Grand abyss far side slab - Item 2"
 ctga_far_slab3 = "Clock Tower: Grand abyss far side slab - Item 3"
+ctga_far_slab4 = "Clock Tower: Grand abyss far side slab - Item 4"
 
 ctf_walkway_end = "Clock Tower: Near clock face lever walkway end"
 ctf_clock = "Clock Tower: Clock face hands"

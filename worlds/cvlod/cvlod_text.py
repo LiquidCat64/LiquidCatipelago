@@ -4,7 +4,7 @@ CVLOD_CHAR_WIDTHS = {" ": 8, "!": 4, '"': 7, "#": 10, "$": 10, "%": 14, "&": 10,
                      "+": 10, ",": 5, "-": 6, ".": 5, "/": 10, "0": 8, "1": 7, "2": 8, "3": 9, "4": 9, "5": 9, "6": 10,
                      "7": 9, "8": 10, "9": 9, ":": 5, ";": 6, "<": 10, "=": 10, ">": 10, "?": 11, "@": 13, "A": 14,
                      "B": 11, "C": 12, "D": 12, "E": 10, "F": 8, "G": 13, "H": 14, "I": 5, "J": 7, "K": 12, "L": 9,
-                     "M": 10, "N": 13, "O": 13, "P": 10, "Q": 14, "R": 11, "S": 9, "T": 10, "U": 14, "V": 11, "W": 16,
+                     "M": 16, "N": 13, "O": 13, "P": 10, "Q": 14, "R": 11, "S": 9, "T": 10, "U": 14, "V": 11, "W": 16,
                      "X": 12, "Y": 10, "Z": 11, "[": 6, "\\": 9, "]": 7, "^": 9, "_": 10, "`": 6, "a": 9, "b": 9,
                      "c": 8, "d": 9, "e": 9, "f": 7, "g": 9, "h": 9, "i": 6, "j": 5, "k": 9, "l": 6, "m": 13, "n": 10,
                      "o": 10, "p": 9, "q": 9, "r": 7, "s": 8, "t": 6, "u": 8, "v": 10, "w": 14, "x": 10, "y": 9, "z": 9,
@@ -197,7 +197,8 @@ def cvlod_bytes_to_string(cvlod_str_bytes: bytes) -> str:
     return converted_str
 
 
-def cvlod_text_wrap(cvlod_text: str, textbox_len_limit: int, max_lines: int, textbox_a_advance: bool) -> str:
+def cvlod_text_wrap(cvlod_text: str, textbox_len_limit: int = LEN_LIMIT_MAP_TEXT, max_lines: int = 0,
+                    textbox_a_advance: bool = False) -> str:
     """Rebuilds a string with some of its spaces replaced with newlines to ensure the text wraps properly in an in-game
     textbox of a given length."""
     num_lines = 1
@@ -291,16 +292,20 @@ def cvlod_text_wrap(cvlod_text: str, textbox_len_limit: int, max_lines: int, tex
         last_space_index = -1
         newline_char = "\n"
 
+        # If the current character is a line reset character, use that character as the newline character instead.
+        if cvlod_text[i] in LINE_RESET_CHARS:
+            newline_char = cvlod_text[i]
+
         # If this wrap puts us over the line limit and there is a line limit greater than Unlimited (indicated by it
         # being 0 or negative), or a clear text character was manually placed, handle the situation here.
         if (max_lines and num_lines > max_lines) or cvlod_text[i] == "\f":
-            # If we opted to auto "A" advance textboxes upon hitting the max lines or manually placed a next textbox
+            # If we opted to auto "A" advance textboxes upon hitting the max lines or manually placed a clear textbox
             # character, reset the line count back to 1 and choose the next textbox character(s) to insert instead.
             if textbox_a_advance or cvlod_text[i] == "\f":
-                # If the previous character was not the A advance character AND the current character is not the next
-                # textbox character, place the A advance character along with the next textbox character. Otherwise,
+                # If the previous character was not the A advance character AND the current character is not the clear
+                # textbox character, place the A advance character followed by the clear textbox character. Otherwise,
                 # place only the next textbox character.
-                if cvlod_text[i] != "\f":
+                if prev_character != "🅰" and cvlod_text[i] != "\f":
                     newline_char = "🅰0/\f"
                 else:
                     newline_char = "\f"

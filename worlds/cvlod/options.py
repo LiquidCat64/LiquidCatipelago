@@ -532,6 +532,7 @@ class CVLoDOptions(PerGameCommonOptions):
     total_special1s: TotalSpecial1s
     castle_wall_state: CastleWallState
     villa_state: VillaState
+    villa_maze_kid: VillaMazeKid
     sub_weapon_shuffle: SubWeaponShuffle
     spare_keys: SpareKeys
     # hard_item_pool: HardItemPool

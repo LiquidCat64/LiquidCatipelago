@@ -196,7 +196,7 @@ give_powerup_stopper = [
     0x0804F0BF   # J     0x8013C2FC
 ]
 
-npc_item_hack = [
+npc_item_rework = [
     # Hack to make NPC items show item textboxes when received.
     0x00180024,  # Item values
     0x001B001F,
@@ -1322,86 +1322,6 @@ special_sound_notifs = [
     0x0804F0BF   # J     0x8013C2FC
 ]
 
-map_text_redirector = [
-    # Checks for Map Texts 06 or 08 if in the Forest or Castle Wall Main maps respectively and redirects the text
-    # pointer to a blank string, skipping all the yes/no prompt text for pulling levers.
-    0x0002FFFF,  # Dummy text string
-    0x3C0B8039,  # LUI   T3, 0x8039
-    0x91689EE1,  # LBU   T0, 0x9EE1 (T3)
-    0x1100000F,  # BEQZ  T0,     [forward 0x0F]
-    0x24090006,  # ADDIU T1, R0, 0x0006
-    0x240A0002,  # ADDIU T2, R0, 0x0002
-    0x110A000C,  # BEQ   T0, T2, [forward 0x0C]
-    0x24090008,  # ADDIU T1, R0, 0x0008
-    0x240A0009,  # ADDIU T2, R0, 0x0009
-    0x110A0009,  # BEQ   T0, T2, [forward 0x09]
-    0x24090004,  # ADDIU T1, R0, 0x0004
-    0x240A000A,  # ADDIU T2, R0, 0x000A
-    0x110A0006,  # BEQ   T0, T2, [forward 0x06]
-    0x24090001,  # ADDIU T1, R0, 0x0001
-    0x240A000C,  # ADDIU T2, R0, 0x000C
-    0x110A0003,  # BEQ   T0, T2, [forward 0x03]
-    0x2409000C,  # ADDIU T1, R0, 0x000C
-    0x10000008,  # B     0x803FDB34
-    0x00000000,  # NOP
-    0x15250006,  # BNE   T1, A1, [forward 0x06]
-    0x00000000,  # NOP
-    0x3C04803F,  # LUI   A0, 0x803F
-    0x3484DACC,  # ORI   A0, A0, 0xDACC
-    0x24050000,  # ADDIU A1, R0, 0x0000
-    0x0804B39F,  # J     0x8012CE7C
-    0x00000000,  # NOP
-    # Redirects to a custom message if you try placing the bomb ingredients at the bottom CC crack before deactivating
-    # the seal.
-    0x24090009,  # ADDIU T1, R0, 0x0009
-    0x15090009,  # BNE   T0, T1, [forward 0x09]
-    0x240A0002,  # ADDIU T2, R0, 0x0002
-    0x15450007,  # BNE   T2, A1, [forward 0x07]
-    0x916A9C18,  # LBU   T2, 0x9C18 (T3)
-    0x314A0001,  # ANDI  T2, T2, 0x0001
-    0x15400004,  # BNEZ  T2,     [forward 0x04]
-    0x00000000,  # NOP
-    0x3C04803F,  # LUI   A0, 0x803F
-    0x3484DBAC,  # ORI   A0, A0, 0xDBAC
-    0x24050000,  # ADDIU A1, R0, 0x0000
-    0x0804B39F,  # J     0x8012CE7C
-    0x00000000,  # NOP
-    # Checks for Map Texts 02 or 00 if in the Villa hallway or CC lizard lab maps respectively and redirects the text
-    # pointer to a blank string, skipping all the NPC dialogue mandatory for checks.
-    0x3C088039,  # LUI   T0, 0x8039
-    0x91089EE1,  # LBU   T0, 0x9EE1 (T0)
-    0x240A0005,  # ADDIU T2, R0, 0x0005
-    0x110A0006,  # BEQ   T0, T2, [forward 0x06]
-    0x24090002,  # ADDIU T1, R0, 0x0002
-    0x240A000C,  # ADDIU T2, R0, 0x000C
-    0x110A0003,  # BEQ   T0, T2, [forward 0x03]
-    0x24090000,  # ADDIU T1, R0, 0x0000
-    0x0804B39F,  # J     0x8012CE7C
-    0x00000000,  # NOP
-    0x15250004,  # BNE   T1, A1, [forward 0x04]
-    0x00000000,  # NOP
-    0x3C04803F,  # LUI   A0, 0x803F
-    0x3484DACC,  # ORI   A0, A0, 0xDACC
-    0x24050000,  # ADDIU A1, R0, 0x0000
-    0x0804B39F   # J     0x8012CE7C
-]
-
-special_descriptions_redirector = [
-    # Redirects the menu description when looking at the Special1 and 2 items to different, custom strings that tell
-    # how many are needed per warp and to fight Dracula respectively, and how many there are of both in the whole seed.
-    0x240A0003,  # ADDIU T2, R0, 0x0003
-    0x10AA0005,  # BEQ   A1, T2, [forward 0x05]
-    0x240A0004,  # ADDIU T2, R0, 0x0004
-    0x10AA0003,  # BEQ   A1, T2, [forward 0x03]
-    0x00000000,  # NOP
-    0x0804B39F,  # J     0x8012CE7C
-    0x00000000,  # NOP
-    0x3C04803F,  # LUI   A0, 0x803F
-    0x3484E53C,  # ORI   A0, A0, 0xE53C
-    0x24A5FFFD,  # ADDIU A1, A1, 0xFFFD
-    0x0804B39F   # J     0x8012CE7C
-]
-
 forest_cw_villa_intro_cs_player = [
     # Plays the Forest, Castle Wall, or Villa intro cutscene after transitioning to a different map if the map being
     # transitioned to is the start of their levels respectively. Gets around the fact that they have to be set on the
@@ -1450,10 +1370,21 @@ map_refresher = [
     0xA0492BBB,  # SB    T1, 0x2BBB (V0)
     0x03E00008,  # JR    RA
     0xA44E28D0,  # SH    T6, 0x28D0 (V0)
+    0x31EA00C0,  # ANDI  T2, T7, 0x00C0
+    0x340B00C0,  # ORI   T3, R0, 0x00C0
+    0x154B0008,  # BNE   T2, T3, [forward 0x08]
+    0x904B27F4,  # LBU   T3, 0x27F4 (V0)
+    0x316B009F,  # ANDI  T3, T3, 0x009F
+    0x356B0010,  # ORI   T3, T3, 0x0010
+    0xA04B27F4,  # SB    T3, 0x27F4 (V0)
+    0x31EF003F,  # ANDI  T7, T7, 0x003F
+    0xA04F2BBB,  # SB    T7, 0x2BBB (V0)
+    0x03E00008,  # JR    RA
+    0xA44E28D0,  # SH    T6, 0x28D0 (V0)
     0x31EA0040,  # ANDI  T2, T7, 0x0040
     0x11400008,  # BEQZ  T2,     [forward 0x08]
     0x904B27F4,  # LBU   T3, 0x27F4 (V0)
-    0x316B00DF,  # ANDI  T3, T3, 0x00DF
+    0x316B00CF,  # ANDI  T3, T3, 0x00CF
     0x356B0040,  # ORI   T3, T3, 0x0040
     0xA04B27F4,  # SB    T3, 0x27F4 (V0)
     0x31EF003F,  # ANDI  T7, T7, 0x003F
@@ -1463,7 +1394,7 @@ map_refresher = [
     0x31EA0080,  # ANDI  T2, T7, 0x0080
     0x11400006,  # BEQZ  T2,     [forward 0x06]
     0x904B27F4,  # LBU   T3, 0x27F4 (V0)
-    0x316B00BF,  # ANDI  T3, T3, 0x00BF
+    0x316B00AF,  # ANDI  T3, T3, 0x00AF
     0x356B0020,  # ORI   T3, T3, 0x0020
     0xA04B27F4,  # SB    T3, 0x27F4 (V0)
     0x31EF003F,  # ANDI  T7, T7, 0x003F
@@ -1911,15 +1842,48 @@ clock_tower_workshop_text_modifier = [
     0xA50963E4   # SH    T1, 0x6392 (T0)
 ]
 
-rose_brooch_checker = [
-    # Checks if the Rose Brooch is in the player's inventory and returns True if so or False if not. Custom door opening
-    # condition for the "time gate" in the Villa.
+crypt_crests_checker = [
+    # Checks if the player is able to open the Villa crypt door from the inside by looking at the "crest inserted" flags
+    # and the inventory Crest Half A and B counters. If they are, then will also determine which crests should be
+    # subtracted from the inventory and have their flag be set.
+
+    # Verify that we are able to open the door.
     0x3C08801D,  # LUI   T0, 0x801D
-    0x9108AB5D,  # LBU   T0, 0xAB5D (T0)
-    0x11000002,  # BEQZ  T0,     [forward 0x02]
-    0x24020001,  # ADDIU V0, R0, 0x0001
-    0x24020000,  # ADDIU V0, R0, 0x0000
-    0x03E00008,  # JR   RA
+    0x9109AB5B,  # LBU   T1, 0xAB5B (T0)
+    0x910AAB5C,  # LBU   T2, 0xAB5C (T0)
+    0x910BAA73,  # LBU   T3, 0xAA73 (T0)
+    0x316C0080,  # ANDI  T4, T3, 0x0080
+    0x316D0040,  # ANDI  T5, T3, 0x0040
+    # Check to see if either the Crest A flag is set or we have Crest A. If neither are true, we can't open it.
+    0x15800005,  # BNEZ  T4,     [forward 0x05]
+    0x00000000,  # NOP
+    0x15200003,  # BNEZ  T1,     [forward 0x03]
+    0x00000000,  # NOP
+    0x03E00008,  # JR    RA
+    0x34020001,  # ORI   V0, R0, 0x0001
+    # Check to see if either the Crest B flag is set or we have Crest B. If neither are true, we can't open it.
+    0x15A00005,  # BNEZ  T5,     [forward 0x05]
+    0x00000000,  # NOP
+    0x15400003,  # BNEZ  T2,     [forward 0x03]
+    0x00000000,  # NOP
+    0x03E00008,  # JR    RA
+    0x34020001,  # ORI   V0, R0, 0x0001
+    # If we made it here, we can open the door. Before exiting the routine, however, see if there are crests we can be
+    # "placing" from here.
+    # If the Crest A flag is not set, subtract Crest A from the inventory and set its flag.
+    0x15800004,  # BNEZ  T4,     [forward 0x04]
+    0x2529FFFF,  # ADDIU T1, T1, 0xFFFF
+    0xA109AB5B,  # SB    T1, 0xAB5B (T0)
+    0x356B0080,  # ORI   T3, T3, 0x0080
+    0xA10BAA73,  # SB    T3, 0xAA73 (T0)
+    # If the Crest B flag is not set, subtract Crest B from the inventory and set its flag.
+    0x15A00004,  # BNEZ  T5,     [forward 0x04]
+    0x254AFFFF,  # ADDIU T2, T2, 0xFFFF
+    0xA10AAB5C,  # SB    T2, 0xAB5C (T0)
+    0x356B0040,  # ORI   T3, T3, 0x0040
+    0xA10BAA73,  # SB    T3, 0xAA73 (T0)
+    0x03E00008,  # JR    RA
+    0x34020000   # ORI   V0, R0, 0x0000
 ]
 
 art_tower_knight_spawn_check = [
@@ -3310,72 +3274,4 @@ villa_combined_edits = {
     # Vampire crypt
     0x7D6568: 0x00,
     0x7D6588: 0x00,
-}
-
-empty_breakables_data = {
-    # The Outer Wall candle flags
-    0x833ACE: b"\x03\x38",
-    0x833AE6: b"\x03\x39",
-    0x833AFE: b"\x03\x3A",
-    0x833B0A: b"\x03\x3B",
-    0x833B16: b"\x03\x3C",
-    0x833B22: b"\x03\x3D",
-    0x833B3A: b"\x03\x3E",
-    0x833B46: b"\x03\x3F",
-    0x833B5E: b"\x03\x40",
-    0x833B6A: b"\x03\x41",
-    0x833BA6: b"\x03\x42",
-    0x833BB2: b"\x03\x43",
-
-    # The Outer Wall candle appearances
-    0x833AC8: b"\x00\x01",
-    0x833AF8: b"\x00\x01",
-    0x833B04: b"\x00\x01",
-    0x833B10: b"\x00\x01",
-    0x833B1C: b"\x00\x01",
-    0x833B58: b"\x00\x01",
-    0x833B64: b"\x00\x01",
-    0x833BA0: b"\x00\x01",
-    0x833BAC: b"\x00\x01",
-
-    # The Outer Wall actor candle IDs
-    0x8352CC: b"\x00\x08",
-    0x8352EC: b"\x00\x06",
-    0x83530C: b"\x00\x0B",
-    0x83532C: b"\x00\x0A",
-    0x83534C: b"\x00\x0D",
-    0x83536C: b"\x00\x0C",
-    0x83538C: b"\x00\x10",
-    0x8353AC: b"\x00\x0F",
-    0x8353CC: b"\x00\x13",
-    0x8353EC: b"\x00\x12",
-    0x83540C: b"\x00\x19",
-    0x83542C: b"\x00\x18",
-
-    # The Outer Wall actor coordinate adjustments for candles over the abyss
-    0x8352E0: b"\xC3\x29\x80\x00",
-    0x835320: b"\xC3\x01\x80\x00",
-    0x835360: b"\xC4\x8F\xB0\x00",
-}
-
-era_specific_actors = {
-    # Every actor entry in every map's actor list that is specific to either the past or the future.
-    # True means past only, False means future only.
-    # Villa front yard
-    0x785174: {3: False, 4: False, 5: False, 6: False, 16: False, 17: True, 19: True, 20: True, 90: True, 91: True,
-               92: True, 93: True, 94: True},
-    # Villa foyer
-    0x788704: {7: False, 9: False, 11: False, 38: False, 39: False, 40: False, 41: True, 42: True, 43: True, 96: False,
-               103: True, 107: False},
-    # Villa living area
-    0x78FDF4: {11: False, 12: False, 13: True, 178: False, 242: True, 243: True, 353: True, 354: False},
-    # Villa maze
-    0x798108: {1: False, 2: False, 10: True, 74: True, 75: False, 79: True, 80: True, 81: True, 82: True, 83: True,
-               84: True, 85: True, 86: True, 87: True, 88: True, 89: True, 90: True, 91: True, 92: True, 93: True,
-               94: True, 96: True, 97: True, 98: True, 99: True, 100: True, 101: True, 102: True, 106: True, 107: True,
-               108: True, 109: True, 110: True, 111: True, 112: True, 113: True, 114: True, 115: True, 118: True,
-               119: True, 120: True, 123: False, 131: False, 134: False, 136: False, 140: False, 141: False, 144: False,
-               148: False, 156: True, 158: False, 159: False, 160: False, 161: False, 162: False, 163: False,
-               164: False, 165: False, 166: False, 167: False, 168: True, 169: True, 170: True, 171: True, 172: True,
-               173: True, 174: True, 175: True, 176: True, 177: True}
 }

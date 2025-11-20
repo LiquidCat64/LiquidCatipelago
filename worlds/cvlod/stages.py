@@ -190,7 +190,8 @@ CVLOD_STAGE_INFO = {
                                                                          ent_names.cwr_top]),
 
                         # Left Tower
-                        reg_names.cwl_ltower: CVLoDRegionData(locations=[loc_names.cwl_bottom],
+                        reg_names.cwl_ltower: CVLoDRegionData(locations=[loc_names.cwl_bottom,
+                                                                         loc_names.cwl_bridge],
                                                               entrances=[ent_names.cwl_bottom,
                                                                          ent_names.cwl_top])}),
 
@@ -441,8 +442,8 @@ CVLOD_STAGE_INFO = {
 
     stage_names.OUTER:
         CVLoDStageData(reg_names.towf_face_climb, ent_names.towf_start_warp, Scenes.THE_OUTER_WALL, 0x00,
-                       reg_names.towh_saw_roof, Scenes.THE_OUTER_WALL, 0x0C,
-                       reg_names.towh_end, ent_names.towh_end, Scenes.THE_OUTER_WALL, 0x0B, 6,
+                       reg_names.towse_slaughter_ext_f, Scenes.THE_OUTER_WALL, 0x0F,
+                       reg_names.towfr_end, ent_names.towfr_end, Scenes.FAN_MEETING_ROOM, 0xC2, 6,
                        # Face (Climb)
                        {reg_names.towf_face_climb: CVLoDRegionData(locations=[loc_names.towf_start_rear,
                                                                               loc_names.towf_start_front,
@@ -505,18 +506,19 @@ CVLOD_STAGE_INFO = {
                                                                            ent_names.towb_elev]),
 
                         # Harpy Rooftops
-                        reg_names.towh_saw_roof: CVLoDRegionData(locations=[loc_names.towh_boulders_elevator_l,
-                                                                            loc_names.towh_boulders_elevator_r,
-                                                                            loc_names.towh_near_boulders_exit,
-                                                                            loc_names.towh_slide_start,
-                                                                            loc_names.towh_slide_first_u,
-                                                                            loc_names.towh_slide_first_l,
-                                                                            loc_names.towh_slide_second],
-                                                                 entrances=[ent_names.towh_bowling_elev,
-                                                                            ent_names.towh_gondola]),
+                        reg_names.towh_harpy_roof: CVLoDRegionData(locations=[loc_names.towh_boulders_elevator_l,
+                                                                             loc_names.towh_boulders_elevator_r,
+                                                                             loc_names.towh_near_boulders_exit,
+                                                                             loc_names.towh_slide_start,
+                                                                             loc_names.towh_slide_first_u,
+                                                                             loc_names.towh_slide_first_l,
+                                                                             loc_names.towh_slide_second,
+                                                                             loc_names.event_tow_boss],
+                                                                  entrances=[ent_names.towh_bowling_elev,
+                                                                             ent_names.towh_drop]),
 
-                        reg_names.towh_end: CVLoDRegionData(locations=[loc_names.event_tow_boss],
-                                                            entrances=[ent_names.towh_end])}),
+                        reg_names.towfr_end: CVLoDRegionData(locations=[],
+                                                             entrances=[ent_names.towfr_end])}),
 
     stage_names.ART:
         CVLoDStageData(reg_names.atm_museum, ent_names.atm_start, Scenes.ART_TOWER_MUSEUM, 0x00,
@@ -616,11 +618,14 @@ CVLOD_STAGE_INFO = {
                                                             entrances=[ent_names.torc_end])}),
 
     stage_names.CENTER:
-        CVLoDStageData(reg_names.ccb_basement, "", Scenes.CASTLE_CENTER_BASEMENT, 0x00,
+        CVLoDStageData(reg_names.ccfr_fan_room, "", Scenes.FAN_MEETING_ROOM, 0x40,
                        reg_names.ccia_nitro_liz, Scenes.CASTLE_CENTER_INVENTIONS, 0x03,
                        reg_names.ccte_elev_top, ent_names.ccte_exit_r, Scenes.CASTLE_CENTER_TOP_ELEV, 0x01, 9,
+                       # Fan room
+                       {reg_names.ccfr_fan_room: CVLoDRegionData(locations=[],
+                                                                 entrances=[ent_names.ccfr_door_r]),
                        # Basement
-                       {reg_names.ccb_basement: CVLoDRegionData(locations=[loc_names.ccb_skel_hallway_ent,
+                        reg_names.ccb_basement: CVLoDRegionData(locations=[loc_names.ccb_skel_hallway_ent,
                                                                            loc_names.ccb_skel_hallway_jun,
                                                                            loc_names.ccb_skel_hallway_tc,
                                                                            loc_names.ccb_skel_hallway_ba,
@@ -947,6 +952,7 @@ CVLOD_STAGE_INFO = {
                         reg_names.ctga_abyss_far: CVLoDRegionData(locations=[loc_names.ctga_far_slab1,
                                                                              loc_names.ctga_far_slab2,
                                                                              loc_names.ctga_far_slab3,
+                                                                             loc_names.ctga_far_slab4,
                                                                              loc_names.ctga_far_alcove],
                                                                   entrances=[ent_names.ctga_door_d,
                                                                              ent_names.ctga_door_c_reverse]),
@@ -1352,10 +1358,11 @@ def verify_branches(world: "CVLoDWorld", active_stage_order: list[str]) -> None:
                 if active_stage_order[i] in [stage_names.VILLA, stage_names.KEEP]:
                     break
                 valid_cc_branch_stages += 1
-        # Otherwise, if Stage Shuffle is on, consider the total number of branch stages, minus the total number of valid
-        # Villa branch stages we found earlier, as the number of valid Castle Center branch stages.
+        # Otherwise, if Stage Shuffle is on, consider the total number of branch stages, minus the total number of
+        # decided-upon valid Villa branch stages, as the number of valid Castle Center branch stages.
         else:
-            valid_cc_branch_stages = total_valid_branch_stages - valid_villa_branch_stages
+            valid_cc_branch_stages = total_valid_branch_stages - \
+                                     VILLA_BRANCH_STAGE_MINIMUMS[world.options.villa_branching_paths]
 
         # If less than four valid CC branch stages are available, throw a warning and change it to one of the One
         # options chosen at random.

@@ -16,16 +16,16 @@ import os
 from .data import patches, loc_names
 from .data.enums import Scenes, NIFiles, Objects, ObjectExecutionFlags, ActorSpawnFlags, Items, Pickups, PickupFlags, \
     DoorFlags
-from .locations import CVLOD_LOCATIONS_INFO
+from .locations import CVLOD_LOCATIONS_INFO, THREE_HIT_BREAKABLES_INFO
 from .patcher import CVLoDRomPatcher, CVLoDSceneTextEntry, CVLoDNormalActorEntry, CVLoDDoorEntry, CVLoDPillarActorEntry, CVLoDLoadingZoneEntry, CVLoDEnemyPillarEntry, CVLoD1HitBreakableEntry, CVLoD3HitBreakableEntry, CVLoDSpawnEntranceEntry, SCENE_OVERLAY_RDRAM_START
 from .stages import CVLOD_STAGE_INFO
 from .cvlod_text import cvlod_string_to_bytearray, cvlod_text_wrap, cvlod_bytes_to_string, CVLOD_STRING_END_CHARACTER, \
-    CVLOD_TEXT_POOL_END_CHARACTER
+    CVLOD_TEXT_POOL_END_CHARACTER, LEN_LIMIT_MAP_TEXT
 # from .aesthetics import renon_item_dialogue
 # from .locations import CVLOD_LOCATIONS_INFO
 from .options import StageLayout, VincentFightCondition, RenonFightCondition, PostBehemothBoss, RoomOfClocksBoss, \
     DuelTowerFinalBoss, CastleKeepEndingSequence, DeathLink, DraculasCondition, InvisibleItems, Countdown, \
-    PantherDash, VillaBranchingPaths, CastleCenterBranchingPaths, CastleWallState, VillaState
+    PantherDash, VillaBranchingPaths, CastleCenterBranchingPaths, CastleWallState, VillaState, VillaMazeKid
 from settings import get_settings
 
 if TYPE_CHECKING:
@@ -58,6 +58,11 @@ WARP_SCENE_OFFSETS = [0xADF67, 0xADF77, 0xADF87, 0xADF97, 0xADFA7, 0xADFBB, 0xAD
 SPECIAL_1HBS = [Objects.FOGGY_LAKE_ABOVE_DECKS_BARREL, Objects.FOGGY_LAKE_BELOW_DECKS_BARREL,
                 Objects.SORCERY_BLUE_DIAMOND]
 
+FOUNTAIN_LETTERS_TO_NUMBERS = {"O": 1, "M": 2, "H": 3, "V": 4}
+
+VILLA_MAZE_CORNELL_ENEMY_INDEXES = [66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 82,
+                                    83, 84, 85, 86, 87, 88, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101]
+
 CC_CORNELL_INTRO_ACTOR_LISTS = {Scenes.CASTLE_CENTER_BASEMENT: "room 1",
                                 Scenes.CASTLE_CENTER_BOTTOM_ELEV: "init",
                                 Scenes.CASTLE_CENTER_FACTORY: "room 1",
@@ -72,9 +77,10 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher = CVLoDRomPatcher(bytearray(input_rom))
         slot_patch_info = json.loads(caller.get_file(slot_patch_file).decode("utf-8"))
 
-        # Get the dictionary of item values mapped to their location IDs out of the slot patch info and convert each
-        # location ID key from a string into an int.
+        # Get the dictionaries of item values mapped to their location IDs and relevant name texts out of the slot
+        # patch info and convert each location ID key from a string into an int.
         loc_values = {int(loc_id): item_value for loc_id, item_value in slot_patch_info["location values"].items()}
+        loc_text = {int(loc_id): item_names for loc_id, item_names in slot_patch_info["location text"].items()}
 
 
         # # # # # # # # #
@@ -157,8 +163,28 @@ class CVLoDPatchExtensions(APPatchExtension):
                                       0x3484FF00,
                                       0x00044025], NIFiles.OVERLAY_FILE_SELECT_CONTROLLER)
 
-        # Prevent event flags from pre-setting themselves in Henry Mode.
-        patcher.write_byte(0x22F, 0x04, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
+        # Determine what flags should be set upon beginning a new game.
+        starting_flags = []
+        # If the Castle Wall State is either Cornell's or Hybrid, set all the flags that the "meeting Ortega" cutscene
+        # normally sets so that the stage can begin in its initial unsolved Cornell state.
+        if slot_patch_info["options"]["castle_wall_state"] != CastleWallState.option_reinhardt_carrie:
+            starting_flags += [0x3C,  # Met Ortega
+                               0x53]  # End Portcullis open
+
+        # If we have no starting flags, block the Henry Mode starting flag setter routine from running for all
+        # characters.
+        if not starting_flags:
+            patcher.write_int32(0x220, 0x34080000, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)  # ORI  T0, R0, 0x0000
+        # Otherwise, if we do, make it run for all characters and have it set our starting flags instead.
+        else:
+            patcher.write_int32(0x220, 0x34080003, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)  # ORI  T0, R0, 0x0003
+            patcher.write_byte(0x3B3, 12 + (len(starting_flags) // 8 * 12), NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
+            patcher.write_byte(0x41B, len(starting_flags), NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
+            # If the length of the starting flags list is odd, add an extra 0 to pad it evenly. And then write it in.
+            if len(starting_flags) % 2:
+                starting_flags += [0]
+            patcher.write_int16s(0x450, starting_flags, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
+
         # Give Henry all the time in the world just like everyone else.
         patcher.write_byte(0x86DDF, 0x04)
         # Make the Henry teleport jewels work for everyone at the expense of the light effect surrounding them.
@@ -239,6 +265,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_byte(0xB8BCB, 0x2B)
         # Make the "PowerUp" textbox appear even if you already have two.
         patcher.write_int32(0x87E34, 0x00000000)  # NOP
+        # Write "Z + R + START" over the Special1 description.
+        patcher.write_bytes(0x3B7C, cvlod_string_to_bytearray("Z + R + START", add_end_char=True), NIFiles.OVERLAY_PAUSE_MENU)
 
         # Enable changing the item model/visibility on any item instance.
         patcher.write_int32s(0x107740, [0x0C0FF0C0,  # JAL   0x803FC300
@@ -262,6 +290,77 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32s(0x1D3B4, [0x080FF2D0,  # J   0x803FCB40
                                         0x24040001])  # ADDIU A0, R0, 0x0001
         patcher.write_int32s(0xFFCB40, patches.load_clearer)
+
+        # NPC items rework
+        patcher.write_int32s(0xFFC6F0, patches.npc_item_rework)
+        # Change all the NPC item gives to run through the new routine, and write all their item values.
+        # Fountain Top Shine
+        if CVLOD_LOCATIONS_INFO[loc_names.villafy_fountain_shine].flag_id in loc_values:
+            patcher.write_int16(0x35E, 0x8040, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
+            patcher.write_int16(0x362, 0xC700, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
+            patcher.write_byte(0x367, 0x00, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
+            patcher.write_int16(0x36E, 0x0068, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
+            patcher.write_bytes(0x720, cvlod_string_to_bytearray("...🅰0/", add_end_char=True),
+                                NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
+            patcher.write_int16(0xFFC6F0, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villafy_fountain_shine].flag_id])
+        # 6am Rose Patch
+        if CVLOD_LOCATIONS_INFO[loc_names.villafo_6am_roses].flag_id in loc_values:
+            patcher.write_int16(0x1E2, 0x8040, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
+            patcher.write_int16(0x1E6, 0xC700, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
+            patcher.write_byte(0x1EB, 0x01, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
+            patcher.write_int16(0x1F2, 0x0078, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
+            patcher.write_bytes(0x380, cvlod_string_to_bytearray("...🅰0/", add_end_char=True),
+                                NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
+            patcher.write_int16(0xFFC6F0 + 2, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villafo_6am_roses].flag_id])
+        # Vincent
+        if CVLOD_LOCATIONS_INFO[loc_names.villala_vincent].flag_id in loc_values:
+            patcher.write_int16(0x180E, 0x8040, NIFiles.OVERLAY_VINCENT)
+            patcher.write_int16(0x1812, 0xC700, NIFiles.OVERLAY_VINCENT)
+            patcher.write_byte(0x1817, 0x02, NIFiles.OVERLAY_VINCENT)
+            patcher.write_int16(0x181E, 0x027F, NIFiles.OVERLAY_VINCENT)
+            patcher.write_int16(0xFFC6F0 + 4, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villala_vincent].flag_id])
+        # Mary
+        if CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id in loc_values:
+            patcher.write_int16(0xB16, 0x8040, NIFiles.OVERLAY_MARY)
+            patcher.write_int16(0xB1A, 0xC700, NIFiles.OVERLAY_MARY)
+            patcher.write_byte(0xB1F, 0x03, NIFiles.OVERLAY_MARY)
+            patcher.write_int16(0xB26, 0x0086, NIFiles.OVERLAY_MARY)
+            patcher.write_int16(0xFFC6F0 + 6, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id])
+        # Heinrich Meyer
+        if CVLOD_LOCATIONS_INFO[loc_names.ccll_heinrich].flag_id in loc_values:
+            patcher.write_int16(0x962A, 0x8040, NIFiles.OVERLAY_LIZARD_MEN)
+            patcher.write_int16(0x962E, 0xC700, NIFiles.OVERLAY_LIZARD_MEN)
+            patcher.write_byte(0x9633, 0x04, NIFiles.OVERLAY_LIZARD_MEN)
+            patcher.write_int16(0x963A, 0x0284, NIFiles.OVERLAY_LIZARD_MEN)
+            patcher.write_int16(0xFFC6F0 + 8, loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccll_heinrich].flag_id])
+
+        # Disable the 3HBs checking and setting flags when breaking them and enable their individual items checking and
+        # setting flags instead.
+        patcher.write_int16(0xE3488, 0x1000)
+        patcher.write_int32(0xE3800, 0x24050000)  # ADDIU	A1, R0, 0x0000
+        patcher.write_byte(0xE39EB, 0x00)
+        patcher.write_int32(0xE3A58, 0x0C0FF0D4),  # JAL   0x803FC350
+        patcher.write_int32s(0xFFC350, patches.three_hit_item_flags_setter)
+        # Villa foyer chandelier-specific functions (yeah, KCEK really made special handling just for this one)
+        patcher.write_int32(0xE2F4C, 0x00000000)  # NOP
+        patcher.write_int32(0xE3114, 0x0C0FF0DE),  # JAL   0x803FC378
+        patcher.write_int32s(0xFFC378, patches.chandelier_item_flags_setter)
+
+        # New flag values to put in each 3HB vanilla flag's spot
+        patcher.write_int16(0x7816F6, 0x02B8)  # CW upper rampart save nub
+        patcher.write_int16(0x78171A, 0x02BD)  # CW Dracula switch slab
+        patcher.write_int16(0x787F66, 0x0302)  # Villa foyer chandelier
+        patcher.write_int16(0x79F19E, 0x0307)  # Tunnel twin arrows rock
+        patcher.write_int16(0x79F1B6, 0x030C)  # Tunnel lonesome bucket pit rock
+        patcher.write_int16(0x7A41B6, 0x030F)  # UW poison parkour ledge
+        patcher.write_int16(0x7A41DA, 0x0315)  # UW skeleton crusher ledge
+        patcher.write_int16(0x7A8AF6, 0x0318)  # CC Behemoth crate
+        patcher.write_int16(0x7AD836, 0x031D)  # CC elevator pedestal
+        patcher.write_int16(0x7B0592, 0x0320)  # CC lizard locker slab
+        patcher.write_int16(0x7D0DDE, 0x0324)  # CT gear climb battery slab
+        patcher.write_int16(0x7D0DC6, 0x032A)  # CT gear climb top corner slab
+        patcher.write_int16(0x829A16, 0x032D)  # CT giant chasm farside climb
+        patcher.write_int16(0x82CC8A, 0x0330)  # CT beneath final slide
 
         # Write the specified window colors
         patcher.write_byte(0x8881A, slot_patch_info["options"]["window_color_r"] << 4)
@@ -330,30 +429,32 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int32(0x27D4, 0x264E0000)  # ADDIU T6, S2, 0x0000
         # Assign the event flags, remove the "vanish timer" flag on each of the three coffin item entries we'll use,
         # and write their pickups.
-        # Entry 0
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
-            FOREST_OVL_CHARNEL_ITEMS_START + 2, loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id])
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
-            FOREST_OVL_CHARNEL_ITEMS_START + 6, CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id)
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(FOREST_OVL_CHARNEL_ITEMS_START + 9, 0x00)
-        # Entry 1
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
-            FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 2,
-            loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_2].flag_id])
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
-            FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 6,
-            CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_2].flag_id)
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 9,
-                                                                0x00)
-        # Entry 8
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
-            FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 2,
-            loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_3].flag_id])
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
-            FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 6,
-            CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_3].flag_id)
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(
-            FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 9, 0x00)
+        if CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id in loc_values:
+            # Entry 0
+            patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+                FOREST_OVL_CHARNEL_ITEMS_START + 2,
+                loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id])
+            patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+                FOREST_OVL_CHARNEL_ITEMS_START + 6, CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id)
+            patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(FOREST_OVL_CHARNEL_ITEMS_START + 9, 0x00)
+            # Entry 1
+            patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+                FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 2,
+                loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_2].flag_id])
+            patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+                FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 6,
+                CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_2].flag_id)
+            patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(
+                FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 9, 0x00)
+            # Entry 8
+            patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+                FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 2,
+                loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_3].flag_id])
+            patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+                FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 6,
+                CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_3].flag_id)
+            patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(
+                FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 9, 0x00)
         # If the chosen prize coffin is not coffin 0, swap the actor var C's of the lids of coffin 0 and the coffin that
         # did get chosen.
         if slot_patch_info["prize coffin id"]:
@@ -387,8 +488,9 @@ class CVLoDPatchExtensions(APPatchExtension):
                                       0x3C010040], # LUI AT, 0x0040
                              NIFiles.OVERLAY_KING_SKELETON)
         # Turn the item that drops into what it should be.
-        patcher.write_int16(0x43CA, loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_skelly_mouth].flag_id],
-                            NIFiles.OVERLAY_KING_SKELETON)
+        if CVLOD_LOCATIONS_INFO[loc_names.forest_skelly_mouth].flag_id in loc_values:
+            patcher.write_int16(0x43CA, loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_skelly_mouth].flag_id],
+                                NIFiles.OVERLAY_KING_SKELETON)
         # Add the backup King Skeleton jaws item that will spawn only if the player orphans it the first time.
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"].append(
             CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos= 0.03125,
@@ -435,28 +537,44 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][29]["delete"] = True
         patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][30]["spawn_flags"] = 0
         patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][31]["spawn_flags"] = 0
-        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][32]["spawn_flags"] = 0
         patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][158]["spawn_flags"] = 0
         patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][159]["spawn_flags"] = 0
         patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][160]["delete"] = True
         patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][161]["delete"] = True
         # Make the Henry-only start loading zone universal to everyone.
         patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][59]["spawn_flags"] = 0
+        # Make the end portcullis text spot universal to everyone (including Henry)
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][5]["spawn_flags"] = 0
 
-        # If the Castle Wall State is Reinhardt/Carrie's, put the stage in Reinhardt and Carrie's state.
+        # Remove the cutscene settings ID on the end loading zone to Villa so that the Villa intro cutscene won't play
+        # when it sends you to a different stage.
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].loading_zones[5]["cutscene_settings_id"] = 0
+
+        # Make the hardcoded Henry checks in the "set map music" function in the event the map is one of the Castle Wall
+        # maps never pass.
+        patcher.write_int32(0x1C448, 0x34180000)  # ORI  T8, R0, 0x0000
+        patcher.write_int32(0x1C450, 0x34190000)  # ORI  T9, R0, 0x0000
+
+        # If the Castle Wall State is Reinhardt/Carrie's, put the stage in Reinhardt and Carrie's state for everyone.
         if slot_patch_info["options"]["castle_wall_state"] == CastleWallState.option_reinhardt_carrie:
             # Right Tower switch spot is the non-lever missing version.
             patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][9]["delete"] = True
             patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][10]["spawn_flags"] = 0
+            # Left Tower switch text spot is absent as it's instead flipped during the Dracula cutscene.
+            # The text spot for the middle portcullis is present.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][4]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][6]["delete"] = True
             # Portcullises are Reinhardt/Carrie's versions.
             patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][52]["spawn_flags"] = 0
             patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][53]["delete"] = True
             patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][54]["delete"] = True
             # Main area Right Tower door is a normal door. Left Tower door is a Left Tower Key door.
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][55]["spawn_flags"] = 0
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][56]["spawn_flags"] = 0
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][57]["delete"] = True
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][58]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][55]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][56]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][57]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][58]["delete"] = True
+            # The Ground Gatehouse Middle candle is present.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][32]["spawn_flags"] = 0
 
             # Left Tower interior top door is a moon door.
             patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][191]["spawn_flags"] = 0
@@ -464,21 +582,34 @@ class CVLoDPatchExtensions(APPatchExtension):
             # Left Tower interior top loading zone plays the Fake Dracula taunt cutscene.
             patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][195]["spawn_flags"] = 0
             patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][196]["delete"] = True
-        # If the Castle Wall State is Cornell's, put the stage in Reinhardt and Cornell's state.
-        if slot_patch_info["options"]["castle_wall_state"] == CastleWallState.option_cornell:
+            # Both towers' platform behaviors are Reinhardt/Carrie's for everyone.
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].write_ovl_int32(0x9E0, 0x340F0000)  # ORI  T7, R0, 0x0000
+
+            # All hardcoded lever checks for Cornell never pass.
+            patcher.write_int32(0xE6C18, 0x240A0000)  # ADDIU T2, R0, 0x0000
+            patcher.write_int32(0xE6F64, 0x240E0000)  # ADDIU T6, R0, 0x0000
+            patcher.write_int32(0xE70F4, 0x240D0000)  # ADDIU T5, R0, 0x0000
+            patcher.write_int32(0xE7364, 0x24080000)  # ADDIU T0, R0, 0x0000
+            patcher.write_int32(0x109C10, 0x240E0000)  # ADDIU T6, R0, 0x0000
+        # If the Castle Wall State is Cornell's, put the stage in Reinhardt and Cornell's state for everyone.
+        elif slot_patch_info["options"]["castle_wall_state"] == CastleWallState.option_cornell:
             # Right Tower switch spot is the lever missing version.
             patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][9]["spawn_flags"] = 0
             patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][10]["delete"] = True
+            # Left Tower switch text spot is present. The text spot for the middle portcullis is absent.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][4]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][6]["spawn_flags"] = 0
             # Portcullises are Cornell's versions.
             patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][52]["delete"] = True
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][53]["spawn_flags"] = 0
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][54]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][53]["spawn_flags"] ^= ActorSpawnFlags.CORNELL
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][54]["spawn_flags"] ^= ActorSpawnFlags.CORNELL
             # Main area Right Tower door is a sun door. Left Tower door is a moon door.
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][55]["delete"] = True
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][56]["delete"] = True
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][57]["spawn_flags"] = 0
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][58]["spawn_flags"] = 0
-
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][55]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][56]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][57]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][58]["spawn_flags"] = 0
+            # The Ground Gatehouse Middle candle is absent.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][32]["delete"] = True
 
             # Left Tower interior top door is a regular door.
             patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][191]["delete"] = True
@@ -486,20 +617,34 @@ class CVLoDPatchExtensions(APPatchExtension):
             # Left Tower interior top loading zone plays no cutscene.
             patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][195]["delete"] = True
             patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][196]["spawn_flags"] = 0
-        # Otherwise, if Hybrid was chosen, put the stage in a hybrid state.
+            # Both towers' platform behaviors are Cornell's for everyone.
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].write_ovl_int32(0x9E0, 0x340F0002)  # ORI  T7, R0, 0x0002
+
+            # All hardcoded lever checks for Cornell always pass.
+            patcher.write_int32(0xE6C18, 0x240A0002)  # ADDIU T2, R0, 0x0002
+            patcher.write_int32(0xE6F64, 0x240E0002)  # ADDIU T6, R0, 0x0002
+            patcher.write_int32(0xE70F4, 0x240D0002)  # ADDIU T5, R0, 0x0002
+            patcher.write_int32(0xE7364, 0x24080002)  # ADDIU T0, R0, 0x0002
+            patcher.write_int32(0x109C10, 0x240E0002)  # ADDIU T6, R0, 0x0002
+        # Otherwise, if Hybrid was chosen, put the stage in a hybrid state for everyone.
         else:
             # Right Tower switch spot is the lever missing version.
             patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][9]["spawn_flags"] = 0
             patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][10]["delete"] = True
+            # Left Tower switch text spot is present. The text spot for the middle portcullis is absent.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][4]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][6]["spawn_flags"] = 0
             # Portcullises are Cornell's versions.
             patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][52]["delete"] = True
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][53]["spawn_flags"] = 0
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][54]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][53]["spawn_flags"] ^= ActorSpawnFlags.CORNELL
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][54]["spawn_flags"] ^= ActorSpawnFlags.CORNELL
             # Main area Right Tower door is a normal door. Left Tower door is a Left Tower Key door.
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][55]["spawn_flags"] = 0
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][56]["spawn_flags"] = 0
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][57]["delete"] = True
-            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["init"][58]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][55]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][56]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][57]["delete"] = True
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][58]["delete"] = True
+            # The Ground Gatehouse Middle candle is present.
+            patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][32]["spawn_flags"] = 0
 
             # Left Tower interior top door is a regular door.
             patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][191]["delete"] = True
@@ -507,16 +652,662 @@ class CVLoDPatchExtensions(APPatchExtension):
             # Left Tower interior top loading zone plays no cutscene.
             patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][195]["delete"] = True
             patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][196]["spawn_flags"] = 0
+            # Both towers' platform behaviors are Cornell's for everyone.
+            patcher.scenes[Scenes.CASTLE_WALL_TOWERS].write_ovl_int32(0x9E0, 0x340F0002)  # ORI  T7, R0, 0x0002
+
+            # All hardcoded lever checks for Cornell always pass.
+            patcher.write_int32(0xE6C18, 0x240A0002)  # ADDIU T2, R0, 0x0002
+            patcher.write_int32(0xE6F64, 0x240E0002)  # ADDIU T6, R0, 0x0002
+            patcher.write_int32(0xE70F4, 0x240D0002)  # ADDIU T5, R0, 0x0002
+            patcher.write_int32(0xE7364, 0x24080002)  # ADDIU T0, R0, 0x0002
+            patcher.write_int32(0x109C10, 0x240E0002)  # ADDIU T6, R0, 0x0002
 
 
         # # # # # # # #
         # VILLA EDITS #
         # # # # # # # #
-        # Give Child Henry his Cornell behavior for everyone.
+        # Make Reinhardt/Carrie/Cornell's White Jewels universal to everyone and remove Henry's.
+        patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][47]["spawn_flags"] = 0
+        patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][48]["delete"] = True
+        patcher.scenes[Scenes.VILLA_FOYER].actor_lists["room 5"][0]["spawn_flags"] = 0
+        patcher.scenes[Scenes.VILLA_FOYER].actor_lists["room 5"][1]["delete"] = True
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 0"][10]["spawn_flags"] = 0
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 0"][11]["delete"] = True
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 8"][2]["spawn_flags"] = 0
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 8"][3]["delete"] = True
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][102]["spawn_flags"] = 0
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][103]["delete"] = True
+        # Remove the Cornell-specific pickups and breakables with Reinhardt/Carrie equivalents and make said Reinhardt
+        # and Carrie ones universal.
+        patcher.scenes[Scenes.VILLA_FOYER].actor_lists["room 1"][49]["spawn_flags"] = 0
+        patcher.scenes[Scenes.VILLA_FOYER].actor_lists["room 1"][56]["delete"] = True
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][105]["delete"] = True
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][117]["spawn_flags"] = 0
+        # Make Renon's introduction cutscene trigger universal to everyone (including Henry).
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["init"][10]["spawn_flags"] = 0
+        # Remove the Henry-exclusive escape gates and Motorskellies on the maze's servant path.
+        # We'll always be using the Cornell or Reinhardt/Carrie versions of these whenever applicable.
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][89]["delete"] = True
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][90]["delete"] = True
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][91]["delete"] = True
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][164]["delete"] = True
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][165]["delete"] = True
+        # Make the Gardener's Stone Dogs universal for everyone (including Henry).
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][62]["spawn_flags"] ^= \
+            ActorSpawnFlags.REINHARDT_AND_CARRIE | ActorSpawnFlags.CORNELL
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][63]["spawn_flags"] ^= \
+            ActorSpawnFlags.REINHARDT_AND_CARRIE | ActorSpawnFlags.CORNELL
+
+        # Make the final Cerberus in Villa Front Yard un-set the Villa entrance portcullis closed flag for all
+        # characters (not just Henry).
+        patcher.write_int32(0x35A4, 0x00000000, NIFiles.OVERLAY_CERBERUS)
+        # Remove the start portcullis text spot since we're opening it for everyone.
+        patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][2]["delete"] = True
+
+        # Write the new Villa fountain puzzle order both in the code and Oldrey's Diary's description.
+        patcher.write_bytes(0x4780, cvlod_string_to_bytearray(f"{slot_patch_info["fountain order"][0]} "
+                                                               f"{slot_patch_info["fountain order"][1]} "
+                                                               f"{slot_patch_info["fountain order"][2]} "
+                                                               f"{slot_patch_info["fountain order"][3]}      "),
+                            NIFiles.OVERLAY_PAUSE_MENU)
+        patcher.write_byte(0x173, FOUNTAIN_LETTERS_TO_NUMBERS[slot_patch_info["fountain order"][0]],
+                           NIFiles.OVERLAY_FOUNTAIN_PUZZLE)
+        patcher.write_byte(0x16B, FOUNTAIN_LETTERS_TO_NUMBERS[slot_patch_info["fountain order"][1]],
+                           NIFiles.OVERLAY_FOUNTAIN_PUZZLE)
+        patcher.write_byte(0x163, FOUNTAIN_LETTERS_TO_NUMBERS[slot_patch_info["fountain order"][2]],
+                           NIFiles.OVERLAY_FOUNTAIN_PUZZLE)
+        patcher.write_byte(0x143, FOUNTAIN_LETTERS_TO_NUMBERS[slot_patch_info["fountain order"][3]],
+                           NIFiles.OVERLAY_FOUNTAIN_PUZZLE)
+
+        # Clear the Cornell-only setting from the JA Oldrey bedroom cutscene in the universal cutscene trigger settings
+        # table so anyone will be allowed to trigger it. We'll simply remove the trigger actor if we don't want it.
+        patcher.write_byte(0x11831D, 0x00)
+
+        # Remove the JA Oldrey diary text spot for everyone and make the Reinhardt/Carrie version universal.
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["init"][40]["spawn_flags"] = 0
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["init"][43]["delete"] = True
+        # Turn the decorative Diary actor into a freestanding pickup check with all necessary parameters assigned.
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 7"][37]["spawn_flags"] = 0
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 7"][37]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 7"][37]["flag_id"] = 0
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 7"][37]["var_a"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.villala_archives_table].flag_id
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 7"][37]["var_c"] = Pickups.OLDREYS_DIARY
+        # Make the Garden Key pickup in the Archives universal to everyone.
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 7"][38]["spawn_flags"] = 0
+
+        # Move the following Locations that have flags shared with other Locations to their own flags.
+        # Archives Garden Key
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 7"][38]["var_a"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.villala_archives_rear].flag_id
+        # Mary's Copper Key
+        patcher.write_int16(0xAAA, CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id, NIFiles.OVERLAY_MARY)
+        patcher.write_int16(0xAE2, CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id, NIFiles.OVERLAY_MARY)
+        patcher.write_int16(0xB12, CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id, NIFiles.OVERLAY_MARY)
+
+        # Give Child Henry his Cornell behaviors for everyone.
         patcher.write_int32(0x1B8, 0x24020002, NIFiles.OVERLAY_CHILD_HENRY)  # ADDIU V0, R0, 0x0002
         patcher.write_byte(0x613, 0x04, NIFiles.OVERLAY_CHILD_HENRY)
         patcher.write_int32(0x844, 0x240F0002, NIFiles.OVERLAY_CHILD_HENRY)  # ADDIU T7, R0, 0x0002
         patcher.write_int32(0x8B8, 0x240F0002, NIFiles.OVERLAY_CHILD_HENRY)  # ADDIU T7, R0, 0x0002
+
+        # Turn the Villa Henry child actor into a freestanding pickup check with all necessary parameters assigned.
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][81]["spawn_flags"] = 0
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][81]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][81]["execution_flags"] = 0
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][81]["flag_id"] = 0
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][81]["var_a"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.villam_child_de].flag_id
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][81]["var_b"] = 0
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][81]["var_c"] = Pickups.ONE_HUNDRED_GOLD
+
+        # Disable Gilles De Rais's hardcoded "Not Cornell?" check to see if he should despawn immediately upon spawning.
+        # This should have REALLY been controlled instead by his settings in the actor list...
+        patcher.write_byte(0x195, 0x00, NIFiles.OVERLAY_GILLES_DE_RAIS)
+
+        # Make the Cornell versions of the main maze front gates universal (the ones that have Henry escort checks on
+        # them). We will not be using the Malus chases checks in the Reinhardt/Carrie versions of the main gates.
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][148]["delete"] = True
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][149]["delete"] = True
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][158]["spawn_flags"] = 0
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][159]["spawn_flags"] = 0
+        # Apply the "not doing Henry escort" door checks to the two doors leading to the vampire crypt so he can't be
+        # brought in there, and the "Henry nearby if doing escort" checks to the Reinhardt/Carrie versions of the maze
+        # dividing doors.
+        patcher.scenes[Scenes.VILLA_MAZE].doors[2]["door_flags"] |= DoorFlags.EXTRA_CHECK_FUNC_ENABLED
+        patcher.scenes[Scenes.VILLA_MAZE].doors[2]["extra_condition_ptr"] = 0x802E4C34
+        patcher.scenes[Scenes.VILLA_MAZE].doors[12]["door_flags"] |= DoorFlags.EXTRA_CHECK_FUNC_ENABLED
+        patcher.scenes[Scenes.VILLA_MAZE].doors[12]["extra_condition_ptr"] = 0x802E4C34
+        patcher.scenes[Scenes.VILLA_MAZE].doors[13]["door_flags"] |= DoorFlags.EXTRA_CHECK_FUNC_ENABLED
+        patcher.scenes[Scenes.VILLA_MAZE].doors[13]["extra_condition_ptr"] = 0x802E4B9C
+        patcher.scenes[Scenes.VILLA_MAZE].doors[16]["door_flags"] |= DoorFlags.EXTRA_CHECK_FUNC_ENABLED
+        patcher.scenes[Scenes.VILLA_MAZE].doors[16]["extra_condition_ptr"] = 0x802E4B9C
+
+        # Lock the Cornell maze front/rear dividing doors with the Rose Garden Key and update their text.
+        # Keep the doors un-openable on the rear side.
+        patcher.scenes[Scenes.VILLA_MAZE].scene_text.append(
+            CVLoDSceneTextEntry(text="A sign saying:\n"
+                                     " \"Rose Door\"\n"
+                                     "\"Unlock from the front side.\"\n"
+                                     "\"One key unlocks us all.\"🅰0/\n"
+                                     "It is locked...🅰0/"))
+        patcher.scenes[Scenes.VILLA_MAZE].scene_text.append(
+            CVLoDSceneTextEntry(text="A click sounds from all\n"
+                                     "Rose Garden Key doors.🅰0/"))
+        patcher.scenes[Scenes.VILLA_FOYER].scene_text[10]["text"] = ("A door marked:\n"
+                                                                     " \"Rose Door\"\n"
+                                                                     "\"One key unlocks us all.\"\n"
+                                                                     "It is locked...🅰0/")
+        patcher.scenes[Scenes.VILLA_FOYER].scene_text[11]["text"] = ("A click sounds from all\n"
+                                                                     "Rose Garden Key doors.🅰0/")
+        patcher.scenes[Scenes.VILLA_MAZE].doors[23]["door_flags"] |= DoorFlags.ITEM_COST_IF_FLAG_UNSET
+        patcher.scenes[Scenes.VILLA_MAZE].doors[23]["item_id"] = Items.ROSE_GARDEN_KEY
+        patcher.scenes[Scenes.VILLA_MAZE].doors[23]["flag_id"] = 0x293
+        patcher.scenes[Scenes.VILLA_MAZE].doors[23]["flag_locked_text_id"] = 24
+        patcher.scenes[Scenes.VILLA_MAZE].doors[23]["unlocked_text_id"] = 25
+        patcher.scenes[Scenes.VILLA_MAZE].doors[24]["door_flags"] |= DoorFlags.ITEM_COST_IF_FLAG_UNSET
+        patcher.scenes[Scenes.VILLA_MAZE].doors[24]["item_id"] = Items.ROSE_GARDEN_KEY
+        patcher.scenes[Scenes.VILLA_MAZE].doors[24]["flag_id"] = 0x293
+        patcher.scenes[Scenes.VILLA_MAZE].doors[24]["flag_locked_text_id"] = 24
+        patcher.scenes[Scenes.VILLA_MAZE].doors[24]["unlocked_text_id"] = 25
+
+        # Remove the checks for the "unlocked Garden Key gate" and "spoke to Mary once" flags to have child Henry spawn.
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][65]["spawn_flags"] ^= ActorSpawnFlags.SPAWN_IF_FLAG_SET
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][65]["flag_id"] = 0
+        patcher.write_int32(0x2CC4, 0x00000000, NIFiles.OVERLAY_CHILD_HENRY)
+
+        # Make Mary say her congratulatory dialogue if spoken to for the first time only AFTER rescuing the maze kid
+        # by setting the "spoke to Mary once" flag when the game gives the reward for doing the quest.
+        mary_dialogue_check_location = patcher.get_decompressed_file_size(NIFiles.OVERLAY_MARY)
+        patcher.write_int32(0xB0C, 0x0FC00000 | (mary_dialogue_check_location // 4), NIFiles.OVERLAY_MARY)
+        patcher.write_int32s(mary_dialogue_check_location, [0x3C08801D,   # LUI   T0, 0x801D
+                                                            0x9109AA6F,   # LBU   T1, 0xAA6F (T0)
+                                                            0x35290004,   # ORI   T1, T1, 0x0004
+                                                            0x03200008,   # JR    T9
+                                                            0xA109AA6F],  # SB    T1, 0xAA6F (T0)
+                             NIFiles.OVERLAY_MARY)
+
+        # Make the hardcoded Villa coffin lid Henry checks never pass.
+        patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_byte(0x1DB, 0x04)
+        patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_byte(0x7DB, 0x04)
+        # Make the hardcoded Cornell check in the Villa crypt Reinhardt/Carrie first vampire intro cutscene not pass.
+        # IDK what KCEK was planning here, since Cornell normally never gets this cutscene, but if it passes the game
+        # completely ceases functioning.
+        patcher.write_int16(0x230, 0x1000, NIFiles.OVERLAY_CS_1ST_REIN_CARRIE_CRYPT_VAMPIRE)
+        # Make the Villa coffin loading zone Henry check always pass.
+        patcher.write_int32(0xD3A78, 0x000C0821)  # ADDU  AT, R0, T4
+
+        # Generate Mary's item text here, if her Location is created.
+        mary_item_text = ""
+        if CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id in loc_text:
+            # If it's a local Item she has, have her say she will give it to you.
+            if not loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][1]:
+                mary_item_text = f"give you this {loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0]}"
+            # Otherwise, have her say she will send it to [player].
+            else:
+                mary_item_text = (f"send this {loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0]} to "
+                                  f"{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][1]}")
+
+
+        # Depending on whom the maze kid is, change some more things appropriately.
+        if slot_patch_info["options"]["villa_maze_kid"] == VillaMazeKid.option_malus:
+            # Rewrite all of Mary's dialogue to reflect Malus being the kid in the maze.
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].scene_text[31]["text"] = (
+                cvlod_text_wrap("⬘1/Mary:\n"
+                                "Thank you so much for\n"
+                                "teaching that man a lesson!\n"
+                                "May I ask another favor?🅰0/\f"
+                                "There's a naughty boy causing\n"
+                                "mischief in the maze!🅰30/ A real\n"
+                                "wicked child, you could say!🅰0/\f"
+                                f"Send him packing and I will {mary_item_text}.🅰0/\f"
+                                "This boy's hair is dark purple.\n"
+                                "Now, get to it!🅰0/"))
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].scene_text[32]["text"] = (
+                "⬘1/Mary:\n"
+                "Where was he last sighted\n"
+                "in the maze?⏸30/"
+                "That's a good question.🅰0/\f"
+                "I know there's one particular\n"
+                "bush that he loves to hide in.\n"
+                "First left from the main🅰0/\n"
+                "entrance. You're likely to find\n"
+                "him there.🅰0/\f"
+                "Be careful! Looks can be\n"
+                "deceiving. Don't be fooled by\n"
+                "his innocent demeanor!🅰0/\f"
+                "Again, his hair is dark purple.\n"
+                "You'll know him when you see\n"
+                "him. Good luck!🅰0/")
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].scene_text[33]["text"] = (
+                cvlod_text_wrap("⬘1/Mary:\n"
+                                "That little rascal has left?⏸30/"
+                                "Oh, thank goodness!🅰0/\f"
+                                "Coller will be very thrilled\n"
+                                "to know he'll no longer have\n"
+                                "to clean toilet paper messes!🅰0/\f"
+                                f"As promised, I {mary_item_text}.\n"
+                                "I hope it serves you well.🅰0/\f"
+                                "Thanks for your help, young\n"
+                                "stranger!🅰0/"))
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].scene_text[34]["text"] = (
+                "⬘1/Mary:\n"
+                "Of course, who's to say\n"
+                "he won't just return later\n"
+                "to cause more mischief?🅰0/\f"
+                "I should've requested you drag\n"
+                "him to the Ferryman and had\n"
+                "him deal with it! Dammit...🅰0/\f"
+                "We shall deal with it when\n"
+                "it happens, I suppose...🅰0/")
+
+            # Have Mary check for the Malus chase end cutscene flag instead of the Henry rescued flag.
+            patcher.write_byte(0xAD3, 0x92, NIFiles.OVERLAY_MARY)
+            patcher.write_byte(0xB43, 0x92, NIFiles.OVERLAY_MARY)
+
+            # The Gardener will have his Reinhardt/Carrie behavior for everyone.
+            patcher.write_int32(0x490, 0x24020000, NIFiles.OVERLAY_GARDENER)   # ADDIU V0, R0, 0x0000
+            patcher.write_int32(0xD14, 0x34190000, NIFiles.OVERLAY_GARDENER)   # ORI   T9, R0, 0x0000
+            patcher.write_int32(0x13C0, 0x34090000, NIFiles.OVERLAY_GARDENER)  # ORI   T1, R0, 0x0000
+
+            # Malus and his associated triggers are present, Henry is not.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["init"][1]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["init"][2]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["init"][10]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][61]["spawn_flags"] ^= \
+                ActorSpawnFlags.REINHARDT_AND_CARRIE
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][65]["delete"] = True
+
+            # The servant path escape gates are their Reinhardt/Carrie versions that specify Malus escaped through them,
+            # and the maze end door is the Reinhardt/Carrie one that the Malus rescued cutscene specifically opens.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][144]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][145]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][153]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][154]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][155]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][163]["delete"] = True
+        else:
+            # Edit some of Mary's existing dialogue if Henry is the kid in the maze.
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].scene_text[31]["text"] = (
+                cvlod_text_wrap("⬘1/Mary:\n"
+                                "Thank you so much for\n"
+                                "teaching that man a lesson!\n"
+                                "May I ask another favor?🅰0/\f"
+                                "My son Henry is trapped\n"
+                                "in the maze! He must be\n"
+                                "absolutely terrified...🅰0/\f"
+                                f"Escort him out safely and I will {mary_item_text}.🅰0/\f"
+                                "I'm so worried about him...\n"
+                                "Please make sure he gets out!\n"
+                                "It's not safe here anymore!🅰0/"))
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].scene_text[33]["text"] = (
+                patcher.scenes[Scenes.VILLA_LIVING_AREA].scene_text[33]["text"][:146] +
+                cvlod_text_wrap(f"As promised, I {mary_item_text}.\n"
+                                "I hope it serves you well.🅰0/\f") +
+                patcher.scenes[Scenes.VILLA_LIVING_AREA].scene_text[33]["text"][219:279])
+
+            # The Reinhardt/Carrie version of the maze dividing door near the kid starting point will unlock upon Henry
+            # escort beginning instead of Malus chase beginning.
+            patcher.scenes[Scenes.VILLA_MAZE].doors[16]["flag_id"] = 0x93
+
+            # The Gardener will have his Cornell behavior for everyone.
+            patcher.write_int32(0x490, 0x24020002, NIFiles.OVERLAY_GARDENER)   # ADDIU V0, R0, 0x0002
+            patcher.write_int32(0xD14, 0x34190002, NIFiles.OVERLAY_GARDENER)   # ORI   T9, R0, 0x0002
+            patcher.write_int32(0x13C0, 0x34090002, NIFiles.OVERLAY_GARDENER)  # ORI   T1, R0, 0x0002
+
+            # Henry and his associated triggers are present, Malus is not.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["init"][1]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["init"][2]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["init"][10]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][61]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][65]["spawn_flags"] ^= ActorSpawnFlags.CORNELL
+
+            # The servant path escape gates are their Cornell versions that specify Henry escaped through them, and the
+            # maze end door is the Cornell one that the Henry rescued cutscene specifically opens AND includes a
+            # "Henry nearby if doing escort" check.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][144]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][145]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][153]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][154]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][155]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][163]["spawn_flags"] = 0
+
+
+        # If the Villa State is Reinhardt/Carrie's, put the stage in Reinhardt and Carrie's state for everyone.
+        if slot_patch_info["options"]["villa_state"] == VillaState.option_reinhardt_carrie:
+            # The fountain puzzle does not exist.
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][20]["delete"] = True
+            # The fountain top shine and special text spot do not exist.
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][19]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][68]["delete"] = True
+            # Headstone text spots are Reinhardt/Carrie's.
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][3]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][4]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][5]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][6]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][69]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][70]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][71]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][72]["delete"] = True
+            # The text spots for the fountain flavor text and pillar rising at midnight hint exist, whereas the one for
+            # the headstone puzzle does not.
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][7]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][16]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][17]["delete"] = True
+            # The fountain pillar is on its Reinhardt/Carrie check behavior for everyone.
+            patcher.write_int32(0xD77E0, 0x24030000)  # ADDIU V1, R0, 0x0000
+            patcher.write_int32(0xD7A60, 0x24030000)  # ADDIU V1, R0, 0x0000
+
+            # The servant door in the foyer is locked from one side. The rose garden double doors are normal.
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][15]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][16]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][17]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][18]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][19]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][20]["delete"] = True
+            # The 3AM Rosa cutscene exists. The 6AM rose patch does not.
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["init"][7]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FOYER].write_ovl_int32(0x2F4, 0x240E0000)  # ADDIU T6, R0, 0x0000
+            # All roses are red.
+            patcher.scenes[Scenes.VILLA_FOYER].write_ovl_int32(0x164, 0x34090000)  # ORI   T1, R0, 0x0000
+            # The servant door AND center rose garden text spots both exist.
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["init"][9]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["init"][11]["spawn_flags"] = 0
+            # The foyer vampire that spawns is the Reinhardt/Carrie one.
+            patcher.write_int32(0x320, 0x34020000, NIFiles.OVERLAY_CS_VILLA_FOYER_VAMPIRE)  # ORI  V0, R0, 0x0000
+
+            # The Vincent introduction and vampire villager cutscenes exist. The JA Oldrey bedroom cutscene does not.
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["init"][11]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["init"][12]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["init"][13]["delete"] = True
+            # Vincent is present. Mary and her associated table pickup are absent.
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 2"][34]["spawn_flags"] ^= \
+                ActorSpawnFlags.REINHARDT_AND_CARRIE
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 4"][28]["delete"] = True
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 4"][29]["delete"] = True
+            # The roses in the dining room vase are red and the falling one is present.
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].write_ovl_int32(0x5E8, 0x340F0000)  # ORI  T7, R0, 0x0000
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].write_ovl_int32(0xA4, 0x340E0000)  # ORI  T6, R0, 0x0000
+
+            # None of the Cornell enemies are present in the maze.
+            for enemy_index in VILLA_MAZE_CORNELL_ENEMY_INDEXES:
+                patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][enemy_index]["delete"] = True
+            # The servant entrance gates are locked by Garden Key like the main gate.
+            patcher.scenes[Scenes.VILLA_MAZE].doors[10]["door_flags"] |= DoorFlags.LOCKED_BY_KEY
+            patcher.scenes[Scenes.VILLA_MAZE].doors[10]["item_id"] = Items.GARDEN_KEY
+            patcher.scenes[Scenes.VILLA_MAZE].doors[10]["flag_id"] = 0x295  # Garden gate unlocked flag
+            patcher.scenes[Scenes.VILLA_MAZE].doors[10]["flag_locked_text_id"] = 12
+            patcher.scenes[Scenes.VILLA_MAZE].doors[10]["unlocked_text_id"] = 11
+            patcher.scenes[Scenes.VILLA_MAZE].doors[11]["door_flags"] |= DoorFlags.LOCKED_BY_KEY
+            patcher.scenes[Scenes.VILLA_MAZE].doors[11]["item_id"] = Items.GARDEN_KEY
+            patcher.scenes[Scenes.VILLA_MAZE].doors[11]["flag_id"] = 0x295  # Garden gate unlocked flag
+            patcher.scenes[Scenes.VILLA_MAZE].doors[11]["flag_locked_text_id"] = 12
+            patcher.scenes[Scenes.VILLA_MAZE].doors[11]["unlocked_text_id"] = 11
+            # Text clarifying that using the key on one pair of gates unlocked the other.
+            patcher.scenes[Scenes.VILLA_MAZE].scene_text[12]["text"] = \
+                (patcher.scenes[Scenes.VILLA_MAZE].scene_text[12]["text"][:33] + "\n\"One key unlocks both.\"\n" +
+                 patcher.scenes[Scenes.VILLA_MAZE].scene_text[12]["text"][35:])
+            patcher.scenes[Scenes.VILLA_MAZE].scene_text[11]["text"] = ("A click sounds from\n"
+                                                                        "both sets of\n"
+                                                                        "Garden Key gates...🅰0/")
+            # The Iron Thorn Fence gate is unlocked.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][146]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][147]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][156]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][157]["delete"] = True
+            # The maze center and side dividing doors are locked from the rear side.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][150]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][152]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][160]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][162]["delete"] = True
+            # The crypt door is unlocked and the crest display spot is absent.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][60]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][151]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][161]["delete"] = True
+            # The breakables for Rear Viewing Platform Rear, Malus Hole Dead End, and Small Alcove Left do not exist.
+            # and Small Alcove Right, Rear Viewing Platform Front, and Front Viewing Platform do.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][104]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][106]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][142]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][109]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][122]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][126]["spawn_flags"] = 0
+
+            # Gilles De Rais is not present in the crypt. The vampire couple are.
+            patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["init"][0]["delete"] = True
+            patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["init"][2]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["init"][3]["spawn_flags"] = 0
+            # The hardcoded Villa coffin lid Not Cornell attack collision check will always pass.
+            patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_int32(0x970, 0x340E0000)  # ORI T6, R0, 0x0000
+            # The hardcoded Villa coffin lid Not Cornell cutscene check will always pass.
+            patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_int32(0xD68, 0x34190000)  # ORI T9, R0, 0x0000
+        # If the Villa State is Cornell's, put the stage in Cornell's state for everyone.
+        elif slot_patch_info["options"]["villa_state"] == VillaState.option_cornell:
+            # The fountain puzzle exists.
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][20]["spawn_flags"] = 0
+            # The fountain top shine and special text spot exist.
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][19]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][68]["spawn_flags"] = 0
+            # Headstone text spots are Cornell's.
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][3]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][4]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][5]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][6]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][69]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][70]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][71]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][72]["spawn_flags"] = 0
+            # The text spots for the fountain flavor text and pillar rising at midnight hint do not exist, whereas the
+            # one for the headstone puzzle does.
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][7]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][16]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][17]["spawn_flags"] = 0
+            # The fountain pillar is on its Cornell check behavior for everyone.
+            patcher.write_int32(0xD77E0, 0x24030002)  # ADDIU V1, R0, 0x0002
+            patcher.write_int32(0xD7A60, 0x24030002)  # ADDIU V1, R0, 0x0002
+
+            # The servant door in the foyer is normal. The rose garden double doors are locked by Rose Garden Key.
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][15]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][16]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][17]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][18]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][19]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][20]["spawn_flags"] = 0
+            # The 3AM Rosa cutscene does not exist. The 6AM rose patch does.
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["init"][7]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FOYER].write_ovl_int32(0x2F4, 0x240E0002)  # ADDIU T6, R0, 0x0002
+            # All roses are white.
+            patcher.scenes[Scenes.VILLA_FOYER].write_ovl_int32(0x164, 0x34090002)  # ORI   T1, R0, 0x0002
+            # Neither the servant door NOR center rose garden text spots exist.
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["init"][9]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["init"][11]["delete"] = True
+            # The foyer vampire that spawns is the Cornell one.
+            patcher.write_int32(0x320, 0x34020002, NIFiles.OVERLAY_CS_VILLA_FOYER_VAMPIRE)  # ORI  V0, R0, 0x0002
+
+            # The Vincent introduction and vampire villager cutscenes don't exist. The JA Oldrey bedroom cutscene does.
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["init"][11]["delete"] = True
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["init"][12]["delete"] = True
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["init"][13]["spawn_flags"] = 0
+            # Vincent is absent. Mary and her associated table pickup are present.
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 2"][34]["delete"] = True
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 4"][28]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 4"][29]["spawn_flags"] = 0
+            # The roses in the dining room vase are white and the falling one is absent.
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].write_ovl_int32(0x5E8, 0x340F0002)  # ORI  T7, R0, 0x0002
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].write_ovl_int32(0xA4, 0x340E0002)  # ORI  T6, R0, 0x0002
+
+            # The servant entrance gates are left unchanged.
+            # All the Cornell enemies are present in the maze.
+            for enemy_index in VILLA_MAZE_CORNELL_ENEMY_INDEXES:
+                patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][enemy_index]["spawn_flags"] &= \
+                    ActorSpawnFlags.NO_CHARACTERS
+            # The Iron Thorn Fence gate is locked by Thorn Key.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][146]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][147]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][156]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][157]["spawn_flags"] = 0
+            # The maze center and side dividing doors are locked from the front side.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][150]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][152]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][160]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][162]["spawn_flags"] = 0
+            # The crypt door is locked by the two crest halves and the crest display spot is present.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][60]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][151]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][161]["spawn_flags"] = 0
+            # The breakables for Rear Viewing Platform Rear, Malus Hole Dead End, and Small Alcove Left exist.
+            # and Small Alcove Right, Rear Viewing Platform Front, and Front Viewing Platform do not.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][104]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][106]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][142]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][109]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][122]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][126]["delete"] = True
+
+            # Lock the crypt door from the inside if the player doesn't have the two crests on-hand and/or inserted.
+            patcher.scenes[Scenes.VILLA_CRYPT].scene_text.append(
+                CVLoDSceneTextEntry(text="The entrance door is sealed\n"
+                                         "shut! You'll need to bring it\n"
+                                         "both Crest Halves to see the\n"
+                                         "light of day.🅰0/"))
+            crypt_crests_check_location = len(patcher.scenes[Scenes.VILLA_CRYPT].overlay)
+            patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_int32s(crypt_crests_check_location,
+                                                                patches.crypt_crests_checker)
+            patcher.scenes[Scenes.VILLA_CRYPT].doors[0]["door_flags"] = DoorFlags.EXTRA_CHECK_FUNC_ENABLED
+            patcher.scenes[Scenes.VILLA_CRYPT].doors[0]["extra_condition_ptr"] = \
+                crypt_crests_check_location + SCENE_OVERLAY_RDRAM_START
+            patcher.scenes[Scenes.VILLA_CRYPT].doors[0]["flag_locked_text_id"] = 1
+            # Gilles De Rais is present in the crypt. The vampire couple are not.
+            patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["init"][0]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["init"][2]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["init"][3]["delete"] = True
+            # The hardcoded Villa coffin lid Not Cornell attack collision check will never pass.
+            patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_int32(0x970, 0x340E0002)  # ORI T6, R0, 0x0002
+            # The hardcoded Villa coffin lid Not Cornell cutscene check will never pass.
+            patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_int32(0xD68, 0x34190002)  # ORI T9, R0, 0x0002
+        # Otherwise, if Hybrid was chosen, put the stage in a hybrid state for everyone.
+        else:
+            # The fountain puzzle exists.
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][20]["spawn_flags"] = 0
+            # The fountain top shine and special text spot exist.
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][19]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][68]["spawn_flags"] = 0
+            # Headstone text spots are Cornell's.
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][3]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][4]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][5]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][6]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][69]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][70]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][71]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["proxy"][72]["spawn_flags"] = 0
+            # The text spots for the fountain flavor text and pillar rising at midnight hint do not exist, whereas the
+            # one for the headstone puzzle does.
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][7]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][16]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][17]["spawn_flags"] = 0
+            # The fountain pillar is on its Cornell check behavior for everyone.
+            patcher.write_int32(0xD77E0, 0x24030002)  # ADDIU V1, R0, 0x0002
+            patcher.write_int32(0xD7A60, 0x24030002)  # ADDIU V1, R0, 0x0002
+
+            # The servant door in the foyer is normal. The rose garden double doors are locked by Rose Garden Key.
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][15]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][16]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][17]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][18]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][19]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["proxy"][20]["spawn_flags"] = 0
+            # The 3AM Rosa cutscene AND 6AM rose patch both exist.
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["init"][7]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_FOYER].write_ovl_int32(0x2F4, 0x240E0002)  # ADDIU T6, R0, 0x0002
+            # The outer perimeter roses are red, while the center pillar roses are white.
+            patcher.scenes[Scenes.VILLA_FOYER].write_ovl_byte(0x16B, 0x24)
+            patcher.scenes[Scenes.VILLA_FOYER].write_ovl_int16(0x170, 0x5423)
+            # Neither the servant door NOR center rose garden text spots exist.
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["init"][9]["delete"] = True
+            patcher.scenes[Scenes.VILLA_FOYER].actor_lists["init"][11]["delete"] = True
+            # The foyer vampire that spawns is the Cornell one.
+            patcher.write_int32(0x320, 0x34020002, NIFiles.OVERLAY_CS_VILLA_FOYER_VAMPIRE)  # ORI  V0, R0, 0x0002
+
+            # The Vincent introduction, vampire villager, AND JA Oldrey bedroom cutscenes all exist.
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["init"][11]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["init"][12]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["init"][13]["spawn_flags"] = 0
+            # Mary AND Vincent are both present.
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 2"][34]["spawn_flags"] ^= \
+                ActorSpawnFlags.REINHARDT_AND_CARRIE
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 4"][28]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 4"][29]["spawn_flags"] = 0
+            # The roses in the dining room vase are red and the falling one is present.
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].write_ovl_int32(0x5E8, 0x340F0000)  # ORI  T7, R0, 0x0000
+            patcher.scenes[Scenes.VILLA_LIVING_AREA].write_ovl_int32(0xA4, 0x340E0000)  # ORI  T6, R0, 0x0000
+
+            # The servant entrance gates are locked by Garden Key like the main gate.
+            patcher.scenes[Scenes.VILLA_MAZE].doors[10]["door_flags"] |= DoorFlags.LOCKED_BY_KEY
+            patcher.scenes[Scenes.VILLA_MAZE].doors[10]["item_id"] = Items.GARDEN_KEY
+            patcher.scenes[Scenes.VILLA_MAZE].doors[10]["flag_id"] = 0x295  # Garden gate unlocked flag
+            patcher.scenes[Scenes.VILLA_MAZE].doors[10]["flag_locked_text_id"] = 12
+            patcher.scenes[Scenes.VILLA_MAZE].doors[10]["unlocked_text_id"] = 11
+            patcher.scenes[Scenes.VILLA_MAZE].doors[11]["door_flags"] |= DoorFlags.LOCKED_BY_KEY
+            patcher.scenes[Scenes.VILLA_MAZE].doors[11]["item_id"] = Items.GARDEN_KEY
+            patcher.scenes[Scenes.VILLA_MAZE].doors[11]["flag_id"] = 0x295  # Garden gate unlocked flag
+            patcher.scenes[Scenes.VILLA_MAZE].doors[11]["flag_locked_text_id"] = 12
+            patcher.scenes[Scenes.VILLA_MAZE].doors[11]["unlocked_text_id"] = 11
+            # Text clarifying that using the key on one pair of gates unlocked the other.
+            patcher.scenes[Scenes.VILLA_MAZE].scene_text[12]["text"] = \
+                (patcher.scenes[Scenes.VILLA_MAZE].scene_text[12]["text"][:33] + "\n\"One key unlocks both.\"\n" +
+                 patcher.scenes[Scenes.VILLA_MAZE].scene_text[12]["text"][35:])
+            patcher.scenes[Scenes.VILLA_MAZE].scene_text[11]["text"] = ("A click sounds from\n"
+                                                                        "both sets of\n"
+                                                                        "Garden Key gates...🅰0/")
+            # All the Cornell enemies are present in the maze.
+            for enemy_index in VILLA_MAZE_CORNELL_ENEMY_INDEXES:
+                patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][enemy_index]["spawn_flags"] &= \
+                    ActorSpawnFlags.NO_CHARACTERS
+            # The Iron Thorn Fence gate is locked by Thorn Key.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][146]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][147]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][156]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][157]["spawn_flags"] = 0
+            # The maze center and side dividing doors are locked from the front side.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][150]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][152]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][160]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][162]["spawn_flags"] = 0
+            # The crypt door is locked by the two crest halves and the crest display spot is present.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][60]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][151]["delete"] = True
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][161]["spawn_flags"] = 0
+            # The breakables for Rear Viewing Platform Rear, Malus Hole Dead End, Small Alcove Right,
+            # Rear Viewing Platform Front, Front Viewing Platform, and Small Alcove Left ALL exist.
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][104]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][106]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][109]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][122]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][126]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][142]["spawn_flags"] = 0
+
+            # Lock the crypt door from the inside if the player doesn't have the two crests on-hand and/or inserted.
+            patcher.scenes[Scenes.VILLA_CRYPT].scene_text.append(
+                CVLoDSceneTextEntry(text="The entrance door is sealed\n"
+                                         "shut! You'll need to bring it\n"
+                                         "both Crest Halves to see the\n"
+                                         "light of day.🅰0/"))
+            crypt_crests_check_location = len(patcher.scenes[Scenes.VILLA_CRYPT].overlay)
+            patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_int32s(crypt_crests_check_location,
+                                                                patches.crypt_crests_checker)
+            patcher.scenes[Scenes.VILLA_CRYPT].doors[0]["door_flags"] = DoorFlags.EXTRA_CHECK_FUNC_ENABLED
+            patcher.scenes[Scenes.VILLA_CRYPT].doors[0]["extra_condition_ptr"] = \
+                crypt_crests_check_location + SCENE_OVERLAY_RDRAM_START
+            patcher.scenes[Scenes.VILLA_CRYPT].doors[0]["flag_locked_text_id"] = 1
+            # Gilles De Rais AND the vampire couple are all present, and the latter will be fought after the former.
+            patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["init"][0]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["init"][2]["spawn_flags"] = 0
+            patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["init"][3]["spawn_flags"] = 0
+            # The hardcoded Villa coffin lid Not Cornell attack collision check will never pass.
+            patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_int32(0x970, 0x340E0002)  # ORI T6, R0, 0x0002
+            # The hardcoded Villa coffin lid Not Cornell cutscene check will always pass.
+            patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_int32(0xD68, 0x34190000)  # ORI T9, R0, 0x0000
 
 
         # # # # # # # # #
@@ -633,6 +1424,59 @@ class CVLoDPatchExtensions(APPatchExtension):
         # cause us to get teleported to the void should the loading zones' destinations change.
         patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].loading_zones[1]["cutscene_settings_id"] = 0
         patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].loading_zones[3]["cutscene_settings_id"] = 0
+        # Change their spawn IDs to both go to the Fan Meeting Room in our custom pre-Castle Center state for it.
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].loading_zones[1]["spawn_id"] = 0x40
+        patcher.scenes[Scenes.ALGENIE_MEDUSA_ARENA].loading_zones[3]["spawn_id"] = 0x40
+
+
+        # # # # # # # # # # # # # #
+        # FAN MEETING ROOM EDITS  #
+        # # # # # # # # # # # # # #
+        # Add Castle Center start's stage name display actor to the fan meeting room and set it up to only spawn on our
+        # setup for the start of Castle Center. The "beginning of stage" state should be saved upon entering here.
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["init"].append(
+            CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos=0.0, y_pos=0.0,
+                                  z_pos=0.0, execution_flags=ObjectExecutionFlags.TLB_MAP_OVERLAY,
+                                  object_id=Objects.STAGE_NAME_DISPLAY, flag_id=0x2A1, var_a=0, var_b=0,
+                                  var_c=5, var_d=0, extra_condition_ptr=0))
+
+        # Remove the first actor in the proxy list, which is a sliding door actor likely put there by mistake. It's a
+        # duplicate of another Reinhardt/Carrie/Cornell-only always-open sliding door in the same position on the far
+        # side of the room with the same parameters, causes some ugly Z-fighting when paired with Henry's always-closed
+        # far side door, and is separated from the rest of the sliding doors in the list which are all together.
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][0]["delete"] = True
+
+        # Make Cornell's nearside sliding door universal and remove Reinhardt/Carrie's and Henry's instances
+        # (the door will start closed and remain closed no matter what).
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][9]["delete"] = True
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][11]["spawn_flags"] = 0
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][12]["delete"] = True
+        # Make Reinhardt/Carrie/Cornell's farside sliding door universal and remove Henry's.
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][10]["spawn_flags"] = 0
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][13]["delete"] = True
+        # Make all loading zones character-universal and instead set each one up to only spawn with certain scene
+        # setup flags.
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][14]["spawn_flags"] = \
+            ActorSpawnFlags.SPAWN_IF_FLAG_SET  # Reinhardt/Carrie/Henry nearside (normally to Medusa/Algenie arena)
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][14]["flag_id"] = 0x2A1
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][15]["spawn_flags"] = \
+            ActorSpawnFlags.SPAWN_IF_FLAG_SET  # Reinhardt/Carrie/Henry farside (normally to Castle Center)
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][15]["flag_id"] = 0x2A1
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][16]["spawn_flags"] = \
+            ActorSpawnFlags.SPAWN_IF_FLAG_SET  # Cornell farside (normally to Art Tower)
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][16]["flag_id"] = 0x2A3
+
+        # Make Henry's teleport jewel universal for everyone and only spawn when the 0x2A3 flag is set
+        # (our dedicated alternate setup one for post-Outer Wall).
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][8]["spawn_flags"] = \
+            ActorSpawnFlags.SPAWN_IF_FLAG_SET
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][8]["flag_id"] = 0x2A3
+        # Move the teleport jewel to be close to the center spotlight instead of close to the farside door.
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][8]["x_pos"] = 25.0
+        patcher.scenes[Scenes.FAN_MEETING_ROOM].actor_lists["proxy"][8]["z_pos"] = 25.0
+        # Make the teleport jewel send the player to the start of the Outer Wall rooftop slide instead of to the
+        # Villa crypt.
+        patcher.write_bytes(0x112FBC, [Scenes.THE_OUTER_WALL, 0x0E])
 
 
         # # # # # # # # # # # # #
@@ -649,11 +1493,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["var_c"] = Pickups.ONE_HUNDRED_GOLD
         patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["extra_condition_ptr"] = 0
 
-        # Make the Outer Wall end loading zone send you to the start of Art Tower by default instead of the fan map, as
-        # well as heal the player.
-        patcher.scenes[Scenes.THE_OUTER_WALL].loading_zones[10]["scene_id"] = Scenes.ART_TOWER_MUSEUM
-        patcher.scenes[Scenes.THE_OUTER_WALL].loading_zones[10]["spawn_id"] = 0
-        patcher.scenes[Scenes.THE_OUTER_WALL].loading_zones[10]["heal_player"] = True
+        # Make the Harpy arena loading zone send you to the Fan Meeting Room in our custom post-Outer Wall state.
+        patcher.scenes[Scenes.THE_OUTER_WALL].loading_zones[10]["spawn_id"] = 0xC1
 
         # Make the Harpy cutscene trigger universal for everyone.
         patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["init"][1]["spawn_flags"] = 0
@@ -737,9 +1578,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         # # # # # # # # # #
         # ART TOWER EDITS #
         # # # # # # # # # #
-        # Make the Art Tower start loading zone send you to the end of The Outer Wall instead of the fan map.
-        patcher.scenes[Scenes.ART_TOWER_MUSEUM].loading_zones[0]["scene_id"] = Scenes.THE_OUTER_WALL
-        patcher.scenes[Scenes.ART_TOWER_MUSEUM].loading_zones[0]["spawn_id"] = 0x0B
+        # Make the Art Tower start loading zone send you to the Fan Meeting Room in our custom post-Outer Wall state.
+        patcher.scenes[Scenes.ART_TOWER_MUSEUM].loading_zones[0]["spawn_id"] = 0xC2
 
         # Make the loading zone leading from Art Tower museum -> conservatory slightly smaller.
         patcher.scenes[Scenes.ART_TOWER_MUSEUM].loading_zones[1]["min_z_pos"] = -488
@@ -1009,7 +1849,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             "soul battles Dracula then may\n"
             "have an easier time...🅰0/")
 
-        # Ensure the vampire Nitro check will always pass, so they'll never not spawn and crash the Villa cutscenes.
+        # Prevent vampires from despawning if we have Nitro, so they'll never not spawn and crash the Villa cutscenes.
         patcher.write_int32(0x128, 0x24020001, NIFiles.OVERLAY_VAMPIRE_SPAWNER)  # ADDIU V0, R0, 0x0001
 
         # Prevent throwing Nitro in the Hazardous Materials Disposals.
@@ -1078,7 +1918,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int16(0x64A, mandrag_with_nitro_location & 0xFFFF, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
         patcher.write_int16(0x65E, mandrag_with_nitro_location >> 0x10, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
         patcher.write_int16(0x662, mandrag_with_nitro_location & 0xFFFF, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
-        patcher.write_int32s(0xFFCDE0, patches.mandragora_with_nitro_setter)
 
         # Custom message for if you try checking the downstairs Castle Center crack before removing the seal, explaining
         # why we can't do that.
@@ -1146,9 +1985,9 @@ class CVLoDPatchExtensions(APPatchExtension):
         # # # # # # # # # # #
         # DUEL TOWER EDITS  #
         # # # # # # # # # # #
-        # Clear the Cornell-only setting from the Giant Werewolf boss intro cutscene in the universal cutscene settings
-        # table so anyone will be allowed to trigger it. Just like with the Castle Center bosses, we'll instead rely
-        # entirely on the actor system to ensure the trigger only spawns for the correct characters.
+        # Clear the Cornell-only setting from the Giant Werewolf boss intro cutscene in the universal cutscene trigger
+        # settings table so anyone will be allowed to trigger it. Just like with the Castle Center bosses, we'll instead
+        # rely entirely on the actor system to ensure the trigger only spawns for the correct characters.
         patcher.write_byte(0x118349, 0x00)
         # Make specific changes depending on what was chosen for the Duel Tower Final Boss (unless Character Dependant
         # was chosen, in which case we do nothing).
@@ -1226,12 +2065,13 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int32(0x366C, 0x0C0BAB10)  # JAL   0x802EAC30
         patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int32s(0x70C0, patches.pink_sorcery_diamond_customizer)
         # Write the randomizer items manually here.
-        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(
-            0x5400, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_1].flag_id])
-        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(
-            0x5402, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_2].flag_id])
-        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(
-            0x5404, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_3].flag_id])
+        if CVLOD_LOCATIONS_INFO[loc_names.tosor_super_1].flag_id in loc_values:
+            patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(
+                0x5400, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_1].flag_id])
+            patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(
+                0x5402, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_2].flag_id])
+            patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(
+                0x5404, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_3].flag_id])
 
         # Make Carrie's White Jewels universal to everyone and remove Cornell's.
         patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][128]["delete"] = True
@@ -1288,6 +2128,10 @@ class CVLoDPatchExtensions(APPatchExtension):
         # # # # # # # # # # #
         # CLOCK TOWER EDITS #
         # # # # # # # # # # #
+        # Make the Normal difficulty 3HB in the Abyss scene drop a fourth pickup.
+        # The 3HB pickups array for the scene conveniently has an unused entry between the Normal and Hard drops.
+        patcher.scenes[Scenes.CLOCK_TOWER_ABYSS].three_hit_breakables[1]["pickup_count"] = 4
+
         # Lock the door in Clock Tower Face leading out to the grand abyss scene with Clocktower Key D.
         # It's the same door in-universe as Clocktower Door D but on a different scene.
         patcher.scenes[Scenes.CLOCK_TOWER_FACE].doors[5]["door_flags"] = DoorFlags.LOCKED_BY_KEY
@@ -1391,6 +2235,9 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int32(0x9388, 0x34020002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0002
             # Blue fire bats.
             patcher.write_int32(0xB83C, 0x34030002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V1, R0, 0x0002
+            # Bats dropping extra chickens.
+            patcher.write_int32(0xC7A0, 0x34020002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0002
+            patcher.write_int32(0xC90C, 0x34020002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0002
             # Cutscene when beaten by Cornell.
             patcher.write_int32(0x90FC, 0x34020002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0002
             patcher.write_int32(0x9138, 0x34020002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0002
@@ -1410,6 +2257,9 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int32(0x9388, 0x34020000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0000
             # Orange fire bats.
             patcher.write_int32(0xB83C, 0x34030000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V1, R0, 0x0000
+            # Bats not dropping extra chickens.
+            patcher.write_int32(0xC7A0, 0x34020000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0000
+            patcher.write_int32(0xC90C, 0x34020000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0000
             # Cutscene when beaten by Reinhardt/Carrie.
             patcher.write_int32(0x90FC, 0x34020000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0000
             patcher.write_int32(0x9138, 0x34020000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0000
@@ -1481,9 +2331,11 @@ class CVLoDPatchExtensions(APPatchExtension):
         for scene in patcher.scenes:
             for list_name, actor_list in scene.actor_lists.items():
                 for actor in actor_list:
-                    # If the actor is not a Location-associated actor, or if it's already marked for deletion, skip it.
+                    # If the actor is not a Location-associated actor, or if it's already marked for deletion, or it's
+                    # a text spot pickup actor, skip it.
                     if actor["object_id"] not in [Objects.ONE_HIT_BREAKABLE, Objects.THREE_HIT_BREAKABLE,
-                                                  Objects.PICKUP_ITEM] + SPECIAL_1HBS or "delete" in actor:
+                                                  Objects.PICKUP_ITEM] + SPECIAL_1HBS or "delete" in actor or \
+                            (actor["object_id"] == Objects.PICKUP_ITEM and actor["var_c"] not in Pickups):
                         continue
 
                     # If it's not an enemy pillar actor, check its spawn flags for what difficulties it spawns on.
@@ -1512,6 +2364,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                             actor["var_c"] = loc_values[actor["var_a"]]
                             # Un-set the Expire bit in its pickup flags in Var B.
                             actor["var_b"] &= PickupFlags.DONT_EXPIRE
+
                     # If it's a regular 1HB, the flag to check AND the value to write the new Item over is in the 1HB
                     # data for the scene specified in the actor's Var C.
                     if actor["object_id"] == Objects.ONE_HIT_BREAKABLE:
@@ -1520,6 +2373,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                                 loc_values[scene.one_hit_breakables[actor["var_c"]]["flag_id"]]
                             # Un-set the Expire bit in its pickup flags.
                             scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.DONT_EXPIRE
+
                     # If it's a special 1HB, then it's similar to the regular 1HB but in the special 1HB data instead.
                     if actor["object_id"] in SPECIAL_1HBS:
                         if scene.one_hit_special_breakables[actor["var_c"]]["flag_id"] in loc_values:
@@ -1528,96 +2382,24 @@ class CVLoDPatchExtensions(APPatchExtension):
                             # Un-set the Expire bit in its pickup flags.
                             scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.DONT_EXPIRE
 
+                    # If it's a 3HB, get that 3HB's regular flag ID from its 3HB flag data to figure out which one it
+                    # is, and then write the Items it should have into the scene's list of 3HB drop IDs.
+                    if actor["object_id"] == Objects.THREE_HIT_BREAKABLE:
+                        three_hit = scene.three_hit_breakables[actor["var_c"]]
+                        three_hit_info = THREE_HIT_BREAKABLES_INFO[three_hit["flag_id"]]
+                        # Take the difference in the 3HB's pickup IDs start address and the scene's general 3HB pickup
+                        # IDs array start divided by 2 to know which index in the scene's 3HB pickup IDs array to start
+                        # writing the 3HB's new pickup IDs into.
+                        first_3hb_pickup_index = (three_hit["pickup_array_start"] - scene.three_hit_drops_start) // 2
+                        for three_hit_pickup_index in range(three_hit["pickup_count"]):
+                            scene.three_hit_drop_ids[first_3hb_pickup_index + three_hit_pickup_index] = \
+                                loc_values[CVLOD_LOCATIONS_INFO[
+                                    three_hit_info.location_names[three_hit_pickup_index]].flag_id]
+                        # Change the 3HB's vanilla flag ID to the new flag ID that its pickups will begin at.
+                        three_hit["flag_id"] = three_hit_info.new_first_flag_id
+
 
         return patcher.get_output_rom()
-
-        # Make the final Cerberus in Villa Front Yard
-        # un-set the Villa entrance portcullis closed flag for all characters (not just Henry).
-        patcher.write_int32(0x35A4, 0x00000000, NIFiles.OVERLAY_CERBERUS)
-
-        # Give the Gardener his Cornell behavior for everyone.
-        patcher.write_int32(0x490, 0x24020002, NIFiles.OVERLAY_GARDENER)  # ADDIU V0, R0, 0x0002
-        patcher.write_int32(0xD20, 0x00000000, NIFiles.OVERLAY_GARDENER)
-        patcher.write_int32(0x13CC, 0x00000000, NIFiles.OVERLAY_GARDENER)
-
-        # Change the player spawn coordinates for Villa maze entrance 4 to put the player in front of the child escape
-        # gate instead of the rear maze exit door.
-        patcher.write_int16s(0x10F876, [0x0290,   # Player X position
-                                         0x0000,   # Player Y position
-                                         0x021B,   # Player Z position
-                                         0x8000,   # Player rotation
-                                         0x02A0,   # Camera X position
-                                         0x000D,   # Camera Y position
-                                         0x021B,   # Camera Z position
-                                         0x0290,   # Focus point X position
-                                         0x000D,   # Focus point Y position
-                                         0x021B])  # Focus point Z position
-
-        # Special message for when checking the plaque next to the escape gate.
-        patcher.write_bytes(0x79712C, cvlod_string_to_bytearray("「 TIME GATE\n"
-                                                                 "Present Her brooch\n"
-                                                                 "to enter.\n"
-                                                                 "    -Saint Germain」»\t", wrap=False)[0])
-        patcher.write_bytes(0x796FD6, cvlod_string_to_bytearray("Is that plaque referring\n"
-                                                                 "to the Rose Brooch?\n"
-                                                                 "You should find it...»\t")[0])
-
-        # Make the escape gates check for the Rose Brooch in the player's inventory (without subtracting it) before
-        # letting them through.
-        patcher.write_int32s(0xFFCF48, patches.rose_brooch_checker)
-        # Malus gate
-        patcher.write_int16(0x797C0C, 0x0200)
-        patcher.write_int32(0x797C10, 0x803FCF48)
-        patcher.write_int16(0x797C38, 0x0200)
-        patcher.write_int32(0x797C3C, 0x803FCF48)
-        # Henry gate
-        patcher.write_int16(0x797FD4, 0x0200)
-        patcher.write_int32(0x797FD8, 0x803FCF48)
-        patcher.write_int16(0x798000, 0x0200)
-        patcher.write_int32(0x798004, 0x803FCF48)
-
-        # Add a new loading zone behind the "time gate" in the Villa maze. To do this, we'll have to relocate the map's
-        # existing loading zone properties and update the pointer to them.
-        patcher.write_int32(0x110D50, 0x803FCF78)
-        patcher.write_bytes(0xFFCF78, patcher.read_bytes(0x79807C, 0x3C))
-        # Add the new loading zone property data on the end.
-        patcher.write_int32s(0xFFCFB4, [0x00000604, 0x03010000, 0x02D0001E, 0x023002BC, 0x00000208])
-        # Replace the Hard-exclusive item in Malus's bush with the new loading zone actor.
-        patcher.write_int32s(0x799048, [0x00000000, 0x442E0000, 0x00000000, 0x44036000,
-                                         0x01AF0000, 0x00000000, 0x00030000, 0x00000000])
-
-        # Change the color of the fourth loading zone fade settings entry.
-        patcher.write_int32(0x110D2C, 0xE1B9FF00)
-        # Era switcher hack
-        patcher.write_int32(0xD3C08, 0x080FF3F8)  # J 0x803FCFE0
-        patcher.write_int32s(0xFFCFE0, patches.era_switcher)
-
-        # Change the map name display actor in the Villa crypt to use entry 0x02 instead of 0x11 and have entry 0x02
-        # react to entrance 0x02 (the Villa end's).
-        patcher.write_byte(0x861, 0x02, NIFiles.OVERLAY_MAP_NAME_DISPLAY)
-        patcher.write_byte(0x7D6561, 0x02)
-        # Replace the second map name display settings entry for the Villa end with the one for our year text.
-        patcher.write_int32s(0x910, [0x00060100, 0x04642E00], NIFiles.OVERLAY_MAP_NAME_DISPLAY)
-        # Replace the far rear Iron Thorn Fenced Garden text spot with the new map name display actor.
-        patcher.write_int32s(0x7981E8, [0x00000000, 0x00000000, 0x00000000, 0x00000000,
-                                         0x219F0000, 0x00000000, 0x00110000, 0x00000000])
-        # Hack to change the map name display string to a custom year string when time traveling.
-        patcher.write_int16(0x3C6, 0x8040, NIFiles.OVERLAY_MAP_NAME_DISPLAY)
-        patcher.write_int16(0x3CA, 0xD040, NIFiles.OVERLAY_MAP_NAME_DISPLAY)
-        patcher.write_int32s(0xFFD040, patches.map_name_year_switcher)
-        # Year text for the above map name display hack.
-        patcher.write_bytes(0xFFD020, cvlod_string_to_bytearray("1852\t1844\t")[0])
-
-        # Make Gilles De Rais spawn in the Villa crypt for everyone (not just Cornell).
-        # This should instead be controlled by the actor list.
-        patcher.write_byte(0x195, 0x00, NIFiles.OVERLAY_GILLES_DE_RAIS)
-
-        # Apply the child Henry gate checks to the two doors leading to the vampire crypt,
-        # so he can't be brought in there.
-        patcher.write_byte(0x797BB4, 0x53)
-        patcher.write_int32(0x797BB8, 0x802E4C34)
-        patcher.write_byte(0x797D6C, 0x52)
-        patcher.write_int32(0x797D70, 0x802E4C34)
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
         # came before them
@@ -1633,36 +2415,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_byte(0xD9D83, 0x74)
         # patcher.write_int32(0xD9D84, 0x080FF14D)  # J 0x803FC534
         # patcher.write_int32s(0xBFC534, patches.coffin_time_checker)
-
-        # Disable the 3HBs checking and setting flags when breaking them and enable their individual items checking and
-        # setting flags instead.
-        if slot_patch_info["options"]["multi_hit_breakables"]:
-            patcher.write_int16(0xE3488, 0x1000)
-            patcher.write_int32(0xE3800, 0x24050000)  # ADDIU	A1, R0, 0x0000
-            patcher.write_byte(0xE39EB, 0x00)
-            patcher.write_int32(0xE3A58, 0x0C0FF0D4),  # JAL   0x803FC350
-            patcher.write_int32s(0xFFC350, patches.three_hit_item_flags_setter)
-            # Villa foyer chandelier-specific functions (yeah, KCEK was really insistent on having special handling just
-            # for this one)
-            patcher.write_int32(0xE2F4C, 0x00000000)  # NOP
-            patcher.write_int32(0xE3114, 0x0C0FF0DE),  # JAL   0x803FC378
-            patcher.write_int32s(0xFFC378, patches.chandelier_item_flags_setter)
-
-            # New flag values to put in each 3HB vanilla flag's spot
-            patcher.write_int16(0x7816F6, 0x02B8)  # CW upper rampart save nub
-            patcher.write_int16(0x78171A, 0x02BD)  # CW Dracula switch slab
-            patcher.write_int16(0x787F66, 0x0302)  # Villa foyer chandelier
-            patcher.write_int16(0x79F19E, 0x0307)  # Tunnel twin arrows rock
-            patcher.write_int16(0x79F1B6, 0x030C)  # Tunnel lonesome bucket pit rock
-            patcher.write_int16(0x7A41B6, 0x030F)  # UW poison parkour ledge
-            patcher.write_int16(0x7A41DA, 0x0315)  # UW skeleton crusher ledge
-            patcher.write_int16(0x7A8AF6, 0x0318)  # CC Behemoth crate
-            patcher.write_int16(0x7AD836, 0x031D)  # CC elevator pedestal
-            patcher.write_int16(0x7B0592, 0x0320)  # CC lizard locker slab
-            patcher.write_int16(0x7D0DDE, 0x0324)  # CT gear climb battery slab
-            patcher.write_int16(0x7D0DC6, 0x032A)  # CT gear climb top corner slab
-            patcher.write_int16(0x829A16, 0x032D)  # CT giant chasm farside climb
-            patcher.write_int16(0x82CC8A, 0x0330)  # CT beneath final slide
 
         # Skip the "There is a white jewel" text so checking one saves the game instantly.
         # patcher.write_int32s(0xEFC72, [0x00020002 for _ in range(37)])
@@ -1787,40 +2539,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Warp menu-opening code
         patcher.write_int32(0x86FE4, 0x0C0FF254)  # JAL	0x803FC950
         patcher.write_int32s(0xFFC950, patches.warp_menu_opener)
-
-        # NPC item textbox hack
-        patcher.write_int32s(0xFFC6F0, patches.npc_item_hack)
-        # Change all the NPC item gives to run through the new function.
-        # Fountain Top Shine
-        patcher.write_int16(0x35E, 0x8040, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
-        patcher.write_int16(0x362, 0xC700, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
-        patcher.write_byte(0x367, 0x00, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
-        patcher.write_int16(0x36E, 0x0068, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
-        patcher.write_bytes(0x720, cvlod_string_to_bytearray("...»\t")[0], 371)
-        # 6am Rose Patch
-        patcher.write_int16(0x1E2, 0x8040, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
-        patcher.write_int16(0x1E6, 0xC700, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
-        patcher.write_byte(0x1EB, 0x01, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
-        patcher.write_int16(0x1F2, 0x0078, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
-        patcher.write_bytes(0x380, cvlod_string_to_bytearray("...»\t")[0], 370)
-        # Vincent
-        patcher.write_int16(0x180E, 0x8040, NIFiles.OVERLAY_VINCENT)
-        patcher.write_int16(0x1812, 0xC700, NIFiles.OVERLAY_VINCENT)
-        patcher.write_byte(0x1817, 0x02, NIFiles.OVERLAY_VINCENT)
-        patcher.write_int16(0x181E, 0x027F, NIFiles.OVERLAY_VINCENT)
-        patcher.write_bytes(0x78E776, cvlod_string_to_bytearray(" " * 173, wrap=False)[0])
-        # Mary
-        patcher.write_int16(0xB16, 0x8040, NIFiles.OVERLAY_MARY)
-        patcher.write_int16(0xB1A, 0xC700, NIFiles.OVERLAY_MARY)
-        patcher.write_byte(0xB1F, 0x03, NIFiles.OVERLAY_MARY)
-        patcher.write_int16(0xB26, 0x0086, NIFiles.OVERLAY_MARY)
-        patcher.write_bytes(0x78F40E, cvlod_string_to_bytearray(" " * 295, wrap=False)[0])
-        # Heinrich
-        patcher.write_int16(0x962A, 0x8040, NIFiles.OVERLAY_LIZARD_MEN)
-        patcher.write_int16(0x962E, 0xC700, NIFiles.OVERLAY_LIZARD_MEN)
-        patcher.write_byte(0x9633, 0x04, NIFiles.OVERLAY_LIZARD_MEN)
-        patcher.write_int16(0x963A, 0x0284, NIFiles.OVERLAY_LIZARD_MEN)
-        patcher.write_bytes(0x7B3210, cvlod_string_to_bytearray(" " * 415, wrap=False)[0])
 
         # Sub-weapon check function hook
         # patcher.write_int32(0xBF32C, 0x00000000)  # NOP
@@ -1967,42 +2685,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_byte(0x90FE54, 0x97)  # CC staircase knight (x)
         # patcher.write_byte(0x90FE58, 0xFB)  # CC staircase knight (z)
 
-        # Make the torch directly behind Dracula's chamber that normally doesn't set a flag set bitflag 0x08 in 0x80389BFA
-        # patcher.write_byte(0x10CE9F, 0x01)
-
-        # Change the CC post-Behemoth boss depending on the option for Post-Behemoth Boss
-        # if options.post_behemoth_boss.value == options.post_behemoth_boss.option_inverted:
-        # patcher.write_byte(0xEEDAD, 0x02)
-        # patcher.write_byte(0xEEDD9, 0x01)
-        # elif options.post_behemoth_boss.value == options.post_behemoth_boss.option_always_rosa:
-        # patcher.write_byte(0xEEDAD, 0x00)
-        # patcher.write_byte(0xEEDD9, 0x03)
-        # Put both on the same flag so changing character won't trigger a rematch with the same boss.
-        # patcher.write_byte(0xEED8B, 0x40)
-        # elif options.post_behemoth_boss.value == options.post_behemoth_boss.option_always_camilla:
-        # patcher.write_byte(0xEEDAD, 0x03)
-        # patcher.write_byte(0xEEDD9, 0x00)
-        # patcher.write_byte(0xEED8B, 0x40)
-
-        # Change the RoC boss depending on the option for Room of Clocks Boss
-        # if options.room_of_clocks_boss.value == options.room_of_clocks_boss.option_inverted:
-        # patcher.write_byte(0x109FB3, 0x56)
-        # patcher.write_byte(0x109FBF, 0x44)
-        # patcher.write_byte(0xD9D44, 0x14)
-        # patcher.write_byte(0xD9D4C, 0x14)
-        # elif options.room_of_clocks_boss.value == options.room_of_clocks_boss.option_always_death:
-        # patcher.write_byte(0x109FBF, 0x44)
-        # patcher.write_byte(0xD9D45, 0x00)
-        # Put both on the same flag so changing character won't trigger a rematch with the same boss.
-        # patcher.write_byte(0x109FB7, 0x90)
-        # patcher.write_byte(0x109FC3, 0x90)
-        # elif options.room_of_clocks_boss.value == options.room_of_clocks_boss.option_always_actrise:
-        # patcher.write_byte(0x109FB3, 0x56)
-        # patcher.write_int32(0xD9D44, 0x00000000)
-        # patcher.write_byte(0xD9D4D, 0x00)
-        # patcher.write_byte(0x109FB7, 0x90)
-        # patcher.write_byte(0x109FC3, 0x90)
-
         # Tunnel gondola skip
         # if options.skip_gondolas.value:
         # patcher.write_int32(0x6C5F58, 0x080FF7D0)  # J 0x803FDF40
@@ -2125,68 +2807,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         #                                0x8C4E0000])  # LW    T6, 0x0000 (V0)
         # patcher.write_int32s(0xBFDEC4, patches.panther_jump_preventer)
 
-        # Write all the actor list spawn condition edits that we apply always (things like difficulty items, etc.).
-        for offset in patches.always_actor_edits:
-            patcher.write_byte(offset, patches.always_actor_edits[offset])
-        for start_addr in patches.era_specific_actors:
-            era_statuses = patches.era_specific_actors[start_addr]
-            for actor_number in era_statuses:
-                curr_addr = start_addr + (actor_number * 0x20)
-                byte_to_alter = patcher.read_byte(curr_addr)
-                if era_statuses[actor_number]:
-                    byte_to_alter |= 0x78
-                else:
-                    byte_to_alter |= 0xF8
-                patcher.write_byte(curr_addr, byte_to_alter)
-
-        # Make the lever checks for Cornell always pass
-        patcher.write_int32(0xE6C18, 0x240A0002)  # ADDIU T2, R0, 0x0002
-        patcher.write_int32(0xE6F64, 0x240E0002)  # ADDIU T6, R0, 0x0002
-        patcher.write_int32(0xE70F4, 0x240D0002)  # ADDIU T5, R0, 0x0002
-        patcher.write_int32(0xE7364, 0x24080002)  # ADDIU T0, R0, 0x0002
-        patcher.write_int32(0x109C10, 0x240E0002)  # ADDIU T6, R0, 0x0002
-
-        # Make the fountain pillar checks for Cornell always pass
-        patcher.write_int32(0xD77E0, 0x24030002)  # ADDIU V1, R0, 0x0002
-        patcher.write_int32(0xD7A60, 0x24030002)  # ADDIU V1, R0, 0x0002
-
-        # Make only some rose garden checks for Cornell always pass
-        patcher.write_byte(0x78619B, 0x24)
-        patcher.write_int16(0x7861A0, 0x5423)
-        patcher.write_int32(0x786324, 0x240E0002)  # ADDIU T6, R0, 0x0002
-        # Make the thirsty J. A. Oldrey cutscene check for Cornell always pass
-        patcher.write_byte(0x11831D, 0x00)
-        # Make the Villa coffin lid Henry checks never pass
-        patcher.write_byte(0x7D45FB, 0x04)
-        patcher.write_byte(0x7D4BFB, 0x04)
-        # Make the Villa coffin loading zone Henry check always pass
-        patcher.write_int32(0xD3A78, 0x000C0821)  # ADDU  AT, R0, T4
-        # Make the Villa coffin lid Cornell attack collision check always pass
-        patcher.write_int32(0x7D4D9C, 0x00000000)  # NOP
-        # Make the Villa coffin lid Cornell cutscene check never pass
-        patcher.write_byte(0x7D518F, 0x04)
-        # Make the hardcoded Cornell check in the Villa crypt Reinhardt/Carrie first vampire intro cutscene not pass.
-        # IDK what KCEK was planning here, since Cornell normally doesn't get this cutscene, but if it passes the game
-        # completely ceases functioning.
-        patcher.write_int16(0x230, 0x1000, NIFiles.OVERLAY_CS_1ST_REIN_CARRIE_CRYPT_VAMPIRE)
-
-        # Change Oldrey's Diary into an item location.
-        patcher.write_int16(0x792A24, 0x0027)
-        patcher.write_int16(0x792A28, 0x0084)
-        patcher.write_byte(0x792A2D, 0x17)
-        # Change the Maze Henry Mode kid into a location.
-        patcher.write_int32s(0x798CF8, [0x01D90000, 0x00000000, 0x000C0000])
-        patcher.write_byte(0x796D4F, 0x87)
-
-        # Move the following Locations that have flags shared with other Locations to their own flags.
-        patcher.write_int16(0x792A48, 0x0085)  # Archives Garden Key
-        patcher.write_int16(0xAAA, 0x0086, NIFiles.OVERLAY_MARY)  # Mary's Copper Key
-        patcher.write_int16(0xAE2, 0x0086, NIFiles.OVERLAY_MARY)
-        patcher.write_int16(0xB12, 0x0086, NIFiles.OVERLAY_MARY)
-
-        # Write "Z + R + START" over the Special1 description.
-        patcher.write_bytes(0x3B7C, cvlod_string_to_bytearray("Z + R + START\t")[0], NIFiles.OVERLAY_PAUSE_MENU)
-
         # if loc.item.player != player:
         #        inject_address = 0xBB7164 + (256 * (loc.address & 0xFFF))
         #        wrapped_name, num_lines = cvlod_text_wrap(item_name + "\nfor " + multiworld.get_player_name(
@@ -2226,6 +2846,7 @@ def write_patch(world: "CVLoDWorld", patch: CVLoDProcedurePatch, offset_data: Di
                 shop_name_list: List[str],
                 shop_desc_list: List[List[Union[int, str, None]]], shop_colors_list: List[bytearray],
                 active_locations: Iterable[Location]) -> None:
+    pass
     #active_warp_list = world.active_warp_list
     #s1s_per_warp = world.s1s_per_warp
 
@@ -2265,15 +2886,6 @@ def write_patch(world: "CVLoDWorld", patch: CVLoDProcedurePatch, offset_data: Di
     #        shopsanity_desc_text += cv64_string_to_bytearray(renon_item_dialogue[shop_desc_list[i][0]])
     #    patch.write_token(APTokenTypes.WRITE, 0x1AD00, bytes(shopsanity_name_text))
     #    patch.write_token(APTokenTypes.WRITE, 0x1A800, bytes(shopsanity_desc_text))
-
-    # Make Mary say what her item is so players can then decide if Henry is worth saving or not.
-    mary_loc = world.get_location(loc_names.villala_mary)
-    mary_text = "Save Henry, and I will "
-    if mary_loc.item.player == world.player:
-        mary_text += f"give you this {mary_loc.item.name}."
-    else:
-        mary_text += f"send this {mary_loc.item.name} to {world.multiworld.get_player_name(mary_loc.item.player)}."
-    mary_text += "\nGood luck out there!"
 
     # mary_text = cvlod_text_wrap(mary_text, 254)
 

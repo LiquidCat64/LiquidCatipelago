@@ -4,7 +4,7 @@ from BaseClasses import Location
 from .data import loc_names, item_names
 from .data.enums import Scenes
 from .options import CVLoDOptions, SubWeaponShuffle, DraculasCondition, RenonFightCondition, VincentFightCondition, \
-    VillaState
+    VillaState, CastleWallState
 
 from typing import NamedTuple
 
@@ -25,7 +25,11 @@ class CVLoDLocationData(NamedTuple):
     hard_item: str = ""  # What Item to add to the AP itempool if that Location is added with the Hard item pool
                          # enabled. Usually but not always, this is the Item that's normally there in the vanilla game
                          # on Hard. If None, the Normal item will be defaulted to.
-    type: str = ""  # Anything special about this Location, whether it be invisible, a 3HB drop, etc.
+
+
+class CVLoD3HBData(NamedTuple):
+    new_first_flag_id: int  # What rando-specific Flag ID the 3HB's drops will be starting at.
+    location_names: list[str]  # List of Locations inside that 3HB.
 
 
 CVLOD_LOCATIONS_INFO = {
@@ -85,11 +89,11 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.cwr_bottom:        CVLoDLocationData(0x2D,  2, item_names.use_card_s),
     loc_names.cwr_top:           CVLoDLocationData(0x30,  2, item_names.use_chicken),
     loc_names.cw_dragon_sw:      CVLoDLocationData(0x49,  2, item_names.use_chicken),
-    loc_names.cw_save_slab1:     CVLoDLocationData(0x2B8, 2, item_names.jewel_rl, type="3hb"),
-    loc_names.cw_save_slab2:     CVLoDLocationData(0x2B9, 2, item_names.jewel_rl, type="3hb"),
-    loc_names.cw_save_slab3:     CVLoDLocationData(0x2BA, 2, item_names.jewel_rl, type="3hb"),
-    loc_names.cw_save_slab4:     CVLoDLocationData(0x2BB, 2, item_names.jewel_rl, type="3hb"),
-    loc_names.cw_save_slab5:     CVLoDLocationData(0x2BC, 2, item_names.jewel_rl, type="3hb"),
+    loc_names.cw_save_slab1:     CVLoDLocationData(0x2B8, 2, item_names.jewel_rl,),
+    loc_names.cw_save_slab2:     CVLoDLocationData(0x2B9, 2, item_names.jewel_rl,),
+    loc_names.cw_save_slab3:     CVLoDLocationData(0x2BA, 2, item_names.jewel_rl,),
+    loc_names.cw_save_slab4:     CVLoDLocationData(0x2BB, 2, item_names.jewel_rl,),
+    loc_names.cw_save_slab5:     CVLoDLocationData(0x2BC, 2, item_names.jewel_rl,),
     loc_names.cw_rrampart:       CVLoDLocationData(0x46,  2, item_names.gold_300),
     loc_names.cw_lrampart:       CVLoDLocationData(0x47,  2, item_names.use_card_m),
     loc_names.cw_pillar:         CVLoDLocationData(0x44,  2, item_names.powerup),
@@ -101,11 +105,11 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.cwl_bottom:        CVLoDLocationData(0x2E,  2, item_names.use_card_m),
     loc_names.cwl_bridge:        CVLoDLocationData(0x2F,  2, item_names.use_beef),
     loc_names.cw_drac_sw:        CVLoDLocationData(0x4E,  2, item_names.use_chicken),
-    loc_names.cw_drac_slab1:     CVLoDLocationData(0x2BD, 2, item_names.gold_300, type="3hb"),
-    loc_names.cw_drac_slab2:     CVLoDLocationData(0x2BE, 2, item_names.gold_300, type="3hb"),
-    loc_names.cw_drac_slab3:     CVLoDLocationData(0x2BF, 2, item_names.gold_300, type="3hb"),
-    loc_names.cw_drac_slab4:     CVLoDLocationData(0x2C0, 2, item_names.gold_300, type="3hb"),
-    loc_names.cw_drac_slab5:     CVLoDLocationData(0x2C1, 2, item_names.gold_300, type="3hb"),
+    loc_names.cw_drac_slab1:     CVLoDLocationData(0x2BD, 2, item_names.gold_300,),
+    loc_names.cw_drac_slab2:     CVLoDLocationData(0x2BE, 2, item_names.gold_300,),
+    loc_names.cw_drac_slab3:     CVLoDLocationData(0x2BF, 2, item_names.gold_300,),
+    loc_names.cw_drac_slab4:     CVLoDLocationData(0x2C0, 2, item_names.gold_300,),
+    loc_names.cw_drac_slab5:     CVLoDLocationData(0x2C1, 2, item_names.gold_300,),
 
     # Villa
     loc_names.villafy_outer_gate_l:         CVLoDLocationData(0x62,   3, item_names.use_purifying),
@@ -129,11 +133,11 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.villafo_pot_l:                CVLoDLocationData(0x6D,   3, item_names.quest_key_arch),
     loc_names.villafo_pot_r:                CVLoDLocationData(0x6C,   3, item_names.jewel_rl),
     loc_names.villafo_sofa:                 CVLoDLocationData(0x75,   3, item_names.use_purifying),
-    loc_names.villafo_chandelier1:          CVLoDLocationData(0x302,  3, item_names.gold_500, type="3hb"),
-    loc_names.villafo_chandelier2:          CVLoDLocationData(0x303,  3, item_names.jewel_rl, type="3hb"),
-    loc_names.villafo_chandelier3:          CVLoDLocationData(0x304,  3, item_names.use_purifying, type="3hb"),
-    loc_names.villafo_chandelier4:          CVLoDLocationData(0x305,  3, item_names.use_ampoule, type="3hb"),
-    loc_names.villafo_chandelier5:          CVLoDLocationData(0x306,  3, item_names.use_chicken, type="3hb"),
+    loc_names.villafo_chandelier1:          CVLoDLocationData(0x302,  3, item_names.gold_500,),
+    loc_names.villafo_chandelier2:          CVLoDLocationData(0x303,  3, item_names.jewel_rl,),
+    loc_names.villafo_chandelier3:          CVLoDLocationData(0x304,  3, item_names.use_purifying,),
+    loc_names.villafo_chandelier4:          CVLoDLocationData(0x305,  3, item_names.use_ampoule,),
+    loc_names.villafo_chandelier5:          CVLoDLocationData(0x306,  3, item_names.use_chicken,),
     loc_names.villafo_6am_roses:            CVLoDLocationData(0x78,   3, item_names.quest_key_thorn),
     loc_names.villala_hallway_stairs:       CVLoDLocationData(0x80,   3, item_names.jewel_rl),
     loc_names.villala_hallway_l:            CVLoDLocationData(0x82,   3, item_names.sub_knife),
@@ -172,8 +176,8 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.villam_rplatform_de:          CVLoDLocationData(0xA0,  17, item_names.gold_300),
     loc_names.villam_exit_de:               CVLoDLocationData(0xA1,  17, item_names.gold_300),
     loc_names.villam_serv_path_sl:          CVLoDLocationData(0xAB,  17, item_names.use_purifying),
-    loc_names.villam_serv_path_sr:          CVLoDLocationData(0x280, 17, item_names.quest_key_cppr),
-    loc_names.villam_serv_path_l:           CVLoDLocationData(0x2B1, 17, item_names.use_ampoule),
+    loc_names.villam_serv_path_sr:          CVLoDLocationData(0x280, 17, item_names.use_ampoule),
+    loc_names.villam_serv_path_l:           CVLoDLocationData(0x2B1, 17, item_names.quest_key_cppr),
     loc_names.villafo_serv_ent:             CVLoDLocationData(0x74,   3, item_names.use_chicken),
     loc_names.villam_crypt_ent:             CVLoDLocationData(0x9E,  17, item_names.use_purifying),
     loc_names.villam_crypt_upstream:        CVLoDLocationData(0x9D,  17, item_names.use_beef),
@@ -190,17 +194,17 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.tunnel_stone_alcove_r:        CVLoDLocationData(0xCC,  4, item_names.sub_holy),
     loc_names.tunnel_stone_alcove_l:        CVLoDLocationData(0xC5,  4, item_names.use_beef),
     loc_names.tunnel_twin_arrows:           CVLoDLocationData(0xD3,  4, item_names.use_ampoule),
-    loc_names.tunnel_arrows_rock1:          CVLoDLocationData(0x307, 4, item_names.use_purifying, type="3hb"),
-    loc_names.tunnel_arrows_rock2:          CVLoDLocationData(0x308, 4, item_names.use_purifying, type="3hb"),
-    loc_names.tunnel_arrows_rock3:          CVLoDLocationData(0x309, 4, item_names.use_ampoule, type="3hb"),
-    loc_names.tunnel_arrows_rock4:          CVLoDLocationData(0x30A, 4, item_names.use_ampoule, type="3hb"),
-    loc_names.tunnel_arrows_rock5:          CVLoDLocationData(0x30B, 4, item_names.use_chicken, type="3hb"),
+    loc_names.tunnel_arrows_rock1:          CVLoDLocationData(0x307, 4, item_names.use_purifying,),
+    loc_names.tunnel_arrows_rock2:          CVLoDLocationData(0x308, 4, item_names.use_purifying,),
+    loc_names.tunnel_arrows_rock3:          CVLoDLocationData(0x309, 4, item_names.use_ampoule,),
+    loc_names.tunnel_arrows_rock4:          CVLoDLocationData(0x30A, 4, item_names.use_ampoule,),
+    loc_names.tunnel_arrows_rock5:          CVLoDLocationData(0x30B, 4, item_names.use_chicken,),
     loc_names.tunnel_lonesome_bucket:       CVLoDLocationData(0xD6,  4, item_names.use_ampoule),
     loc_names.tunnel_lbucket_mdoor_l:       CVLoDLocationData(0xCE,  4, item_names.sub_knife),
     loc_names.tunnel_lbucket_quag:          CVLoDLocationData(0xBB,  4, item_names.jewel_rl),
-    loc_names.tunnel_bucket_quag_rock1:     CVLoDLocationData(0x30C, 4, item_names.use_chicken, type="3hb"),
-    loc_names.tunnel_bucket_quag_rock2:     CVLoDLocationData(0x30D, 4, item_names.use_chicken, type="3hb"),
-    loc_names.tunnel_bucket_quag_rock3:     CVLoDLocationData(0x30E, 4, item_names.use_chicken, type="3hb"),
+    loc_names.tunnel_bucket_quag_rock1:     CVLoDLocationData(0x30C, 4, item_names.use_chicken,),
+    loc_names.tunnel_bucket_quag_rock2:     CVLoDLocationData(0x30D, 4, item_names.use_chicken,),
+    loc_names.tunnel_bucket_quag_rock3:     CVLoDLocationData(0x30E, 4, item_names.use_chicken,),
     loc_names.tunnel_lbucket_albert:        CVLoDLocationData(0xBC,  4, item_names.jewel_rs),
     loc_names.tunnel_albert_camp:           CVLoDLocationData(0xBA,  4, item_names.jewel_rs),
     loc_names.tunnel_albert_quag:           CVLoDLocationData(0xB9,  4, item_names.jewel_rl),
@@ -229,32 +233,32 @@ CVLOD_LOCATIONS_INFO = {
     # Underground Waterway
     loc_names.uw_near_ent:         CVLoDLocationData(0xDC,  5, item_names.gold_300),
     loc_names.uw_across_ent:       CVLoDLocationData(0xDD,  5, item_names.gold_300),
-    loc_names.uw_first_ledge1:     CVLoDLocationData(0x30F, 5, item_names.use_purifying, type="3hb"),
-    loc_names.uw_first_ledge2:     CVLoDLocationData(0x310, 5, item_names.use_purifying, type="3hb"),
-    loc_names.uw_first_ledge3:     CVLoDLocationData(0x311, 5, item_names.use_ampoule, type="3hb"),
-    loc_names.uw_first_ledge4:     CVLoDLocationData(0x312, 5, item_names.use_ampoule, type="3hb"),
-    loc_names.uw_first_ledge5:     CVLoDLocationData(0x313, 5, item_names.gold_300, type="3hb"),
-    loc_names.uw_first_ledge6:     CVLoDLocationData(0x314, 5, item_names.gold_300, type="3hb"),
+    loc_names.uw_first_ledge1:     CVLoDLocationData(0x30F, 5, item_names.use_purifying,),
+    loc_names.uw_first_ledge2:     CVLoDLocationData(0x310, 5, item_names.use_purifying,),
+    loc_names.uw_first_ledge3:     CVLoDLocationData(0x311, 5, item_names.use_ampoule,),
+    loc_names.uw_first_ledge4:     CVLoDLocationData(0x312, 5, item_names.use_ampoule,),
+    loc_names.uw_first_ledge5:     CVLoDLocationData(0x313, 5, item_names.gold_300,),
+    loc_names.uw_first_ledge6:     CVLoDLocationData(0x314, 5, item_names.gold_300,),
     loc_names.uw_poison_parkour:   CVLoDLocationData(0xDE,  5, item_names.use_ampoule),
     loc_names.uw_waterfall_ledge:  CVLoDLocationData(0xE2,  5, item_names.gold_500),
     loc_names.uw_waterfall_child:  CVLoDLocationData(0x25,  5, item_names.gold_100),
-    loc_names.uw_carrie1:          CVLoDLocationData(0xDF,  5, item_names.use_card_m, type="carrie"),
-    loc_names.uw_carrie2:          CVLoDLocationData(0xE0,  5, item_names.use_beef, type="carrie"),
+    loc_names.uw_carrie1:          CVLoDLocationData(0xDF,  5, item_names.use_card_m),
+    loc_names.uw_carrie2:          CVLoDLocationData(0xE0,  5, item_names.use_beef),
     loc_names.uw_bricks_save:      CVLoDLocationData(0xE1,  5, item_names.powerup),
     loc_names.uw_above_skel_ledge: CVLoDLocationData(0xE3,  5, item_names.use_chicken),
-    loc_names.uw_in_skel_ledge1:   CVLoDLocationData(0x315, 5, item_names.use_chicken, type="3hb"),
-    loc_names.uw_in_skel_ledge2:   CVLoDLocationData(0x316, 5, item_names.use_chicken, type="3hb"),
-    loc_names.uw_in_skel_ledge3:   CVLoDLocationData(0x317, 5, item_names.use_chicken, type="3hb"),
+    loc_names.uw_in_skel_ledge1:   CVLoDLocationData(0x315, 5, item_names.use_chicken,),
+    loc_names.uw_in_skel_ledge2:   CVLoDLocationData(0x316, 5, item_names.use_chicken,),
+    loc_names.uw_in_skel_ledge3:   CVLoDLocationData(0x317, 5, item_names.use_chicken,),
 
     # The Outer Wall
     loc_names.towf_start_rear:           CVLoDLocationData(0x26A, 6, item_names.gold_500),
     loc_names.towf_start_front:          CVLoDLocationData(0x269, 6, item_names.jewel_rl),
-    loc_names.towf_start_entry_l:        CVLoDLocationData(0x338, 6, item_names.gold_100, type="empty"),
-    loc_names.towf_start_entry_r:        CVLoDLocationData(0x339, 6, item_names.gold_100, type="empty"),
+    loc_names.towf_start_entry_l:        CVLoDLocationData(0x338, 6, item_names.gold_100),
+    loc_names.towf_start_entry_r:        CVLoDLocationData(0x339, 6, item_names.gold_100),
     loc_names.towf_start_climb_b:        CVLoDLocationData(0x267, 6, item_names.sub_axe),
     loc_names.towf_start_climb_t:        CVLoDLocationData(0x268, 6, item_names.jewel_rs),
-    loc_names.towf_start_elevator_l:     CVLoDLocationData(0x33A, 6, item_names.gold_300, type="empty"),
-    loc_names.towf_start_elevator_r:     CVLoDLocationData(0x33B, 6, item_names.gold_300, type="empty"),
+    loc_names.towf_start_elevator_l:     CVLoDLocationData(0x33A, 6, item_names.gold_300),
+    loc_names.towf_start_elevator_r:     CVLoDLocationData(0x33B, 6, item_names.gold_300),
     loc_names.towse_pillar_l:            CVLoDLocationData(0x26B, 6, item_names.jewel_rl),
     loc_names.towse_pillar_r:            CVLoDLocationData(0x26C, 6, item_names.gold_300),
     loc_names.towse_eagle:               CVLoDLocationData(0x266, 6, item_names.use_beef),
@@ -262,22 +266,22 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.towse_saws_door_r:         CVLoDLocationData(0x26E, 6, item_names.sub_axe),
     loc_names.towse_child:               CVLoDLocationData(0x26,  6, item_names.gold_100),
     loc_names.towse_key_ledge:           CVLoDLocationData(0x26F, 6, item_names.jewel_rl),
-    loc_names.towse_key_entry_l:         CVLoDLocationData(0x33C, 6, item_names.gold_500, type="empty"),
-    loc_names.towse_key_entry_r:         CVLoDLocationData(0x33D, 6, item_names.gold_500, type="empty"),
+    loc_names.towse_key_entry_l:         CVLoDLocationData(0x33C, 6, item_names.gold_500),
+    loc_names.towse_key_entry_r:         CVLoDLocationData(0x33D, 6, item_names.gold_500),
     loc_names.towse_key_alcove:          CVLoDLocationData(0x285, 6, item_names.quest_key_wall),
-    loc_names.towse_locked_door_l:       CVLoDLocationData(0x33E, 6, item_names.jewel_rs, type="empty"),
-    loc_names.towse_locked_door_r:       CVLoDLocationData(0x33F, 6, item_names.jewel_rs, type="empty"),
+    loc_names.towse_locked_door_l:       CVLoDLocationData(0x33E, 6, item_names.jewel_rs),
+    loc_names.towse_locked_door_r:       CVLoDLocationData(0x33F, 6, item_names.jewel_rs),
     loc_names.towse_half_arch_under:     CVLoDLocationData(0x271, 6, item_names.gold_300),
     loc_names.towse_half_arch_between:   CVLoDLocationData(0x272, 6, item_names.jewel_rs),
     loc_names.towse_half_arch_secret:    CVLoDLocationData(0x270, 6, item_names.use_beef),
-    loc_names.towf_retract_elevator_l:   CVLoDLocationData(0x340, 6, item_names.jewel_rl, type="empty"),
-    loc_names.towf_retract_elevator_r:   CVLoDLocationData(0x341, 6, item_names.jewel_rl, type="empty"),
+    loc_names.towf_retract_elevator_l:   CVLoDLocationData(0x340, 6, item_names.jewel_rl),
+    loc_names.towf_retract_elevator_r:   CVLoDLocationData(0x341, 6, item_names.jewel_rl),
     loc_names.towf_retract_shimmy_start: CVLoDLocationData(0x273, 6, item_names.jewel_rs),
     loc_names.towf_retract_shimmy_mid:   CVLoDLocationData(0x274, 6, item_names.use_card_m),
     loc_names.towf_boulders_door_l:      CVLoDLocationData(0x275, 6, item_names.sub_cross),
     loc_names.towf_boulders_door_r:      CVLoDLocationData(0x276, 6, item_names.gold_300),
-    loc_names.towh_boulders_elevator_l:  CVLoDLocationData(0x342, 6, item_names.jewel_rl, type="empty"),
-    loc_names.towh_boulders_elevator_r:  CVLoDLocationData(0x343, 6, item_names.jewel_rl, type="empty"),
+    loc_names.towh_boulders_elevator_l:  CVLoDLocationData(0x342, 6, item_names.jewel_rl),
+    loc_names.towh_boulders_elevator_r:  CVLoDLocationData(0x343, 6, item_names.jewel_rl),
     loc_names.towh_near_boulders_exit:   CVLoDLocationData(0x277, 6, item_names.sub_axe),
     loc_names.towh_slide_start:          CVLoDLocationData(0x278, 6, item_names.jewel_rs),
     loc_names.towh_slide_first_u:        CVLoDLocationData(0x27A, 6, item_names.sub_cross),
@@ -361,16 +365,16 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.ccb_behemoth_r_mf:             CVLoDLocationData(0xFF,   9, item_names.jewel_rl),
     loc_names.ccb_behemoth_r_mr:             CVLoDLocationData(0xFE,   9, item_names.gold_500),
     loc_names.ccb_behemoth_r_fr:             CVLoDLocationData(0xFD,   9, item_names.jewel_rl),
-    loc_names.ccb_behemoth_crate1:           CVLoDLocationData(0x318,  9, item_names.gold_500, type="3hb"),
-    loc_names.ccb_behemoth_crate2:           CVLoDLocationData(0x319,  9, item_names.gold_500, type="3hb"),
-    loc_names.ccb_behemoth_crate3:           CVLoDLocationData(0x31A,  9, item_names.gold_500, type="3hb"),
-    loc_names.ccb_behemoth_crate4:           CVLoDLocationData(0x31B,  9, item_names.gold_500, type="3hb"),
-    loc_names.ccb_behemoth_crate5:           CVLoDLocationData(0x31C,  9, item_names.gold_500, type="3hb"),
+    loc_names.ccb_behemoth_crate1:           CVLoDLocationData(0x318,  9, item_names.gold_500,),
+    loc_names.ccb_behemoth_crate2:           CVLoDLocationData(0x319,  9, item_names.gold_500,),
+    loc_names.ccb_behemoth_crate3:           CVLoDLocationData(0x31A,  9, item_names.gold_500,),
+    loc_names.ccb_behemoth_crate4:           CVLoDLocationData(0x31B,  9, item_names.gold_500,),
+    loc_names.ccb_behemoth_crate5:           CVLoDLocationData(0x31C,  9, item_names.gold_500,),
     loc_names.ccbe_near_machine:             CVLoDLocationData(0x108,  9, item_names.jewel_rs),
     loc_names.ccbe_atop_machine:             CVLoDLocationData(0x109,  9, item_names.powerup),
-    loc_names.ccbe_stand1:                   CVLoDLocationData(0x31D,  9, item_names.use_beef, type="3hb"),
-    loc_names.ccbe_stand2:                   CVLoDLocationData(0x31E,  9, item_names.use_beef, type="3hb"),
-    loc_names.ccbe_stand3:                   CVLoDLocationData(0x31F,  9, item_names.use_beef, type="3hb"),
+    loc_names.ccbe_stand1:                   CVLoDLocationData(0x31D,  9, item_names.use_beef,),
+    loc_names.ccbe_stand2:                   CVLoDLocationData(0x31E,  9, item_names.use_beef,),
+    loc_names.ccbe_stand3:                   CVLoDLocationData(0x31F,  9, item_names.use_beef,),
     loc_names.ccbe_pipes:                    CVLoDLocationData(0x10A,  9, item_names.gold_300),
     loc_names.ccbe_switch:                   CVLoDLocationData(0x10C,  9, item_names.sub_holy),
     loc_names.ccbe_staircase:                CVLoDLocationData(0x10B,  9, item_names.jewel_rl),
@@ -380,16 +384,16 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.ccff_lizard_near_knight:       CVLoDLocationData(0x111,  9, item_names.sub_axe),
     loc_names.ccff_lizard_pit:               CVLoDLocationData(0x112,  9, item_names.use_card_s),
     loc_names.ccff_lizard_corner:            CVLoDLocationData(0x113,  9, item_names.use_card_m),
-    loc_names.ccff_lizard_locker_nfr:        CVLoDLocationData(0x117,  9, item_names.jewel_rl, type="liz"),
-    loc_names.ccff_lizard_locker_nmr:        CVLoDLocationData(0x118,  9, item_names.gold_500, type="liz"),
-    loc_names.ccff_lizard_locker_nml:        CVLoDLocationData(0x119,  9, item_names.use_ampoule, type="liz"),
-    loc_names.ccff_lizard_locker_nfl:        CVLoDLocationData(0x11A,  9, item_names.powerup, type="liz"),
-    loc_names.ccff_lizard_locker_fl:         CVLoDLocationData(0x11B,  9, item_names.gold_500,  type="liz"),
-    loc_names.ccff_lizard_locker_fr:         CVLoDLocationData(0x11C,  9, item_names.use_card_s, type="liz"),
-    loc_names.ccff_lizard_slab1:             CVLoDLocationData(0x320,  9, item_names.use_purifying, type="3hb"),
-    loc_names.ccff_lizard_slab2:             CVLoDLocationData(0x321,  9, item_names.use_purifying, type="3hb"),
-    loc_names.ccff_lizard_slab3:             CVLoDLocationData(0x322,  9, item_names.use_ampoule, type="3hb"),
-    loc_names.ccff_lizard_slab4:             CVLoDLocationData(0x323,  9, item_names.use_ampoule, type="3hb"),
+    loc_names.ccff_lizard_locker_nfr:        CVLoDLocationData(0x117,  9, item_names.jewel_rl),
+    loc_names.ccff_lizard_locker_nmr:        CVLoDLocationData(0x118,  9, item_names.gold_500),
+    loc_names.ccff_lizard_locker_nml:        CVLoDLocationData(0x119,  9, item_names.use_ampoule),
+    loc_names.ccff_lizard_locker_nfl:        CVLoDLocationData(0x11A,  9, item_names.powerup),
+    loc_names.ccff_lizard_locker_fl:         CVLoDLocationData(0x11B,  9, item_names.gold_500),
+    loc_names.ccff_lizard_locker_fr:         CVLoDLocationData(0x11C,  9, item_names.use_card_s),
+    loc_names.ccff_lizard_slab1:             CVLoDLocationData(0x320,  9, item_names.use_purifying,),
+    loc_names.ccff_lizard_slab2:             CVLoDLocationData(0x321,  9, item_names.use_purifying,),
+    loc_names.ccff_lizard_slab3:             CVLoDLocationData(0x322,  9, item_names.use_ampoule,),
+    loc_names.ccff_lizard_slab4:             CVLoDLocationData(0x323,  9, item_names.use_ampoule,),
     loc_names.ccb_mandrag_shelf_l:           CVLoDLocationData(0x345,  9, item_names.quest_mandragora),
     loc_names.ccb_mandrag_shelf_r:           CVLoDLocationData(0x346,  9, item_names.quest_mandragora),
     loc_names.ccb_torture_rack:              CVLoDLocationData(0x101,  9, item_names.use_purifying),
@@ -522,26 +526,27 @@ CVLOD_LOCATIONS_INFO = {
     # loc_names.roc_boss:   {"event": item_names.trophy, "add conds": ["boss"]},
 
     # Clock Tower
-    loc_names.ctgc_gearclimb_battery_slab1: CVLoDLocationData(0x324, 15, item_names.gold_500, type="3hb"),
-    loc_names.ctgc_gearclimb_battery_slab2: CVLoDLocationData(0x325, 15, item_names.gold_500, type="3hb"),
-    loc_names.ctgc_gearclimb_battery_slab3: CVLoDLocationData(0x326, 15, item_names.gold_500, type="3hb"),
-    loc_names.ctgc_gearclimb_battery_slab4: CVLoDLocationData(0x327, 15, item_names.gold_500, type="3hb"),
-    loc_names.ctgc_gearclimb_battery_slab5: CVLoDLocationData(0x328, 15, item_names.gold_500, type="3hb"),
-    loc_names.ctgc_gearclimb_battery_slab6: CVLoDLocationData(0x329, 15, item_names.gold_500, type="3hb"),
+    loc_names.ctgc_gearclimb_battery_slab1: CVLoDLocationData(0x324, 15, item_names.gold_500,),
+    loc_names.ctgc_gearclimb_battery_slab2: CVLoDLocationData(0x325, 15, item_names.gold_500,),
+    loc_names.ctgc_gearclimb_battery_slab3: CVLoDLocationData(0x326, 15, item_names.gold_500,),
+    loc_names.ctgc_gearclimb_battery_slab4: CVLoDLocationData(0x327, 15, item_names.gold_500,),
+    loc_names.ctgc_gearclimb_battery_slab5: CVLoDLocationData(0x328, 15, item_names.gold_500,),
+    loc_names.ctgc_gearclimb_battery_slab6: CVLoDLocationData(0x329, 15, item_names.gold_500,),
     loc_names.ctgc_gearclimb_corner_r:      CVLoDLocationData(0x289, 15, item_names.quest_key_clock_a),
     loc_names.ctgc_gearclimb_corner_f:      CVLoDLocationData(0x181, 15, item_names.jewel_rl),
-    loc_names.ctgc_gearclimb_door_slab1:    CVLoDLocationData(0x32A, 15, item_names.use_chicken, type="3hb"),
-    loc_names.ctgc_gearclimb_door_slab2:    CVLoDLocationData(0x32B, 15, item_names.use_chicken, type="3hb"),
-    loc_names.ctgc_gearclimb_door_slab3:    CVLoDLocationData(0x32C, 15, item_names.use_chicken, type="3hb"),
+    loc_names.ctgc_gearclimb_door_slab1:    CVLoDLocationData(0x32A, 15, item_names.use_chicken,),
+    loc_names.ctgc_gearclimb_door_slab2:    CVLoDLocationData(0x32B, 15, item_names.use_chicken,),
+    loc_names.ctgc_gearclimb_door_slab3:    CVLoDLocationData(0x32C, 15, item_names.use_chicken,),
     loc_names.ctgc_bp_chasm_fl:             CVLoDLocationData(0x182, 15, item_names.gold_300),
     loc_names.ctgc_bp_chasm_fr:             CVLoDLocationData(0x183, 15, item_names.jewel_rl),
     loc_names.ctgc_bp_chasm_rl:             CVLoDLocationData(0x180, 15, item_names.sub_knife),
     loc_names.ctgc_bp_chasm_k:              CVLoDLocationData(0x28A, 15, item_names.quest_key_clock_b),
     loc_names.ctga_near_floor:              CVLoDLocationData(0x256, 15, item_names.gold_300),
     loc_names.ctga_near_climb:              CVLoDLocationData(0x28B, 15, item_names.quest_key_clock_c),
-    loc_names.ctga_far_slab1:               CVLoDLocationData(0x32D, 15, item_names.jewel_rl, type="3hb"),
-    loc_names.ctga_far_slab2:               CVLoDLocationData(0x32E, 15, item_names.powerup, type="3hb"),
-    loc_names.ctga_far_slab3:               CVLoDLocationData(0x32F, 15, item_names.use_card_s, type="3hb"),
+    loc_names.ctga_far_slab1:               CVLoDLocationData(0x32D, 15, item_names.jewel_rl),
+    loc_names.ctga_far_slab2:               CVLoDLocationData(0x32E, 15, item_names.powerup),
+    loc_names.ctga_far_slab3:               CVLoDLocationData(0x32F, 15, item_names.use_card_s),
+    loc_names.ctga_far_slab4:               CVLoDLocationData(0x330, 15, item_names.gold_100),
     loc_names.ctga_far_alcove:              CVLoDLocationData(0x28C, 15, item_names.quest_key_clock_d),
     loc_names.ctf_clock:                    CVLoDLocationData(0x28D, 15, item_names.quest_key_clock_e),
     loc_names.ctf_walkway_end:              CVLoDLocationData(0x25E, 15, item_names.jewel_rs),
@@ -549,10 +554,10 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.ctf_engine_furnace:           CVLoDLocationData(0x261, 15, item_names.gold_300),
     loc_names.ctf_pendulums_l:              CVLoDLocationData(0x25D, 15, item_names.use_beef),
     loc_names.ctf_pendulums_r:              CVLoDLocationData(0x25C, 15, item_names.use_chicken),
-    loc_names.ctf_slope_slab1:              CVLoDLocationData(0x330, 15, item_names.gold_500, type="3hb"),
-    loc_names.ctf_slope_slab2:              CVLoDLocationData(0x331, 15, item_names.powerup, type="3hb"),
-    loc_names.ctf_slope_slab3:              CVLoDLocationData(0x332, 15, item_names.gold_500, type="3hb"),
-    loc_names.ctf_walkway_mid:              CVLoDLocationData(0x25F, 15, item_names.powerup, type="3hb"),
+    loc_names.ctf_slope_slab1:              CVLoDLocationData(0x331, 15, item_names.gold_500),
+    loc_names.ctf_slope_slab2:              CVLoDLocationData(0x332, 15, item_names.powerup),
+    loc_names.ctf_slope_slab3:              CVLoDLocationData(0x333, 15, item_names.gold_500),
+    loc_names.ctf_walkway_mid:              CVLoDLocationData(0x25F, 15, item_names.powerup),
 
     # Castle Keep
     loc_names.ck_renon_sw:    CVLoDLocationData(0x176, 16, item_names.use_ampoule),
@@ -603,12 +608,128 @@ CVLOD_EVENT_MAPPING: dict[str, str] = {
     loc_names.event_dracula: item_names.event_dracula,
 }
 
+# All 3HB datas mapped to said 3HBs' flag IDs in the vanilla game. This is to help detecting them while patching.
+THREE_HIT_BREAKABLES_INFO = {
+    0x4A: CVLoD3HBData(0x2B8, [loc_names.cw_save_slab1,  # CW upper rampart save nub
+                               loc_names.cw_save_slab2,
+                               loc_names.cw_save_slab3,
+                               loc_names.cw_save_slab4,
+                               loc_names.cw_save_slab5]),
+    0x4B: CVLoD3HBData(0x2BD, [loc_names.cw_drac_slab1,  # CW Dracula switch slab
+                               loc_names.cw_drac_slab2,
+                               loc_names.cw_drac_slab3,
+                               loc_names.cw_drac_slab4,
+                               loc_names.cw_drac_slab5]),
+    0x76: CVLoD3HBData(0x302, [loc_names.villafo_chandelier1,  # Villa foyer chandelier
+                               loc_names.villafo_chandelier2,
+                               loc_names.villafo_chandelier3,
+                               loc_names.villafo_chandelier4,
+                               loc_names.villafo_chandelier5,
+                               loc_names.villafo_chandelier5]),
+    0xD4: CVLoD3HBData(0x307, [loc_names.tunnel_arrows_rock1,  # Tunnel twin arrows rock
+                               loc_names.tunnel_arrows_rock2,
+                               loc_names.tunnel_arrows_rock3,
+                               loc_names.tunnel_arrows_rock4,
+                               loc_names.tunnel_arrows_rock5]),
+    0xD5: CVLoD3HBData(0x30C, [loc_names.tunnel_bucket_quag_rock1,  # Tunnel lonesome bucket pit rock
+                               loc_names.tunnel_bucket_quag_rock2,
+                               loc_names.tunnel_bucket_quag_rock3]),
+    0xE4: CVLoD3HBData(0x30F, [loc_names.uw_first_ledge1,  # UW poison parkour ledge
+                               loc_names.uw_first_ledge2,
+                               loc_names.uw_first_ledge3,
+                               loc_names.uw_first_ledge4,
+                               loc_names.uw_first_ledge5,
+                               loc_names.uw_first_ledge6]),
+    0xE5: CVLoD3HBData(0x315, [loc_names.uw_in_skel_ledge1,  # UW skeleton crusher ledge
+                               loc_names.uw_in_skel_ledge2,
+                               loc_names.uw_in_skel_ledge3]),
+    0x103: CVLoD3HBData(0x318, [loc_names.ccb_behemoth_crate1,  # CC Behemoth crate
+                                loc_names.ccb_behemoth_crate2,
+                                loc_names.ccb_behemoth_crate3,
+                                loc_names.ccb_behemoth_crate4,
+                                loc_names.ccb_behemoth_crate5]),
+    0x10D: CVLoD3HBData(0x31D, [loc_names.ccbe_stand1,  # CC elevator pedestal
+                                loc_names.ccbe_stand2,
+                                loc_names.ccbe_stand3]),
+    0x114: CVLoD3HBData(0x320, [loc_names.ccff_lizard_slab1,  # CC lizard locker slab
+                                loc_names.ccff_lizard_slab2,
+                                loc_names.ccff_lizard_slab3,
+                                loc_names.ccff_lizard_slab4]),
+    0x185: CVLoD3HBData(0x324, [loc_names.ctgc_gearclimb_battery_slab1,  # CT gear climb battery slab
+                                loc_names.ctgc_gearclimb_battery_slab2,
+                                loc_names.ctgc_gearclimb_battery_slab3,
+                                loc_names.ctgc_gearclimb_battery_slab4,
+                                loc_names.ctgc_gearclimb_battery_slab5,
+                                loc_names.ctgc_gearclimb_battery_slab6]),
+    0x184: CVLoD3HBData(0x32A, [loc_names.ctgc_gearclimb_door_slab1,  # CT gear climb below door slab
+                                loc_names.ctgc_gearclimb_door_slab2,
+                                loc_names.ctgc_gearclimb_door_slab3]),
+    0x257: CVLoD3HBData(0x32D, [loc_names.ctga_far_slab1,  # CT grand abyss farside slab
+                                loc_names.ctga_far_slab2,
+                                loc_names.ctga_far_slab3,
+                                loc_names.ctga_far_slab4]),
+    0x262: CVLoD3HBData(0x331, [loc_names.ctf_slope_slab1,  # CT under slippery slope slab
+                                loc_names.ctf_slope_slab2,
+                                loc_names.ctf_slope_slab3]),
+}
+
+# All Locations inside 3HBs. These should NOT be created if Multi Hit Breakables are off. This includes the enemy
+# pillars in Tower of Execution, which have their own handling during patching separate from the 3HBs.
+THREE_HIT_BREAKABLE_LOCATIONS = [loc_names.toe_first_pillar,
+                                 loc_names.toe_last_pillar] + [loc_name for three_hit_flag, three_hit_data in
+                                                               THREE_HIT_BREAKABLES_INFO.items()
+                                                               for loc_name in three_hit_data.location_names]
+
+# All Locations that normally have their Items given by calling the "give item" function directly.
+# These will instead be put on the rando's remote item giving functionality.
+NPC_LOCATIONS = {loc_names.villafy_fountain_shine,
+                 loc_names.villafo_6am_roses,
+                 loc_names.villala_vincent,
+                 loc_names.villala_mary,
+                 loc_names.ccll_heinrich}
+
+# All Locations inside breakables that are normally empty. These should NOT be created if Empty Breakables are off.
+EMPTY_LOCATIONS = {
+    loc_names.towf_start_entry_l,
+    loc_names.towf_start_entry_r,
+    loc_names.towf_start_elevator_l,
+    loc_names.towf_start_elevator_r,
+    loc_names.towse_key_entry_l,
+    loc_names.towse_key_entry_r,
+    loc_names.towse_locked_door_l,
+    loc_names.towse_locked_door_r,
+    loc_names.towf_retract_elevator_l,
+    loc_names.towf_retract_elevator_r,
+    loc_names.towf_boulders_door_l,
+    loc_names.towf_boulders_door_r
+}
+
+# All Locations that only Carrie is capable of reaching. These should NOT be created if Carrie Logic is off.
+CARRIE_ONLY_LOCATIONS = {loc_names.uw_carrie1,
+                         loc_names.uw_carrie2}
+
+# All Locations inside the Castle Center lizard lockers. These should NOT be created if Lizard Locker Items are off.
+LIZARD_LOCKER_LOCATIONS = {loc_names.ccff_lizard_locker_fl,
+                           loc_names.ccff_lizard_locker_fr,
+                           loc_names.ccff_lizard_locker_nfl,
+                           loc_names.ccff_lizard_locker_nfr,
+                           loc_names.ccff_lizard_locker_nml,
+                           loc_names.ccff_lizard_locker_nmr}
+
+# All Locations specific to Reinhardt and Carrie's version of Castle Wall. These should not be created if the Castle
+# Wall State is Cornell's.
+REIN_CARRIE_CW_LOCATIONS: list[str] = [
+    loc_names.cw_ground_middle
+]
+
 # All Locations specific to Reinhardt and Carrie's version of the Villa. These should not be created if the Villa State
 # is Cornell's.
 REIN_CARRIE_VILLA_LOCATIONS: list[str] = [
     loc_names.event_villa_rosa,
     loc_names.villala_vincent,
+    loc_names.villam_fplatform,
     loc_names.villam_rplatform_f,
+    loc_names.villam_serv_path_sr,
     loc_names.event_villa_boss_4,
     loc_names.event_villa_boss_5
 ]
@@ -619,9 +740,12 @@ CORNELL_VILLA_LOCATIONS: list[str] = [
     loc_names.villafy_fountain_shine,
     loc_names.villafo_6am_roses,
     loc_names.event_villa_boss_2,
+    loc_names.villala_slivingroom_table_l,
     loc_names.villala_mary,
     loc_names.event_villa_child,
+    loc_names.villam_hole_de,
     loc_names.villam_rplatform_r,
+    loc_names.villam_serv_path_sl,
     loc_names.event_villa_boss_3
 ]
 
@@ -658,10 +782,31 @@ def get_locations_to_create(locations: list[str], options: CVLoDOptions) -> \
     locked_pairs = {}
 
     for loc in locations:
+        # Don't place the Location if it's a Reinhardt/Carrie Castle Wall Location and the Castle Wall State is
+        # Cornell's.
+        if loc in REIN_CARRIE_CW_LOCATIONS and options.castle_wall_state == CastleWallState.option_cornell:
+            continue
+
         # Don't place the Location if it's a Reinhardt/Carrie Villa Location and the Villa State is Cornell's, or if
         # it's a Cornell Villa Location and the Villa State is Reinhardt/Carrie's.
         if (loc in REIN_CARRIE_VILLA_LOCATIONS and options.villa_state == VillaState.option_cornell) or \
                 (loc in CORNELL_VILLA_LOCATIONS and options.villa_state == VillaState.option_reinhardt_carrie):
+            continue
+
+        # If the Location is a Carrie-only Location, and Carrie Logic is not enabled, don't add it.
+        if loc in CARRIE_ONLY_LOCATIONS and not options.carrie_logic:
+            continue
+
+        # If the Location is a Lizard Locker Location, and the Lizard Lockers are not enabled, don't add it.
+        if loc in LIZARD_LOCKER_LOCATIONS and not options.lizard_locker_items:
+            continue
+
+        # If the Location is an Empty Breakable Location, and the Empty Breakables are not enabled, don't add it.
+        if loc in EMPTY_LOCATIONS and not options.empty_breakables:
+            continue
+
+        # If the Location is a 3HB Location, and 3HBs are not enabled, don't add it.
+        if loc in THREE_HIT_BREAKABLE_LOCATIONS and not options.multi_hit_breakables:
             continue
 
         # Check to see if the Location is in the Locations Info dict.
@@ -672,18 +817,6 @@ def get_locations_to_create(locations: list[str], options: CVLoDOptions) -> \
             if CVLOD_LOCATIONS_INFO[loc].normal_item in [item_names.sub_knife, item_names.sub_holy,
                                                          item_names.sub_axe, item_names.sub_cross] \
                     and options.sub_weapon_shuffle != SubWeaponShuffle.option_anywhere:
-                continue
-
-            # If the Location is a 3HB Location, and 3HBs are not enabled, don't add it.
-            if CVLOD_LOCATIONS_INFO[loc].type == "3hb" and not options.multi_hit_breakables:
-                continue
-
-            # If the Location is a Carrie-only Location, and Carrie Logic is not enabled, don't add it.
-            if CVLOD_LOCATIONS_INFO[loc].type == "carrie" and not options.carrie_logic:
-                continue
-
-            # If the Location is a Lizard Locker Location, and the Lizard Lockers are not enabled, don't add it.
-            if CVLOD_LOCATIONS_INFO[loc].type == "liz" and not options.lizard_locker_items:
                 continue
 
             # Grab its ID from the Locations Info.
