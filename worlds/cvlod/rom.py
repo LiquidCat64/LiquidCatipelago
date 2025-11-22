@@ -13,7 +13,7 @@ import hashlib
 import os
 # import pkgutil
 
-from .data import patches, loc_names
+from .data import patches, loc_names, stage_names
 from .data.enums import Scenes, NIFiles, Objects, ObjectExecutionFlags, ActorSpawnFlags, Items, Pickups, PickupFlags, \
     DoorFlags
 from .locations import CVLOD_LOCATIONS_INFO, THREE_HIT_BREAKABLES_INFO
@@ -52,6 +52,10 @@ START_INVENTORY_MAX_START = 0x6A72BA
 FOREST_OVL_CHARNEL_ITEMS_START = 0x7C60
 CHARNEL_ITEM_LEN = 0xC
 FIRST_CHARNEL_LID_ACTOR = 72
+
+TELEPORT_JEWEL_VALUES_START = 0x112FB0  # 0x80192700
+TELEPORT_JEWEL_ENTRY_LEN = 0x4
+TELEPORT_JEWEL_START_STAGES = [stage_names.TUNNEL, stage_names.WATERWAY, stage_names.OUTER]
 
 WARP_SCENE_OFFSETS = [0xADF67, 0xADF77, 0xADF87, 0xADF97, 0xADFA7, 0xADFBB, 0xADFCB, 0xADFDF]
 
@@ -117,12 +121,11 @@ class CVLoDPatchExtensions(APPatchExtension):
                                         0x03E00008,  # JR    RA
                                         0xFD00AA40])  # SD    R0, 0xAA40 (T0)
 
-        # Make changing the map ID to 0xFF reset the map (helpful to work around a bug wherein the camera gets stuck
-        # when entering a loading zone that doesn't change the map) or changing the spawn ID to 0x40 or 0x80 to go to a
-        # decoupled version of the Spider Queen or Medusa arena respectively.
+        # Enable being able to set one of the three alternate setup flags (0x2A1, 0x2A2, or 0x2A3) by setting the 0x40
+        # and/or 0x80 bits in the spawn ID.
         patcher.write_int32s(0x1C3B4, [0x0C0FF304,    # JAL   0x803FCC10
                                         0x24840008]),  # ADDIU A0, A0, 0x0008
-        patcher.write_int32s(0xFFCC10, patches.map_refresher)
+        patcher.write_int32s(0xFFCC10, patches.alt_setup_flag_setter)
 
         # Add keys in an AP logo formation to the title screen.
         patcher.scenes[Scenes.INTRO_NARRATION].actor_lists["proxy"] += [
@@ -201,13 +204,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32s(0xFFC000, patches.remote_item_giver)
         patcher.write_int32s(0xFFE190, patches.subweapon_surface_checker)
 
-        # Change the starting stage to whatever stage the player is actually starting at.
-        patcher.write_byte(0x15DB, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_scene_id,
-                           NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15D3, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_spawn_id,
-                           NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15DB, 0x15, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15D3, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        # Make it possible to change the starting area after the intro narration cutscene.
         # Change the instruction that stores the Foggy Lake intro cutscene value to store a 0 (from R0) instead.
         patcher.write_int32(0x1614, 0xAC402BCC, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON) # SW  R0, 0x2BCC (V0)
         # Instead of always 0 as the spawn entrance, store the aftermentined cutscene value as it.
@@ -218,7 +215,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Active cutscene checker routines for certain actors.
         patcher.write_int32s(0xFFCDA0, patches.cutscene_active_checkers)
 
-        # Ambience silencing fix
+        # Ambience silencing fix and map refresher.
         patcher.write_int32(0x1BB20, 0x080FF280)  # J 0x803FCA00
         patcher.write_int32s(0xFFCA00, patches.ambience_silencer)
 
@@ -500,10 +497,14 @@ class CVLoDPatchExtensions(APPatchExtension):
                                   var_c=Pickups.ROAST_CHICKEN, var_d=0, extra_condition_ptr=0)
         )
 
-        # Make the drawbridge cutscene's end behavior its Henry end behavior for everyone.
+        # Make the drawbridge cutscene's end behavior its Henry end behavior for everyone and make it possible to have
+        # it send you to any scene at any spawn.
         # The "drawbridge lowered" flag should be set so that Forest's regular end zone is easily accessible, and no
         # separate cutscene should play in the next map.
-        patcher.write_int32(0x1294, 0x1000000C, NIFiles.OVERLAY_CS_DRAWBRIDGE_LOWERS)
+        patcher.write_int32(0x1294, 0x1000000C, NIFiles.OVERLAY_CS_FOREST_DRAWBRIDGE_LOWERS)
+        patcher.write_int32(0x1308, 0x3C080002, NIFiles.OVERLAY_CS_FOREST_DRAWBRIDGE_LOWERS)  # LUI  T0, 0x0002
+        patcher.write_int32(0x1318, 0x35080000, NIFiles.OVERLAY_CS_FOREST_DRAWBRIDGE_LOWERS)  # ORI  T0, T0, 0x0000
+        patcher.write_int32(0x1320, 0xAC482BB8, NIFiles.OVERLAY_CS_FOREST_DRAWBRIDGE_LOWERS)  # SW   T0, 0x2BB8 (V0)
 
         # Make Reinhardt/Carrie/Cornell's White Jewels universal to everyone and remove Henry's.
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][123]["spawn_flags"] = 0
@@ -705,10 +706,10 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][2]["delete"] = True
 
         # Write the new Villa fountain puzzle order both in the code and Oldrey's Diary's description.
-        patcher.write_bytes(0x4780, cvlod_string_to_bytearray(f"{slot_patch_info["fountain order"][0]} "
-                                                               f"{slot_patch_info["fountain order"][1]} "
-                                                               f"{slot_patch_info["fountain order"][2]} "
-                                                               f"{slot_patch_info["fountain order"][3]}      "),
+        patcher.write_bytes(0x4780, cvlod_string_to_bytearray(f"{slot_patch_info['fountain order'][0]} "
+                                                               f"{slot_patch_info['fountain order'][1]} "
+                                                               f"{slot_patch_info['fountain order'][2]} "
+                                                               f"{slot_patch_info['fountain order'][3]}      "),
                             NIFiles.OVERLAY_PAUSE_MENU)
         patcher.write_byte(0x173, FOUNTAIN_LETTERS_TO_NUMBERS[slot_patch_info["fountain order"][0]],
                            NIFiles.OVERLAY_FOUNTAIN_PUZZLE)
@@ -834,8 +835,33 @@ class CVLoDPatchExtensions(APPatchExtension):
         # IDK what KCEK was planning here, since Cornell normally never gets this cutscene, but if it passes the game
         # completely ceases functioning.
         patcher.write_int16(0x230, 0x1000, NIFiles.OVERLAY_CS_1ST_REIN_CARRIE_CRYPT_VAMPIRE)
-        # Make the Villa coffin loading zone Henry check always pass.
-        patcher.write_int32(0xD3A78, 0x000C0821)  # ADDU  AT, R0, T4
+
+        # Make the Henry's Villa coffin loading zone universal while removing Reinhardt, Carrie, and Cornell's.
+        patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["proxy"][17]["delete"] = True
+        patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["proxy"][18]["delete"] = True
+        patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["proxy"][19]["delete"] = True
+        patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["proxy"][20]["spawn_flags"] = 0
+        # Make the loading zone's hardcoded Henry check always pass if Villa Branching Paths is not One, or never pass
+        # if it is One.
+        if slot_patch_info["options"]["villa_branching_paths"] != VillaBranchingPaths.option_one:
+            patcher.write_int32(0xD3A78, 0x000C0821)  # ADDU  AT, R0, T4
+        else:
+            patcher.write_int32(0xD3A78, 0x24010004)  # ADDIU AT, R0, 0x0004
+        # Enable every Villa coffin destination also being able to set the spawn ID separately.
+        patcher.write_int32s(0xD3AC8, [0x34190000,   # ORI  T9, R0, 0x0000
+                                       0xAFB90028])  # SW   T9, 0x0028 (SP)
+        patcher.write_int32s(0xD3B44, [0x34190000,   # ORI  T9, R0, 0x0000
+                                       0xAFB90028])  # SW   T9, 0x0028 (SP)
+        patcher.write_int32s(0xD3BA0, [0x34190000,   # ORI  T9, R0, 0x0000
+                                       0xAFB90028])  # SW   T9, 0x0028 (SP)
+        # If the Villa Branching Paths option is Two, change the coffin loading zone behavior to instead send to one of
+        # two places depending on whether it's night (between 0:00-5:59 or 18:00-23:59) or day (between 6:00-17:59).
+        if slot_patch_info["options"]["villa_branching_paths"] == VillaBranchingPaths.option_two:
+            patcher.write_byte(0xD3AAF, 0x06)
+            patcher.write_byte(0xD3B07, 0x06)
+            patcher.write_int16(0xD3B0A, 0xFFEA)
+            patcher.write_byte(0xD3B13, 0x12)
+            patcher.write_int16(0xD3B16, 0xFFE7)
 
         # Generate Mary's item text here, if her Location is created.
         mary_item_text = ""
@@ -1169,7 +1195,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                 CVLoDSceneTextEntry(text="The entrance door is sealed\n"
                                          "shut! You'll need to bring it\n"
                                          "both Crest Halves to see the\n"
-                                         "light of day.🅰0/"))
+                                         "light of day...🅰0/"))
             crypt_crests_check_location = len(patcher.scenes[Scenes.VILLA_CRYPT].overlay)
             patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_int32s(crypt_crests_check_location,
                                                                 patches.crypt_crests_checker)
@@ -2326,6 +2352,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int16(0x2F6, 0x01A8, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)
         patcher.write_int32(0x2F8, 0x14400004, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)  # BNEZ   V0, [forward 0x04]
 
+
         # Loop over EVERY actor in EVERY list, find all Location-associated instances, and either delete them if they
         # are exclusive to non-Normal difficulties or try writing an Item they should have onto them if they aren't.
         for scene in patcher.scenes:
@@ -2399,6 +2426,133 @@ class CVLoDPatchExtensions(APPatchExtension):
                         three_hit["flag_id"] = three_hit_info.new_first_flag_id
 
 
+        # Loop over every active stage in the slot's stage list and connect their starts and ends properly.
+        for stage in slot_patch_info["stages"]:
+            # Figure out what previous stage end-associated values to put in the current stage's start transition(s).
+
+            # If the previous stage is "Start", put 0xFF for the scene and the current stage's start spawn ID.
+            # This will cause the transition to reload the map without really sending the player anywhere.
+            if stage["connecting_stages"]["prev"][0] == "Start":
+                prev_scene = Scenes.NULL
+                prev_spawn = CVLOD_STAGE_INFO[stage["name"]].start_spawn_id
+            # Otherwise, get the primary previous stage's end scene and spawn IDs.
+            else:
+                prev_scene = CVLOD_STAGE_INFO[stage["connecting_stages"]["prev"][0]].end_scene_id
+                prev_spawn = CVLOD_STAGE_INFO[stage["connecting_stages"]["prev"][0]].end_spawn_id
+
+            # If Castle Center is the previous stage and either Castle Center Branching Stages is One Carrie or the
+            # current stage is an alternate path stage, set the end spawn ID to Carrie's CC exit instead of Reinhardt's.
+            if stage["connecting_stages"]["prev"][0] == stage_names.CENTER and \
+                    (slot_patch_info["options"]["castle_center_branching_paths"] ==
+                     CastleCenterBranchingPaths.option_one_carrie or "'" in stage["position"]):
+                prev_spawn = 0x02
+
+            # Write the previous stage end values correctly based on what transition it is.
+            # If the current stage has a start loading zone defined for it in its stage info, put the values in it.
+            if CVLOD_STAGE_INFO[stage["name"]].start_zone_id is not None:
+                patcher.scenes[CVLOD_STAGE_INFO[stage["name"]].start_scene_id].loading_zones[
+                    CVLOD_STAGE_INFO[stage["name"]].start_zone_id]["scene_id"] = prev_scene
+                patcher.scenes[CVLOD_STAGE_INFO[stage["name"]].start_scene_id].loading_zones[
+                    CVLOD_STAGE_INFO[stage["name"]].start_zone_id]["spawn_id"] = prev_spawn
+            # If it's one of the stages that has a teleport jewel for its start transition, write the values at these
+            # specific addresses.
+            elif stage["name"] in TELEPORT_JEWEL_START_STAGES:
+                patcher.write_bytes(TELEPORT_JEWEL_VALUES_START + (TELEPORT_JEWEL_START_STAGES.index(stage["name"]) *
+                                                                   TELEPORT_JEWEL_ENTRY_LEN),
+                                    [prev_scene, prev_spawn])
+            # If the current stage is Clock Tower, write the values in its other inaccessible start loading zone as well
+            # (just in case).
+            if stage["name"] == stage_names.CLOCK:
+                patcher.scenes[Scenes.CLOCK_TOWER_GEAR_CLIMB].loading_zones[1]["scene_id"] = prev_scene
+                patcher.scenes[Scenes.CLOCK_TOWER_GEAR_CLIMB].loading_zones[1]["spawn_id"] = prev_spawn
+
+
+            # Figure out what next stage start-associated values to put in the current stage's end transition(s).
+
+            # If the next stage is "End", skip everything to do with connecting forward to the next stage.
+            # Because Castle Keep has no way to go further than it.
+            if stage["connecting_stages"]["next"][0] == "End":
+                continue
+            # If the stage's position is "C", meaning it's the last stage in the Cornell path, connect the stage end to
+            # the Castle Center top elevator room at the elevator's spawn point.
+            elif stage["position"] == "C":
+                next_scene = Scenes.CASTLE_CENTER_TOP_ELEV
+                next_spawn = 0x00
+            # If the next stage is Clock Tower and the Castle Center Branching Paths option is set to One Carrie, have
+            # the start spawn be the grate Carrie starts in front of instead of the one Reinhardt and Cornell start at.
+            elif stage["connecting_stages"]["next"][0] == stage_names.CLOCK and \
+                    slot_patch_info["options"]["castle_center_branching_paths"] == \
+                    CastleCenterBranchingPaths.option_one_carrie:
+                next_scene = CVLOD_STAGE_INFO[stage_names.CLOCK].start_scene_id
+                next_spawn = 0x01
+            # Otherwise, get the primary next stage's start scene and spawn IDs.
+            else:
+                next_scene = CVLOD_STAGE_INFO[stage["connecting_stages"]["next"][0]].start_scene_id
+                next_spawn = CVLOD_STAGE_INFO[stage["connecting_stages"]["next"][0]].start_spawn_id
+
+            # Write the next stage start values correctly based on what transition it is.
+            # Every stage barring Castle Keep should have an end loading zone.
+            patcher.scenes[CVLOD_STAGE_INFO[stage["name"]].end_scene_id].loading_zones[
+                CVLOD_STAGE_INFO[stage["name"]].end_zone_id]["scene_id"] = next_scene
+            patcher.scenes[CVLOD_STAGE_INFO[stage["name"]].end_scene_id].loading_zones[
+                CVLOD_STAGE_INFO[stage["name"]].end_zone_id]["spawn_id"] = next_spawn
+
+            # If Forest of Silence is the current stage, make the post-King Skeleton drawbridge cutscene send the player
+            # to the next stage as well.
+            if stage["name"] == stage_names.FOREST:
+                patcher.write_byte(0x130B, next_scene, NIFiles.OVERLAY_CS_FOREST_DRAWBRIDGE_LOWERS)
+                patcher.write_byte(0x131B, next_spawn, NIFiles.OVERLAY_CS_FOREST_DRAWBRIDGE_LOWERS)
+
+            # If Villa is the current stage, make adjustments to the coffin loading zone code based on the
+            # Villa Branching Paths option.
+            if stage["name"] == stage_names.VILLA:
+                # If Next Alt 2 exists for Villa, meaning there are three branching paths, have the coffin zone send the
+                # player to the Villa's primary next stage when it would send them to Tunnel, to the Next Alt 1 stage
+                # for Waterway, and to the Next Alt 2 stage for Outer Wall.
+                if "next alt 2" in stage["connecting_stages"]:
+                    patcher.write_byte(0xD3AB7, next_scene)
+                    patcher.write_byte(0xD3ACB, next_spawn)
+                    patcher.write_byte(0xD3B1B, CVLOD_STAGE_INFO[
+                        stage["connecting_stages"]["next alt 1"][0]].start_scene_id)
+                    patcher.write_byte(0xD3B47, CVLOD_STAGE_INFO[
+                        stage["connecting_stages"]["next alt 1"][0]].start_spawn_id)
+                    patcher.write_byte(0xD3B0F, CVLOD_STAGE_INFO[
+                        stage["connecting_stages"]["next alt 2"][0]].start_scene_id)
+                    patcher.write_byte(0xD3B47, CVLOD_STAGE_INFO[
+                        stage["connecting_stages"]["next alt 2"][0]].start_spawn_id)
+                # If Next Alt 2 does not exist for Villa but Next Alt 1 does, meaning there are two branching paths,
+                # have the coffin zone send the player there when it would send them to Waterway (daytime) and to the
+                # Next Alt 1 stage for Waterway (nighttime).
+                elif "next alt 1" in stage["connecting_stages"]:
+                    patcher.write_byte(0xD3B1B, next_scene)
+                    patcher.write_byte(0xD3B47, next_spawn)
+                    patcher.write_byte(0xD3AB7, CVLOD_STAGE_INFO[
+                        stage["connecting_stages"]["next alt 1"][0]].start_scene_id)
+                    patcher.write_byte(0xD3ACB, CVLOD_STAGE_INFO[
+                        stage["connecting_stages"]["next alt 1"][0]].start_spawn_id)
+
+            # If Castle Center is the current stage, make adjustments to Carrie's end loading zone in the top elevator
+            # room based on the Castle Center Branching Paths option.
+            if stage["name"] == stage_names.CENTER:
+                # If Next Alt 1 exists for Castle Center, have Carrie's loading zone send the player there.
+                if "next alt 1" in stage["connecting_stages"]:
+                    patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].loading_zones[2]["scene_id"] = CVLOD_STAGE_INFO[
+                        stage["connecting_stages"]["next alt 1"][0]].start_scene_id
+                    patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].loading_zones[2]["spawn_id"] = CVLOD_STAGE_INFO[
+                        stage["connecting_stages"]["next alt 1"][0]].start_spawn_id
+                # Otherwise, have Carrie's zone send the player to the primary next stage.
+                else:
+                    patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].loading_zones[2]["scene_id"] = next_scene
+                    patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].loading_zones[2]["spawn_id"] = next_spawn
+
+        # Change the starting stage to whatever stage the player is actually starting at.
+        patcher.write_byte(0x15DB, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_scene_id,
+                           NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15D3, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_spawn_id,
+                           NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        #patcher.write_byte(0x15DB, 0x19, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        #patcher.write_byte(0x15D3, 0xC0, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+
         return patcher.get_output_rom()
 
         # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
@@ -2410,27 +2564,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32(0x97294, 0x803FDFC4)
         # patcher.write_int32(0x19710, 0x080FF80E)  # J 0x803FE038
         # patcher.write_int32s(0xBFDFC4, patches.character_changer)
-
-        # Villa coffin time-of-day hack
-        # patcher.write_byte(0xD9D83, 0x74)
-        # patcher.write_int32(0xD9D84, 0x080FF14D)  # J 0x803FC534
-        # patcher.write_int32s(0xBFC534, patches.coffin_time_checker)
-
-        # Skip the "There is a white jewel" text so checking one saves the game instantly.
-        # patcher.write_int32s(0xEFC72, [0x00020002 for _ in range(37)])
-        # patcher.write_int32(0xA8FC0, 0x24020001)  # ADDIU V0, R0, 0x0001
-        # Skip the yes/no prompts when activating things.
-        # patcher.write_int32s(0xBFDACC, patches.map_text_redirector)
-        # patcher.write_int32(0xA9084, 0x24020001)  # ADDIU V0, R0, 0x0001
-        # patcher.write_int32(0xBEBE8, 0x0C0FF6B4)  # JAL   0x803FDAD0
-        # Skip Vincent and Heinrich's mandatory-for-a-check dialogue
-        # patcher.write_int32(0xBED9C, 0x0C0FF6DA)  # JAL   0x803FDB68
-        # Skip the long yes/no prompt in the CC planetarium to set the pieces.
-        # patcher.write_int32(0xB5C5DF, 0x24030001)  # ADDIU  V1, R0, 0x0001
-        # Skip the yes/no prompt to activate the CC elevator.
-        # patcher.write_int32(0xB5E3FB, 0x24020001)  # ADDIU  V0, R0, 0x0001
-        # Skip the yes/no prompts to set Nitro/Mandragora at both walls.
-        # patcher.write_int32(0xB5DF3E, 0x24030001)  # ADDIU  V1, R0, 0x0001
 
         # patcher.write_int32s(0xBFDD20, patches.special_descriptions_redirector)
 
@@ -2463,12 +2596,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32(0xA99AC, 0x080FF0B8)  # J 0x803FC2E0
         # patcher.write_int32s(0xBFC2E0, patches.boss_save_stopper)
 
-        # Disable or guarantee the Bad Ending
-        # if options.bad_ending_condition.value == options.bad_ending_condition.option_never:
-        # patcher.write_int32(0xAEE5C6, 0x3C0A0000)  # LUI  T2, 0x0000
-        # elif options.bad_ending_condition.value == options.bad_ending_condition.option_always:
-        # patcher.write_int32(0xAEE5C6, 0x3C0A0040)  # LUI  T2, 0x0040
-
         # Play Castle Keep's song if teleporting in front of Dracula's door outside the escape sequence
         # patcher.write_int32(0x6E937C, 0x080FF12E)  # J 0x803FC4B8
         # patcher.write_int32s(0xBFC4B8, patches.ck_door_music_player)
@@ -2483,20 +2610,10 @@ class CVLoDPatchExtensions(APPatchExtension):
         # if not options.loading_zone_heals.value:
         # patcher.write_byte(0xD99A5, 0x00)  # Skip all loading zone checks
 
-        # Prevent the vanilla Magical Nitro transport's "can explode" flag from setting
-        # patcher.write_int32(0xB5D7AA, 0x00000000)  # NOP
-
-        # Ensure the vampire Nitro check will always pass, so they'll never not spawn and crash the Villa cutscenes
-        # patcher.write_byte(0xA6253D, 0x03)
-
         # Make the Special1 and 2 play sounds when you reach milestones with them.
         # patcher.write_int32s(0xBFDA50, patches.special_sound_notifs)
         # patcher.write_int32(0xBF240, 0x080FF694)  # J 0x803FDA50
         # patcher.write_int32(0xBF220, 0x080FF69E)  # J 0x803FDA78
-
-        # Add data for White Jewel #22 (the new Duel Tower savepoint) at the end of the White Jewel ID data list
-        # patcher.write_int16s(0x104AC8, [0x0000, 0x0006,
-        #                            0x0013, 0x0015])
 
         # Fix a vanilla issue wherein saving in a character-exclusive stage as the other character would incorrectly
         # display the name of that character's equivalent stage on the save file instead of the one they're actually in.
@@ -2537,8 +2654,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32s(0xBFC0D0, patches.deathlink_nitro_edition)
 
         # Warp menu-opening code
-        patcher.write_int32(0x86FE4, 0x0C0FF254)  # JAL	0x803FC950
-        patcher.write_int32s(0xFFC950, patches.warp_menu_opener)
+        # patcher.write_int32(0x86FE4, 0x0C0FF254)  # JAL	0x803FC950
+        # patcher.write_int32s(0xFFC950, patches.warp_menu_opener)
 
         # Sub-weapon check function hook
         # patcher.write_int32(0xBF32C, 0x00000000)  # NOP
@@ -2549,10 +2666,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32(0xADD68, 0x0C04AB12)  # JAL 0x8012AC48
         # patcher.write_int32s(0xADE28, patches.stage_select_overwrite)
         # patcher.write_byte(0xADE47, s1s_per_warp)
-
-        # Dracula's door text pointer hijack
-        # patcher.write_int32(0xD69F0, 0x080FF141)  # J 0x803FC504
-        # patcher.write_int32s(0xBFC504, patches.dracula_door_text_redirector)
 
         # Dracula's chamber condition
         # patcher.write_int32(0xE2FDC, 0x0804AB25)  # J 0x8012AC78
@@ -2606,68 +2719,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         #                                          f"Z + R + START to warp.") + \
         #                     cvlod_string_to_bytearray(special2_text)
         # patcher.write_bytes(0xBFE53C, special_text_bytes)
-
-        # On-the-fly TLB script modifier
-        # patcher.write_int32s(0xBFC338, patches.double_component_checker)
-        # patcher.write_int32s(0xBFC3D4, patches.downstairs_seal_checker)
-        # patcher.write_int32s(0xBFE074, patches.mandragora_with_nitro_setter)
-        # patcher.write_int32s(0xBFC700, patches.overlay_modifiers)
-
-        # On-the-fly actor data modifier hook
-        # patcher.write_int32(0xEAB04, 0x080FF21E)  # J 0x803FC878
-        # patcher.write_int32s(0xBFC870, patches.map_data_modifiers)
-
-        # Fix to make flags apply to freestanding invisible items properly
-        # patcher.write_int32(0xA84F8, 0x90CC0039)  # LBU T4, 0x0039 (A2)
-
-        # Fix locked doors to check the key counters instead of their vanilla key locations' bitflags
-        # Pickup flag check modifications:
-        # patcher.write_int32(0x10B2D8, 0x00000002)  # Left Tower Door
-        # patcher.write_int32(0x10B2F0, 0x00000003)  # Storeroom Door
-        # patcher.write_int32(0x10B2FC, 0x00000001)  # Archives Door
-        # patcher.write_int32(0x10B314, 0x00000004)  # Maze Gate
-        # patcher.write_int32(0x10B350, 0x00000005)  # Copper Door
-        # patcher.write_int32(0x10B3A4, 0x00000006)  # Torture Chamber Door
-        # patcher.write_int32(0x10B3B0, 0x00000007)  # ToE Gate
-        # patcher.write_int32(0x10B3BC, 0x00000008)  # Science Door1
-        # patcher.write_int32(0x10B3C8, 0x00000009)  # Science Door2
-        # patcher.write_int32(0x10B3D4, 0x0000000A)  # Science Door3
-        # patcher.write_int32(0x6F0094, 0x0000000B)  # CT Door 1
-        # patcher.write_int32(0x6F00A4, 0x0000000C)  # CT Door 2
-        # patcher.write_int32(0x6F00B4, 0x0000000D)  # CT Door 3
-        # Item counter decrement check modifications:
-        # patcher.write_int32(0xEDA84, 0x00000001)  # Archives Door
-        # patcher.write_int32(0xEDA8C, 0x00000002)  # Left Tower Door
-        # patcher.write_int32(0xEDA94, 0x00000003)  # Storeroom Door
-        # patcher.write_int32(0xEDA9C, 0x00000004)  # Maze Gate
-        # patcher.write_int32(0xEDAA4, 0x00000005)  # Copper Door
-        # patcher.write_int32(0xEDAAC, 0x00000006)  # Torture Chamber Door
-        # patcher.write_int32(0xEDAB4, 0x00000007)  # ToE Gate
-        # patcher.write_int32(0xEDABC, 0x00000008)  # Science Door1
-        # patcher.write_int32(0xEDAC4, 0x00000009)  # Science Door2
-        # patcher.write_int32(0xEDACC, 0x0000000A)  # Science Door3
-        # patcher.write_int32(0xEDAD4, 0x0000000B)  # CT Door 1
-        # patcher.write_int32(0xEDADC, 0x0000000C)  # CT Door 2
-        # patcher.write_int32(0xEDAE4, 0x0000000D)  # CT Door 3
-
-        # Fix ToE gate's "unlocked" flag in the locked door flags table
-        # patcher.write_int16(0x10B3B6, 0x0001)
-
-        # patcher.write_int32(0x10AB2C, 0x8015FBD4)  # Maze Gates' check code pointer adjustments
-        # patcher.write_int32(0x10AB40, 0x8015FBD4)
-        # patcher.write_int32s(0x10AB50, [0x0D0C0000,
-        #                            0x8015FBD4])
-        # patcher.write_int32s(0x10AB64, [0x0D0C0000,
-        #                            0x8015FBD4])
-        # patcher.write_int32s(0xE2E14, patches.normal_door_hook)
-        # patcher.write_int32s(0xBFC5D0, patches.normal_door_code)
-        # patcher.write_int32s(0x6EF298, patches.ct_door_hook)
-        # patcher.write_int32s(0xBFC608, patches.ct_door_code)
-        # Fix key counter not decrementing if 2 or above
-        # patcher.write_int32(0xAA0E0, 0x24020000)  # ADDIU	V0, R0, 0x0000
-
-        # Make the Easy-only candle drops in Room of Clocks appear on any difficulty
-        # patcher.write_byte(0x9B518F, 0x01)
 
         # Slightly move some once-invisible freestanding items to be more visible
         # if options.invisible_items.value == options.invisible_items.option_reveal_all:
@@ -2822,8 +2873,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32s(0xBFE23C, patches.multiworld_item_name_loader)
         # patcher.write_bytes(0x10F188, [0x00 for _ in range(264)])
         # patcher.write_bytes(0x10F298, [0x00 for _ in range(264)])
-
-        return patcher.get_output_rom()
 
 
 class CVLoDProcedurePatch(APProcedurePatch):

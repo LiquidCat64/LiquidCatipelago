@@ -1356,20 +1356,16 @@ forest_cw_villa_intro_cs_player = [
     0x08005FAA   # J     0x80017EA8
 ]
 
-map_refresher = [
-    # During the map loading process, if this detects the spawn ID being transitioned to as FF, it will write back
-    # the past spawn ID so that the map will reset without changing the player's previous spawn location. Useful for
-    # things like setting a loading zone to lead back to itself.
+alt_setup_flag_setter = [
+    # While loading into a scene, when the game checks to see which entrance to spawn the player at, this will check for
+    # the 0x40 and/or 0x80 bits in the spawn ID and, if they are, set one of the three "alternate setup" flags
+    # (0x2A1, 0x2A2, or 0x2A3) while un-setting the other two. This allows for scenes to load with different setups,
+    # almost as if they were separate scenes entirely, and is useful for things like the Algenie/Medusa arena and the
+    # fan meeting room being able to exist as separate scenes in separate stages.
 
-    # New to the LoD implementation: checking for 0x53 or 0x93 to send the player to decoupled versions of the
-    # Medusa/Spider Queen arena (by un-setting and setting the appropriate flags).
+    # Check if the 0x40 AND 0x80 bits are both set in the spawn ID (it should be exactly 0xC0). If it is, set flag 0x2A3
+    # and un-set the other two.
     0x904F2BBB,  # LBU   T7, 0x2BBB (V0)
-    0x240800FF,  # ADDIU T0, R0, 0x00FF
-    0x150F0004,  # BNE   T0, T7, [forward 0x04]
-    0x904928D3,  # LBU   T1, 0x28D3 (V0)
-    0xA0492BBB,  # SB    T1, 0x2BBB (V0)
-    0x03E00008,  # JR    RA
-    0xA44E28D0,  # SH    T6, 0x28D0 (V0)
     0x31EA00C0,  # ANDI  T2, T7, 0x00C0
     0x340B00C0,  # ORI   T3, R0, 0x00C0
     0x154B0008,  # BNE   T2, T3, [forward 0x08]
@@ -1377,26 +1373,31 @@ map_refresher = [
     0x316B009F,  # ANDI  T3, T3, 0x009F
     0x356B0010,  # ORI   T3, T3, 0x0010
     0xA04B27F4,  # SB    T3, 0x27F4 (V0)
+    # Un-set the alternate setup bits from the spawn ID and write it back.
     0x31EF003F,  # ANDI  T7, T7, 0x003F
     0xA04F2BBB,  # SB    T7, 0x2BBB (V0)
     0x03E00008,  # JR    RA
     0xA44E28D0,  # SH    T6, 0x28D0 (V0)
+    # Check if the 0x40 bit is set in the spawn ID. If it is, set flag 0x2A1 and un-set the other two.
     0x31EA0040,  # ANDI  T2, T7, 0x0040
     0x11400008,  # BEQZ  T2,     [forward 0x08]
     0x904B27F4,  # LBU   T3, 0x27F4 (V0)
     0x316B00CF,  # ANDI  T3, T3, 0x00CF
     0x356B0040,  # ORI   T3, T3, 0x0040
     0xA04B27F4,  # SB    T3, 0x27F4 (V0)
+    # Un-set the alternate setup bits from the spawn ID and write it back.
     0x31EF003F,  # ANDI  T7, T7, 0x003F
     0xA04F2BBB,  # SB    T7, 0x2BBB (V0)
     0x03E00008,  # JR    RA
     0xA44E28D0,  # SH    T6, 0x28D0 (V0)
+    # Check if the 0x80 bit is set in the spawn ID. If it is, set flag 0x2A2 and un-set the other two.
     0x31EA0080,  # ANDI  T2, T7, 0x0080
     0x11400006,  # BEQZ  T2,     [forward 0x06]
     0x904B27F4,  # LBU   T3, 0x27F4 (V0)
     0x316B00AF,  # ANDI  T3, T3, 0x00AF
     0x356B0020,  # ORI   T3, T3, 0x0020
     0xA04B27F4,  # SB    T3, 0x27F4 (V0)
+    # Un-set the alternate setup bits from the spawn ID and write it back.
     0x31EF003F,  # ANDI  T7, T7, 0x003F
     0xA04F2BBB,  # SB    T7, 0x2BBB (V0)
     0x03E00008,  # JR    RA
@@ -1573,11 +1574,22 @@ ambience_silencer = [
     # Science/Clock Tower machinery noises everywhere until either resetting, dying, or going into a map that is
     # normally set up to disable said noises. We can only silence three sounds at a time, so we will silence different
     # things depending on which map we're leaving.
+
+    # In addition, during the map loading process, if this detects the scene ID being transitioned to as FF, it will
+    # write back the past spawn ID so that the map will still reload while keeping the scene and spawn IDs unchanged.
+    # Useful for things like setting a transition to lead back to itself.
+
+    # Run the "set fade settings" function like normal upon beginning a scene transition.
     0x0C004156,  # JAL   0x80010558
     0x00000000,  # NOP
+    # Check if the scene ID being transitioned to is 0xFF. If it is, write back the scene ID being transitioned from.
     0x3C08801D,  # LUI   T0, 0x801D
     0x9109AB91,  # LBU   T1, 0xAB91 (T0)
-    # Foggy Lake ship noises
+    0x910AAE79,  # LBU   T2, 0xAE79 (T0)
+    0x340B00FF,  # ORI   T3, R0, 0x00FF
+    0x514B0001,  # BEQL  T2, T3, [forward 0x01]
+    0xA109AE79,  # SB    T1, 0xAE79 (T0)
+    # Silence the Foggy Lake ship noises if transitioning from the above or below decks scenes.
     0x240A0010,  # ADDIU T2, R0, 0x0010
     0x112A0003,  # BEQ   T1, T2, [forward 0x03]
     0x240A0011,  # ADDIU T2, R0, 0x0011
@@ -1589,7 +1601,8 @@ ambience_silencer = [
     0x340481A1,  # ORI   A0, R0, 0x81A1
     0x08006BCA,  # J     0x8001AF28
     0x00000000,  # NOP
-    # Child Henry escort noises
+    # Silence the Child Henry escort noises if transitioning from the maze garden scene
+    # (the "Jaws Theme" instruments that are separate sounds and the proximity chainsaw sound).
     0x240A0006,  # ADDIU T2, R0, 0x0006
     0x152A0009,  # BNE   T1, T2, [forward 0x09]
     0x00000000,  # NOP
@@ -1601,7 +1614,8 @@ ambience_silencer = [
     0x34048358,  # ORI   A0, R0, 0x8358
     0x08006BCA,  # J     0x8001AF28
     0x00000000,  # NOP
-    # Clock Tower/Tower of Science machinery
+    # Silence the machinery noises from Clock Tower and Tower of Science if transitioning from any other map.
+    # TODO: The Tower of Execution lava noises need silencing as well.
     0x0C0059BE,  # JAL   0x800166F8
     0x34048188,  # ORI   A0, R0, 0x8188
     0x0C0059BE,  # JAL   0x800166F8

@@ -10,8 +10,9 @@ from .items import CVLoDItem, ALL_CVLOD_ITEMS, POSSIBLE_EXTRA_FILLER, get_item_n
 from .locations import CVLoDLocation, get_locations_to_create, get_location_name_groups, get_location_names_to_ids
 from .entrances import verify_entrances, get_warp_entrances
 from .options import CVLoDOptions, DraculasCondition, SubWeaponShuffle
-from .stages import get_active_stages, shuffle_stages, get_stage_exits, get_active_warps, \
-    get_regions_from_all_active_stages, verify_branches, CVLoDActiveStage, MISC_REGIONS, ALL_CVLOD_REGIONS
+from .stages import get_active_stages, shuffle_stages, get_stage_exits, get_active_warps, find_stage_of_region, \
+    find_stage_in_list, get_regions_from_all_active_stages, verify_branches, CVLoDActiveStage, MISC_REGIONS, \
+    ALL_CVLOD_REGIONS
 from .rules import CVLoDRules
 from .data import item_names, reg_names, ent_names, stage_names
 from worlds.AutoWorld import WebWorld, World
@@ -297,36 +298,43 @@ class CVLoDWorld(World):
     def get_filler_item_name(self) -> str:
         return self.random.choice(POSSIBLE_EXTRA_FILLER)
 
-    #def extend_hint_information(self, hint_data: typing.Dict[int, typing.Dict[int, str]]):
-        # Attach each location's stage's position to its hint information if Stage Shuffle is on.
-    #    if not self.options.stage_shuffle:
-    #        return
+    def extend_hint_information(self, hint_data: typing.Dict[int, typing.Dict[int, str]]):
+        # Attach each Location's stage's position to its hint information if Stage Shuffle is on.
+        if not self.options.stage_shuffle:
+            return
 
-    #    stage_pos_data = {}
-    #    for loc in list(self.multiworld.get_locations(self.player)):
-    #        stage = get_region_info(loc.parent_region.name, "stage")
-    #        if stage is not None and loc.address is not None:
-    #            num = str(self.active_stage_exits[stage]["position"]).zfill(2)
-    #            path = self.active_stage_exits[stage]["path"]
-    #            stage_pos_data[loc.address] = f"Stage {num}"
-    #            if path != " ":
-    #                stage_pos_data[loc.address] += path
-    #    hint_data[self.player] = stage_pos_data
+        stage_pos_data = {}
+        for loc in list(self.get_locations()):
+            stage = find_stage_of_region(loc.parent_region.name)
+            # If the Location's Region is part of a stage, get the position of that stage and attach it to the
+            # Location's hint data.
+            if stage is not None and loc.address is not None:
+                stage_pos_data[loc.address] = f"Stage {find_stage_in_list(stage, self.active_stage_info)['position']}"
+        hint_data[self.player] = stage_pos_data
 
     def modify_multidata(self, multidata: typing.Dict[str, typing.Any]):
         # Put the player's unique authentication in connect_names.
         multidata["connect_names"][base64.b64encode(self.auth).decode("ascii")] = \
             multidata["connect_names"][self.multiworld.player_name[self.player]]
 
-    #def write_spoiler(self, spoiler_handle: typing.TextIO) -> None:
-        # Write the stage order to the spoiler log
-    #    spoiler_handle.write(f"\nCastlevania 64 stage & warp orders for {self.multiworld.player_name[self.player]}:\n")
-    #    for stage in self.active_stage_list:
-    #        num = str(self.active_stage_exits[stage]["position"]).zfill(2)
-    #        path = self.active_stage_exits[stage]["path"]
-    #        spoiler_handle.writelines(f"Stage {num}{path}:\t{stage}\n")
+    def write_spoiler(self, spoiler_handle: typing.TextIO) -> None:
+        # Write the stage order to the spoiler log.
+        # If we know we're only writing a stage order, have the header reflect that.
+        if len(self.active_warp_list) <= 1:
+            spoiler_handle.write(f"\nCastlevania: Legacy of Darkness stage order for {self.player_name}:\n")
+        else:
+            spoiler_handle.write(f"\nCastlevania: Legacy of Darkness stage & warp orders for {self.player_name}:\n")
+        for stage in self.active_stage_info:
+            # Add some whitespace between the position and the colon if the position's length is less than 3.
+            whitespace = ""
+            for i in range(len(stage["position"]), 3):
+                whitespace += " "
+            spoiler_handle.writelines(f"Stage {stage['position'] + whitespace}:\t{stage['name']}\n")
 
-        # Write the warp order to the spoiler log
-    #    spoiler_handle.writelines(f"\nStart :\t{self.active_stage_list[0]}\n")
-    #    for i in range(1, len(self.active_warp_list)):
-    #        spoiler_handle.writelines(f"Warp {i}:\t{self.active_warp_list[i]}\n")
+        # Write the warp order to the spoiler log. If the warp list only has one element in it
+        # (meaning the slot doesn't have more warps than the start), skip this step.
+        if len(self.active_warp_list) <= 1:
+            return
+        spoiler_handle.writelines(f"\nStart :\t{self.active_stage_info[0]['name']}\n")
+        for i in range(1, len(self.active_warp_list)):
+            spoiler_handle.writelines(f"Warp {i}:\t{self.active_warp_list[i]}\n")

@@ -19,11 +19,12 @@ class CVLoDRegionData(TypedDict):
 class CVLoDStageData(NamedTuple):
     start_region: str  # The AP Region that the start of the stage is in. Used for connecting the previous stage's end
     # and alternate end (if it exists) AP Entrances to the start of the next one.
-    start_entrance: str # The AP Entrance that leads out of this stage from the start of it, if one exists.
+    start_entrance: str  # The AP Entrance that leads out of this stage from the start of it, if one exists.
     start_scene_id: int  # The scene ID that the start of the stage is in.
     start_spawn_id: int  # The player spawn location ID for the start of the stage. This and "start scene id" are both
     # written to the previous stage's end loading zone to make it send the player to the next stage
     # in the slot's determined stage order.
+    start_zone_id: int | None  # ID for the loading zone in the scene that takes the player back a prior stage normally.
     mid_region: str  # The AP Region that the stage's middle warp point is in. Used for connecting the warp AP Entrances
     # after the starting stage to where they should be connecting to.
     mid_scene_id: int  # The scene ID that the stage's middle warp point is in.
@@ -34,6 +35,7 @@ class CVLoDStageData(NamedTuple):
     end_entrance: str # The primary AP Entrance that leads out of this stage from the end of it, if one exists.
     end_scene_id: int  # The scene ID that the end of the stage is in.
     end_spawn_id: int  # The player spawn location ID for the end of the stage. This and "end map id" are both written
+    end_zone_id: int | None  # ID for the loading zone in the scene that takes the player to the next stage normally.
     id_number: int  # Unique ID number for this stage for this apworld to refer to in stuff like player options.
     # to the next stage's beginning loading zone (if it exists) to make it send the player to the
     # previous stage in the world's determined stage order.
@@ -57,9 +59,10 @@ MISC_REGIONS = {
 
 CVLOD_STAGE_INFO = {
     stage_names.FOGGY:
-        CVLoDStageData(reg_names.fld_above, "", Scenes.FOGGY_LAKE_ABOVE_DECKS, 0x00,
+        CVLoDStageData(reg_names.fld_above, "", Scenes.FOGGY_LAKE_ABOVE_DECKS, 0x00, None,
                        reg_names.flb_below, Scenes.FOGGY_LAKE_BELOW_DECKS, 0x02,
                        reg_names.flp_pier, ent_names.flp_end, Scenes.FOGGY_LAKE_PIER, 0x01, 0,
+                       0,
                        # Above Decks
                        {reg_names.fld_above: CVLoDRegionData(locations=[loc_names.fld_forecast_port,
                                                                         loc_names.fld_forecast_starboard,
@@ -102,9 +105,10 @@ CVLOD_STAGE_INFO = {
                                                             entrances=[ent_names.flp_end])}),
 
     stage_names.FOREST:
-        CVLoDStageData(reg_names.forest_start, "", Scenes.FOREST_OF_SILENCE, 0x00,
+        CVLoDStageData(reg_names.forest_start, "", Scenes.FOREST_OF_SILENCE, 0x00, 0,
                        reg_names.forest_half_2, Scenes.FOREST_OF_SILENCE, 0x06,
                        reg_names.forest_end, ent_names.forest_end, Scenes.FOREST_OF_SILENCE, 0x01, 1,
+                       1,
                        {reg_names.forest_start: CVLoDRegionData(locations=[loc_names.forest_pier_center,
                                                                            loc_names.forest_pier_end,
                                                                            loc_names.event_forest_boss_1],
@@ -137,9 +141,10 @@ CVLOD_STAGE_INFO = {
                                                               entrances=[ent_names.forest_end])}),
 
     stage_names.C_WALL:
-        CVLoDStageData(reg_names.cw_start, ent_names.cw_start, Scenes.CASTLE_WALL_MAIN, 0x00,
+        CVLoDStageData(reg_names.cw_start, ent_names.cw_start, Scenes.CASTLE_WALL_MAIN, 0x00, 0,
                        reg_names.cw_start, Scenes.CASTLE_WALL_MAIN, 0x07,
-                       reg_names.cw_exit, ent_names.cw_end, Scenes.CASTLE_WALL_MAIN, 0x10, 2,
+                       reg_names.cw_exit, ent_names.cw_end, Scenes.CASTLE_WALL_MAIN, 0x05, 5,
+                       2,
                        # Main
                        {reg_names.cw_start: CVLoDRegionData(locations=[],
                                                             entrances=[ent_names.cw_start,
@@ -196,9 +201,10 @@ CVLOD_STAGE_INFO = {
                                                                          ent_names.cwl_top])}),
 
     stage_names.VILLA:
-        CVLoDStageData(reg_names.villafy_start, ent_names.villafy_start, Scenes.VILLA_FRONT_YARD, 0x00,
+        CVLoDStageData(reg_names.villafy_start, ent_names.villafy_start, Scenes.VILLA_FRONT_YARD, 0x00, 0,
                        reg_names.villala_storeroom, Scenes.VILLA_LIVING_AREA, 0x04,
-                       reg_names.villac_crypt_i, ent_names.villac_end_r, Scenes.VILLA_CRYPT, 0x03, 3,
+                       reg_names.villac_crypt_i, ent_names.villac_end_r, Scenes.VILLA_CRYPT, 0x02, 4,
+                       3,
                        # Front yard
                        {reg_names.villafy_start: CVLoDRegionData(locations=[loc_names.villafy_outer_gate_l,
                                                                             loc_names.villafy_outer_gate_r,
@@ -344,9 +350,10 @@ CVLOD_STAGE_INFO = {
                                                                              ent_names.villac_end_co])}),
 
     stage_names.TUNNEL:
-        CVLoDStageData(reg_names.tunnel_start, ent_names.tunnel_start_warp, Scenes.TUNNEL, 0x00,
+        CVLoDStageData(reg_names.tunnel_start, ent_names.tunnel_start_warp, Scenes.TUNNEL, 0x00, None,
                        reg_names.tunnel_end, Scenes.TUNNEL, 0x04,
-                       reg_names.tunnelb_arena, ent_names.tunnelb_end, Scenes.ALGENIE_MEDUSA_ARENA, 0x41, 4,
+                       reg_names.tunnelb_arena, ent_names.tunnelb_end, Scenes.ALGENIE_MEDUSA_ARENA, 0x41, 1,
+                       4,
                        # Main
                        {reg_names.tunnel_start: CVLoDRegionData(locations=[loc_names.tunnel_landing,
                                                                            loc_names.tunnel_landing_rc],
@@ -404,9 +411,10 @@ CVLOD_STAGE_INFO = {
                                                                             ent_names.tunnelb_end])}),
 
     stage_names.WATERWAY:
-        CVLoDStageData(reg_names.uw_main, ent_names.uw_start_warp, Scenes.WATERWAY, 0x00,
+        CVLoDStageData(reg_names.uw_main, ent_names.uw_start_warp, Scenes.WATERWAY, 0x00, None,
                        reg_names.uw_main, Scenes.WATERWAY, 0x04,
-                       reg_names.uwb_arena, ent_names.uwb_end, Scenes.ALGENIE_MEDUSA_ARENA, 0x81, 5,
+                       reg_names.uwb_arena, ent_names.uwb_end, Scenes.ALGENIE_MEDUSA_ARENA, 0x81, 3,
+                       5,
                        # Main
                        {reg_names.uw_main: CVLoDRegionData(locations=[loc_names.uw_near_ent,
                                                                       loc_names.uw_across_ent,
@@ -441,9 +449,10 @@ CVLOD_STAGE_INFO = {
                                                                         ent_names.uwb_end])}),
 
     stage_names.OUTER:
-        CVLoDStageData(reg_names.towf_face_climb, ent_names.towf_start_warp, Scenes.THE_OUTER_WALL, 0x00,
+        CVLoDStageData(reg_names.towf_face_climb, ent_names.towf_start_warp, Scenes.THE_OUTER_WALL, 0x00, None,
                        reg_names.towse_slaughter_ext_f, Scenes.THE_OUTER_WALL, 0x0F,
-                       reg_names.towfr_end, ent_names.towfr_end, Scenes.FAN_MEETING_ROOM, 0xC2, 6,
+                       reg_names.towfr_end, ent_names.towfr_end, Scenes.FAN_MEETING_ROOM, 0xC2, 2,
+                       6,
                        # Face (Climb)
                        {reg_names.towf_face_climb: CVLoDRegionData(locations=[loc_names.towf_start_rear,
                                                                               loc_names.towf_start_front,
@@ -521,9 +530,10 @@ CVLOD_STAGE_INFO = {
                                                              entrances=[ent_names.towfr_end])}),
 
     stage_names.ART:
-        CVLoDStageData(reg_names.atm_museum, ent_names.atm_start, Scenes.ART_TOWER_MUSEUM, 0x00,
+        CVLoDStageData(reg_names.atm_museum, ent_names.atm_start, Scenes.ART_TOWER_MUSEUM, 0x00, 0,
                        reg_names.atm_museum, Scenes.ART_TOWER_MUSEUM, 0x02,
-                       reg_names.atc_conservatory, ent_names.atc_end, Scenes.ART_TOWER_CONSERVATORY, 0x01, 7,
+                       reg_names.atc_conservatory, ent_names.atc_end, Scenes.ART_TOWER_CONSERVATORY, 0x01, 1,
+                       7,
                        # Museum
                        {reg_names.atm_museum: CVLoDRegionData(locations=[loc_names.atm_ww,
                                                                          loc_names.atm_nw_ped,
@@ -571,9 +581,10 @@ CVLOD_STAGE_INFO = {
                                                                                ent_names.atc_end])}),
 
     stage_names.RUINS:
-        CVLoDStageData(reg_names.torm_maze_main, ent_names.torm_start, Scenes.RUINS_DOOR_MAZE, 0x00,
+        CVLoDStageData(reg_names.torm_maze_main, ent_names.torm_start, Scenes.RUINS_DOOR_MAZE, 0x00, 0,
                        reg_names.torc_dark, Scenes.RUINS_DARK_CHAMBERS, 0x02,
-                       reg_names.torc_end, ent_names.torc_end, Scenes.RUINS_DARK_CHAMBERS, 0x01, 8,
+                       reg_names.torc_end, ent_names.torc_end, Scenes.RUINS_DARK_CHAMBERS, 0x01, 1,
+                       8,
                        # Door Maze
                        {reg_names.torm_maze_main: CVLoDRegionData(locations=[loc_names.torm_trap_side,
                                                                              loc_names.torm_trap_corner,
@@ -618,9 +629,10 @@ CVLOD_STAGE_INFO = {
                                                             entrances=[ent_names.torc_end])}),
 
     stage_names.CENTER:
-        CVLoDStageData(reg_names.ccfr_fan_room, "", Scenes.FAN_MEETING_ROOM, 0x40,
+        CVLoDStageData(reg_names.ccfr_fan_room, "", Scenes.FAN_MEETING_ROOM, 0x40, 0,
                        reg_names.ccia_nitro_liz, Scenes.CASTLE_CENTER_INVENTIONS, 0x03,
-                       reg_names.ccte_elev_top, ent_names.ccte_exit_r, Scenes.CASTLE_CENTER_TOP_ELEV, 0x01, 9,
+                       reg_names.ccte_elev_top, ent_names.ccte_exit_r, Scenes.CASTLE_CENTER_TOP_ELEV, 0x01, 1,
+                       9,
                        # Fan room
                        {reg_names.ccfr_fan_room: CVLoDRegionData(locations=[],
                                                                  entrances=[ent_names.ccfr_door_r]),
@@ -744,9 +756,10 @@ CVLOD_STAGE_INFO = {
                                                                             ent_names.ccte_exit_c])}),
 
     stage_names.SCIENCE:
-        CVLoDStageData(reg_names.toscic_factory, ent_names.toscic_start, Scenes.SCIENCE_CONVEYORS, 0x00,
+        CVLoDStageData(reg_names.toscic_factory, ent_names.toscic_start, Scenes.SCIENCE_CONVEYORS, 0x00, 0,
                        reg_names.toscit_halls_main, Scenes.SCIENCE_LABS, 0x02,
-                       reg_names.toscit_end, ent_names.toscit_end, Scenes.SCIENCE_LABS, 0x01, 10,
+                       reg_names.toscit_end, ent_names.toscit_end, Scenes.SCIENCE_LABS, 0x01, 1,
+                       10,
                        # Cube Factory
                        {reg_names.toscic_factory: CVLoDRegionData(locations=[loc_names.toscic_first,
                                                                              loc_names.toscic_second,
@@ -790,9 +803,10 @@ CVLOD_STAGE_INFO = {
                                                                          ent_names.toscit_end])}),
 
     stage_names.DUEL:
-        CVLoDStageData(reg_names.dt_start, ent_names.dt_start, Scenes.DUEL_TOWER, 0x00,
+        CVLoDStageData(reg_names.dt_start, ent_names.dt_start, Scenes.DUEL_TOWER, 0x00, 0,
                        reg_names.dt_main, Scenes.DUEL_TOWER, 0x02,
-                       reg_names.dt_end, ent_names.dt_end, Scenes.DUEL_TOWER, 0x01, 11,
+                       reg_names.dt_end, ent_names.dt_end, Scenes.DUEL_TOWER, 0x01, 1,
+                       11,
                        {reg_names.dt_start: CVLoDRegionData(locations=[loc_names.event_dt_boss_1],
                                                             entrances=[ent_names.dt_start,
                                                                        ent_names.dt_drop]),
@@ -819,9 +833,10 @@ CVLOD_STAGE_INFO = {
                                                           entrances=[ent_names.dt_end])}),
 
     stage_names.EXECUTION:
-        CVLoDStageData(reg_names.toe_bottom, ent_names.toe_bottom_start, Scenes.EXECUTION_MAIN, 0x00,
+        CVLoDStageData(reg_names.toe_bottom, ent_names.toe_bottom_start, Scenes.EXECUTION_MAIN, 0x00, 0,
                        reg_names.toe_middle_i, Scenes.EXECUTION_MAIN, 0x02,
-                       reg_names.toeu_ultimate, ent_names.toeu_end, Scenes.EXECUTION_SIDE_ROOMS_2, 0x03, 12,
+                       reg_names.toeu_ultimate, ent_names.toeu_end, Scenes.EXECUTION_SIDE_ROOMS_2, 0x03, 3,
+                       12,
                        {reg_names.toe_bottom: CVLoDRegionData(locations=[loc_names.toe_start_l,
                                                                          loc_names.toe_start_r,
                                                                          loc_names.toe_spike_alcove_l,
@@ -883,9 +898,10 @@ CVLOD_STAGE_INFO = {
                                                                             ent_names.toeu_end])}),
 
     stage_names.SORCERY:
-        CVLoDStageData(reg_names.tosor_main, ent_names.tosor_start, Scenes.TOWER_OF_SORCERY, 0x00,
+        CVLoDStageData(reg_names.tosor_main, ent_names.tosor_start, Scenes.TOWER_OF_SORCERY, 0x00, 0,
                        reg_names.tosor_main, Scenes.TOWER_OF_SORCERY, 0x02,
-                       reg_names.tosor_main, ent_names.tosor_end, Scenes.TOWER_OF_SORCERY, 0x01, 13,
+                       reg_names.tosor_main, ent_names.tosor_end, Scenes.TOWER_OF_SORCERY, 0x01, 1,
+                       13,
                        {reg_names.tosor_main: CVLoDRegionData(locations=[loc_names.tosor_electric,
                                                                          loc_names.tosor_lasers,
                                                                          loc_names.tosor_climb_l,
@@ -898,9 +914,10 @@ CVLOD_STAGE_INFO = {
                                                                          ent_names.tosor_end])}),
 
     stage_names.ROOM:
-        CVLoDStageData(reg_names.roc_int, "", Scenes.ROOM_OF_CLOCKS, 0x00,
+        CVLoDStageData(reg_names.roc_int, "", Scenes.ROOM_OF_CLOCKS, 0x00, 0,
                        reg_names.roc_int, Scenes.ROOM_OF_CLOCKS, 0x04,
-                       reg_names.roc_int, ent_names.roci_gate, Scenes.ROOM_OF_CLOCKS, 0x02, 14,
+                       reg_names.roc_int, ent_names.roci_gate, Scenes.ROOM_OF_CLOCKS, 0x02, 2,
+                       14,
                        {reg_names.roc_int: CVLoDRegionData(locations=[loc_names.roc_ent_l,
                                                                       loc_names.roc_ent_r,
                                                                       loc_names.roc_elev_r,
@@ -914,9 +931,10 @@ CVLOD_STAGE_INFO = {
                                                            entrances=[ent_names.roce_elev])}),
 
     stage_names.CLOCK:
-        CVLoDStageData(reg_names.ctgc_start, "", Scenes.CLOCK_TOWER_GEAR_CLIMB, 0x00,
+        CVLoDStageData(reg_names.ctgc_start, "", Scenes.CLOCK_TOWER_GEAR_CLIMB, 0x00, 0,
                        reg_names.ctga_abyss_near, Scenes.CLOCK_TOWER_ABYSS, 0x02,
-                       reg_names.ctf_face, ent_names.ctf_end, Scenes.CLOCK_TOWER_FACE, 0x03, 15,
+                       reg_names.ctf_face, ent_names.ctf_end, Scenes.CLOCK_TOWER_FACE, 0x03, 1,
+                       15,
                        # Gear Climb
                        {reg_names.ctgc_start: CVLoDRegionData(locations=[loc_names.ctgc_gearclimb_battery_slab1,
                                                                          loc_names.ctgc_gearclimb_battery_slab2,
@@ -976,9 +994,10 @@ CVLOD_STAGE_INFO = {
                                                               entrances=[])}),
 
     stage_names.KEEP:
-        CVLoDStageData(reg_names.ck_main, "", Scenes.CASTLE_KEEP_EXTERIOR, 0x00,
+        CVLoDStageData(reg_names.ck_main, "", Scenes.CASTLE_KEEP_EXTERIOR, 0x00, 0,
                        reg_names.ck_main, Scenes.CASTLE_KEEP_EXTERIOR, 0x01,
-                       reg_names.ck_main, "", Scenes.CASTLE_KEEP_DRAC_CHAMBER, 0x00, 16,
+                       reg_names.ck_main, "", Scenes.CASTLE_KEEP_DRAC_CHAMBER, 0x00, None,
+                       16,
                        {reg_names.ck_main: CVLoDRegionData(locations=[loc_names.ck_renon_sw,
                                                                       loc_names.ck_renon_se,
                                                                       loc_names.ck_renon_nw,
@@ -1212,9 +1231,18 @@ class CVLoDActiveStage(TypedDict):
 
 def find_stage_in_list(stage_to_find: str, active_stage_info: list[CVLoDActiveStage]) -> CVLoDActiveStage | None:
     """Loops over every element in a list of CVLoDActiveStages and tries to find a particular stage by name.
-    Returns the found element if it is or None if it isn't respectively."""
+    Returns the stage if it exists is or None if it doesn't respectively."""
     for stage in active_stage_info:
         if stage["name"] == stage_to_find:
+            return stage
+    return None
+
+
+def find_stage_of_region(region_name: str) -> str | None:
+    """ Given the name of a Region, tries to find the stage that Region belongs to in the list of stage datas.
+    Returns the name of the stage if found or None if not found."""
+    for stage, info in CVLOD_STAGE_INFO.items():
+        if region_name in info.regions:
             return stage
     return None
 
@@ -1678,9 +1706,10 @@ def get_stage_exits(options: CVLoDOptions, active_stage_order: list[str]) -> lis
         # If the alt indicator is a letter, put just that letter for the stage position.
         if alt_indicator in ["A", "B", "C"]:
             current_stage_info["position"] = alt_indicator
-        # Otherwise, convert the current stage number into a string and join it with the alt indicator.
+        # Otherwise, convert the current stage number into a string zero-filled to two digits and join it with the alt
+        # indicator.
         else:
-            current_stage_info["position"] = str(current_stage_number) + alt_indicator
+            current_stage_info["position"] = str(current_stage_number).zfill(2) + alt_indicator
 
         # Add the final stage info to the list of stage infos and increment the current stage number by 1 for the next
         # loop.
