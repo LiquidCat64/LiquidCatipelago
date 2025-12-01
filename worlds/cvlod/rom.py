@@ -90,10 +90,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # # # # # # # # #
         # GENERAL EDITS #
         # # # # # # # # #
-        # NOP out the CRC BNEs
-        patcher.write_int32(0x66C, 0x00000000)
-        patcher.write_int32(0x678, 0x00000000)
-
         # Initial Countdown numbers and Start Inventory
         patcher.write_int32(0x90DBC, 0x080FF200)  # J	0x803FC800
         patcher.write_int32s(0xFFC800, patches.new_game_extras)
@@ -130,22 +126,22 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Add keys in an AP logo formation to the title screen.
         patcher.scenes[Scenes.INTRO_NARRATION].actor_lists["proxy"] += [
             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=0.0, y_pos=3.8, z_pos=0.0, execution_flags=0,
-                                  object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                  object_id=Objects.INTERACTABLE, flag_id=0, var_a=0, var_b=0,
                                   var_c=Pickups.LEFT_TOWER_KEY, var_d=0, extra_condition_ptr=0),
             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=-3.6, y_pos=1.8, z_pos=-2.8, execution_flags=0,
-                                  object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                  object_id=Objects.INTERACTABLE, flag_id=0, var_a=0, var_b=0,
                                   var_c=Pickups.STOREROOM_KEY, var_d=0, extra_condition_ptr=0),
             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=3.6, y_pos=1.8, z_pos=2.8, execution_flags=0,
-                                  object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                  object_id=Objects.INTERACTABLE, flag_id=0, var_a=0, var_b=0,
                                   var_c=Pickups.COPPER_KEY, var_d=0, extra_condition_ptr=0),
             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=-3.6, y_pos=-2.2, z_pos=-2.8, execution_flags=0,
-                                  object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                  object_id=Objects.INTERACTABLE, flag_id=0, var_a=0, var_b=0,
                                   var_c=Pickups.CHAMBER_KEY, var_d=0, extra_condition_ptr=0),
             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=3.6, y_pos=-2.2, z_pos=2.8, execution_flags=0,
-                                  object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                  object_id=Objects.INTERACTABLE, flag_id=0, var_a=0, var_b=0,
                                   var_c=Pickups.EXECUTION_KEY, var_d=0, extra_condition_ptr=0),
             CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=0.0, y_pos=-4.2, z_pos=0.0, execution_flags=0,
-                                  object_id=Objects.PICKUP_ITEM, flag_id=0, var_a=0, var_b=0,
+                                  object_id=Objects.INTERACTABLE, flag_id=0, var_a=0, var_b=0,
                                   var_c=Pickups.ARCHIVES_KEY, var_d=0, extra_condition_ptr=0),
             ]
 
@@ -219,17 +215,23 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32(0x1BB20, 0x080FF280)  # J 0x803FCA00
         patcher.write_int32s(0xFFCA00, patches.ambience_silencer)
 
-        # Enable being able to carry multiple Special jewels, Nitros, Mandragoras, and Key Items simultaneously
+        # Enable being able to carry multiple Special jewels, Nitros, Mandragoras, and Key Items simultaneously, and
+        # make the Special1 and 2 play sounds when you reach milestones with them.
+        patcher.write_int32s(0xFFDA50, patches.special_sound_notifs)
+        patcher.write_int16(0xFFDA6E, slot_patch_info["options"]["special1s_per_warp"])
+        patcher.write_int16(0xFFDA82, len(slot_patch_info["warps"]))
         # Special1
-        patcher.write_int32s(0x904B8, [0x90C8AB47,  # LBU   T0, 0xAB47 (A2)
-                                        0x00681821,  # ADDU  V1, V1, T0
-                                        0xA0C3AB47])  # SB    V1, 0xAB47 (A2)
-        patcher.write_int32(0x904C8, 0x24020001)  # ADDIU V0, R0, 0x0001
+        patcher.write_int32s(0x904B8, [0x90C8AB47,   # LBU   T0, 0xAB47 (A2)
+                                       0x00681821,   # ADDU  V1, V1, T0
+                                       0xA0C3AB47,   # SB    V1, 0xAB47 (A2)
+                                       0x080FF69B,   # J     0x803FDA6C
+                                       0x00000000])  # NOP
         # Special2
-        patcher.write_int32s(0x904CC, [0x90C8AB48,  # LBU   T0, 0xAB48 (A2)
-                                        0x00681821,  # ADDU  V1, V1, T0
-                                        0xA0C3AB48])  # SB    V1, 0xAB48 (A2)
-        patcher.write_int32(0x904DC, 0x24020001)  # ADDIU V0, R0, 0x0001
+        patcher.write_int32s(0x904CC, [0x90C8AB48,   # LBU   T0, 0xAB48 (A2)
+                                       0x00681821,   # ADDU  V1, V1, T0
+                                       0xA0C3AB48,   # SB    V1, 0xAB48 (A2)
+                                       0x080FF694,   # J     0x803FDA50
+                                       0x00000000])  # NOP
         # Special3 (NOP this one for usage as the AP item)
         patcher.write_int32(0x904E8, 0x00000000)
         # Magical Nitro
@@ -247,6 +249,11 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_byte(0x90617, 0x63)  # Most items
             patcher.write_byte(0x90767, 0x63)  # Sun/Moon cards
 
+        # Make the Special1 and 2 play sounds when you reach milestones with them.
+
+        # patcher.write_int32(0xBF240, 0x080FF694)  # J 0x803FDA50
+        # patcher.write_int32(0xBF220, 0x080FF69E)  # J 0x803FDA78
+
         # Rename the Special3 to "AP Item"
         patcher.write_bytes(0xB89AA, cvlod_string_to_bytearray("AP Item "))
         # Change the Special3's appearance to that of a spinning contract.
@@ -263,7 +270,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Make the "PowerUp" textbox appear even if you already have two.
         patcher.write_int32(0x87E34, 0x00000000)  # NOP
         # Write "Z + R + START" over the Special1 description.
-        patcher.write_bytes(0x3B7C, cvlod_string_to_bytearray("Z + R + START", add_end_char=True), NIFiles.OVERLAY_PAUSE_MENU)
+        patcher.write_bytes(0x3B7C, cvlod_string_to_bytearray("Z + R + START", add_end_char=True),
+                            NIFiles.OVERLAY_PAUSE_MENU)
 
         # Enable changing the item model/visibility on any item instance.
         patcher.write_int32s(0x107740, [0x0C0FF0C0,  # JAL   0x803FC300
@@ -462,7 +470,7 @@ class CVLoDPatchExtensions(APPatchExtension):
 
         # Turn the Forest Henry child actor into a freestanding pickup check with all necessary parameters assigned.
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["spawn_flags"] = 0
-        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["execution_flags"] = 0
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["flag_id"] = 0
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["var_a"] = \
@@ -491,7 +499,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Add the backup King Skeleton jaws item that will spawn only if the player orphans it the first time.
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"].append(
             CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos= 0.03125,
-                                  y_pos=0, z_pos=-1430,execution_flags=0, object_id=Objects.PICKUP_ITEM,
+                                  y_pos=0, z_pos=-1430,execution_flags=0, object_id=Objects.INTERACTABLE,
                                   flag_id=0x2C,  # Drawbridge lowering cutscene flag.
                                   var_a=CVLOD_LOCATIONS_INFO[loc_names.forest_skelly_mouth].flag_id, var_b=0,
                                   var_c=Pickups.ROAST_CHICKEN, var_d=0, extra_condition_ptr=0)
@@ -729,7 +737,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["init"][43]["delete"] = True
         # Turn the decorative Diary actor into a freestanding pickup check with all necessary parameters assigned.
         patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 7"][37]["spawn_flags"] = 0
-        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 7"][37]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 7"][37]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 7"][37]["flag_id"] = 0
         patcher.scenes[Scenes.VILLA_LIVING_AREA].actor_lists["room 7"][37]["var_a"] = \
             CVLOD_LOCATIONS_INFO[loc_names.villala_archives_table].flag_id
@@ -754,7 +762,7 @@ class CVLoDPatchExtensions(APPatchExtension):
 
         # Turn the Villa Henry child actor into a freestanding pickup check with all necessary parameters assigned.
         patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][81]["spawn_flags"] = 0
-        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][81]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][81]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][81]["execution_flags"] = 0
         patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][81]["flag_id"] = 0
         patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][81]["var_a"] = \
@@ -836,7 +844,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # completely ceases functioning.
         patcher.write_int16(0x230, 0x1000, NIFiles.OVERLAY_CS_1ST_REIN_CARRIE_CRYPT_VAMPIRE)
 
-        # Make the Henry's Villa coffin loading zone universal while removing Reinhardt, Carrie, and Cornell's.
+        # Make Henry's Villa coffin loading zone universal while removing Reinhardt, Carrie, and Cornell's.
         patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["proxy"][17]["delete"] = True
         patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["proxy"][18]["delete"] = True
         patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["proxy"][19]["delete"] = True
@@ -1345,7 +1353,7 @@ class CVLoDPatchExtensions(APPatchExtension):
 
         # Turn the Tunnel Henry child actor into a freestanding pickup check with all necessary parameters assigned.
         patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][131]["spawn_flags"] = 0
-        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][131]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][131]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][131]["execution_flags"] = 0
         patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][131]["flag_id"] = 0
         patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][131]["var_a"] = \
@@ -1382,7 +1390,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # # # # # # # # # # # # # # # #
         # Turn the Waterway Henry child actor into a freestanding pickup with all necessary parameters assigned.
         patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][70]["spawn_flags"] = 0
-        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][70]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][70]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][70]["execution_flags"] = 0
         patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][70]["flag_id"] = 0
         patcher.scenes[Scenes.WATERWAY].actor_lists["proxy"][70]["var_a"] = \
@@ -1510,7 +1518,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # # # # # # # # # # # # #
         # Turn the Outer Wall Henry child actor into a freestanding pickup check with all necessary parameters assigned.
         patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["spawn_flags"] = 0
-        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["execution_flags"] = 0
         patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["flag_id"] = 0
         patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][41]["var_a"] = \
@@ -1755,23 +1763,23 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Change some shelf decoration Nitros and Mandragoras into actual items.
         # Mandragora shelf right
         patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][14]["x_pos"] = -4.0
-        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][14]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][14]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][14]["var_a"] = \
             CVLOD_LOCATIONS_INFO[loc_names.ccb_mandrag_shelf_r].flag_id
         # Mandragora shelf left
         patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][15]["x_pos"] = -4.0
-        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][15]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][15]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][15]["var_a"] = \
             CVLOD_LOCATIONS_INFO[loc_names.ccb_mandrag_shelf_l].flag_id
         # Nitro shelf Heinrich side
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["x_pos"] = -320.0
-        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["var_a"] = \
             CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_h].flag_id
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["var_b"] = 0
         # Nitro shelf invention side
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["x_pos"] = -306.0
-        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["object_id"] = Objects.PICKUP_ITEM
+        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["var_a"] = \
             CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_i].flag_id
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["var_b"] = 0
@@ -2246,27 +2254,95 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["proxy"][4]["spawn_flags"] = 0
         patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["proxy"][5]["delete"] = True
 
+        # Prevent Dracula's doors from opening if the required amount of the goal item (Special2 normally) is not found.
+        drac_door_check_start = len(patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].overlay)
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].doors[0]["door_flags"] = DoorFlags.EXTRA_CHECK_FUNC_ENABLED
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].doors[0]["extra_condition_ptr"] = \
+            drac_door_check_start + SCENE_OVERLAY_RDRAM_START
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].doors[0]["flag_locked_text_id"] = 0
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].doors[1]["door_flags"] = DoorFlags.EXTRA_CHECK_FUNC_ENABLED
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].doors[1]["extra_condition_ptr"] = \
+            drac_door_check_start + SCENE_OVERLAY_RDRAM_START
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].doors[1]["flag_locked_text_id"] = 0
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int32s(drac_door_check_start,
+                                                                     patches.drac_condition_checker)
+        # Write different option values and door messages and name the Special2 differently depending on what
+        # Dracula's Condition is. The option values will be written to both the door check and the Dracula special
+        # sound notif check.
+        if slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_crystal:
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = ("The door is sealed\n"
+                                                                                 "by a crystalline force...🅰0/\f"
+                                                                                 "You'll need the power\n"
+                                                                                 "of the big crystal in\n"
+                                                                                 "Castle Center's basement\n"
+                                                                                 "to undo the seal.🅰0/")
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int16(drac_door_check_start + 0xE, 1)
+            patcher.write_int16(0xFFDA52, 1)
+            patcher.write_bytes(0xB8998, cvlod_string_to_bytearray("Crystal "))
+            # Make the Big Crystal give the Crystal item for Dracula's door.
+            crystal_s2_giver_start = len(patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].overlay)
+            patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].write_ovl_int32(
+                0x548, 0x0C0B0000 | ((crystal_s2_giver_start + (SCENE_OVERLAY_RDRAM_START & 0xFFFFFF)) // 4))
+            patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].write_ovl_int32s(crystal_s2_giver_start,
+                                                                           patches.crystal_special2_giver)
+        #    special2_text = "The crystal is on!\n" \
+        #                    "Time to teach the old man\n" \
+        #                    "a lesson!"
+        elif slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_bosses:
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = \
+                ("The door is sealed\n"
+                 "by a malevolent force...🅰0/\f"
+                 "You'll need to vanquish\n"
+                 f"{slot_patch_info['options']['bosses_required']} powerful monsters\n"
+                 "to undo the seal.🅰0/")
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int16(
+                drac_door_check_start + 0xE, slot_patch_info["options"]["bosses_required"])
+            patcher.write_int16(0xFFDA52, slot_patch_info["options"]["bosses_required"])
+            patcher.write_bytes(0xB8998, cvlod_string_to_bytearray("Trophy  "))
+            # TODO: Make all bosses give Trophies.
+        # patcher.write_int32(0xBBD50, 0x080FF18C)  # J	0x803FC630
+        # patcher.write_int32s(0xBFC630, patches.boss_special2_giver)
+        #    special2_text = f"Proof you killed a powerful\n" \
+        #                    f"Night Creature. Earn {required_s2s}/{total_s2s}\n" \
+        #                    f"to battle Dracula."
+        elif slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_specials:
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = \
+                ("The door is sealed\n"
+                 "by a special force...🅰0/\f"
+                 "You'll need to find\n"
+                 f"{slot_patch_info['options']['required_special2s']} Special2 jewels\n"
+                 "to undo the seal.🅰0/")
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int16(
+                drac_door_check_start + 0xE, slot_patch_info["options"]["required_special2s"])
+            patcher.write_int16(0xFFDA52, slot_patch_info["options"]["required_special2s"])
+        #    special2_text = f"Need {required_s2s}/{total_s2s} to kill Dracula.\n" \
+        #                    f"Looking closely, you see...\n" \
+        #                    f"a piece of him within?"
+        # else:
+        #    special2_text = "If you're reading this,\n" \
+        #                    "how did you get a Special2!?"
+
         # If the Castle Keep Ending Sequence option is Cornell, make Cornell's cutscene trigger in Dracula's chamber
         # universal to everyone and remove Reinhardt and Carrie's.
         if slot_patch_info["options"]["castle_keep_ending_sequence"] == CastleKeepEndingSequence.option_cornell:
             patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["init"][0]["delete"] = True
             patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["init"][1]["spawn_flags"] = 0
             # Force Dracula to have all his Cornell behaviors for Reinhardt/Carrie/Henry.
-            patcher.write_int32(0x904, 0x34050002, NIFiles.OVERLAY_CS_FAKE_DRACULA_BATTLE_INTRO)  # ORI  A1, R0, 0x0002
+            patcher.write_int32(0x904, 0x34050002, NIFiles.OVERLAY_CS_DRACULA_BATTLE_INTRO)  # ORI  A1, R0, 0x0002
             # Red high energy ring.
-            patcher.write_int32(0x40C, 0x34030002, NIFiles.OVERLAY_DRACULA_ENERGY_RING)  # ORI  V1, R0, 0x0002
+            patcher.write_int32(0x40C, 0x34030002, NIFiles.OVERLAY_DRACULA_FIGHT_MGR)  # ORI  V1, R0, 0x0002
             # Red low energy ring.
-            patcher.write_int32(0x650, 0x34030002, NIFiles.OVERLAY_DRACULA_ENERGY_RING)  # ORI  V1, R0, 0x0002
+            patcher.write_int32(0x650, 0x34030002, NIFiles.OVERLAY_DRACULA_FIGHT_MGR)  # ORI  V1, R0, 0x0002
             # Move pool with electric attacks and no flamethrower.
-            patcher.write_int32(0x9388, 0x34020002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0002
+            patcher.write_int32(0x9388, 0x34020002, NIFiles.OVERLAY_DRACULA)  # ORI  V0, R0, 0x0002
             # Blue fire bats.
-            patcher.write_int32(0xB83C, 0x34030002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V1, R0, 0x0002
+            patcher.write_int32(0xB83C, 0x34030002, NIFiles.OVERLAY_DRACULA)  # ORI  V1, R0, 0x0002
             # Bats dropping extra chickens.
-            patcher.write_int32(0xC7A0, 0x34020002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0002
-            patcher.write_int32(0xC90C, 0x34020002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0002
+            patcher.write_int32(0xC7A0, 0x34020002, NIFiles.OVERLAY_DRACULA)  # ORI  V0, R0, 0x0002
+            patcher.write_int32(0xC90C, 0x34020002, NIFiles.OVERLAY_DRACULA)  # ORI  V0, R0, 0x0002
             # Cutscene when beaten by Cornell.
-            patcher.write_int32(0x90FC, 0x34020002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0002
-            patcher.write_int32(0x9138, 0x34020002, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0002
+            patcher.write_int32(0x90FC, 0x34020002, NIFiles.OVERLAY_DRACULA)  # ORI  V0, R0, 0x0002
+            patcher.write_int32(0x9138, 0x34020002, NIFiles.OVERLAY_DRACULA)  # ORI  V0, R0, 0x0002
 
         # Otherwise, if a Reinhardt/Carrie option was chosen, remove Cornell's trigger, make Reinhardt and Carrie's
         # universal, and force the good ending check after Fake Dracula to always pass.
@@ -2274,21 +2350,21 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["init"][0]["spawn_flags"] = 0
             patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["init"][1]["delete"] = True
             # Force Fake Dracula to have all his Reinhardt/Carrie behaviors for Cornell/Henry.
-            patcher.write_int32(0x904, 0x34050000, NIFiles.OVERLAY_CS_FAKE_DRACULA_BATTLE_INTRO)  # ORI  A1, R0, 0x0000
+            patcher.write_int32(0x904, 0x34050000, NIFiles.OVERLAY_CS_DRACULA_BATTLE_INTRO)  # ORI  A1, R0, 0x0000
             # Blue high energy ring.
-            patcher.write_int32(0x40C, 0x34030000, NIFiles.OVERLAY_DRACULA_ENERGY_RING)  # ORI  V1, R0, 0x0000
+            patcher.write_int32(0x40C, 0x34030000, NIFiles.OVERLAY_DRACULA_FIGHT_MGR)  # ORI  V1, R0, 0x0000
             # Blue low energy ring.
-            patcher.write_int32(0x650, 0x34030000, NIFiles.OVERLAY_DRACULA_ENERGY_RING)  # ORI  V1, R0, 0x0000
+            patcher.write_int32(0x650, 0x34030000, NIFiles.OVERLAY_DRACULA_FIGHT_MGR)  # ORI  V1, R0, 0x0000
             # Move pool with flamethrower attack and no electric attacks.
-            patcher.write_int32(0x9388, 0x34020000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0000
+            patcher.write_int32(0x9388, 0x34020000, NIFiles.OVERLAY_DRACULA)  # ORI  V0, R0, 0x0000
             # Orange fire bats.
-            patcher.write_int32(0xB83C, 0x34030000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V1, R0, 0x0000
+            patcher.write_int32(0xB83C, 0x34030000, NIFiles.OVERLAY_DRACULA)  # ORI  V1, R0, 0x0000
             # Bats not dropping extra chickens.
-            patcher.write_int32(0xC7A0, 0x34020000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0000
-            patcher.write_int32(0xC90C, 0x34020000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0000
+            patcher.write_int32(0xC7A0, 0x34020000, NIFiles.OVERLAY_DRACULA)  # ORI  V0, R0, 0x0000
+            patcher.write_int32(0xC90C, 0x34020000, NIFiles.OVERLAY_DRACULA)  # ORI  V0, R0, 0x0000
             # Cutscene when beaten by Reinhardt/Carrie.
-            patcher.write_int32(0x90FC, 0x34020000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0000
-            patcher.write_int32(0x9138, 0x34020000, NIFiles.OVERLAY_FAKE_DRACULA)  # ORI  V0, R0, 0x0000
+            patcher.write_int32(0x90FC, 0x34020000, NIFiles.OVERLAY_DRACULA)  # ORI  V0, R0, 0x0000
+            patcher.write_int32(0x9138, 0x34020000, NIFiles.OVERLAY_DRACULA)  # ORI  V0, R0, 0x0000
             # If the Castle Keep Ending Sequence option is Reinhardt Carrie Good, make the White Jewel clear the
             # Bad Ending flag upon spawning to ensure we will never get it.
             if slot_patch_info["options"]["castle_keep_ending_sequence"] == \
@@ -2353,6 +2429,9 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32(0x2F8, 0x14400004, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)  # BNEZ   V0, [forward 0x04]
 
 
+        # # # # # # # # # # #
+        # RANDOMIZER WRITES #
+        # # # # # # # # # # #
         # Loop over EVERY actor in EVERY list, find all Location-associated instances, and either delete them if they
         # are exclusive to non-Normal difficulties or try writing an Item they should have onto them if they aren't.
         for scene in patcher.scenes:
@@ -2361,8 +2440,8 @@ class CVLoDPatchExtensions(APPatchExtension):
                     # If the actor is not a Location-associated actor, or if it's already marked for deletion, or it's
                     # a text spot pickup actor, skip it.
                     if actor["object_id"] not in [Objects.ONE_HIT_BREAKABLE, Objects.THREE_HIT_BREAKABLE,
-                                                  Objects.PICKUP_ITEM] + SPECIAL_1HBS or "delete" in actor or \
-                            (actor["object_id"] == Objects.PICKUP_ITEM and actor["var_c"] not in Pickups):
+                                                  Objects.INTERACTABLE] + SPECIAL_1HBS or "delete" in actor or \
+                            (actor["object_id"] == Objects.INTERACTABLE and actor["var_c"] not in Pickups):
                         continue
 
                     # If it's not an enemy pillar actor, check its spawn flags for what difficulties it spawns on.
@@ -2380,7 +2459,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                     # be done for that actor to retrieve its associated item event flag.
 
                     # If it's a freestanding pickup, the flag to check is in its Var A.
-                    if actor["object_id"] == Objects.PICKUP_ITEM:
+                    if actor["object_id"] == Objects.INTERACTABLE:
                         # If the pickup is a text spot or a White Jewel (wherein Var A is actually a White Jewel ID,
                         # not a flag ID), skip it.
                         if actor["var_c"] == Pickups.WHITE_JEWEL or actor["var_c"] > len(Pickups) + 1:
@@ -2550,8 +2629,8 @@ class CVLoDPatchExtensions(APPatchExtension):
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_spawn_id,
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        #patcher.write_byte(0x15DB, 0x19, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        #patcher.write_byte(0x15D3, 0xC0, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15DB, 0x09, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15D3, 0x05, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
 
         return patcher.get_output_rom()
 
@@ -2610,11 +2689,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # if not options.loading_zone_heals.value:
         # patcher.write_byte(0xD99A5, 0x00)  # Skip all loading zone checks
 
-        # Make the Special1 and 2 play sounds when you reach milestones with them.
-        # patcher.write_int32s(0xBFDA50, patches.special_sound_notifs)
-        # patcher.write_int32(0xBF240, 0x080FF694)  # J 0x803FDA50
-        # patcher.write_int32(0xBF220, 0x080FF69E)  # J 0x803FDA78
-
         # Fix a vanilla issue wherein saving in a character-exclusive stage as the other character would incorrectly
         # display the name of that character's equivalent stage on the save file instead of the one they're actually in.
         # patcher.write_byte(0xC9FE3, 0xD4)
@@ -2666,59 +2740,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32(0xADD68, 0x0C04AB12)  # JAL 0x8012AC48
         # patcher.write_int32s(0xADE28, patches.stage_select_overwrite)
         # patcher.write_byte(0xADE47, s1s_per_warp)
-
-        # Dracula's chamber condition
-        # patcher.write_int32(0xE2FDC, 0x0804AB25)  # J 0x8012AC78
-        # patcher.write_int32s(0xADE84, patches.special_goal_checker)
-        # patcher.write_bytes(0xBFCC48, [0xA0, 0x00, 0xFF, 0xFF, 0xA0, 0x01, 0xFF, 0xFF, 0xA0, 0x02, 0xFF, 0xFF, 0xA0, 0x03, 0xFF,
-        #                           0xFF, 0xA0, 0x04, 0xFF, 0xFF, 0xA0, 0x05, 0xFF, 0xFF, 0xA0, 0x06, 0xFF, 0xFF, 0xA0, 0x07,
-        #                           0xFF, 0xFF, 0xA0, 0x08, 0xFF, 0xFF, 0xA0, 0x09])
-        # if options.draculas_condition.value == options.draculas_condition.option_crystal:
-        # patcher.write_int32(0x6C8A54, 0x0C0FF0C1)  # JAL 0x803FC304
-        # patcher.write_int32s(0xBFC304, patches.crystal_special2_giver)
-        # patcher.write_bytes(0xBFCC6E, cvlod_string_to_bytearray(f"It won't budge!\n"
-        #                                                   f"You'll need the power\n"
-        #                                                   f"of the basement crystal\n"
-        #                                                   f"to undo the seal.", True))
-        #    special2_name = "Crystal "
-        #    special2_text = "The crystal is on!\n" \
-        #                    "Time to teach the old man\n" \
-        #                    "a lesson!"
-        # elif options.draculas_condition.value == options.draculas_condition.option_bosses:
-        # patcher.write_int32(0xBBD50, 0x080FF18C)  # J	0x803FC630
-        # patcher.write_int32s(0xBFC630, patches.boss_special2_giver)
-        # patcher.write_bytes(0xBFCC6E, cvlod_string_to_bytearray(f"It won't budge!\n"
-        #                                                   f"You'll need to defeat\n"
-        #                                                   f"{required_s2s} powerful monsters\n"
-        #                                                   f"to undo the seal.", True))
-        #    special2_name = "Trophy  "
-        #    special2_text = f"Proof you killed a powerful\n" \
-        #                    f"Night Creature. Earn {required_s2s}/{total_s2s}\n" \
-        #                    f"to battle Dracula."
-        # elif options.draculas_condition.value == options.draculas_condition.option_specials:
-        #    special2_name = "Special2"
-        # patcher.write_bytes(0xBFCC6E, cvlod_string_to_bytearray(f"It won't budge!\n"
-        #                                                   f"You'll need to find\n"
-        #                                                   f"{required_s2s} Special2 jewels\n"
-        #                                                   f"to undo the seal.", True))
-        #    special2_text = f"Need {required_s2s}/{total_s2s} to kill Dracula.\n" \
-        #                    f"Looking closely, you see...\n" \
-        #                    f"a piece of him within?"
-        # else:
-        #    #patcher.write_byte(0xADE8F, 0x00)
-        #    special2_name = "Special2"
-        #    special2_text = "If you're reading this,\n" \
-        #                    "how did you get a Special2!?"
-        # patcher.write_byte(0xADE8F, required_s2s)
-        # Change the Special2 name depending on the setting.
-        # patcher.write_bytes(0xEFD4E, cvlod_string_to_bytearray(special2_name))
-        # Change the Special1 and 2 menu descriptions to tell you how many you need to unlock a warp and fight Dracula
-        # respectively.
-        # special_text_bytes = cvlod_string_to_bytearray(f"{s1s_per_warp} per warp unlock.\n"
-        #                                          f"{options.total_special1s.value} exist in total.\n"
-        #                                          f"Z + R + START to warp.") + \
-        #                     cvlod_string_to_bytearray(special2_text)
-        # patcher.write_bytes(0xBFE53C, special_text_bytes)
 
         # Slightly move some once-invisible freestanding items to be more visible
         # if options.invisible_items.value == options.invisible_items.option_reveal_all:

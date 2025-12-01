@@ -9,6 +9,12 @@ from .cvlod_text import cvlod_string_to_bytearray, cvlod_bytes_to_string, CVLOD_
     CVLOD_TEXT_POOL_END_CHARACTER
 
 N64_RDRAM_START = 0x80000000
+CRC1_START = 0x10
+CRC2_START = 0x14
+CRC_ROM_START = 0x1000
+CRC_DATA_LENGTH = 0x100000
+CIC_6102_7101_INITIAL_VALUE = ((0x5D588B65 * 0x3F) & 0xFFFFFFFF) + 0x1
+
 COMMON_SEGMENT_RDRAM_START = 0x141870 | N64_RDRAM_START
 SCENE_OVERLAY_RDRAM_START = 0x2E3B70 | N64_RDRAM_START
 
@@ -482,7 +488,7 @@ class CVLoDRomPatcher:
 
                     # Check if the actor is an item pickup actor, and if it is, does it have has an entry in the
                     # pickups enum.
-                    if pillar_actor["object_id"] == Objects.PICKUP_ITEM and pillar_actor["var_c"] in Pickups:
+                    if pillar_actor["object_id"] == Objects.INTERACTABLE and pillar_actor["var_c"] in Pickups:
                         pillar_actor["var_c"] = Pickups(pillar_actor["var_c"])
 
                     # Loop over every execution flag and see if we have any of them set and documented.
@@ -793,12 +799,14 @@ class CVLoDRomPatcher:
             # pointers start.
             if scene_id == Scenes.TEST_GRID:
                 spawn_entrances_end = SCENE_SPAWN_COORDS_PTRS_START
-            # If it's Dracula Ultimate's arena, consider the spawn entrances end to be where the test grid's entrances
-            # begin; the next two scenes after this are nonexistent and have no entrances.
+            # If it's Dracula Ultimate's arena, consider there to only be one spawn entrance. The next two entrance
+            # datas after this are very likely to have been meant to be where the two nonexistent scenes were meant to
+            # have their spawn data begin at, based on the data patterns suggesting the Dracula Ultimate map's spawn
+            # data was copied for them as a placeholder.
             elif scene_id == Scenes.CASTLE_KEEP_VOID:
                 spawn_entrances_end = \
-                    self.read_bytes(SCENE_SPAWN_COORDS_PTRS_START + (Scenes.TEST_GRID * 4), 4, return_as_int=True) - \
-                    COMMON_SEGMENT_RDRAM_START + COMMON_SEGMENT_ROM_START
+                    self.read_bytes(SCENE_SPAWN_COORDS_PTRS_START + (Scenes.CASTLE_KEEP_VOID * 4) + SCENE_SPAWN_LENGTH,
+                                    4, return_as_int=True) - COMMON_SEGMENT_RDRAM_START + COMMON_SEGMENT_ROM_START
             # Otherwise, the spawn entrances end for the current map is where the entrances for the next map begin.
             else:
                 spawn_entrances_end = \
@@ -926,7 +934,7 @@ class CVLoDRomPatcher:
                 actor["object_id"] = Objects(actor["object_id"])
 
             # Check if the actor is an item pickup actor, and if it is, does it have has an entry in the pickups enum.
-            if actor["object_id"] == Objects.PICKUP_ITEM and actor["var_c"] in Pickups:
+            if actor["object_id"] == Objects.INTERACTABLE and actor["var_c"] in Pickups:
                 actor["var_c"] = Pickups(actor["var_c"])
 
             # Loop over every spawn flag and see if we have any of them set and documented.
@@ -1000,6 +1008,65 @@ class CVLoDRomPatcher:
 
         # Return the start address of the spot we just wrote the file to.
         return write_spot
+
+    def recalculate_crc(self) -> None:
+        """After all changes to the ROM have been made, the last step is to recalculate and replace the checksum (CRC) values in the header.
+        CVLoD's CIC chip is the very standard NTSC 6102/PAL 7101, so this implements the formula for that one."""
+
+        # Initialize all our CRC calculation values to the initial CIC 6102/7101 value.
+        # These will all persist across iterations on the CRC data.
+        crc_value_1a = CIC_6102_7101_INITIAL_VALUE  # CRC1
+        crc_value_1b = CIC_6102_7101_INITIAL_VALUE
+        crc_value_1c = CIC_6102_7101_INITIAL_VALUE
+
+        crc_value_2a = CIC_6102_7101_INITIAL_VALUE  # CRC2
+        crc_value_2b = CIC_6102_7101_INITIAL_VALUE
+        crc_value_2c = CIC_6102_7101_INITIAL_VALUE
+
+        # Iterate over every 4-byte word in the first megabyte of the ROM starting at offset 0x1000.
+        for crc_word_offset in range(CRC_ROM_START, CRC_ROM_START + CRC_DATA_LENGTH, 4):
+            crc_word = self.read_bytes(crc_word_offset, 4, return_as_int=True)
+
+            # Add the current CRC word with CRC Value 1A, keeping only the lowest 4 bytes.
+            # This will be used for CRC Values 1A and 1B.
+            value_1a_plus_word = (crc_value_1a + crc_word) & 0xFFFFFFFF
+
+            # For CRC Value 1B, if the result of the above is less than what 1A currently is, increment it by 1.
+            # Otherwise, don't touch it.
+            if value_1a_plus_word < crc_value_1a:
+                crc_value_1b += 1
+
+            # For CRC Value 1A, overwrite it with the result of the above addition operation.
+            crc_value_1a = value_1a_plus_word
+
+            # For CRC Value 1C, XOR the CRC word into it.
+            crc_value_1c ^= crc_word
+
+            # Calculate the "banana split" number (I can't think of a better name to call this, LOL!), which will be
+            # used for CRC Values 2A and 2B. The way we do this is by: left-shifting the base CRC word by its lowest
+            # 5 bits, right-shifting the base CRC word by 0x20 minus the same 5-bit value, and then OR-ing the two
+            # results together, keeping only the lowest 4 bytes.
+            banana_split = ((crc_word << (crc_word & 0x1F)) | (crc_word >> (0x20 - (crc_word & 0x1F)))) & 0xFFFFFFFF
+
+            # For CRC Value 2A, add the banana split into it, keeping only the lowest 4 bytes.
+            crc_value_2a = (crc_value_2a + banana_split) & 0xFFFFFFFF
+
+            # For CRC Value 2B, if it's less than the CRC word, XOR the CRC word XOR'd with Value 1A into it.
+            if crc_value_2b < crc_word:
+                crc_value_2b ^= crc_word ^ crc_value_1a
+            # Otherwise, XOR the banana split into it.
+            else:
+                crc_value_2b ^= banana_split
+
+            # For CRC Value 2C, add into it the CRC word XOR'd with Value 2A, keeping the lowest 4 bytes.
+            crc_value_2c = (crc_value_2c + (crc_word ^ crc_value_2a)) & 0xFFFFFFFF
+
+        # To get our final CRC1 value, XOR the final CRC Values 1A, 1B, and 1C together.
+        # Write the result at 0x10 in the ROM header.
+        self.write_int32(CRC1_START, crc_value_1a ^ crc_value_1b ^ crc_value_1c)
+        # To get our final CRC2 value, XOR the final CRC Values 2A, 2B, and 2C together.
+        # Write the result at 0x14 in the ROM header.
+        self.write_int32(CRC2_START, crc_value_2a ^ crc_value_2b ^ crc_value_2c)
 
     def get_output_rom(self) -> bytes:
         # Rebuild and reinsert all modified scene data.
@@ -1414,5 +1481,12 @@ class CVLoDRomPatcher:
             self.write_int24(self.ni_table_start + ((i - 1) * 8) + 1, new_overlay_start)
             self.write_int24(self.ni_table_start + ((i - 1) * 8) + 5, new_overlay_start + len(self.compressed_files[i]))
 
-        # Return the final output ROM
+        # Recalculate the CRC numbers.
+        #self.recalculate_crc()
+
+        # NOP out the CRC BNEs.
+        self.write_int32(0x66C, 0x00000000)
+        self.write_int32(0x678, 0x00000000)
+
+        # Return the final output ROM.
         return bytes(self.rom)

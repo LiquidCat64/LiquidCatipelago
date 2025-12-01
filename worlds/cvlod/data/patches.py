@@ -379,19 +379,6 @@ ck_door_music_player = [
     0x08063DF9   # J     0x8018F7E4
 ]
 
-coffin_time_checker = [
-    # When entering the Villa coffin, this will check to see whether it's day or night and send you to either the Tunnel
-    # or Underground Waterway level slot accordingly regardless of which character you are
-    0x28490006,  # SLTI  T1, V0, 0x0006
-    0x15200005,  # BNEZ  T1,     [forward 0x05]
-    0x28490012,  # SLTI  T1, V0, 0x0012
-    0x11200003,  # BEQZ  T1,     [forward 0x03]
-    0x00000000,  # NOP
-    0x08055AEB,  # J     0x80156BAC
-    0x00000000,  # NOP
-    0x08055AED   # J     0x80156BB4
-]
-
 boss_special2_giver = [
     # Enables the rewarding of Special2s upon the vanishing of a boss's health bar when defeating it.
 
@@ -423,46 +410,17 @@ boss_special2_giver = [
     0x03E00008   # JR    RA
 ]
 
-boss_goal_checker = [
-    # Checks each boss flag to see if every boss with a health meter has been defeated and puts 0x0004 in V0 to
-    # disallow opening Dracula's door if not all have been.
-    0x3C0A8039,  # LUI   T2, 0x8039
-    0x954B9BF4,  # LHU   T3, 0x9BF4 (T2)
-    0x316D0BA0,  # ANDI  T5, T3, 0x0BA0
-    0x914B9BFB,  # LBU   T3, 0x9BFB (T2)
-    0x000B6182,  # SRL   T4, T3, 6
-    0x11800010,  # BEQZ  T4,     [forward 0x10]
-    0x240C00C0,  # ADDIU T4, R0, 0x00C0
-    0x01AC6821,  # ADDU  T5, T5, T4
-    0x914B9BFD,  # LBU   T3, 0x9BFD (T2)
-    0x316C0020,  # ANDI  T4, T3, 0x0020
-    0x01AC6821,  # ADDU  T5, T5, T4
-    0x914B9BFE,  # LBU   T3, 0x9BFE (T2)
-    0x316C0010,  # ANDI  T4, T3, 0x0010
-    0x01AC6821,  # ADDU  T5, T5, T4
-    0x914B9C18,  # LBU   T3, 0x9C18 (T2)
-    0x316C0010,  # ANDI  T4, T3, 0x0010
-    0x01AC6821,  # ADDU  T5, T5, T4
-    0x914B9C1B,  # LBU   T3, 0x9C1B (T2)
-    0x000B6102,  # SRL   T4, T3, 4
-    0x11800005,  # BEQZ  T4,     [forward 0x05]
-    0x240C0050,  # ADDIU T4, R0, 0x0050
-    0x01AC6821,  # ADDU  T5, T5, T4
-    0x240E0CF0,  # ADDIU T6, R0, 0x0CF0
-    0x55CD0001,  # BNEL  T6, T5, [forward 0x01]
-    0x24020004,  # ADDIU V0, R0, 0x0004
-    0x03E00008   # JR    RA
-]
-
-special_goal_checker = [
-    # Checks the Special2 counter to see if the specified threshold has been reached and puts 0x0001 in V0 to disallow
-    # opening Dracula's door if it hasn't been.
-    0x3C0A8039,  # LUI   T2, 0x8039
-    0x914B9C4C,  # LBU   T3, 0x9C4C (T2)
-    0x296A001E,  # SLTI  T2, T3, 0x001E
-    0x55400001,  # BNEZL T2, 0x8012AC8C
+drac_condition_checker = [
+    # Checks the Special2 counter to see if the required amount of the goal item has been reached and disallows opening
+    # Dracula's doors if not.
+    0x24020000,  # ADDIU V0, R0, 0x0000
+    0x3C0A801D,  # LUI   T2, 0x801D
+    0x914BAB48,  # LBU   T3, 0xAB48 (T2)
+    0x296A0000,  # SLTI  T2, T3, 0x0000
+    0x55400001,  # BNEZL T2,     [forward 0x01]
     0x24020001,  # ADDIU V0, R0, 0x0001
-    0x03E00008   # JR    RA
+    0x03E00008,  # JR    RA
+    0x00000000   # NOP
 ]
 
 continue_cursor_start_checker = [
@@ -542,12 +500,11 @@ elevator_flag_checker = [
 ]
 
 crystal_special2_giver = [
-    # Gives a Special2 upon activating the big crystal in CC basement.
-    0x3C098039,  # LUI   T1, 0x8039
-    0x24190005,  # ADDIU T9, R0, 0x0005
-    0xA1399BDF,  # SB    T9, 0x9BDF (T1)
-    0x03E00008,  # JR    RA
-    0x3C198000   # LUI   T9, 0x8000
+    # Gives a Special2 (should be renamed to Crystal) upon activating the Big Crystal in CC basement.
+    0x3C09801D,  # LUI   T1, 0x801D
+    0x24080005,  # ADDIU T0, R0, 0x0005
+    0x03200008,  # JR    T9
+    0xA128AA4C,  # SB    T0, 0xAA4C (T1)
 ]
 
 boss_save_stopper = [
@@ -1296,30 +1253,32 @@ shopsanity_stuff = [
 special_sound_notifs = [
     # Plays a distinct sound whenever you get enough Special1s to unlock a new location or enough Special2s to unlock
     # Dracula's door.
-    0x3C088013,  # LUI   A0, 0x8013
-    0x9108AC9F,  # LBU   T0, 0xAC57 (T0)
-    0x3C098039,  # LUI   T1, 0x8039
-    0x91299C4C,  # LBU   T1, 0x9C4B (T1)
-    0x15090003,  # BNE   T0, T1, [forward 0x03]
+
+    # Special2 (should play Fake Dracula's hurt voice clip if the new number of them is equal to the amount required
+    # for Dracula's door).
+    0x24080000,  # ADDIU T0, R0, 0x0000   <- Special2s required
+    0x15030003,  # BNE   T0, V1, [forward 0x03]
     0x00000000,  # NOP
-    0x0C004FAB,  # JAL   0x80013EAC
-    0x24040162,  # ADDIU A0, R0, 0x0162
-    0x0804F0BF,  # J     0x8013C2FC
-    0x00000000,  # NOP
-    0x3C088013,  # LUI   T0, 0x8013
-    0x9108AC57,  # LBU   T0, 0xAC57 (T0)
-    0x3C098039,  # LUI   T1, 0x8039
-    0x91299C4B,  # LBU   T1, 0x9C4B (T1)
-    0x0128001B,  # DIVU  T1, T0
-    0x00005010,  # MFHI
+    0x0C0059BE,  # JAL   0x800166f8
+    0x240402E4,  # ADDIU A0, R0, 0x02E4
+    0x08023F25,  # J     0x8008FC94
+    0x24020001,  # ADDIU V0, R0, 0x0001
+    # Special1 (Should play the teleport sound if the new number of them is equal to an amount that would unlock a new
+    # warp destination).
+    0x24080000,  # ADDIU T0, R0, 0x0000   <- Special1s per warp
+    0x0103001B,  # DIVU  T0, V1
+    # After dividing the S1s per warp by our current S1 count, if the remainder is not 0, don't play the warp notif.
+    0x00005010,  # MFHI  T2
     0x15400006,  # BNEZ  T2,     [forward 0x06]
+    # If the quotient is a higher number than the total number of warps the slot has, don't play the warp notif.
     0x00005812,  # MFLO  T3
-    0x296C0008,  # SLTI  T4, T3, 0x0008
+    0x296C0008,  # SLTI  T4, T3, 0x0000   <- Total warps
     0x11800003,  # BEQZ  T4,     [forward 0x03]
     0x00000000,  # NOP
-    0x0C004FAB,  # JAL   0x80013EAC
-    0x2404019E,  # ADDIU A0, R0, 0x019E
-    0x0804F0BF   # J     0x8013C2FC
+    0x0C0059BE,  # JAL   0x800166f8
+    0x2404019B,  # ADDIU A0, R0, 0x019B
+    0x08023F25,  # J     0x8008FC94
+    0x24020001   # ADDIU V0, R0, 0x0001
 ]
 
 forest_cw_villa_intro_cs_player = [
