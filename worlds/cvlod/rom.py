@@ -80,6 +80,11 @@ class CVLoDPatchExtensions(APPatchExtension):
     def patch_rom(caller: APProcedurePatch, input_rom: bytes, slot_patch_file) -> bytes:
         patcher = CVLoDRomPatcher(bytearray(input_rom))
         slot_patch_info = json.loads(caller.get_file(slot_patch_file).decode("utf-8"))
+        slot_patch_info["options"]["bosses_required"] = 2
+        slot_patch_info["options"]["duel_tower_final_boss"] = DuelTowerFinalBoss.option_character_dependent
+        slot_patch_info["options"]["post_behemoth_boss"] = PostBehemothBoss.option_character_dependent
+        slot_patch_info["options"]["room_of_clocks_boss"] = RoomOfClocksBoss.option_character_dependent
+        slot_patch_info["options"]["villa_state"] = VillaState.option_hybrid
 
         # Get the dictionaries of item values mapped to their location IDs and relevant name texts out of the slot
         # patch info and convert each location ID key from a string into an int.
@@ -408,8 +413,10 @@ class CVLoDPatchExtensions(APPatchExtension):
             ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
         patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["proxy"][74]["flag_id"] = 0x15D
         # Un-set the "debris path sunk" flag after the Sea Monster is killed and when the door flag is set.
-        patcher.write_int32(0x7268, 0x0FC04164, NIFiles.OVERLAY_SEA_MONSTER)  # JAL 0x0F010590
-        patcher.write_int32s(0x10590, patches.sea_monster_sunk_path_flag_unsetter, NIFiles.OVERLAY_SEA_MONSTER)
+        sea_monster_path_unsetter_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_SEA_MONSTER)
+        patcher.write_int32(0x7268, 0x0FC00000 | (sea_monster_path_unsetter_start // 4), NIFiles.OVERLAY_SEA_MONSTER)
+        patcher.write_int32s(sea_monster_path_unsetter_start, patches.sea_monster_sunk_path_flag_unsetter,
+                             NIFiles.OVERLAY_SEA_MONSTER)
         # Disable the two pier statue items checking each other's flags being not set as an additional spawn condition.
         patcher.scenes[Scenes.FOGGY_LAKE_PIER].actor_lists["proxy"][77]["spawn_flags"] ^= \
             ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
@@ -772,7 +779,7 @@ class CVLoDPatchExtensions(APPatchExtension):
 
         # Disable Gilles De Rais's hardcoded "Not Cornell?" check to see if he should despawn immediately upon spawning.
         # This should have REALLY been controlled instead by his settings in the actor list...
-        patcher.write_byte(0x195, 0x00, NIFiles.OVERLAY_GILLES_DE_RAIS)
+        patcher.write_byte(0x195, 0x00, NIFiles.OVERLAY_MALE_VAMPIRES)
 
         # Make the Cornell versions of the main maze front gates universal (the ones that have Henry escort checks on
         # them). We will not be using the Malus chases checks in the Reinhardt/Carrie versions of the main gates.
@@ -2269,7 +2276,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Write different option values and door messages and name the Special2 differently depending on what
         # Dracula's Condition is. The option values will be written to both the door check and the Dracula special
         # sound notif check.
-        if slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_crystal:
+        if slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_bosses:
             patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = ("The door is sealed\n"
                                                                                  "by a crystalline force...🅰0/\f"
                                                                                  "You'll need the power\n"
@@ -2284,11 +2291,11 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].write_ovl_int32(
                 0x548, 0x0C0B0000 | ((crystal_s2_giver_start + (SCENE_OVERLAY_RDRAM_START & 0xFFFFFF)) // 4))
             patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].write_ovl_int32s(crystal_s2_giver_start,
-                                                                           patches.crystal_special2_giver)
+                                                                           patches.special2_giver)
         #    special2_text = "The crystal is on!\n" \
         #                    "Time to teach the old man\n" \
         #                    "a lesson!"
-        elif slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_bosses:
+        elif slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_crystal:
             patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = \
                 ("The door is sealed\n"
                  "by a malevolent force...🅰0/\f"
@@ -2300,6 +2307,48 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int16(0xFFDA52, slot_patch_info["options"]["bosses_required"])
             patcher.write_bytes(0xB8998, cvlod_string_to_bytearray("Trophy  "))
             # TODO: Make all bosses give Trophies.
+            # Sea Monster
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_SEA_MONSTER)
+            patcher.write_int32(0x7250, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_SEA_MONSTER)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_SEA_MONSTER)
+            # King Skeleton 1
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_KING_SKELETON)
+            patcher.write_int32(0x3FBC, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_KING_SKELETON)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_KING_SKELETON)
+            # Were-Tiger (Forest)
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_WERE_TIGER)
+            patcher.write_int32(0x1844, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_WERE_TIGER)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_WERE_TIGER)
+            # Werewolf (Forest)
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_WEREWOLF)
+            patcher.write_int32(0x3ADC, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_WEREWOLF)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_WEREWOLF)
+            patcher.write_int32(boss_s2_giver_start + 8, 0x02000008, NIFiles.OVERLAY_WEREWOLF)  # JR S0
+            # King Skeleton 2
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_KING_SKELETON)
+            patcher.write_int32(0x43E0, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_KING_SKELETON)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_KING_SKELETON)
+            patcher.write_int32(boss_s2_giver_start + 8, 0x0BC019E3, NIFiles.OVERLAY_KING_SKELETON)  # J 0x0F00678C
+            # White Dragons
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_WHITE_DRAGONS)
+            patcher.write_int32(0x20B8, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_WHITE_DRAGONS)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_WHITE_DRAGONS)
+            # All Villa interior vampires
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_MALE_VAMPIRES)
+            patcher.write_int32(0x1BD0, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_MALE_VAMPIRES)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_MALE_VAMPIRES)
+            # Gilles De Rais (use the same hack as the one above for the Villa interior vampires)
+            patcher.write_int32(0xA9A0, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_MALE_VAMPIRES)
+            # J.A. Oldrey in crypt (use the same hack as the one above for the Villa interior vampires)
+            patcher.write_int32(0x1AF8, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_MALE_VAMPIRES)
+            # Undead Maiden
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_FEMALE_VAMPIRES)
+            patcher.write_int32(0x4AD8, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_FEMALE_VAMPIRES)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_FEMALE_VAMPIRES)
+            # Queen Algenie
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_QUEEN_ALGENIE)
+            patcher.write_int32(0x5820, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_QUEEN_ALGENIE)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_QUEEN_ALGENIE)
         # patcher.write_int32(0xBBD50, 0x080FF18C)  # J	0x803FC630
         # patcher.write_int32s(0xBFC630, patches.boss_special2_giver)
         #    special2_text = f"Proof you killed a powerful\n" \
@@ -2629,8 +2678,8 @@ class CVLoDPatchExtensions(APPatchExtension):
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_spawn_id,
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15DB, 0x09, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15D3, 0x05, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15DB, 0x04, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_byte(0x15D3, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
 
         return patcher.get_output_rom()
 

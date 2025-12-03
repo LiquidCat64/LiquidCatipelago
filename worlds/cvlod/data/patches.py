@@ -499,8 +499,9 @@ elevator_flag_checker = [
     0x08055CFC   # J     0x801573F0
 ]
 
-crystal_special2_giver = [
-    # Gives a Special2 (should be renamed to Crystal) upon activating the Big Crystal in CC basement.
+special2_giver = [
+    # Gives a Special2/Crystal/Trophy through the multiworld system.
+    # Can be hooked into anything; just make sure the JR T9 is replaced with a jump back to where it should be.
     0x3C09801D,  # LUI   T1, 0x801D
     0x24080005,  # ADDIU T0, R0, 0x0005
     0x03200008,  # JR    T9
