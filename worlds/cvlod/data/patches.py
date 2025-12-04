@@ -379,37 +379,6 @@ ck_door_music_player = [
     0x08063DF9   # J     0x8018F7E4
 ]
 
-boss_special2_giver = [
-    # Enables the rewarding of Special2s upon the vanishing of a boss's health bar when defeating it.
-
-    # Also sets a flag in the case of the Castle Wall White Dragons' health bar going away. Their defeat flag in vanilla
-    # is tied to hitting the lever after killing them, so this alternate flag is used to track them for the "All Bosses"
-    # goal in the event someone kills them and then warps out opting to not be a Konami pachinko champ.
-    0x3C118035,  # LUI   S1, 0x8035
-    0x962DF834,  # LHU   T5, 0xF834 (S1)
-    0x240E3F73,  # ADDIU T6, R0, 0x3F73
-    0x15AE0012,  # BNE   T5, T6, [forward 0x12]
-    0x3C118039,  # LUI   S1, 0x8039
-    0x922D9EE1,  # LBU   T5, 0x9EE1 (S1)
-    0x240E0013,  # ADDIU T6, R0, 0x0013
-    0x11AE000E,  # BEQ   T5, T6, [forward 0x0E]
-    0x922F9BFA,  # LBU   T7, 0x9BFA (S1)
-    0x31EF0001,  # ANDI  T7, T7, 0x0001
-    0x15E0000B,  # BNEZ  T7,     [forward 0x0B]
-    0x240E0002,  # ADDIU T6, R0, 0x0002
-    0x15AE0006,  # BNE   T5, T6, [forward 0x06]
-    0x00000000,  # NOP
-    0x862F9BF4,  # LH    T7, 0x9BF4 (S1)
-    0x31ED0080,  # ANDI  T5, T7, 0x0080
-    0x15A00005,  # BNEZ  T5,     [forward 0x05]
-    0x35EF0080,  # ORI   T7, T7, 0x0080
-    0xA62F9BF4,  # SH    T7, 0x9BF4 (S1)
-    0x240D0005,  # ADDIU T5, R0, 0x0005
-    0xA22D9BDF,  # SB    T5, 0x9BDF (S1)
-    0xA22D9BE0,  # SB    T5, 0x9BE0 (S1)
-    0x03E00008   # JR    RA
-]
-
 drac_condition_checker = [
     # Checks the Special2 counter to see if the required amount of the goal item has been reached and disallows opening
     # Dracula's doors if not.
@@ -506,6 +475,21 @@ special2_giver = [
     0x24080005,  # ADDIU T0, R0, 0x0005
     0x03200008,  # JR    T9
     0xA128AA4C,  # SB    T0, 0xAA4C (T1)
+]
+
+special2_giver_lizard_edition = [
+    # Special version of the above hack specifically for the Waterway Lizard-man Trio. It turns out the code that
+    # resumes the waterway music after they are dead is very spaghetti, so we are instead opting to hook into the code
+    # that depletes their combined health bar whenever they get hit.
+
+    # If the value being stored for the bar's new length value is 0, give their Trophy. Otherwise, return like normal.
+    0x15400004,  # BNEZ  T2,     [forward 0x04]
+    0xA46A0000,  # SH    T2, 0x0000 (V1)
+    0x3C09801D,  # LUI   T1, 0x801D
+    0x24080005,  # ADDIU T0, R0, 0x0005
+    0xA128AA4C,  # SB    T0, 0xAA4C (T1)
+    0x03E00008,  # JR    RA
+    0x00000000,  # NOP
 ]
 
 boss_save_stopper = [

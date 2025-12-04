@@ -80,8 +80,8 @@ class CVLoDPatchExtensions(APPatchExtension):
     def patch_rom(caller: APProcedurePatch, input_rom: bytes, slot_patch_file) -> bytes:
         patcher = CVLoDRomPatcher(bytearray(input_rom))
         slot_patch_info = json.loads(caller.get_file(slot_patch_file).decode("utf-8"))
-        slot_patch_info["options"]["bosses_required"] = 2
-        slot_patch_info["options"]["duel_tower_final_boss"] = DuelTowerFinalBoss.option_character_dependent
+        slot_patch_info["options"]["bosses_required"] = 29
+        slot_patch_info["options"]["duel_tower_final_boss"] = DuelTowerFinalBoss.option_giant_werewolf
         slot_patch_info["options"]["post_behemoth_boss"] = PostBehemothBoss.option_character_dependent
         slot_patch_info["options"]["room_of_clocks_boss"] = RoomOfClocksBoss.option_character_dependent
         slot_patch_info["options"]["villa_state"] = VillaState.option_hybrid
@@ -2276,7 +2276,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Write different option values and door messages and name the Special2 differently depending on what
         # Dracula's Condition is. The option values will be written to both the door check and the Dracula special
         # sound notif check.
-        if slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_bosses:
+        if slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_crystal:
             patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = ("The door is sealed\n"
                                                                                  "by a crystalline force...🅰0/\f"
                                                                                  "You'll need the power\n"
@@ -2295,7 +2295,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         #    special2_text = "The crystal is on!\n" \
         #                    "Time to teach the old man\n" \
         #                    "a lesson!"
-        elif slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_crystal:
+        elif slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_bosses:
             patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = \
                 ("The door is sealed\n"
                  "by a malevolent force...🅰0/\f"
@@ -2306,7 +2306,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                 drac_door_check_start + 0xE, slot_patch_info["options"]["bosses_required"])
             patcher.write_int16(0xFFDA52, slot_patch_info["options"]["bosses_required"])
             patcher.write_bytes(0xB8998, cvlod_string_to_bytearray("Trophy  "))
-            # TODO: Make all bosses give Trophies.
+            # Make everything with a health bar give Trophies.
             # Sea Monster
             boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_SEA_MONSTER)
             patcher.write_int32(0x7250, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_SEA_MONSTER)
@@ -2337,6 +2337,10 @@ class CVLoDPatchExtensions(APPatchExtension):
             boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_MALE_VAMPIRES)
             patcher.write_int32(0x1BD0, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_MALE_VAMPIRES)
             patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_MALE_VAMPIRES)
+            # Hard Mode Gardener (not currently implemented)
+            # boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_GARDENER)
+            # patcher.write_int32(0x2D84, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_GARDENER)
+            # patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_GARDENER)
             # Gilles De Rais (use the same hack as the one above for the Villa interior vampires)
             patcher.write_int32(0xA9A0, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_MALE_VAMPIRES)
             # J.A. Oldrey in crypt (use the same hack as the one above for the Villa interior vampires)
@@ -2349,8 +2353,65 @@ class CVLoDPatchExtensions(APPatchExtension):
             boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_QUEEN_ALGENIE)
             patcher.write_int32(0x5820, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_QUEEN_ALGENIE)
             patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_QUEEN_ALGENIE)
-        # patcher.write_int32(0xBBD50, 0x080FF18C)  # J	0x803FC630
-        # patcher.write_int32s(0xBFC630, patches.boss_special2_giver)
+            # Lizard-man Trio
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_LIZARD_MEN)
+            patcher.write_int32s(0xBC18, [0x0BC00000 | (boss_s2_giver_start // 4),  # J
+                                          0x03295023],  # SUBU T2, T9, T1
+                                 NIFiles.OVERLAY_LIZARD_MEN)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver_lizard_edition, NIFiles.OVERLAY_LIZARD_MEN)
+            # Medusa
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_MEDUSA)
+            patcher.write_int32(0x4F44, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_MEDUSA)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_MEDUSA)
+            patcher.write_int32(boss_s2_giver_start + 8, 0x02200008, NIFiles.OVERLAY_MEDUSA)  # JR S1
+            # Harpy
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_HARPY)
+            patcher.write_int32(0x7784, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_HARPY)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_HARPY)
+            # Behemoth
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_BEHEMOTH)
+            patcher.write_int32(0x369C, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_BEHEMOTH)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_BEHEMOTH)
+            # Rosa
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_ROSA)
+            patcher.write_int32(0x5750, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_ROSA)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_ROSA)
+            # Camilla
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_CAMILLA)
+            patcher.write_int32(0x4198, 0x0FC03B80, NIFiles.OVERLAY_CAMILLA)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_CAMILLA)
+            patcher.write_int32(boss_s2_giver_start + 8, 0x0BC011FE, NIFiles.OVERLAY_CAMILLA)  # J 0x0F00EE00
+            # All possible Duel Tower opponents
+            boss_s2_giver_start = len(patcher.scenes[Scenes.DUEL_TOWER].overlay)
+            patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32(
+                0x635C, 0x0C0B0000 | ((boss_s2_giver_start + (SCENE_OVERLAY_RDRAM_START & 0xFFFFFF)) // 4))
+            patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32s(boss_s2_giver_start, patches.special2_giver)
+            # Security Crystal
+            boss_s2_giver_start = len(patcher.scenes[Scenes.SCIENCE_LABS].overlay)
+            patcher.scenes[Scenes.SCIENCE_LABS].write_ovl_int32(
+                0x11060, 0x0C0B0000 | ((boss_s2_giver_start + (SCENE_OVERLAY_RDRAM_START & 0xFFFFFF)) // 4))
+            patcher.scenes[Scenes.SCIENCE_LABS].write_ovl_int32s(boss_s2_giver_start, patches.special2_giver)
+            # Death
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_CS_DEATH_DEFEATED)
+            patcher.write_int32(0xF88, 0x0F800000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_CS_DEATH_DEFEATED)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_CS_DEATH_DEFEATED)
+            # Actrise
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_CS_ACTRISE_DEFEATED)
+            patcher.write_int32(0xF20, 0x0F800000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_CS_ACTRISE_DEFEATED)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_CS_ACTRISE_DEFEATED)
+            # Ortega
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_CS_ORTEGA_DEFEATED)
+            patcher.write_int32(0x3A18, 0x0F800000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_CS_ORTEGA_DEFEATED)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_CS_ORTEGA_DEFEATED)
+            # Renon
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_DEMON_RENON)
+            patcher.write_int32(0xB54, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_DEMON_RENON)
+            patcher.write_int32(0xD6C, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_DEMON_RENON)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_DEMON_RENON)
+            # Vincent
+            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_VINCENT)
+            patcher.write_int32(0x5DF8, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_VINCENT)
+            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_VINCENT)
         #    special2_text = f"Proof you killed a powerful\n" \
         #                    f"Night Creature. Earn {required_s2s}/{total_s2s}\n" \
         #                    f"to battle Dracula."
@@ -2542,6 +2603,9 @@ class CVLoDPatchExtensions(APPatchExtension):
                     if actor["object_id"] == Objects.THREE_HIT_BREAKABLE:
                         three_hit = scene.three_hit_breakables[actor["var_c"]]
                         three_hit_info = THREE_HIT_BREAKABLES_INFO[three_hit["flag_id"]]
+                        # Check if the 3HB's first flag ID has a Location created for it. If not, skip this 3HB.
+                        if three_hit_info.new_first_flag_id not in loc_values:
+                            continue
                         # Take the difference in the 3HB's pickup IDs start address and the scene's general 3HB pickup
                         # IDs array start divided by 2 to know which index in the scene's 3HB pickup IDs array to start
                         # writing the 3HB's new pickup IDs into.
