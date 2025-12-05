@@ -41,13 +41,15 @@ MULTIWORLD_TEXTBOX_POINTERS_START = 0x671C10
 ROM_PADDING_START = 0xFCC000
 ROM_PADDING_BYTE = 0x00
 
-START_INVENTORY_USE_START = 0x6A7200
-START_INVENTORY_EQUIP_START = 0x6A7220
-START_INVENTORY_BOOK_START = 0x6A72B0
-START_INVENTORY_RELICS_START = 0x6A72B2
-START_INVENTORY_FURN_START = 0x6A72B4
-START_INVENTORY_WHIPS_START = 0x6A72B8
-START_INVENTORY_MAX_START = 0x6A72BA
+NG_EXTRAS_START = 0xFFC800
+INITIAL_COUNTDOWN_ARRAY_START = NG_EXTRAS_START - 0x30
+START_INVENTORY_ARRAY_START = NG_EXTRAS_START - 0x60
+START_INVENTORY_GOLD_UPPER_ADDR = NG_EXTRAS_START + 0x36
+START_INVENTORY_GOLD_LOWER_ADDR = NG_EXTRAS_START + 0x3A
+START_INVENTORY_POWERUPS_ADDR = NG_EXTRAS_START + 0x43
+START_INVENTORY_SUBWEAPON_ADDR = NG_EXTRAS_START + 0x4B
+START_INVENTORY_SUBWEAPON_LEVEL_ADDR = NG_EXTRAS_START + 0x53
+START_INVENTORY_ICE_TRAP_ADDR = NG_EXTRAS_START + 0x5B
 
 FOREST_OVL_CHARNEL_ITEMS_START = 0x7C60
 CHARNEL_ITEM_LEN = 0xC
@@ -95,11 +97,25 @@ class CVLoDPatchExtensions(APPatchExtension):
         # # # # # # # # #
         # GENERAL EDITS #
         # # # # # # # # #
-        # Initial Countdown numbers and Start Inventory
+        # Custom overlay segment-loading code.
+        patcher.write_int32(0x18A94, 0x0800793D)  # J 0x8001E4F4
+        patcher.write_int32s(0x1F0F4, patches.custom_code_loader)
+
+        # Initial Countdown numbers and Start Inventory.
         patcher.write_int32(0x90DBC, 0x080FF200)  # J	0x803FC800
-        patcher.write_int32s(0xFFC800, patches.new_game_extras)
+        patcher.write_int32s(NG_EXTRAS_START, patches.new_game_extras)
+        # Write the Start Inventory values here.
+        patcher.write_bytes(START_INVENTORY_ARRAY_START, slot_patch_info["start inventory"]["inv array"])
+        patcher.write_int16(START_INVENTORY_GOLD_UPPER_ADDR, slot_patch_info["start inventory"]["gold"] >> 16)
+        patcher.write_int16(START_INVENTORY_GOLD_LOWER_ADDR, slot_patch_info["start inventory"]["gold"] & 0xFFFF)
+        patcher.write_byte(START_INVENTORY_POWERUPS_ADDR, slot_patch_info["start inventory"]["powerups"])
+        patcher.write_byte(START_INVENTORY_SUBWEAPON_ADDR, slot_patch_info["start inventory"]["sub weapon"])
+        patcher.write_byte(START_INVENTORY_SUBWEAPON_LEVEL_ADDR,
+                           slot_patch_info["start inventory"]["sub weapon level"])
+        patcher.write_byte(START_INVENTORY_ICE_TRAP_ADDR, slot_patch_info["start inventory"]["ice traps"])
 
         # Everything related to the Countdown counter.
+        # NOTE: Must be written AFTER the custom overlay stuff.
         if slot_patch_info["options"]["countdown"]:
             patcher.write_int32(0x1C670, 0x080FF141)  # J 0x803FC504
             patcher.write_int32(0x1F11C, 0x080FF147)  # J 0x803FC51C
@@ -112,6 +128,9 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int32s(0x8C028, [0x0C0FF199,  # JAL 0x803FC664
                                             0xA20E0000])  # SB  T6, 0x0000 (S0)
             patcher.write_int32(0x108D80, 0x0C0FF1A0)  # JAL 0x803FC680
+
+            # Write the initial Countdown numbers array.
+            patcher.write_bytes(0xFFC7D0, slot_patch_info["initial countdowns"])
 
         # Kills the pointer to the Countdown number, resets the "in a demo?" value whenever changing/reloading the
         # game state, and mirrors the current game state value in a spot that's easily readable.
@@ -189,16 +208,12 @@ class CVLoDPatchExtensions(APPatchExtension):
                 starting_flags += [0]
             patcher.write_int16s(0x450, starting_flags, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
 
-        # Give Henry all the time in the world just like everyone else.
+        # Prevent Henry's days tracker object from spawning so he'll have unlimited time just like everyone else.
         patcher.write_byte(0x86DDF, 0x04)
         # Make the Henry teleport jewels work for everyone at the expense of the light effect surrounding them.
         # The code that creates and renders it is exclusively inside Henry's overlay, so it must be tossed for the actor
         # to function for the rest of the characters, sadly.
         patcher.write_int32(0xF6A5C, 0x00000000)  # NOP
-
-        # Custom data-loading code
-        patcher.write_int32(0x18A94, 0x0800793D)  # J 0x8001E4F4
-        patcher.write_int32s(0x1F0F4, patches.custom_code_loader)
 
         # Custom remote item rewarding and DeathLink receiving code
         patcher.write_int32(0x1C854, 0x080FF000)  # J 0x803FC000

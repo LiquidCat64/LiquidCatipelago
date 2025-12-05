@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 AP_ITEM_INDEX = 0x06
 SCENE_REFRESH_VALUE = 0xFF
 CASTLE_CENTER_TOP_ELEVATOR_SAVE_SPAWN = 0x03
+MAX_JEWELS = 99
+MAX_GOLD = 99999
 
 # All Item names exclusive to CV64 mapped to what their equivalent appearance IDs should be in LoD.
 CV64_EXCLUSIVE_ITEMS: dict[str, int] = {
@@ -30,9 +32,6 @@ CV64_EXCLUSIVE_ITEMS: dict[str, int] = {
     "Clocktower Key2": Items.STOREROOM_KEY,
     "Clocktower Key3": Items.STOREROOM_KEY,
 }
-
-SCENE_COUNTDOWN_NUMBERS = [1, 2, 2, 3, 3, 3, 17, 4, 5, 9, 9, 9, 18, 18, 18, 9, 0, 0, 0, 19, 16, 16, 19, 15, 16, 9, 17,
-                           14, 19, 13, 11, 11, 11, 12, 12, 8, 8, 7, 7, 10, 16, 16, 6, 19, 19, 19, 16, 19, 19, 19]
 
 FOUNTAIN_LETTERS_TO_BYTES = {"O": b"\x01", "M": b"\x02", "H": b"\x03", "V": b"\x04"}
 CHARNEL_COFFIN_ACTORS_START = 0x777C94
@@ -326,7 +325,7 @@ def get_countdown_numbers(options: CVLoDOptions, active_locations: Iterable[Loca
 
     # Create the array. The number of countdown numbers is the highest number in the list of countdown numbers for each
     # scene.
-    countdown_array = [0 for _ in range(max(SCENE_COUNTDOWN_NUMBERS))]
+    countdown_array = [0 for _ in range(19)]
 
     # Loop over every Location, figure out which countdown number it is, and if it should count on it.
     for loc in active_locations:
@@ -334,13 +333,15 @@ def get_countdown_numbers(options: CVLoDOptions, active_locations: Iterable[Loca
         # set on them will count. Otherwise, all Locations will count, including those with filler/trap Items. Event
         # Locations and Locations with a scene ID of 0xFF (indicating they occur in multiple scenes) will never count
         # no matter what.
-        if loc.address is not None and CVLOD_LOCATIONS_INFO[loc.name].scene_id != Scenes.NULL and \
+        if loc.address is not None and CVLOD_LOCATIONS_INFO[loc.name].countdown is not None and \
                 (options.countdown == Countdown.option_all_locations or
-                 (options.countdown == Countdown.option_majors and loc.item.classification &
+                 (options.countdown == Countdown.option_progression_only and loc.item.classification &
+                  ItemClassification.progression) or
+                 (options.countdown == Countdown.option_progression_useful and loc.item.classification &
                   (ItemClassification.progression | ItemClassification.useful))):
 
             # Get the Location's countdown number and increment it.
-            countdown_array[CVLOD_LOCATIONS_INFO[loc.name].scene_id] += 1
+            countdown_array[CVLOD_LOCATIONS_INFO[loc.name].countdown] += 1
 
     # Return the final array.
     return countdown_array
@@ -395,7 +396,7 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
 
         # Figure out the Item's appearance byte. If it's an N64-vania player's Item, change the multiworld Item's model
         # to match what it is. Otherwise, have it be an Archipelago Item. Do not write this if it's an NPC item, as that
-        # would tell the majors only Countdown to decrease even if it's not a major.
+        # would tell the Countdown to decrease even if it shouldn't.
         if loc not in NPC_LOCATIONS:
             # If the Item is a LoD Item, pick its Item ID.
             if loc.item.game == "Castlevania - Legacy of Darkness":
@@ -429,9 +430,12 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
         else:
             appearance_byte = 0x00
 
-        # Set the 0x80 flag in the appearance byte to flag the Item as something that should decrement the Countdown
+        # Set the 0x80 bit in the appearance byte to flag the Item as something that should decrement the Countdown
         # when picked up, if applicable.
-        if loc.item.classification & (ItemClassification.progression | ItemClassification.useful) or \
+        if (world.options.countdown.value == Countdown.option_progression_only and
+                loc.item.classification & ItemClassification.progression) or \
+                (world.options.countdown.value == Countdown.option_progression_useful and
+                 loc.item.classification & (ItemClassification.progression | ItemClassification.useful)) or \
                 world.options.countdown.value == Countdown.option_all_locations:
             appearance_byte |= 0x80
 
@@ -556,16 +560,15 @@ def get_start_inventory_data(player: int, options: CVLoDOptions, precollected_it
     has to be handled appropriately."""
     start_inventory_data = {"inv array": [0 for _ in range(0x30)],
                             "gold": 0,
-                            "jewels": 0,
                             "powerups": 0,
                             "ice traps": 0,
                             "sub weapon": 0,
                             "sub weapon level": 0}
 
-    items_max = 10
+    max_items = 10
     # Raise the items max if Increase Item Limit is enabled.
     if options.increase_item_limit:
-        items_max = 99
+        max_items = 99
 
     # Loop over every Item in our pre-collected Items list.
     for item in precollected_items:
@@ -593,25 +596,27 @@ def get_start_inventory_data(player: int, options: CVLoDOptions, precollected_it
         elif "GOLD" in item.name:
             start_inventory_data["gold"] += int(item.name[0:4])
             # Money cannot be higher than 99999.
-            if start_inventory_data["powerups"] > 99999:
-                start_inventory_data["powerups"] = 99999
+            if start_inventory_data["powerups"] > MAX_GOLD:
+                start_inventory_data["powerups"] = MAX_GOLD
         # If the Item is a jewel, increment the starting jewel count by that jewel's worth.
+        # Note that the starting jewel count is the second element in the inventory array.
         elif "jewel" in item.name:
             if "L" in item.name:
-                start_inventory_data["jewels"] += 10
+                start_inventory_data["inv array"][1] += 10
             else:
-                start_inventory_data["jewels"] += 5
+                start_inventory_data["inv array"][1] += 5
             # Jewels cannot be higher than 99.
-            if start_inventory_data["jewels"] > 99:
-                start_inventory_data["jewels"] = 99
+            if start_inventory_data["inv array"][1] > MAX_JEWELS:
+                start_inventory_data["inv array"][1] = MAX_JEWELS
         # If the Item is an Ice Trap, increment the starting Ice Trap count (if it's not already at the max).
         elif item.name == item_names.trap_ice:
             if start_inventory_data["ice traps"] < 0xFF:
                 start_inventory_data["ice traps"] += 1
         # If it's literally any other Item, increment its count in the inventory array (the index in which is determined
-        # by the regular Item ID).
+        # by the regular Item ID). Note that Specials hax a max of 99 regardless of the maximum for the other Items.
         else:
-            if start_inventory_data["inv array"][item.code-1] < items_max or "Special" in item.name:
+            if (start_inventory_data["inv array"][item.code-1] < max_items) or \
+                    ("Special" in item.name and start_inventory_data["inv array"][item.code-1] < 99):
                 start_inventory_data["inv array"][item.code-1] += 1
 
     # Return the final start inventory data.

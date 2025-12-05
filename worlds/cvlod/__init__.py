@@ -259,6 +259,7 @@ class CVLoDWorld(World):
                                 "window_color_a": self.options.window_color_a.value},
                            "start inventory": get_start_inventory_data(self.player, self.options,
                                                                        self.multiworld.precollected_items[self.player]),
+                           "initial countdowns": get_countdown_numbers(self.options, active_locations),
                            "stages": self.active_stage_info,
                            "warps": self.active_warp_list,
                            "location values": get_location_write_values(self, active_locations),

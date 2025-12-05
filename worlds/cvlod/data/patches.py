@@ -1091,7 +1091,9 @@ countdown_number_manager = [
 
 new_game_extras = [
     # Upon starting a new game, this will write anything extra to the save file data that the run should have at the
-    # start. The initial Countdown numbers begin here.
+    # start.
+
+    # The initial Countdown numbers begin here.
     0x24080000,  # ADDIU T0, R0, 0x0000
     0x24090014,  # ADDIU T1, R0, 0x0014
     0x11090008,  # BEQ   T0, T1, [forward 0x08]
@@ -1103,12 +1105,11 @@ new_game_extras = [
     0xAD6AABA0,  # SW    T2, 0xABA0 (T3)
     0x1000FFF8,  # B             [backward 0x08]
     0x25080004,  # ADDIU T0, T0, 0x0004
-    # start_inventory begins here
+    # start_inventory begins here.
     0x3C08801D,  # LUI   T0, 0x801D
-    0x24090000,  # ADDIU T1, R0, 0x0000  <- Starting jewels
-    0xA109AB45,  # SB    T1, 0xAB45
     0x3C0A8040,  # LUI   T2, 0x8040
-    0x8D4BC7EC,  # LW    T3, 0xC7EC (T2) <- Starting money
+    0x3C0B0000,  # LUI   T3, 0x0000      <- Starting money (upper half)
+    0x356B0000,  # ORI   T3, T3, 0x0000  <- Starting money (lower half)
     0xAD0BAB40,  # SW    T3, 0xAB40 (T0)
     0x24090000,  # ADDIU T1, R0, 0x0000  <- Starting PowerUps
     0xA109AE23,  # SB    T1, 0xAE23 (T0)
@@ -1119,13 +1120,13 @@ new_game_extras = [
     0x24090000,  # ADDIU T1, R0, 0x0000  <- Starting Ice Traps
     0xA109AA49,  # SB    T1, 0xAA49 (T0)
     0x240C0000,  # ADDIU T4, R0, 0x0000
-    0x240D002A,  # ADDIU T5, R0, 0x002A
+    0x240D0030,  # ADDIU T5, R0, 0x0030
     0x11AC0007,  # BEQ   T5, T4, [forward 0x07]
     0x3C0A8040,  # LUI   T2, 0x8040
     0x014C5021,  # ADDU  T2, T2, T4
     0x814AC7A0,  # LB    T2, 0xC7A0      <- Starting inventory items
+    0xA10AAB44,  # SB    T2, 0xAB44 (T0)
     0x25080001,  # ADDIU T0, T0, 0x0001
-    0xA10AAB46,  # SB    T2, 0xAB46 (T0)
     0x1000FFF9,  # B             [backward 0x07]
     0x258C0001,  # ADDIU T4, T4, 0x0001
     0x03E00008   # JR    RA
