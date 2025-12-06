@@ -82,11 +82,8 @@ class CVLoDPatchExtensions(APPatchExtension):
     def patch_rom(caller: APProcedurePatch, input_rom: bytes, slot_patch_file) -> bytes:
         patcher = CVLoDRomPatcher(bytearray(input_rom))
         slot_patch_info = json.loads(caller.get_file(slot_patch_file).decode("utf-8"))
-        slot_patch_info["options"]["bosses_required"] = 29
-        slot_patch_info["options"]["duel_tower_final_boss"] = DuelTowerFinalBoss.option_giant_werewolf
-        slot_patch_info["options"]["post_behemoth_boss"] = PostBehemothBoss.option_character_dependent
-        slot_patch_info["options"]["room_of_clocks_boss"] = RoomOfClocksBoss.option_character_dependent
-        slot_patch_info["options"]["villa_state"] = VillaState.option_hybrid
+        # Determine what flags should be set upon beginning a new game.
+        starting_flags = []
 
         # Get the dictionaries of item values mapped to their location IDs and relevant name texts out of the slot
         # patch info and convert each location ID key from a string into an int.
@@ -186,27 +183,11 @@ class CVLoDPatchExtensions(APPatchExtension):
                                       0x3484FF00,
                                       0x00044025], NIFiles.OVERLAY_FILE_SELECT_CONTROLLER)
 
-        # Determine what flags should be set upon beginning a new game.
-        starting_flags = []
         # If the Castle Wall State is either Cornell's or Hybrid, set all the flags that the "meeting Ortega" cutscene
         # normally sets so that the stage can begin in its initial unsolved Cornell state.
         if slot_patch_info["options"]["castle_wall_state"] != CastleWallState.option_reinhardt_carrie:
             starting_flags += [0x3C,  # Met Ortega
                                0x53]  # End Portcullis open
-
-        # If we have no starting flags, block the Henry Mode starting flag setter routine from running for all
-        # characters.
-        if not starting_flags:
-            patcher.write_int32(0x220, 0x34080000, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)  # ORI  T0, R0, 0x0000
-        # Otherwise, if we do, make it run for all characters and have it set our starting flags instead.
-        else:
-            patcher.write_int32(0x220, 0x34080003, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)  # ORI  T0, R0, 0x0003
-            patcher.write_byte(0x3B3, 12 + (len(starting_flags) // 8 * 12), NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
-            patcher.write_byte(0x41B, len(starting_flags), NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
-            # If the length of the starting flags list is odd, add an extra 0 to pad it evenly. And then write it in.
-            if len(starting_flags) % 2:
-                starting_flags += [0]
-            patcher.write_int16s(0x450, starting_flags, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
 
         # Prevent Henry's days tracker object from spawning so he'll have unlimited time just like everyone else.
         patcher.write_byte(0x86DDF, 0x04)
@@ -1370,8 +1351,31 @@ class CVLoDPatchExtensions(APPatchExtension):
         # TUNNEL EDITS  #
         # # # # # # # # #
         # Make the Tunnel gondolas check for the Spider Women cutscene like they do in CV64.
-        patcher.write_int32(0x79B8CC, 0x0C0BADF4)  # JAL  0x802EB7D0
-        patcher.scenes[Scenes.TUNNEL].write_ovl_int32s(0x7C60, patches.gondola_spider_cutscene_checker)
+        gondola_hack_start = len(patcher.scenes[Scenes.TUNNEL].overlay)
+        patcher.scenes[Scenes.TUNNEL].write_ovl_int32(
+            0x7BC, 0x0C0B0000 | ((gondola_hack_start + (SCENE_OVERLAY_RDRAM_START & 0xFFFFFF)) // 4))
+        patcher.scenes[Scenes.TUNNEL].write_ovl_int32s(gondola_hack_start, patches.gondola_spider_cutscene_checker)
+        # If Skip Gondolas is on, extend the above hack to also make the gondola teleport the player when stepped on.
+        if slot_patch_info["options"]["skip_gondolas"]:
+            patcher.scenes[Scenes.TUNNEL].write_ovl_int32s(len(patcher.scenes[Scenes.TUNNEL].overlay) - 8,
+                                                           patches.gondola_skipper)
+            # Spawn coordinates for the new gondola entrances.
+            patcher.scenes[Scenes.TUNNEL].spawn_spots += [
+                CVLoDSpawnEntranceEntry(room_id=0, player_x_pos=1047, player_y_pos=272, player_z_pos=-2136,
+                                        player_rotation=-16384, camera_x_pos=1048, camera_y_pos=296, camera_z_pos=-2181,
+                                        focus_x_pos=1047, focus_y_pos=287, focus_z_pos=-2136),
+                CVLoDSpawnEntranceEntry(room_id=0, player_x_pos=563, player_y_pos=272, player_z_pos=-748,
+                                        player_rotation=0, camera_x_pos=518, camera_y_pos=296, camera_z_pos=-747,
+                                        focus_x_pos=563, focus_y_pos=287, focus_z_pos=-748),
+            ]
+            # Move the candle at the gondola transfer point to be near the red gondola instead.
+            patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][163]["x_pos"] = 1063.0
+            patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][163]["y_pos"] = 272.0
+            patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][163]["z_pos"] = -2144.0
+            # Remove all enemies that would spawn only while the "gondolas in motion" flag (0xB4) is set.
+            for actor in patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"]:
+                if actor["spawn_flags"] & ActorSpawnFlags.SPAWN_IF_FLAG_SET and actor["flag_id"] == 0xB4:
+                    actor["delete"] = True
 
         # Turn the Tunnel Henry child actor into a freestanding pickup check with all necessary parameters assigned.
         patcher.scenes[Scenes.TUNNEL].actor_lists["proxy"][131]["spawn_flags"] = 0
@@ -1423,6 +1427,10 @@ class CVLoDPatchExtensions(APPatchExtension):
 
         # Set the Waterway end zone destination ID to the ID for the decoupled Medusa arena.
         patcher.scenes[Scenes.WATERWAY].loading_zones[0]["spawn_id"] |= 0x80
+
+        # If Skip Waterway Blocks is on, add the second switch's "pressed" flag to the starting flags list.
+        if slot_patch_info["options"]["skip_waterway_blocks"]:
+            starting_flags += [0xDB]
 
         # Make the "I Smell Poison" and lizard-men cutscene triggers and all text spots universal to everyone.
         patcher.scenes[Scenes.WATERWAY].actor_lists["init"][1]["spawn_flags"] = 0
@@ -2757,8 +2765,20 @@ class CVLoDPatchExtensions(APPatchExtension):
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         patcher.write_byte(0x15D3, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_spawn_id,
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15DB, 0x04, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-        patcher.write_byte(0x15D3, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+
+        # If we have no starting flags, block the Henry Mode starting flag setter routine from running for all
+        # characters.
+        if not starting_flags:
+            patcher.write_int32(0x220, 0x34080000, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)  # ORI  T0, R0, 0x0000
+        # Otherwise, if we do, make it run for all characters and have it set our starting flags instead.
+        else:
+            patcher.write_int32(0x220, 0x34080003, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)  # ORI  T0, R0, 0x0003
+            patcher.write_byte(0x3B3, 12 + (len(starting_flags) // 8 * 12), NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
+            patcher.write_byte(0x41B, len(starting_flags), NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
+            # If the length of the starting flags list is odd, add an extra 0 to pad it evenly. And then write it in.
+            if len(starting_flags) % 2:
+                starting_flags += [0]
+            patcher.write_int16s(0x450, starting_flags, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
 
         return patcher.get_output_rom()
 

@@ -1493,25 +1493,46 @@ panther_jump_preventer = [
     0x03E00008   # JR    RA
 ]
 
+gondola_spider_cutscene_checker = [
+    # Checks for flag 0xAD (the Spider Women cutscene flag) before activating the Tunnel gondolas, restoring their
+    # original behavior from CV64.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9109AA75,  # LBU   T1, 0xAA75 (T0)
+    0x312A0004,  # ANDI  T2, T1, 0x0004
+    0x15400003,  # BNEZ  T2,     [forward 0x03]
+    0x00000000,  # NOP
+    0x03E00008,  # JR    RA
+    0x00000000,  # NOP
+    0x08051DBF,  # J     0x801476FC
+    0x00000000,  # NOP
+]
+
 gondola_skipper = [
     # Upon stepping on one of the gondolas in Tunnel to activate it, this will instantly teleport you to the other end
     # of the gondola course depending on which one activated, skipping the entire 3-minute wait to get there.
-    0x3C088039,  # LUI   T0, 0x8039
-    0x240900FF,  # ADDIU T1, R0, 0x00FF
-    0xA1099EE1,  # SB    T1, 0x9EE1 (T0)
-    0x31EA0020,  # ANDI  T2, T7, 0x0020
-    0x3C0C3080,  # LUI   T4, 0x3080
+
+    # Access the gondola's actor list entry and check to see if it's the blue one specifically. This will determine
+    # what spawn spot we send the player to and what color to make the fade transition.
+    0x8CA80070,  # LW    T0, 0x0070 (A1)
+    0x95090018,  # LHU   T1, 0x0018 (T0)
+    # If it's gondola number 5 (the blue one), que up the blue gondola's transition settings.
+    0x240A0005,  # ADDIU T2, R0, 0x0005  <- Blue gondola's palette ID
+    0x152A0004,  # BNE   T1, T2, [forward 0x04]
+    0x3C0C3080,  # LUI   T4, 0x3080      <- Blue gondola fade color
     0x358C9700,  # ORI   T4, T4, 0x9700
-    0x154B0003,  # BNE   T2, T3, [forward 0x03]
-    0x24090002,  # ADDIU T1, R0, 0x0002
-    0x24090003,  # ADDIU T1, R0, 0x0003
-    0x3C0C7A00,  # LUI   T4, 0x7A00
-    0xA1099EE3,  # SB    T1, 0x9EE3 (T0)
-    0xAD0C9EE4,  # SW    T4, 0x9EE4 (T0)
-    0x3C0D0010,  # LUI   T5, 0x0010
-    0x25AD0010,  # ADDIU T5, T5, 0x0010
-    0xAD0D9EE8,  # SW    T5, 0x9EE8 (T0)
-    0x08063E68   # J     0x8018F9A0
+    0x10000003,  # B             [forward 0x03]
+    0x240B000A,  # ADDIU T3, R0, 0x000A  <- Blue gondola destination ID
+    # If not number 5, que up the red gondola's transition settings.
+    0x3C0C7A00,  # LUI   T4, 0x7A00      <- Red gondola fade color
+    0x240B000B,  # ADDIU T3, R0, 0x000B  <- Red gondola destination ID
+    # Store the values.
+    0x2409000C,  # ADDIU T5, R0, 0x000C  <- Fade out and in time
+    0x3C08801D,  # LUI   T0, 0x801D
+    0xA509AE80,  # SH    T1, 0xAE80 (T0)
+    0xA509AE82,  # SH    T1, 0xAE82 (T0)
+    0xAD0CAE7C,  # SW    T4, 0xAE7C (T0)
+    0x08051DBF,  # J     0x801476FC
+    0xA50BAE7A,  # SH    T3, 0xAE7A (T0)
 ]
 
 ambience_silencer = [
@@ -1740,19 +1761,6 @@ sea_monster_sunk_path_flag_unsetter = [
     0x312900F7,  # ANDI  T1, T1, 0x00F7
     0x03200008,  # JR    T9
     0xA109AA8B   # SB    T1, 0xAA8B (T0)
-]
-
-gondola_spider_cutscene_checker = [
-    # Checks for flag 0xAD (the Spider Women cutscene flag) before activating the Tunnel gondolas, restoring their
-    # original behavior from CV64.
-    0x3C08801D,  # LUI   T0, 0x801D
-    0x9109AA75,  # LBU   T1, 0xAA75 (T0)
-    0x312A0004,  # ANDI  T2, T1, 0x0004
-    0x11400003,  # BEQZ  T2,     [forward 0x03]
-    0x00000000,  # NOP
-    0x08051DBF,  # J     0x801476FC
-    0x00000000,  # NOP
-    0x03E00008   # JR    RA
 ]
 
 door_map_music_player = [
