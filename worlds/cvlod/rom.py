@@ -1837,19 +1837,12 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["init"][6]["delete"] = True
             patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["init"][5]["spawn_flags"] ^= \
                 ActorSpawnFlags.REINHARDT
-        # If Camilla was chosen for the post-Behemoth boss, delete the trigger for Rosa's battle intro cutscene and
-        # make Camilla's universal for everyone.
-        elif slot_patch_info["options"]["post_behemoth_boss"] == PostBehemothBoss.option_camilla:
+        # Otherwise, if Camilla was chosen for the post-Behemoth boss, delete the trigger for Rosa's battle intro
+        # cutscene and make Camilla's universal for everyone.
+        else:
             patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["init"][5]["delete"] = True
             patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["init"][6]["spawn_flags"] ^= \
                 ActorSpawnFlags.CARRIE
-        # Otherwise, if Character Dependant was chosen, set up Rosa's to trigger for Reinhardt and Cornell and
-        # Camilla's to trigger for Carrie and Henry.
-        else:
-            patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["init"][5]["spawn_flags"] |= \
-                ActorSpawnFlags.CORNELL
-            patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["init"][6]["spawn_flags"] |= \
-                ActorSpawnFlags.HENRY
 
         # Make it possible to fix or break both Castle Center top elevator bridges universally for all characters by
         # putting 1 or 0 in their var_c respectively.
@@ -2054,8 +2047,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # settings table so anyone will be allowed to trigger it. Just like with the Castle Center bosses, we'll instead
         # rely entirely on the actor system to ensure the trigger only spawns for the correct characters.
         patcher.write_byte(0x118349, 0x00)
-        # Make specific changes depending on what was chosen for the Duel Tower Final Boss (unless Character Dependant
-        # was chosen, in which case we do nothing).
+        # Make specific changes depending on what was chosen for the Duel Tower Final Boss.
         # If Giant Werewolf was chosen, prevent the hardcoded Not Cornell checks on Arena 4 from passing for non-Cornell
         # characters and make the Giant Werewolf cutscene trigger universal to everyone.
         if slot_patch_info["options"]["duel_tower_final_boss"] == DuelTowerFinalBoss.option_giant_werewolf:
@@ -2064,9 +2056,9 @@ class CVLoDPatchExtensions(APPatchExtension):
             # Prevent the ceiling from falling in Arena 4 for everyone.
             patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32(0x1A5C, 0x340D0002)  # ORI T5, R0, 0x0002
             patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32(0x5B4C, 0x340E0002)  # ORI T6, R0, 0x0002
-        # If Were-Tiger was chosen, make the hardcoded Not Cornell checks on Arena 4 pass even for Cornell and delete
-        # the Giant Werewolf cutscene trigger actor entirely.
-        elif slot_patch_info["options"]["duel_tower_final_boss"] == DuelTowerFinalBoss.option_were_tiger:
+        # Otherwise, if Were-Tiger was chosen, make the hardcoded Not Cornell checks on Arena 4 pass even for Cornell
+        # and delete the Giant Werewolf cutscene trigger actor entirely.
+        else:
             patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32(0x58D0, 0x10000003)  # B [forward 0x03]
             patcher.scenes[Scenes.DUEL_TOWER].actor_lists["init"][2]["delete"] = True
             # Make the ceiling fall in Arena 4 for everyone.
@@ -2165,14 +2157,10 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][35]["delete"] = True    # Reinhardt (Death)
             patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][38]["spawn_flags"] = 0  # Carrie (Actrise)
             patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][41]["delete"] = True    # Cornell (Ortega)
-        elif slot_patch_info["options"]["room_of_clocks_boss"] == RoomOfClocksBoss.option_ortega:
+        else:
             patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][35]["delete"] = True    # Reinhardt (Death)
             patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][38]["delete"] = True    # Carrie (Actrise)
             patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][41]["spawn_flags"] = 0  # Cornell (Ortega)
-        # Henry normally doesn't have a boss here. So if Character Dependent is chosen, we'll give him Death.
-        # Otherwise, don't touch Carrie and Cornell's elevator zones.
-        else:
-            patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][35]["spawn_flags"] |= ActorSpawnFlags.HENRY
 
         # Make Reinhardt and Carrie's White Jewel universal for everyone and remove Cornell's.
         patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][18]["delete"] = True

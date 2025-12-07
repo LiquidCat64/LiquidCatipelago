@@ -278,28 +278,25 @@ class MaximumGoldPrice(Range):
 class PostBehemothBoss(Choice):
     """Sets which boss is fought in the vampire triplets' room in Castle Center after defeating Behemoth."""
     display_name = "Post-Behemoth Boss"
-    option_character_dependent = 0
-    option_rosa = 1
-    option_camilla = 2
-    default = 0
+    option_rosa = 0
+    option_camilla = 1
+    default = "random"
 
 class DuelTowerFinalBoss(Choice):
     """Sets which boss is fought at the fourth Duel Tower arena."""
     display_name = "Duel Tower Final Boss"
-    option_character_dependent = 0
-    option_were_tiger = 1
-    option_giant_werewolf = 2
-    default = 0
+    option_were_tiger = 0
+    option_giant_werewolf = 1
+    default = "random"
 
 
 class RoomOfClocksBoss(Choice):
     """Sets which boss is fought at Room of Clocks."""
     display_name = "Room of Clocks Boss"
-    option_character_dependent = 0
-    option_death = 1
-    option_actrise = 2
-    option_ortega = 3
-    default = 0
+    option_death = 0
+    option_actrise = 1
+    option_ortega = 2
+    default = "random"
 
 
 class RenonFightCondition(Choice):
@@ -398,6 +395,7 @@ class DisableTimeRestrictions(Choice):
     option_none = 0
     option_art_tower_only = 1
     option_all = 2
+    default = 0
 
 
 class SkipGondolas(Toggle):
@@ -562,7 +560,7 @@ class CVLoDOptions(PerGameCommonOptions):
     increase_item_limit: IncreaseItemLimit
     nerf_healing_items: NerfHealingItems
     loading_zone_heals: LoadingZoneHeals
-    # invisible_items: InvisibleItems
+    invisible_items: InvisibleItems
     # drop_previous_sub_weapon: DropPreviousSubWeapon
     permanent_powerups: PermanentPowerUps
     # ice_trap_percentage: IceTrapPercentage

@@ -347,13 +347,13 @@ def get_countdown_numbers(options: CVLoDOptions, active_locations: Iterable[Loca
     return countdown_array
 
 
-def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Location]) -> dict[int, int]:
+def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Location]) -> dict[int, tuple[int, bool]]:
     """Gets ALL the Item values to write on each Location in the ROM. Item values consists of two bytes: the first
     (upper) byte dictates the appearance of the item, while the second (lower) determines what the Item actually is when
     picked up. All Items from other worlds will be AP Items that do nothing when picked up other than set their flag,
     and their appearance will depend on whether it's another N64-vania player's item and, if so, what item it is in
     their game. Ice Traps can assume the form of any item that is progression, non-progression, or either depending on
-    the player's settings.
+    the player's settings. Also determined in here is whether the Item's in-game pickup should be visible or not.
 
     Appearance does not matter if it's one of the NPC-given items (from either Vincent or Heinrich Meyer, etc.). For
     Renon's shop items, a list containing the shop item names, descriptions, and colors will be returned alongside the
@@ -440,7 +440,21 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
             appearance_byte |= 0x80
 
         # Put the appearance and item bytes together to get the final item value to write on that Location.
-        location_values[loc.address] = (appearance_byte << 8) + item_byte
+        item_value = (appearance_byte << 8) + item_byte
+
+        # Determine if the pickup should be invisible or not.
+        # If Invisible Items is set to Hide All, we will consider it not visible.
+        if world.options.invisible_items == InvisibleItems.option_hide_all:
+            item_visible = False
+        # If set to Chance, it will have a 50/50 chance of being visible or not.
+        elif world.options.invisible_items == InvisibleItems.option_chance:
+            item_visible = world.random.choice([True, False])
+        # Otherwise, we will go with visible (if Vanilla was chosen, we will simply not write this)
+        else:
+            item_visible = True
+
+        # Create the final item info tuple and map it to the location address.
+        location_values[loc.address] = (item_value, item_visible)
 
     # Return the final dict of Location values.
     return location_values
