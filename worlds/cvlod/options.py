@@ -389,12 +389,15 @@ class IceTrapAppearance(Choice):
     default = 0
 
 
-class DisableTimeRestrictions(Toggle):
-    """Disables the restriction on every event and door that requires the current time
-    to be within a specific range, so they can be triggered at any time.
-    This includes all sun/moon doors and, in the Villa, the meeting with Rosa and the fountain pillar.
-    The Villa coffin is not affected by this."""
+class DisableTimeRestrictions(Choice):
+    """Disables the restrictions on some doors and events that require the current time to be within a specific range, so they can be triggered at any time.
+    Art Tower Only will only affect the doors in Art Tower, while All will affect every stage with such doors and events.
+    In the Villa, this includes the fountain pillar if the Villa State is Reinhardt/Carrie, the meeting with Rosa if the Villa State is Reinhardt/Carrie or Hybrid, and/or the 6AM rose patch if the Villa State is Cornell or Hybrid.
+    The Villa end coffin is not affected by this."""
     display_name = "Disable Time Requirements"
+    option_none = 0
+    option_art_tower_only = 1
+    option_all = 2
 
 
 class SkipGondolas(Toggle):

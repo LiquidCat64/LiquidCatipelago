@@ -24,8 +24,9 @@ from .cvlod_text import cvlod_string_to_bytearray, cvlod_text_wrap, cvlod_bytes_
 # from .aesthetics import renon_item_dialogue
 # from .locations import CVLOD_LOCATIONS_INFO
 from .options import StageLayout, VincentFightCondition, RenonFightCondition, PostBehemothBoss, RoomOfClocksBoss, \
-    DuelTowerFinalBoss, CastleKeepEndingSequence, DeathLink, DraculasCondition, InvisibleItems, Countdown, \
-    PantherDash, VillaBranchingPaths, CastleCenterBranchingPaths, CastleWallState, VillaState, VillaMazeKid
+    DuelTowerFinalBoss, CastleKeepEndingSequence, DeathLink, DraculasCondition, InvisibleItems, \
+    PantherDash, VillaBranchingPaths, CastleCenterBranchingPaths, CastleWallState, VillaState, VillaMazeKid, \
+    DisableTimeRestrictions
 from settings import get_settings
 
 if TYPE_CHECKING:
@@ -1031,7 +1032,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][7]["spawn_flags"] = 0
             patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][16]["spawn_flags"] = 0
             patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][17]["delete"] = True
-            # The fountain pillar is on its Reinhardt/Carrie check behavior for everyone.
+            # The fountain pillar is on its Reinhardt/Carrie check behavior for everyone (raises at midnight).
             patcher.write_int32(0xD77E0, 0x24030000)  # ADDIU V1, R0, 0x0000
             patcher.write_int32(0xD7A60, 0x24030000)  # ADDIU V1, R0, 0x0000
 
@@ -1139,7 +1140,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][7]["delete"] = True
             patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][16]["delete"] = True
             patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][17]["spawn_flags"] = 0
-            # The fountain pillar is on its Cornell check behavior for everyone.
+            # The fountain pillar is on its Cornell check behavior for everyone (raises after solving the puzzle).
             patcher.write_int32(0xD77E0, 0x24030002)  # ADDIU V1, R0, 0x0002
             patcher.write_int32(0xD7A60, 0x24030002)  # ADDIU V1, R0, 0x0002
 
@@ -1243,7 +1244,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][7]["delete"] = True
             patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][16]["delete"] = True
             patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][17]["spawn_flags"] = 0
-            # The fountain pillar is on its Cornell check behavior for everyone.
+            # The fountain pillar is on its Cornell check behavior for everyone (raises after solving the puzzle).
             patcher.write_int32(0xD77E0, 0x24030002)  # ADDIU V1, R0, 0x0002
             patcher.write_int32(0xD7A60, 0x24030002)  # ADDIU V1, R0, 0x0002
 
@@ -2562,9 +2563,9 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32(0x2F8, 0x14400004, NIFiles.OVERLAY_CS_INTRO_NARRATION_HENRY)  # BNEZ   V0, [forward 0x04]
 
 
-        # # # # # # # # # # #
-        # RANDOMIZER WRITES #
-        # # # # # # # # # # #
+        # # # # # # # # # # # # # # #
+        # GENERAL POST-STAGE EDITS  #
+        # # # # # # # # # # # # # # #
         # Loop over EVERY actor in EVERY list, find all Location-associated instances, and either delete them if they
         # are exclusive to non-Normal difficulties or try writing an Item they should have onto them if they aren't.
         for scene in patcher.scenes:
@@ -2759,6 +2760,32 @@ class CVLoDPatchExtensions(APPatchExtension):
                 else:
                     patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].loading_zones[2]["scene_id"] = next_scene
                     patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].loading_zones[2]["spawn_id"] = next_spawn
+
+        # If Disable Time Restrictions is set to All, make all events that expect a certain time able to happen anytime.
+        if slot_patch_info["options"]["disable_time_restrictions"] == DisableTimeRestrictions.option_all:
+            # Loop over every door data in the game and clear the time restriction flags from all of them.
+            for scene in patcher.scenes:
+                for door in scene.doors:
+                    door["door_flags"] &= DoorFlags.NO_TIME_RESTRICTIONS
+
+            # If we have the Reinhardt/Carrie Villa, put the fountain pillar on its Henry behavior for everyone
+            # (always raised no matter what).
+            if slot_patch_info["options"]["villa_state"] == VillaState.option_reinhardt_carrie:
+                patcher.write_int32(0xD77E0, 0x24030003)  # ADDIU V1, R0, 0x0003
+                patcher.write_int32(0xD7A60, 0x24030003)  # ADDIU V1, R0, 0x0003
+
+            # Make the 3AM Rosa cutscene trigger active at all times.
+            patcher.write_int16(0x117F12, 0x0000)
+            patcher.write_int16(0x117F14, 0x0018)
+
+            # Make the 6AM rose patch active at all times.
+            patcher.scenes[Scenes.VILLA_FOYER].write_ovl_int32(0x3B4, 0x34030006)  # ORI T6, V1, 0x0006
+            patcher.scenes[Scenes.VILLA_FOYER].write_ovl_int32(0x660, 0x340E0006)  # ORI T6, R0, 0x0006
+            patcher.write_int32(0xC4, 0x34030006, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
+        # Otherwise, if set to Art Tower Only, only remove the time restrictions on the Art Tower doors.
+        elif slot_patch_info["options"]["disable_time_restrictions"] == DisableTimeRestrictions.option_art_tower_only:
+            for door in patcher.scenes[Scenes.ART_TOWER_MUSEUM].doors:
+                door["door_flags"] &= DoorFlags.NO_TIME_RESTRICTIONS
 
         # Change the starting stage to whatever stage the player is actually starting at.
         patcher.write_byte(0x15DB, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_scene_id,

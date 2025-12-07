@@ -153,6 +153,7 @@ class DoorFlags(IntFlag):
     DISREGARD_IF_FLAG_UNSET =  0x2000  # Only used on Foggy Lake's cargo door, which normally locks after opening it.
     UNLOCK_AND_SET_FLAG =      0x4000
     UNLOCK_AND_UNSET_FLAG =    0x8000  # Completely unused normally.
+    NO_TIME_RESTRICTIONS =     0xFFFF ^ LOCK_DURING_DAYTIME ^ LOCK_DURING_NIGHTTIME
     LOCKED_BY_KEY =            ITEM_COST_IF_FLAG_UNSET | DISREGARD_IF_FLAG_SET | UNLOCK_AND_SET_FLAG
 
 class Scenes(IntEnum):
