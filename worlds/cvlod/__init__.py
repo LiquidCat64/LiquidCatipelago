@@ -246,6 +246,7 @@ class CVLoDWorld(World):
                                 "vincent_fight_condition": self.options.vincent_fight_condition.value,
                                 "castle_keep_ending_sequence": self.options.castle_keep_ending_sequence.value,
                                 "increase_item_limit": self.options.increase_item_limit.value,
+                                "invisible_items": self.options.invisible_items.value,
                                 "nerf_healing_items": self.options.nerf_healing_items.value,
                                 "loading_zone_heals": self.options.loading_zone_heals.value,
                                 "permanent_powerups": self.options.permanent_powerups.value,

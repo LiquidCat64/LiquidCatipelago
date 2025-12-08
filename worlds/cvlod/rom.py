@@ -52,7 +52,7 @@ START_INVENTORY_SUBWEAPON_ADDR = NG_EXTRAS_START + 0x4B
 START_INVENTORY_SUBWEAPON_LEVEL_ADDR = NG_EXTRAS_START + 0x53
 START_INVENTORY_ICE_TRAP_ADDR = NG_EXTRAS_START + 0x5B
 
-FOREST_OVL_CHARNEL_ITEMS_START = 0x7C60
+FOREST_OVL_CHARNEL_ITEMS_START = 0x7C60  # 0x802EB7D0
 CHARNEL_ITEM_LEN = 0xC
 FIRST_CHARNEL_LID_ACTOR = 72
 
@@ -309,7 +309,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int16(0x36E, 0x0068, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
             patcher.write_bytes(0x720, cvlod_string_to_bytearray("...🅰0/", add_end_char=True),
                                 NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
-            patcher.write_int16(0xFFC6F0, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villafy_fountain_shine].flag_id])
+            patcher.write_int16(0xFFC6F0, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villafy_fountain_shine].flag_id][0])
         # 6am Rose Patch
         if CVLOD_LOCATIONS_INFO[loc_names.villafo_6am_roses].flag_id in loc_values:
             patcher.write_int16(0x1E2, 0x8040, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
@@ -318,28 +318,28 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int16(0x1F2, 0x0078, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
             patcher.write_bytes(0x380, cvlod_string_to_bytearray("...🅰0/", add_end_char=True),
                                 NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
-            patcher.write_int16(0xFFC6F0 + 2, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villafo_6am_roses].flag_id])
+            patcher.write_int16(0xFFC6F0 + 2, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villafo_6am_roses].flag_id][0])
         # Vincent
         if CVLOD_LOCATIONS_INFO[loc_names.villala_vincent].flag_id in loc_values:
             patcher.write_int16(0x180E, 0x8040, NIFiles.OVERLAY_VINCENT)
             patcher.write_int16(0x1812, 0xC700, NIFiles.OVERLAY_VINCENT)
             patcher.write_byte(0x1817, 0x02, NIFiles.OVERLAY_VINCENT)
             patcher.write_int16(0x181E, 0x027F, NIFiles.OVERLAY_VINCENT)
-            patcher.write_int16(0xFFC6F0 + 4, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villala_vincent].flag_id])
+            patcher.write_int16(0xFFC6F0 + 4, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villala_vincent].flag_id][0])
         # Mary
         if CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id in loc_values:
             patcher.write_int16(0xB16, 0x8040, NIFiles.OVERLAY_MARY)
             patcher.write_int16(0xB1A, 0xC700, NIFiles.OVERLAY_MARY)
             patcher.write_byte(0xB1F, 0x03, NIFiles.OVERLAY_MARY)
             patcher.write_int16(0xB26, 0x0086, NIFiles.OVERLAY_MARY)
-            patcher.write_int16(0xFFC6F0 + 6, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id])
+            patcher.write_int16(0xFFC6F0 + 6, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0])
         # Heinrich Meyer
         if CVLOD_LOCATIONS_INFO[loc_names.ccll_heinrich].flag_id in loc_values:
             patcher.write_int16(0x962A, 0x8040, NIFiles.OVERLAY_LIZARD_MEN)
             patcher.write_int16(0x962E, 0xC700, NIFiles.OVERLAY_LIZARD_MEN)
             patcher.write_byte(0x9633, 0x04, NIFiles.OVERLAY_LIZARD_MEN)
             patcher.write_int16(0x963A, 0x0284, NIFiles.OVERLAY_LIZARD_MEN)
-            patcher.write_int16(0xFFC6F0 + 8, loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccll_heinrich].flag_id])
+            patcher.write_int16(0xFFC6F0 + 8, loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccll_heinrich].flag_id][0])
 
         # Disable the 3HBs checking and setting flags when breaking them and enable their individual items checking and
         # setting flags instead.
@@ -442,28 +442,42 @@ class CVLoDPatchExtensions(APPatchExtension):
             # Entry 0
             patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
                 FOREST_OVL_CHARNEL_ITEMS_START + 2,
-                loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id])
+                loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id][0])
             patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
                 FOREST_OVL_CHARNEL_ITEMS_START + 6, CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id)
             patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(FOREST_OVL_CHARNEL_ITEMS_START + 9, 0x00)
+            # Set the "invisibility" bit if it should be.
+            if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla and \
+                    not loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id][1]:
+                patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(FOREST_OVL_CHARNEL_ITEMS_START + 8, 0x0C)
             # Entry 1
             patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
                 FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 2,
-                loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_2].flag_id])
+                loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_2].flag_id][0])
             patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
                 FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 6,
                 CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_2].flag_id)
             patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(
                 FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 9, 0x00)
+            # Set the "invisibility" bit if it should be.
+            if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla and \
+                    not loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id][1]:
+                patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(
+                    FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 8, 0x0C)
             # Entry 8
             patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
                 FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 2,
-                loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_3].flag_id])
+                loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_3].flag_id][0])
             patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
                 FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 6,
                 CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_3].flag_id)
             patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(
                 FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 9, 0x00)
+            # Set the "invisibility" bit if it should be.
+            if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla and \
+                    not loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id][1]:
+                patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(
+                    FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 8, 0x0C)
         # If the chosen prize coffin is not coffin 0, swap the actor var C's of the lids of coffin 0 and the coffin that
         # did get chosen.
         if slot_patch_info["prize coffin id"]:
@@ -498,7 +512,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                              NIFiles.OVERLAY_KING_SKELETON)
         # Turn the item that drops into what it should be.
         if CVLOD_LOCATIONS_INFO[loc_names.forest_skelly_mouth].flag_id in loc_values:
-            patcher.write_int16(0x43CA, loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_skelly_mouth].flag_id],
+            patcher.write_int16(0x43CA, loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_skelly_mouth].flag_id][0],
                                 NIFiles.OVERLAY_KING_SKELETON)
         # Add the backup King Skeleton jaws item that will spawn only if the player orphans it the first time.
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"].append(
@@ -2124,11 +2138,19 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Write the randomizer items manually here.
         if CVLOD_LOCATIONS_INFO[loc_names.tosor_super_1].flag_id in loc_values:
             patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(
-                0x5400, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_1].flag_id])
+                0x5400, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_1].flag_id][0])
             patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(
-                0x5402, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_2].flag_id])
+                0x5402, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_2].flag_id][0])
             patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(
-                0x5404, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_3].flag_id])
+                0x5404, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_3].flag_id][0])
+            # Turning these items invisible makes them impossible to collect for some reason...
+            #if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
+            #    if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_1].flag_id][1]:
+            #        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_byte(0x70C0 + (4 * 0) + 2, 0xC)
+            #    if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_2].flag_id][1]:
+            #        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_byte(0x70C0 + (4 * 1) + 2, 0xC)
+            #    if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_3].flag_id][1]:
+            #        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_byte(0x70C0 + (4 * 2) + 2, 0xC)
 
         # Make Carrie's White Jewels universal to everyone and remove Cornell's.
         patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][128]["delete"] = True
@@ -2589,26 +2611,49 @@ class CVLoDPatchExtensions(APPatchExtension):
                         # Check if the flag ID has location values associated with it in the slot patch info. If it
                         # does, write that value in the pickup's Var C.
                         if actor["var_a"] in loc_values:
-                            actor["var_c"] = loc_values[actor["var_a"]]
+                            actor["var_c"] = loc_values[actor["var_a"]][0]
                             # Un-set the Expire bit in its pickup flags in Var B.
                             actor["var_b"] &= PickupFlags.DONT_EXPIRE
+                            # If Invisible Items is not set to Vanilla, change the Item's visibility flag to whatever
+                            # we decided for it in its Item info.
+                            if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
+                                if loc_values[actor["var_a"]][1]:
+                                    actor["var_b"] &= PickupFlags.VISIBLE
+                                else:
+                                    actor["var_b"] |= PickupFlags.INVISIBLE
 
                     # If it's a regular 1HB, the flag to check AND the value to write the new Item over is in the 1HB
                     # data for the scene specified in the actor's Var C.
                     if actor["object_id"] == Objects.ONE_HIT_BREAKABLE:
                         if scene.one_hit_breakables[actor["var_c"]]["flag_id"] in loc_values:
                             scene.one_hit_breakables[actor["var_c"]]["pickup_id"] = \
-                                loc_values[scene.one_hit_breakables[actor["var_c"]]["flag_id"]]
+                                loc_values[scene.one_hit_breakables[actor["var_c"]]["flag_id"]][0]
                             # Un-set the Expire bit in its pickup flags.
                             scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.DONT_EXPIRE
+                            # If Invisible Items is not set to Vanilla, change the Item's visibility flag to whatever
+                            # we decided for it in its Item info.
+                            if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
+                                if loc_values[scene.one_hit_breakables[actor["var_c"]]["flag_id"]][1]:
+                                    scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.VISIBLE
+                                else:
+                                    scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] |= PickupFlags.INVISIBLE
 
                     # If it's a special 1HB, then it's similar to the regular 1HB but in the special 1HB data instead.
                     if actor["object_id"] in SPECIAL_1HBS:
                         if scene.one_hit_special_breakables[actor["var_c"]]["flag_id"] in loc_values:
                             scene.one_hit_special_breakables[actor["var_c"]]["pickup_id"] = \
-                                loc_values[scene.one_hit_special_breakables[actor["var_c"]]["flag_id"]]
+                                loc_values[scene.one_hit_special_breakables[actor["var_c"]]["flag_id"]][0]
                             # Un-set the Expire bit in its pickup flags.
                             scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.DONT_EXPIRE
+                            # If Invisible Items is not set to Vanilla, change the Item's visibility flag to whatever
+                            # we decided for it in its Item info.
+                            if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
+                                if loc_values[scene.one_hit_special_breakables[actor["var_c"]]["flag_id"]][1]:
+                                    scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] \
+                                        &= PickupFlags.VISIBLE
+                                else:
+                                    scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] \
+                                        |= PickupFlags.INVISIBLE
 
                     # If it's a 3HB, get that 3HB's regular flag ID from its 3HB flag data to figure out which one it
                     # is, and then write the Items it should have into the scene's list of 3HB drop IDs.
@@ -2622,12 +2667,23 @@ class CVLoDPatchExtensions(APPatchExtension):
                         # IDs array start divided by 2 to know which index in the scene's 3HB pickup IDs array to start
                         # writing the 3HB's new pickup IDs into.
                         first_3hb_pickup_index = (three_hit["pickup_array_start"] - scene.three_hit_drops_start) // 2
+                        three_hit_invisible_bits = 0
                         for three_hit_pickup_index in range(three_hit["pickup_count"]):
                             scene.three_hit_drop_ids[first_3hb_pickup_index + three_hit_pickup_index] = \
                                 loc_values[CVLOD_LOCATIONS_INFO[
-                                    three_hit_info.location_names[three_hit_pickup_index]].flag_id]
+                                    three_hit_info.location_names[three_hit_pickup_index]].flag_id][0]
+                            # If the pickup we're currently looking at has False for its Invisible Item visibility info,
+                            # set a bit in a bitfield that will be used for the game to tell that this 3HB pickup should
+                            # be invisible.
+                            if not loc_values[CVLOD_LOCATIONS_INFO[
+                                    three_hit_info.location_names[three_hit_pickup_index]].flag_id][1]:
+                                three_hit_invisible_bits |= 1 << three_hit_pickup_index
                         # Change the 3HB's vanilla flag ID to the new flag ID that its pickups will begin at.
                         three_hit["flag_id"] = three_hit_info.new_first_flag_id
+                        # Write the invisibility bits in the upper half of the flag ID if Invisible Items is not set to
+                        # Vanilla.
+                        if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
+                            three_hit["flag_id"] |= three_hit_invisible_bits << 16
 
 
         # Loop over every active stage in the slot's stage list and connect their starts and ends properly.

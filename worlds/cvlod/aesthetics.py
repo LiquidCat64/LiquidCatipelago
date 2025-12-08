@@ -6,7 +6,7 @@ from .data.enums import NIFiles, Scenes, Items
 from .options import CVLoDOptions, BackgroundMusic, Countdown, IceTrapAppearance, InvisibleItems, StageLayout, \
     CastleCenterBranchingPaths, VillaBranchingPaths
 from .stages import CVLOD_STAGE_INFO
-from .locations import CVLOD_LOCATIONS_INFO, NPC_LOCATIONS
+from .locations import CVLOD_LOCATIONS_INFO, NPC_LOCATIONS, LOC_IDS_TO_INFO
 from .items import ALL_CVLOD_ITEMS, SUB_WEAPON_IDS
 from .cvlod_text import cvlod_string_to_bytearray
 
@@ -193,10 +193,10 @@ def randomize_lighting(world: "CVLoDWorld") -> dict[int, bytes]:
     return randomized_lighting
 
 
-def shuffle_sub_weapons(world: "CVLoDWorld") -> dict[str, int]:
+def shuffle_sub_weapons(world: "CVLoDWorld") -> {int: (int, bool)}:
     """Shuffles the sub-weapons in their own Locations."""
 
-    # Get every active sub-weapon Location in the world by looping over each active stage and checking all its
+    # Get every active sub-weapon Location in the slot by looping over each active stage and checking all its
     # Locations. Sub-weapon Locations will not normally have been created.
     all_locs_dict = {CVLOD_LOCATIONS_INFO[loc].flag_id: ALL_CVLOD_ITEMS[CVLOD_LOCATIONS_INFO[loc].normal_item].pickup_id
                      for stage, stage_info in CVLOD_STAGE_INFO.items() for reg, reg_info in stage_info.regions.items()
@@ -205,13 +205,13 @@ def shuffle_sub_weapons(world: "CVLoDWorld") -> dict[str, int]:
     # Filter all Locations that have a sub-weapon normally.
     sub_weapon_dict = {}
     for loc_id, item in all_locs_dict.items():
-        if CVLOD_LOCATIONS_INFO[loc_id].normal_item in SUB_WEAPON_IDS:
+        if LOC_IDS_TO_INFO[loc_id].normal_item in SUB_WEAPON_IDS:
             sub_weapon_dict[loc_id] = item
 
     # Shuffle the values in the sub-weapon dict and return it.
     sub_bytes = list(sub_weapon_dict.values())
     world.random.shuffle(sub_bytes)
-    return dict(zip(sub_weapon_dict, sub_bytes))
+    return {loc_id: (sub_byte, True) for loc_id, sub_byte in dict(zip(sub_weapon_dict, sub_bytes)).items()}
 
 
 def randomize_music(world: "CVLoDWorld") -> dict[int, bytes]:
@@ -347,7 +347,7 @@ def get_countdown_numbers(options: CVLoDOptions, active_locations: Iterable[Loca
     return countdown_array
 
 
-def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Location]) -> dict[int, tuple[int, bool]]:
+def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Location]) -> {int: (int, bool)}:
     """Gets ALL the Item values to write on each Location in the ROM. Item values consists of two bytes: the first
     (upper) byte dictates the appearance of the item, while the second (lower) determines what the Item actually is when
     picked up. All Items from other worlds will be AP Items that do nothing when picked up other than set their flag,

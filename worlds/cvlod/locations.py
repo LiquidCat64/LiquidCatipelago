@@ -570,6 +570,8 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.ck_cube:        CVLoDLocationData(0x174, 16, item_names.use_chicken),
 }
 
+LOC_IDS_TO_INFO = {loc_info.flag_id: loc_info for loc_name, loc_info in CVLOD_LOCATIONS_INFO.items()}
+
 # All event Locations mapped to their respective event Items.
 # Because this is the only info we need for them, they are kept separate from the regular Item checks for nicer typing.
 CVLOD_EVENT_MAPPING: dict[str, str] = {
