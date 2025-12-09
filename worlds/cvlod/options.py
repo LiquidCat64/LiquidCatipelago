@@ -571,7 +571,7 @@ class CVLoDOptions(PerGameCommonOptions):
     countdown: Countdown
     # big_toss: BigToss
     # panther_dash: PantherDash
-    # increase_shimmy_speed: IncreaseShimmySpeed
+    increase_shimmy_speed: IncreaseShimmySpeed
     # background_music: BackgroundMusic
     # map_lighting: MapLighting
     # fall_guard: FallGuard

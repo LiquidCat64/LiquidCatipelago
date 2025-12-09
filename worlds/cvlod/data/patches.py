@@ -1505,6 +1505,22 @@ panther_jump_preventer = [
     0x03E00008   # JR    RA
 ]
 
+shimmy_speed_modifier = [
+    # Increases the player's speed while shimmying as long as they are not holding down Z. If they are holding Z, it
+    # will be the normal speed, allowing it to still be used to set up any tricks that might require the normal speed
+    # (like Left Tower Skip in original CV64).
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x910887F6,  # LBU   T0, 0x87F6 (T0)
+    0x31090020,  # ANDI  T1, T0, 0x0020
+    0x3C0A800C,  # LUI   T2, 0x800C
+    0x340B4580,  # ORI   T3, R0, 0x4580
+    0x55200001,  # BNEZL T1,     [forward 0x01]
+    0x340B46FF,  # ORI   T3, R0, 0x46FF
+    0xA54BE170,  # SH    T3, 0xE170 (T2)
+    0x08028E94,  # J     0x800A3A50
+    0xA54BE174,  # SH    T3, 0xE174 (T2)
+]
+
 gondola_spider_cutscene_checker = [
     # Checks for flag 0xAD (the Spider Women cutscene flag) before activating the Tunnel gondolas, restoring their
     # original behavior from CV64.

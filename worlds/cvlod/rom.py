@@ -2885,7 +2885,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             # NOP the call to the "fill player health" function in King Skeleton 2's defeat function.
             patcher.write_int32(0x4318, 0x00000000, NIFiles.OVERLAY_KING_SKELETON)
 
-        # Change the item healing values if "Nerf Healing" is turned on
+        # Change the item healing values if Nerf Healing Items is turned on.
         if slot_patch_info["options"]["nerf_healing_items"]:
             patcher.write_int16(0x4CB8, 0x1F40, NIFiles.OVERLAY_PAUSE_MENU)  # Healing kit   (10000 -> 8000)
             patcher.write_int16(0x4CBE, 0x1388, NIFiles.OVERLAY_PAUSE_MENU)  # Roast beef    ( 8000 -> 5000)
@@ -2897,6 +2897,11 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_bytes(0x2D38, cvlod_string_to_bytearray("25%"), NIFiles.OVERLAY_RENONS_SHOP)
             patcher.write_bytes(0x2D8E, cvlod_string_to_bytearray("50%"), NIFiles.OVERLAY_RENONS_SHOP)
             patcher.write_bytes(0x2E16, cvlod_string_to_bytearray("80% "), NIFiles.OVERLAY_RENONS_SHOP)
+
+        # If Increase Shimmy Speed is on, apply the fast shimmy speed hack.
+        if slot_patch_info["options"]["increase_shimmy_speed"]:
+            patcher.write_int32(0x2FA64, 0x0C0FFA88)   # JAL  0x803FEA20
+            patcher.write_int32s(0xFFEA20, patches.shimmy_speed_modifier)
 
         # Change the starting stage to whatever stage the player is actually starting at.
         patcher.write_byte(0x15DB, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_scene_id,
