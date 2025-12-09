@@ -508,6 +508,13 @@ class CVLoDPatchExtensions(APPatchExtension):
             CVLOD_LOCATIONS_INFO[loc_names.forest_child_ledge].flag_id
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["var_c"] = Pickups.ONE_HUNDRED_GOLD
 
+        # Make King Skeleton 2 open the gate when defeated if the final gate switch was flipped rather than just if we
+        # are Henry.
+        patcher.write_int32s(0x4324, [0x9108AA61,  # LBU  T0, 0xAA61 (T0)
+                                      0x31080010], # ANDI T0, T0, 0x0010
+                             NIFiles.OVERLAY_KING_SKELETON)
+        patcher.write_int32(0x4330, 0x11000010, NIFiles.OVERLAY_KING_SKELETON)  # BEQZ T0, [forward 0x10]
+
         # Ensure King Skeleton 2 will never drop his secret beef for beating him as Henry without running
         # (yes, this is ACTUALLY a thing!)
         patcher.write_int32(0x43F8, 0x10000006, NIFiles.OVERLAY_KING_SKELETON)  # B [forward 0x06]
@@ -2203,6 +2210,10 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][38]["delete"] = True    # Carrie (Actrise)
             patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][41]["spawn_flags"] = 0  # Cornell (Ortega)
 
+        # Remove the artificial nerf on Actrise when playing as Reinhardt. This is likely a leftover from the playable
+        # TGS 1998 CV64 demo wherein players could battle Actrise as Reinhardt.
+        patcher.write_int32(0x858, 0x340E0001, NIFiles.OVERLAY_ACTRISE)  # ORI  T6, R0, 0x0001
+
         # Make Reinhardt and Carrie's White Jewel universal for everyone and remove Cornell's.
         patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][18]["delete"] = True
         patcher.scenes[Scenes.ROOM_OF_CLOCKS].actor_lists["proxy"][19]["spawn_flags"] = 0
@@ -2839,6 +2850,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                     patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].loading_zones[2]["scene_id"] = next_scene
                     patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].loading_zones[2]["spawn_id"] = next_spawn
 
+
         # If Disable Time Restrictions is set to All, make all events that expect a certain time able to happen anytime.
         if slot_patch_info["options"]["disable_time_restrictions"] == DisableTimeRestrictions.option_all:
             # Loop over every door data in the game and clear the time restriction flags from all of them.
@@ -2864,6 +2876,27 @@ class CVLoDPatchExtensions(APPatchExtension):
         elif slot_patch_info["options"]["disable_time_restrictions"] == DisableTimeRestrictions.option_art_tower_only:
             for door in patcher.scenes[Scenes.ART_TOWER_MUSEUM].doors:
                 door["door_flags"] &= DoorFlags.NO_TIME_RESTRICTIONS
+
+        # If Loading Zone Heals are off, loop over every loading zone data and clear its "heal player" value.
+        if not slot_patch_info["options"]["loading_zone_heals"]:
+            for scene in patcher.scenes:
+                for loading_zone in scene.loading_zones:
+                    loading_zone["heal_player"] = False
+            # NOP the call to the "fill player health" function in King Skeleton 2's defeat function.
+            patcher.write_int32(0x4318, 0x00000000, NIFiles.OVERLAY_KING_SKELETON)
+
+        # Change the item healing values if "Nerf Healing" is turned on
+        if slot_patch_info["options"]["nerf_healing_items"]:
+            patcher.write_int16(0x4CB8, 0x1F40, NIFiles.OVERLAY_PAUSE_MENU)  # Healing kit   (10000 -> 8000)
+            patcher.write_int16(0x4CBE, 0x1388, NIFiles.OVERLAY_PAUSE_MENU)  # Roast beef    ( 8000 -> 5000)
+            patcher.write_int16(0x4CC4, 0x09C4, NIFiles.OVERLAY_PAUSE_MENU)  # Roast chicken ( 5000 -> 2500)
+            # Update the menu descriptions to reflect the new amounts.
+            patcher.write_bytes(0x3BC4, cvlod_string_to_bytearray("25%"), NIFiles.OVERLAY_PAUSE_MENU)
+            patcher.write_bytes(0x3C18, cvlod_string_to_bytearray("50%"), NIFiles.OVERLAY_PAUSE_MENU)
+            patcher.write_bytes(0x3C9E, cvlod_string_to_bytearray("80% "), NIFiles.OVERLAY_PAUSE_MENU)
+            patcher.write_bytes(0x2D38, cvlod_string_to_bytearray("25%"), NIFiles.OVERLAY_RENONS_SHOP)
+            patcher.write_bytes(0x2D8E, cvlod_string_to_bytearray("50%"), NIFiles.OVERLAY_RENONS_SHOP)
+            patcher.write_bytes(0x2E16, cvlod_string_to_bytearray("80% "), NIFiles.OVERLAY_RENONS_SHOP)
 
         # Change the starting stage to whatever stage the player is actually starting at.
         patcher.write_byte(0x15DB, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_scene_id,
