@@ -77,8 +77,8 @@ ALL_CVLOD_ITEMS = {
                                                 ItemClassification.progression),
     item_names.quest_key_chbr:    CVLoDItemData(Items.CHAMBER_KEY.value, Pickups.CHAMBER_KEY,
                                                 ItemClassification.progression),
-    item_names.trap_ice:          CVLoDItemData(Items.EXECUTION_KEY.value, Pickups.EXECUTION_KEY,
-                                                ItemClassification.trap),
+    #item_names.trap_ice:          CVLoDItemData(Items.EXECUTION_KEY.value, Pickups.EXECUTION_KEY,
+    #                                            ItemClassification.trap),
     item_names.quest_key_deck:    CVLoDItemData(Items.DECK_KEY.value, Pickups.DECK_KEY,
                                                 ItemClassification.progression),
     item_names.quest_key_rose:    CVLoDItemData(Items.ROSE_GARDEN_KEY.value, Pickups.ROSE_GARDEN_KEY,
@@ -116,6 +116,10 @@ SUB_WEAPON_IDS: dict[str, int] = {item_names.sub_knife: 1,
 POSSIBLE_EXTRA_FILLER = [item_names.jewel_rs, item_names.jewel_rl,
                          item_names.gold_500, item_names.gold_300, item_names.gold_100]
 
+# These Item pickups spawn 3.2 units higher than the other pickups and therefore must be lowered by that amount for
+# a few Locations wherein they can spawn barely out of reach.
+HIGHER_SPAWNING_ITEMS = [Items.CROSS, Items.AXE, Items.WINCH_LEVER, Items.CREST_HALF_A, Items.CREST_HALF_B,
+                         Items.ROSE_BROOCH]
 
 def get_item_names_to_ids() -> dict[str, int]:
     return {item: data.item_id for item, data in ALL_CVLOD_ITEMS.items()}

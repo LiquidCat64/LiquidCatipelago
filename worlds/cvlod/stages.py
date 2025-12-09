@@ -598,7 +598,7 @@ CVLOD_STAGE_INFO = {
                                                                              loc_names.torm_g4,
                                                                              loc_names.torm_g3_l,
                                                                              loc_names.torm_g3_r,
-                                                                             loc_names.torm_g3_s],
+                                                                             loc_names.torm_g3_statue],
                                                                   entrances=[ent_names.torm_start,
                                                                              ent_names.torm_maze]),
 

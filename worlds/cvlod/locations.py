@@ -144,7 +144,7 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.villala_hallway_r:            CVLoDLocationData(0x81,   3, item_names.sub_axe),
     loc_names.villala_vincent:              CVLoDLocationData(0x27F,  3, item_names.jewel_rl),
     loc_names.villala_slivingroom_table_l:  CVLoDLocationData(0x283,  3, item_names.gold_100),
-    loc_names.villala_slivingroom_table_r:  CVLoDLocationData(0x88,   3, item_names.gold_300),
+    loc_names.villala_slivingroom_table_r:  CVLoDLocationData(0x8B,   3, item_names.gold_300),
     loc_names.villala_mary:                 CVLoDLocationData(0x86,   3, item_names.gold_100),
     loc_names.villala_slivingroom_mirror:   CVLoDLocationData(0x83,   3, item_names.sub_cross),
     loc_names.villala_diningroom_roses:     CVLoDLocationData(0x90,   3, item_names.use_purifying),
@@ -332,7 +332,7 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.torm_g4:          CVLoDLocationData(0x20B, 8, item_names.use_purifying),
     loc_names.torm_g3_l:        CVLoDLocationData(0x209, 8, item_names.sub_holy),
     loc_names.torm_g3_r:        CVLoDLocationData(0x20A, 8, item_names.sub_cross),
-    loc_names.torm_g3_s:        CVLoDLocationData(0x202, 8, item_names.gold_300),
+    loc_names.torm_g3_statue:   CVLoDLocationData(0x202, 8, item_names.gold_300),
     loc_names.torm_lookback_l:  CVLoDLocationData(0x211, 8, item_names.jewel_rs),
     loc_names.torm_lookback_r:  CVLoDLocationData(0x210, 8, item_names.jewel_rs),
     loc_names.torm_lookback_u:  CVLoDLocationData(0x20C, 8, item_names.use_chicken),
@@ -750,6 +750,36 @@ CORNELL_VILLA_LOCATIONS: list[str] = [
     loc_names.villam_serv_path_sl,
     loc_names.event_villa_boss_3
 ]
+
+# All freestanding Location IDs that can be problematic if a higher-spawning Item pickup is placed on them.
+# If any of said Items land on one of these, they must be lowered by 3.2 units.
+HIGHER_SPAWNING_PROBLEM_LOCATIONS: list[int] = [
+    CVLOD_LOCATIONS_INFO[loc_names.torm_g3_statue].flag_id,
+    CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_h].flag_id,
+    CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_i].flag_id
+]
+
+# New XYZ scene coordinates for some select invisible-turned-visible Locations in order to make them less "inside"
+# objects and more visible. None = leave that coordinate vanilla.
+NEW_VISIBLE_ITEM_COORDS: {int: (float | None, float | None, float | None)} = {
+    CVLOD_LOCATIONS_INFO[loc_names.flp_statue_l].flag_id: (None, None, -15.5),
+    CVLOD_LOCATIONS_INFO[loc_names.flp_statue_r].flag_id: (None, None, 15.5),
+    CVLOD_LOCATIONS_INFO[loc_names.villala_storeroom_s].flag_id: (None, None, -263.0),
+    CVLOD_LOCATIONS_INFO[loc_names.villala_llivingroom_lion].flag_id: (-416.0, None, -263.0),
+    CVLOD_LOCATIONS_INFO[loc_names.villala_llivingroom_painting].flag_id: (-255.0, None, -317.0),
+    CVLOD_LOCATIONS_INFO[loc_names.villala_exit_knight].flag_id: (-155.0, None, -249.0),
+    CVLOD_LOCATIONS_INFO[loc_names.tunnel_lonesome_bucket].flag_id: (None, 267.0, None),
+    CVLOD_LOCATIONS_INFO[loc_names.torm_b6].flag_id: (-238.5, None, None),
+    CVLOD_LOCATIONS_INFO[loc_names.torm_b4_statue].flag_id: (None, None, 361.0),
+    CVLOD_LOCATIONS_INFO[loc_names.torm_g3_statue].flag_id: (None, None, 239.5),
+    CVLOD_LOCATIONS_INFO[loc_names.ccb_torture_rack].flag_id: (-12.5, None, None),
+    CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_crates].flag_id: (-287.0, None, None),
+    CVLOD_LOCATIONS_INFO[loc_names.ccia_inventions_famicart].flag_id: (None, None, 257.0),
+    CVLOD_LOCATIONS_INFO[loc_names.ccia_inventions_round].flag_id: (-100.25, None, None),
+    CVLOD_LOCATIONS_INFO[loc_names.toscit_ctrl_interface_f].flag_id: (234.0, None, None),
+    CVLOD_LOCATIONS_INFO[loc_names.toscit_ctrl_interface_rl].flag_id: (438.5, None, -448.5),
+    CVLOD_LOCATIONS_INFO[loc_names.toscit_ctrl_interface_rr].flag_id: (438.5, None, -211.5),
+}
 
 def get_location_names_to_ids() -> dict[str, int]:
     return {name: CVLOD_LOCATIONS_INFO[name].flag_id for name in CVLOD_LOCATIONS_INFO}

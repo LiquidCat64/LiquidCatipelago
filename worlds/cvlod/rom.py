@@ -1,12 +1,8 @@
-import logging
-import zlib
 import json
-import base64
-import struct
 import Utils
 
 from BaseClasses import Location
-from worlds.Files import APProcedurePatch, APTokenMixin, APTokenTypes, APPatchExtension
+from worlds.Files import APProcedurePatch, APPatchExtension
 from typing import List, Dict, Union, Iterable, TYPE_CHECKING
 
 import hashlib
@@ -16,13 +12,14 @@ import os
 from .data import patches, loc_names, stage_names
 from .data.enums import Scenes, NIFiles, Objects, ObjectExecutionFlags, ActorSpawnFlags, Items, Pickups, PickupFlags, \
     DoorFlags
-from .locations import CVLOD_LOCATIONS_INFO, THREE_HIT_BREAKABLES_INFO
-from .patcher import CVLoDRomPatcher, CVLoDSceneTextEntry, CVLoDNormalActorEntry, CVLoDDoorEntry, CVLoDPillarActorEntry, CVLoDLoadingZoneEntry, CVLoDEnemyPillarEntry, CVLoD1HitBreakableEntry, CVLoD3HitBreakableEntry, CVLoDSpawnEntranceEntry, SCENE_OVERLAY_RDRAM_START
+from .items import HIGHER_SPAWNING_ITEMS
+from .locations import CVLOD_LOCATIONS_INFO, THREE_HIT_BREAKABLES_INFO, HIGHER_SPAWNING_PROBLEM_LOCATIONS, \
+    NEW_VISIBLE_ITEM_COORDS
+from .patcher import CVLoDRomPatcher, CVLoDSceneTextEntry, CVLoDNormalActorEntry, CVLoDSpawnEntranceEntry, \
+    SCENE_OVERLAY_RDRAM_START
 from .stages import CVLOD_STAGE_INFO
-from .cvlod_text import cvlod_string_to_bytearray, cvlod_text_wrap, cvlod_bytes_to_string, CVLOD_STRING_END_CHARACTER, \
-    CVLOD_TEXT_POOL_END_CHARACTER, LEN_LIMIT_MAP_TEXT
+from .cvlod_text import cvlod_string_to_bytearray, cvlod_text_wrap, cvlod_bytes_to_string, LEN_LIMIT_MAP_TEXT
 # from .aesthetics import renon_item_dialogue
-# from .locations import CVLOD_LOCATIONS_INFO
 from .options import StageLayout, VincentFightCondition, RenonFightCondition, PostBehemothBoss, RoomOfClocksBoss, \
     DuelTowerFinalBoss, CastleKeepEndingSequence, DeathLink, DraculasCondition, InvisibleItems, \
     PantherDash, VillaBranchingPaths, CastleCenterBranchingPaths, CastleWallState, VillaState, VillaMazeKid, \
@@ -92,9 +89,9 @@ class CVLoDPatchExtensions(APPatchExtension):
         loc_text = {int(loc_id): item_names for loc_id, item_names in slot_patch_info["location text"].items()}
 
 
-        # # # # # # # # #
-        # GENERAL EDITS #
-        # # # # # # # # #
+        # # # # # # # # # # # # # #
+        # GENERAL PRE-STAGE EDITS #
+        # # # # # # # # # # # # # #
         # Custom overlay segment-loading code.
         patcher.write_int32(0x18A94, 0x0800793D)  # J 0x8001E4F4
         patcher.write_int32s(0x1F0F4, patches.custom_code_loader)
@@ -276,11 +273,24 @@ class CVLoDPatchExtensions(APPatchExtension):
                             NIFiles.OVERLAY_PAUSE_MENU)
 
         # Enable changing the item model/visibility on any item instance.
-        patcher.write_int32s(0x107740, [0x0C0FF0C0,  # JAL   0x803FC300
-                                         0x25CFFFFF])  # ADDIU T7, T6, 0xFFFF
+        patcher.write_int32s(0x107740, [0x0C0FF0C0,   # JAL   0x803FC300
+                                        0x25CFFFFF])  # ADDIU T7, T6, 0xFFFF
         patcher.write_int32s(0xFFC300, patches.item_customizer)
-        patcher.write_int32(0x1078D0, 0x0C0FF0CB),  # JAL   0x803FC32C
-        patcher.write_int32s(0xFFC32C, patches.item_appearance_switcher)
+        patcher.write_int32s(0x1078B0, [0x0C0FF0CB,   # JAL   0x803FC32C
+                                        0x94C90038])  # LHU   T1, 0x0038 (A2)
+        patcher.write_int32s(0xFFC32C, patches.pickup_model_switcher)
+        patcher.write_int32s(0x107A5C, [0x0C0FF0EC,   # JAL   0x803FC3B0
+                                        0x94CF0038])  # LHU   T7, 0x0038 (A2)
+        patcher.write_int32s(0xFFC3B0, patches.pickup_spawn_height_switcher)
+        patcher.write_int32s(0x108024, [0x0C0FF0F4,   # JAL   0x803FC3D0
+                                        0x96090038])  # LHU   T1, 0x0038 (S0)
+        patcher.write_int32s(0xFFC3D0, patches.pickup_spin_speed_switcher)
+        patcher.write_int32s(0x108E80, [0x0C0FF0FC,   # JAL   0x803FC3F0
+                                        0x948F0038])  # LHU   T7, 0x0038 (A0)
+        patcher.write_int32s(0xFFC3F0, patches.pickup_shine_size_switcher)
+        patcher.write_int32s(0x108EB0, [0x0C0FF104,   # JAL   0x803FC410
+                                        0x96190038])  # LHU   T9, 0x0038 (S0)
+        patcher.write_int32s(0xFFC410, patches.pickup_shine_height_switcher)
 
         # Enable the Game Over's "Continue" menu starting the cursor on whichever checkpoint is most recent
         patcher.write_int32s(0x82120, [0x0C0FF2B4,  # JAL 0x803FCAD0
@@ -449,7 +459,8 @@ class CVLoDPatchExtensions(APPatchExtension):
             # Set the "invisibility" bit if it should be.
             if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla and \
                     not loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id][1]:
-                patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(FOREST_OVL_CHARNEL_ITEMS_START + 8, 0x0C)
+                patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(FOREST_OVL_CHARNEL_ITEMS_START + 8,
+                                                                         PickupFlags.GRAVITY | PickupFlags.INVISIBLE)
             # Entry 1
             patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
                 FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 2,
@@ -462,8 +473,9 @@ class CVLoDPatchExtensions(APPatchExtension):
             # Set the "invisibility" bit if it should be.
             if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla and \
                     not loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id][1]:
-                patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(
-                    FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 8, 0x0C)
+                patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+                    FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 8,
+                    PickupFlags.GRAVITY | PickupFlags.INVISIBLE)
             # Entry 8
             patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
                 FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 2,
@@ -476,8 +488,9 @@ class CVLoDPatchExtensions(APPatchExtension):
             # Set the "invisibility" bit if it should be.
             if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla and \
                     not loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id][1]:
-                patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_byte(
-                    FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 8, 0x0C)
+                patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+                    FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 8,
+                    PickupFlags.GRAVITY | PickupFlags.INVISIBLE)
         # If the chosen prize coffin is not coffin 0, swap the actor var C's of the lids of coffin 0 and the coffin that
         # did get chosen.
         if slot_patch_info["prize coffin id"]:
@@ -1811,23 +1824,27 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][14]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][14]["var_a"] = \
             CVLOD_LOCATIONS_INFO[loc_names.ccb_mandrag_shelf_r].flag_id
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][14]["var_c"] = Pickups.MANDRAGORA
         # Mandragora shelf left
         patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][15]["x_pos"] = -4.0
         patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][15]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][15]["var_a"] = \
             CVLOD_LOCATIONS_INFO[loc_names.ccb_mandrag_shelf_l].flag_id
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][15]["var_c"] = Pickups.MANDRAGORA
         # Nitro shelf Heinrich side
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["x_pos"] = -320.0
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["var_a"] = \
             CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_h].flag_id
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["var_b"] = 0
+        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["var_c"] = Pickups.MAGICAL_NITRO
         # Nitro shelf invention side
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["x_pos"] = -306.0
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["var_a"] = \
             CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_i].flag_id
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["var_b"] = 0
+        patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["var_c"] = Pickups.MAGICAL_NITRO
 
         # Restore the Castle Center library bookshelf item by moving its actor entry in room 2's list (the planetarium)
         # into room 0's list (the lower floor library) instead, and taking it off of its own-pickup-flag-set check.
@@ -2143,14 +2160,16 @@ class CVLoDPatchExtensions(APPatchExtension):
                 0x5402, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_2].flag_id][0])
             patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(
                 0x5404, loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_3].flag_id][0])
-            # Turning these items invisible makes them impossible to collect for some reason...
-            #if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
-            #    if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_1].flag_id][1]:
-            #        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_byte(0x70C0 + (4 * 0) + 2, 0xC)
-            #    if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_2].flag_id][1]:
-            #        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_byte(0x70C0 + (4 * 1) + 2, 0xC)
-            #    if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_3].flag_id][1]:
-            #        patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_byte(0x70C0 + (4 * 2) + 2, 0xC)
+            if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
+                if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_1].flag_id][1]:
+                    patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(0x70C0 + (4 * 0) + 2,
+                                                                            PickupFlags.GRAVITY|PickupFlags.INVISIBLE)
+                if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_2].flag_id][1]:
+                    patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(0x70C0 + (4 * 1) + 2,
+                                                                            PickupFlags.GRAVITY|PickupFlags.INVISIBLE)
+                if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_3].flag_id][1]:
+                    patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(0x70C0 + (4 * 2) + 2,
+                                                                            PickupFlags.GRAVITY|PickupFlags.INVISIBLE)
 
         # Make Carrie's White Jewels universal to everyone and remove Cornell's.
         patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][128]["delete"] = True
@@ -2613,12 +2632,27 @@ class CVLoDPatchExtensions(APPatchExtension):
                         if actor["var_a"] in loc_values:
                             actor["var_c"] = loc_values[actor["var_a"]][0]
                             # Un-set the Expire bit in its pickup flags in Var B.
-                            actor["var_b"] &= PickupFlags.DONT_EXPIRE
+                            actor["var_b"] &= PickupFlags.NEVER_EXPIRE
+                            # If we're placing a higher-spawning Item on this Location, and the Location is one where
+                            # higher-spawning Items can be problematic, lower it down by 3.2 units.
+                            if (actor["var_c"] >> 8) & 0x7F in HIGHER_SPAWNING_ITEMS \
+                                    and actor["var_a"] in HIGHER_SPAWNING_PROBLEM_LOCATIONS:
+                                actor["y_pos"] -= 3.2
                             # If Invisible Items is not set to Vanilla, change the Item's visibility flag to whatever
                             # we decided for it in its Item info.
                             if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
                                 if loc_values[actor["var_a"]][1]:
                                     actor["var_b"] &= PickupFlags.VISIBLE
+                                    # If the pickup location we just made visible has an entry in the new visible item
+                                    # coordinates lookup, adjust its XYZ coordinates to be more visible
+                                    # (by which we mean "less inside an object")
+                                    if actor["var_a"] in NEW_VISIBLE_ITEM_COORDS:
+                                        if NEW_VISIBLE_ITEM_COORDS[actor["var_a"]][0] is not None:
+                                            actor["x_pos"] = NEW_VISIBLE_ITEM_COORDS[actor["var_a"]][0]
+                                        if NEW_VISIBLE_ITEM_COORDS[actor["var_a"]][1] is not None:
+                                            actor["y_pos"] = NEW_VISIBLE_ITEM_COORDS[actor["var_a"]][1]
+                                        if NEW_VISIBLE_ITEM_COORDS[actor["var_a"]][2] is not None:
+                                            actor["z_pos"] = NEW_VISIBLE_ITEM_COORDS[actor["var_a"]][2]
                                 else:
                                     actor["var_b"] |= PickupFlags.INVISIBLE
 
@@ -2629,7 +2663,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                             scene.one_hit_breakables[actor["var_c"]]["pickup_id"] = \
                                 loc_values[scene.one_hit_breakables[actor["var_c"]]["flag_id"]][0]
                             # Un-set the Expire bit in its pickup flags.
-                            scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.DONT_EXPIRE
+                            scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.NEVER_EXPIRE
                             # If Invisible Items is not set to Vanilla, change the Item's visibility flag to whatever
                             # we decided for it in its Item info.
                             if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
@@ -2644,7 +2678,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                             scene.one_hit_special_breakables[actor["var_c"]]["pickup_id"] = \
                                 loc_values[scene.one_hit_special_breakables[actor["var_c"]]["flag_id"]][0]
                             # Un-set the Expire bit in its pickup flags.
-                            scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.DONT_EXPIRE
+                            scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.NEVER_EXPIRE
                             # If Invisible Items is not set to Vanilla, change the Item's visibility flag to whatever
                             # we decided for it in its Item info.
                             if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
@@ -2926,21 +2960,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         #    for offset in get_stage_info(stage, "save number offsets"):
         # patcher.write_byte(offset, active_stage_exits[stage]["position"])
 
-        # Disable time restrictions
-        # if options.disable_time_restrictions.value:
-        # Fountain
-        # patcher.write_int32(0x6C2340, 0x00000000)  # NOP
-        # patcher.write_int32(0x6C257C, 0x10000023)  # B [forward 0x23]
-        # Rosa
-        # patcher.write_byte(0xEEAAB, 0x00)
-        # patcher.write_byte(0xEEAAD, 0x18)
-        # Moon doors
-        # patcher.write_int32(0xDC3E0, 0x00000000)  # NOP
-        # patcher.write_int32(0xDC3E8, 0x00000000)  # NOP
-        # Sun doors
-        # patcher.write_int32(0xDC410, 0x00000000)  # NOP
-        # patcher.write_int32(0xDC418, 0x00000000)  # NOP
-
         # Make received DeathLinks blow you to smithereens instead of kill you normally.
         # if options.death_link.value == options.death_link.option_explosive:
         # patcher.write_int32(0x27A70, 0x10000008)  # B [forward 0x08]
@@ -2959,34 +2978,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32(0xADD68, 0x0C04AB12)  # JAL 0x8012AC48
         # patcher.write_int32s(0xADE28, patches.stage_select_overwrite)
         # patcher.write_byte(0xADE47, s1s_per_warp)
-
-        # Slightly move some once-invisible freestanding items to be more visible
-        # if options.invisible_items.value == options.invisible_items.option_reveal_all:
-        # patcher.write_byte(0x7C7F95, 0xEF)  # Forest dirge maiden statue
-        # patcher.write_byte(0x7C7FA8, 0xAB)  # Forest werewolf statue
-        # patcher.write_byte(0x8099C4, 0x8C)  # Villa courtyard tombstone
-        # patcher.write_byte(0x83A626, 0xC2)  # Villa living room painting
-        # #patcher.write_byte(0x83A62F, 0x64)  # Villa Mary's room table
-        # patcher.write_byte(0xBFCB97, 0xF5)  # CC torture instrument rack
-        # patcher.write_byte(0x8C44D5, 0x22)  # CC red carpet hallway knight
-        # patcher.write_byte(0x8DF57C, 0xF1)  # CC cracked wall hallway flamethrower
-        # patcher.write_byte(0x90FCD6, 0xA5)  # CC nitro hallway flamethrower
-        # patcher.write_byte(0x90FB9F, 0x9A)  # CC invention room round machine
-        # patcher.write_byte(0x90FBAF, 0x03)  # CC invention room giant famicart
-        # patcher.write_byte(0x90FE54, 0x97)  # CC staircase knight (x)
-        # patcher.write_byte(0x90FE58, 0xFB)  # CC staircase knight (z)
-
-        # Tunnel gondola skip
-        # if options.skip_gondolas.value:
-        # patcher.write_int32(0x6C5F58, 0x080FF7D0)  # J 0x803FDF40
-        # patcher.write_int32s(0xBFDF40, patches.gondola_skipper)
-        # New gondola transfer point candle coordinates
-        # patcher.write_byte(0xBFC9A3, 0x04)
-        # patcher.write_bytes(0x86D824, [0x27, 0x01, 0x10, 0xF7, 0xA0])
-
-        # Waterway brick platforms skip
-        # if options.skip_waterway_blocks.value:
-        # patcher.write_int32(0x6C7E2C, 0x00000000)  # NOP
 
         # Fix for the door sliding sound playing infinitely if leaving the fan meeting room before the door closes entirely.
         # Hooking this in the ambience silencer code does nothing for some reason.

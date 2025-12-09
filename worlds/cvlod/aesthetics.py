@@ -2,7 +2,7 @@ import base64
 
 from BaseClasses import ItemClassification, Location, Item
 from .data import item_names, reg_names, stage_names, ent_names, loc_names
-from .data.enums import NIFiles, Scenes, Items
+from .data.enums import NIFiles, Scenes, Items, Pickups
 from .options import CVLoDOptions, BackgroundMusic, Countdown, IceTrapAppearance, InvisibleItems, StageLayout, \
     CastleCenterBranchingPaths, VillaBranchingPaths
 from .stages import CVLOD_STAGE_INFO
@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Iterable
 if TYPE_CHECKING:
     from . import CVLoDWorld
 
-AP_ITEM_INDEX = 0x06
+AP_ITEM_PICKUP_INDEX = 0x06
 SCENE_REFRESH_VALUE = 0xFF
 CASTLE_CENTER_TOP_ELEVATOR_SAVE_SPAWN = 0x03
 MAX_JEWELS = 99
@@ -23,14 +23,14 @@ MAX_GOLD = 99999
 
 # All Item names exclusive to CV64 mapped to what their equivalent appearance IDs should be in LoD.
 CV64_EXCLUSIVE_ITEMS: dict[str, int] = {
-    item_names.quest_key_exec: Items.EXECUTION_KEY,  # This key still exists in LoD as an unused leftover.
-                                                     # It's notably the only purple key in both games.
-    "Science Key1": Items.GARDEN_KEY,
-    "Science Key2": Items.GARDEN_KEY,
-    "Science Key3": Items.GARDEN_KEY,
-    "Clocktower Key1": Items.STOREROOM_KEY,
-    "Clocktower Key2": Items.STOREROOM_KEY,
-    "Clocktower Key3": Items.STOREROOM_KEY,
+    item_names.quest_key_exec: Pickups.EXECUTION_KEY,  # This key still exists in LoD as an unused leftover.
+                                                       # It's notably the only purple key in both games.
+    "Science Key1": Pickups.GARDEN_KEY,
+    "Science Key2": Pickups.GARDEN_KEY,
+    "Science Key3": Pickups.GARDEN_KEY,
+    "Clocktower Key1": Pickups.STOREROOM_KEY,
+    "Clocktower Key2": Pickups.STOREROOM_KEY,
+    "Clocktower Key3": Pickups.STOREROOM_KEY,
 }
 
 FOUNTAIN_LETTERS_TO_BYTES = {"O": b"\x01", "M": b"\x02", "H": b"\x03", "V": b"\x04"}
@@ -349,11 +349,13 @@ def get_countdown_numbers(options: CVLoDOptions, active_locations: Iterable[Loca
 
 def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Location]) -> {int: (int, bool)}:
     """Gets ALL the Item values to write on each Location in the ROM. Item values consists of two bytes: the first
-    (upper) byte dictates the appearance of the item, while the second (lower) determines what the Item actually is when
-    picked up. All Items from other worlds will be AP Items that do nothing when picked up other than set their flag,
-    and their appearance will depend on whether it's another N64-vania player's item and, if so, what item it is in
-    their game. Ice Traps can assume the form of any item that is progression, non-progression, or either depending on
-    the player's settings. Also determined in here is whether the Item's in-game pickup should be visible or not.
+    (upper) byte dictates the appearance of the Item's in-game pickup, while the second (lower) determines what the Item
+    actually is when picked up. All Items from other worlds will be AP Items that do nothing when picked up other than
+    set their flag, and their appearance will depend on whether it's another N64-vania player's item and, if so, what
+    item it is in their game. Ice Traps can assume the form of any item that is progression, non-progression, or either
+    depending on the player's settings.
+
+    Also determined in here is whether the Item's in-game pickup should be visible or not.
 
     Appearance does not matter if it's one of the NPC-given items (from either Vincent or Heinrich Meyer, etc.). For
     Renon's shop items, a list containing the shop item names, descriptions, and colors will be returned alongside the
@@ -392,7 +394,7 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
                 item_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id
         else:
             # Make the Item the unused Special3 - our multiworld item. Its Pickup and Item ID are both the same (6).
-            item_byte = AP_ITEM_INDEX
+            item_byte = AP_ITEM_PICKUP_INDEX
 
         # Figure out the Item's appearance byte. If it's an N64-vania player's Item, change the multiworld Item's model
         # to match what it is. Otherwise, have it be an Archipelago Item. Do not write this if it's an NPC item, as that
@@ -402,31 +404,31 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
             if loc.item.game == "Castlevania - Legacy of Darkness":
                 # If it's a PermaUp, change the Item's model to a big PowerUp.
                 if loc.item.code == 0x10C:
-                    appearance_byte = 0x0B
+                    appearance_byte = 0x0C
                 # If it's an Ice Trap, change its model to one of the appearances we determined before.
                 # elif loc.item.code == 0x12:
                 #     appearance_byte = get_item_info(world.random.choice(trap_appearances), "code")
                 # If we chose a PermaUp as our trap appearance, change it to its actual in-game ID of 0x0B.
                 #     if appearance_byte == 0x10C:
                 #         appearance_byte = 0x0B
-                # If it's none of the above exceptions, make the appearance whatever it should be as per the regular
-                # Item ID.
+                # If it's none of the above exceptions, make the appearance whatever it should be as per the pickup ID
+                # for the pickup it's taking the appearance of minus 1.
                 else:
-                    appearance_byte = ALL_CVLOD_ITEMS[loc.item.name].item_id
+                    appearance_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id - 1
             # If it's a CV64 Item, see if it has an ID in either LoD's Item Info dict or the CV64-exclusive Items dict.
             # If it does, use that Item ID.
             elif loc.item.game == "Castlevania 64" and (loc.item.name in ALL_CVLOD_ITEMS
                                                         or loc.item.name in CV64_EXCLUSIVE_ITEMS):
                 if loc.item.name in CV64_EXCLUSIVE_ITEMS:
-                    appearance_byte = CV64_EXCLUSIVE_ITEMS[loc.item.name]
+                    appearance_byte = CV64_EXCLUSIVE_ITEMS[loc.item.name] - 1
                 else:
-                    appearance_byte = ALL_CVLOD_ITEMS[loc.item.name].item_id
+                    appearance_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id - 1
             # If not from either N64-vania, or it's an undefined CV64-exclusive Item, choose a generic Archipelago Item.
             elif loc.item.advancement:
-                appearance_byte = AP_ITEM_INDEX  # Specail3 ID
+                appearance_byte = AP_ITEM_PICKUP_INDEX - 1 # Specail3 ID
             else:
                 # Also Special3 ID (temporary placeholder until distinct classification items are added)
-                appearance_byte = AP_ITEM_INDEX
+                appearance_byte = AP_ITEM_PICKUP_INDEX - 1
         else:
             appearance_byte = 0x00
 

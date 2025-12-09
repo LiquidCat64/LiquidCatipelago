@@ -135,11 +135,12 @@ class ActorSpawnFlags(IntFlag):
     ALL_DIFFICULTIES =            EASY | NORMAL | HARD
 
 class PickupFlags(IntFlag):
-    EXPIRE =      0x0001
-    INVISIBLE =   0x0800
-    GRAVITY =     0x4000
-    DONT_EXPIRE = 0xFFFF ^ EXPIRE
-    VISIBLE =     0xFFFF ^ INVISIBLE
+    EXPIRE =       0x0001
+    NO_SHINE =     0x0400
+    INVISIBLE =    0x0800
+    GRAVITY =      0x4000
+    NEVER_EXPIRE = 0xFFFF ^ EXPIRE
+    VISIBLE =      0xFFFF ^ INVISIBLE ^ NO_SHINE
 
 class DoorFlags(IntFlag):
     LOCK_ALWAYS =              0x0001  # Can be unlocked if it has a disregard flag set on it and its event flag is set.

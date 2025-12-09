@@ -490,6 +490,11 @@ class CVLoDRomPatcher:
                     # pickups enum.
                     if pillar_actor["object_id"] == Objects.INTERACTABLE and pillar_actor["var_c"] in Pickups:
                         pillar_actor["var_c"] = Pickups(pillar_actor["var_c"])
+                        # Loop over every pickup flag in Var B and see if we have any of them set and documented.
+                        for flag_index in range(0x16):
+                            flag_to_check = pillar_actor["var_b"] & (1 << flag_index)
+                            if flag_to_check in PickupFlags:
+                                pillar_actor["var_b"] |= PickupFlags(flag_to_check)
 
                     # Loop over every execution flag and see if we have any of them set and documented.
                     for flag_index in range(0x5):
@@ -936,6 +941,11 @@ class CVLoDRomPatcher:
             # Check if the actor is an item pickup actor, and if it is, does it have has an entry in the pickups enum.
             if actor["object_id"] == Objects.INTERACTABLE and actor["var_c"] in Pickups:
                 actor["var_c"] = Pickups(actor["var_c"])
+                # Loop over every pickup flag in Var B and see if we have any of them set and documented.
+                for flag_index in range(0x16):
+                    flag_to_check = actor["var_b"] & (1 << flag_index)
+                    if flag_to_check in PickupFlags:
+                        actor["var_b"] |= PickupFlags(flag_to_check)
 
             # Loop over every spawn flag and see if we have any of them set and documented.
             for flag_index in range(0x16):

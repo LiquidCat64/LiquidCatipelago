@@ -391,7 +391,7 @@ class DisableTimeRestrictions(Choice):
     Art Tower Only will only affect the doors in Art Tower, while All will affect every stage with such doors and events.
     In the Villa, this includes the fountain pillar if the Villa State is Reinhardt/Carrie, the meeting with Rosa if the Villa State is Reinhardt/Carrie or Hybrid, and/or the 6AM rose patch if the Villa State is Cornell or Hybrid.
     The Villa end coffin is not affected by this."""
-    display_name = "Disable Time Requirements"
+    display_name = "Disable Time Restrictions"
     option_none = 0
     option_art_tower_only = 1
     option_all = 2

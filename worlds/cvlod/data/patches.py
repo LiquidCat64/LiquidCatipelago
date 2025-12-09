@@ -540,40 +540,52 @@ item_customizer = [
     0xA4CF0038   # SH    T7, 0x0038 (A2)
 ]
 
-item_appearance_switcher = [
-    # Determines an item's model appearance by checking to see if a different item appearance ID was written in a
-    # specific spot in the actor's data; if one wasn't, then the appearance value will be grabbed from the item's entry
-    # in the item property table like normal instead.
+pickup_model_switcher = [
+    # Determines a pickup's model appearance by checking to see if a different "appearance pickup" ID was written in a
+    # specific spot in the actor's data; if one wasn't, then the appearance value will be grabbed from the pickup's
+    # entry in the pickup property table like normal instead.
     0x92080044,  # LBU   T0, 0x0044 (S0)
-    0x55000001,  # BNEZL T0, T1, [forward 0x01]
-    0x01002025,  # OR    A0, T0, R0
-    0x08023D78,  # J     0x8008F5E0
+    0x55000001,  # BNEZL T0,     [forward 0x01]
+    0x01004825,  # OR    T1, T0, R0
+    0x03E00008,  # JR    RA
+    0xAFA7002C,  # SW    A3, 0x002C (SP)
 ]
 
-item_model_visibility_switcher = [
-    # If 80 is written one byte ahead of the appearance switch value in the item's actor data, parse 0C00 to the
-    # function that checks if an item should be invisible or not. Otherwise, grab that setting from the item property
-    # table like normal.
-    0x920B0041,  # LBU   T3, 0x0041 (S0)
-    0x316E0080,  # ANDI  T6, T3, 0x0080
-    0x11C00003,  # BEQZ  T6,     [forward 0x03]
-    0x240D0C00,  # ADDIU T5, R0, 0x0C00
+pickup_spawn_height_switcher = [
+    # Same as the above, but for the pickup spawn height if it's taking the appearance of a higher-spawning Item instead
+    # of the model.
+    0x92180044,  # LBU   T8, 0x0044 (S0)
+    0x57000001,  # BNEZL T8,     [forward 0x01]
+    0x03007825,  # OR    T7, T8, R0
     0x03E00008,  # JR    RA
-    0x00000000,  # NOP
-    0x03E00008,  # JR    RA
-    0x958D0004   # LHU   T5, 0x0004 (T4)
+    0x01E40019,  # MULTU T7, A0
 ]
 
-item_shine_visibility_switcher = [
-    # Same as the above, but for item shines instead of the model.
-    0x920B0041,  # LBU   T3, 0x0041 (S0)
-    0x31690080,  # ANDI  T1, T3, 0x0080
-    0x11200003,  # BEQZ  T1,     [forward 0x03]
-    0x00000000,  # NOP
+pickup_spin_speed_switcher = [
+    # Same as the above, but for the pickup spin speed.
+    0x92080044,  # LBU   T0, 0x0044 (S0)
+    0x55000001,  # BNEZL T0,     [forward 0x01]
+    0x01004825,  # OR    T1, T0, R0
     0x03E00008,  # JR    RA
-    0x240C0C00,  # ADDIU T4, R0, 0x0C00
+    0x3C028019,  # LUI   V0, 0x8019
+]
+
+pickup_shine_size_switcher = [
+    # Same as the above, but for the size of the shine on the pickup.
+    0x92080044,  # LBU   T0, 0x0044 (S0)
+    0x55000001,  # BNEZL T0,     [forward 0x01]
+    0x01007825,  # OR    T7, T0, R0
     0x03E00008,  # JR    RA
-    0x958CA908   # LHU   T4, 0xA908 (T4)
+    0x3C048019,  # LUI   A0, 0x8019
+]
+
+pickup_shine_height_switcher = [
+    # Same as the above, but for the height of the shine on the pickup.
+    0x92080044,  # LBU   T0, 0x0044 (S0)
+    0x55000001,  # BNEZL T0,     [forward 0x01]
+    0x0100C825,  # OR    T9, T0, R0
+    0x03E00008,  # JR    RA
+    0x24050015,  # ADDIU A1, R0, 0x0015
 ]
 
 three_hit_item_flags_setter = [
