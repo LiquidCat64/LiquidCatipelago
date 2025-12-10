@@ -7,7 +7,7 @@ from .options import CVLoDOptions, BackgroundMusic, Countdown, IceTrapAppearance
     CastleCenterBranchingPaths, VillaBranchingPaths
 from .stages import CVLOD_STAGE_INFO
 from .locations import CVLOD_LOCATIONS_INFO, NPC_LOCATIONS, LOC_IDS_TO_INFO
-from .items import ALL_CVLOD_ITEMS, SUB_WEAPON_IDS
+from .items import ALL_CVLOD_ITEMS, SUB_WEAPON_IDS, OTHER_APPEARANCE_PICKUPS
 from .cvlod_text import cvlod_string_to_bytearray
 
 from typing import TYPE_CHECKING, Iterable
@@ -15,7 +15,8 @@ from typing import TYPE_CHECKING, Iterable
 if TYPE_CHECKING:
     from . import CVLoDWorld
 
-AP_ITEM_PICKUP_INDEX = 0x06
+AP_NON_PROG_PICKUP_INDEX = Pickups.SPECIAL3
+AP_PROG_PICKUP_INDEX = Pickups.CLOCKTOWER_KEY_B
 SCENE_REFRESH_VALUE = 0xFF
 CASTLE_CENTER_TOP_ELEVATOR_SAVE_SPAWN = 0x03
 MAX_JEWELS = 99
@@ -393,18 +394,19 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
             else:
                 item_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id
         else:
-            # Make the Item the unused Special3 - our multiworld item. Its Pickup and Item ID are both the same (6).
-            item_byte = AP_ITEM_PICKUP_INDEX
+            # Make the Item the unused Special3 - our multiworld item.
+            item_byte = Pickups.SPECIAL3
 
         # Figure out the Item's appearance byte. If it's an N64-vania player's Item, change the multiworld Item's model
         # to match what it is. Otherwise, have it be an Archipelago Item. Do not write this if it's an NPC item, as that
         # would tell the Countdown to decrease even if it shouldn't.
         if loc not in NPC_LOCATIONS:
-            # If the Item is a LoD Item, pick its Item ID.
+            # If the Item is a LoD Item, pick the Pickup ID of the Item its assuming (regardless of whether it's local).
             if loc.item.game == "Castlevania - Legacy of Darkness":
-                # If it's a PermaUp, change the Item's model to a big PowerUp.
-                if loc.item.code == 0x10C:
-                    appearance_byte = 0x0C
+                # If the Item has an entry in the mappings of Items with different Pickup ID appearances in use, use the
+                # pickup ID there.
+                if loc.item.name in OTHER_APPEARANCE_PICKUPS:
+                    appearance_byte = OTHER_APPEARANCE_PICKUPS[loc.item.name] - 1
                 # If it's an Ice Trap, change its model to one of the appearances we determined before.
                 # elif loc.item.code == 0x12:
                 #     appearance_byte = get_item_info(world.random.choice(trap_appearances), "code")
@@ -416,19 +418,22 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
                 else:
                     appearance_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id - 1
             # If it's a CV64 Item, see if it has an ID in either LoD's Item Info dict or the CV64-exclusive Items dict.
-            # If it does, use that Item ID.
+            # If it does, use that Pickup ID.
             elif loc.item.game == "Castlevania 64" and (loc.item.name in ALL_CVLOD_ITEMS
                                                         or loc.item.name in CV64_EXCLUSIVE_ITEMS):
+                # Use the Pickup ID from the CV64 Exclusive Items mapping if present there.
                 if loc.item.name in CV64_EXCLUSIVE_ITEMS:
                     appearance_byte = CV64_EXCLUSIVE_ITEMS[loc.item.name] - 1
+                # Use the Pickup ID from the Other Appearances mapping if present there.
+                elif loc.item.name in OTHER_APPEARANCE_PICKUPS:
+                    appearance_byte = OTHER_APPEARANCE_PICKUPS[loc.item.name] - 1
+                # Otherwise, use the Pickup ID from its regular Item info.
                 else:
-                    appearance_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id - 1
-            # If not from either N64-vania, or it's an undefined CV64-exclusive Item, choose a generic Archipelago Item.
+                    appearance_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id - 1            # If not from either N64-vania, or it's an undefined CV64-exclusive Item, choose a generic Archipelago Item.
             elif loc.item.advancement:
-                appearance_byte = AP_ITEM_PICKUP_INDEX - 1 # Specail3 ID
+                appearance_byte = AP_PROG_PICKUP_INDEX - 1 # Clocktower Key B (Actual Key B's appearance is changed)
             else:
-                # Also Special3 ID (temporary placeholder until distinct classification items are added)
-                appearance_byte = AP_ITEM_PICKUP_INDEX - 1
+                appearance_byte = AP_NON_PROG_PICKUP_INDEX - 1  # Specail3 ID
         else:
             appearance_byte = 0x00
 

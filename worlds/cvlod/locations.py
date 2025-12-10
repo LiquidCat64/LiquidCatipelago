@@ -702,8 +702,8 @@ EMPTY_LOCATIONS = {
     loc_names.towse_locked_door_r,
     loc_names.towf_retract_elevator_l,
     loc_names.towf_retract_elevator_r,
-    loc_names.towf_boulders_door_l,
-    loc_names.towf_boulders_door_r
+    loc_names.towh_boulders_elevator_l,
+    loc_names.towh_boulders_elevator_r,
 }
 
 # All Locations that only Carrie is capable of reaching. These should NOT be created if Carrie Logic is off.

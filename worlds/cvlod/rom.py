@@ -248,15 +248,20 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_byte(0x90617, 0x63)  # Most items
             patcher.write_byte(0x90767, 0x63)  # Sun/Moon cards
 
-        # Make the Special1 and 2 play sounds when you reach milestones with them.
-
-        # patcher.write_int32(0xBF240, 0x080FF694)  # J 0x803FDA50
-        # patcher.write_int32(0xBF220, 0x080FF69E)  # J 0x803FDA78
-
         # Rename the Special3 to "AP Item"
         patcher.write_bytes(0xB89AA, cvlod_string_to_bytearray("AP Item "))
-        # Change the Special3's appearance to that of a spinning contract.
-        patcher.write_int32s(0x11770A, [0x63583F80, 0x0000FFFF])
+        # Change the Special3's appearance to that of a spinning contract and move its pickup shine down to reflect its
+        # new appearance.
+        patcher.write_int32s(0x117708, [0x06006358, 0x3F800000, 0xFFFFFF00])
+        patcher.write_int16(0x117098, 0x000A)
+        # Change the Clocktower Key A's appearance to that of a larger PowerUp (which is our PermaUp).
+        # The actual Clocktower Key A will be using the appearance of the Garden Key since it's identical.
+        patcher.write_int32s(0x117998, [0x06008D00, 0x3FB00000, 0xFFFFFF00, 0x2C00002E])
+        patcher.write_int16(0x1173CC, 0x0032)
+        # Change the Clocktower Key B's appearance to that of a larger spinning contract (for progression).
+        # The actual Clocktower Key B will be using the appearance of the Copper Key since it's identical.
+        patcher.write_int32s(0x1179A8, [0x06006358, 0x3FB00000, 0xFFFFFF00, 0x2D01002F])
+        patcher.write_int16(0x1173E0, 0x000C)
         # Disable spinning on the Special1 and 2 pickup models so colorblind people can more easily identify them.
         patcher.write_byte(0x1176F5, 0x00)  # Special1
         patcher.write_byte(0x117705, 0x00)  # Special2
@@ -580,10 +585,10 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][156]["spawn_flags"] = 0
         patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][157]["delete"] = True
         # Remove the Cornell-specific pickups and breakables and make Reinhardt/Carrie's equivalent ones universal.
-        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][28]["delete"] = True
-        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][29]["delete"] = True
-        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][30]["spawn_flags"] = 0
-        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][31]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][28]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][29]["spawn_flags"] = 0
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][30]["delete"] = True
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][31]["delete"] = True
         patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][158]["spawn_flags"] = 0
         patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][159]["spawn_flags"] = 0
         patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][160]["delete"] = True
@@ -1842,14 +1847,14 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["x_pos"] = -320.0
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["var_a"] = \
-            CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_h].flag_id
+            CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_i].flag_id
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["var_b"] = 0
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][3]["var_c"] = Pickups.MAGICAL_NITRO
         # Nitro shelf invention side
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["x_pos"] = -306.0
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["object_id"] = Objects.INTERACTABLE
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["var_a"] = \
-            CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_i].flag_id
+            CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_h].flag_id
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["var_b"] = 0
         patcher.scenes[Scenes.CASTLE_CENTER_INVENTIONS].actor_lists["room 4"][6]["var_c"] = Pickups.MAGICAL_NITRO
 
@@ -2638,7 +2643,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                         # not a flag ID), skip it.
                         if actor["var_c"] == Pickups.WHITE_JEWEL or actor["var_c"] > len(Pickups) + 1:
                             continue
-                        # Check if the flag ID has location values associated with it in the slot patch info. If it
+                        # Check if the flag ID has Location values associated with it in the slot patch info. If it
                         # does, write that value in the pickup's Var C.
                         if actor["var_a"] in loc_values:
                             actor["var_c"] = loc_values[actor["var_a"]][0]
@@ -2666,6 +2671,10 @@ class CVLoDPatchExtensions(APPatchExtension):
                                             actor["z_pos"] = NEW_VISIBLE_ITEM_COORDS[actor["var_a"]][2]
                                 else:
                                     actor["var_b"] |= PickupFlags.INVISIBLE
+                        # If it's not a Location with a pickup to change, Permanent Powerups are on, and the pickup is
+                        # a PowerUp, change it to a Red Jewel(L).
+                        elif slot_patch_info["options"]["permanent_powerups"] and actor["var_c"] == Pickups.POWERUP:
+                            actor["var_c"] = Pickups.RED_JEWEL_L
 
                     # If it's a regular 1HB, the flag to check AND the value to write the new Item over is in the 1HB
                     # data for the scene specified in the actor's Var C.
@@ -2682,6 +2691,11 @@ class CVLoDPatchExtensions(APPatchExtension):
                                     scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.VISIBLE
                                 else:
                                     scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] |= PickupFlags.INVISIBLE
+                        # If it's not a Location with a pickup to change, Permanent Powerups are on, and the pickup is
+                        # a PowerUp, change it to a Red Jewel(L).
+                        elif slot_patch_info["options"]["permanent_powerups"] and \
+                                scene.one_hit_breakables[actor["var_c"]]["pickup_id"] == Pickups.POWERUP:
+                            scene.one_hit_breakables[actor["var_c"]]["pickup_id"] = Pickups.RED_JEWEL_L
 
                     # If it's a special 1HB, then it's similar to the regular 1HB but in the special 1HB data instead.
                     if actor["object_id"] in SPECIAL_1HBS:
@@ -2699,19 +2713,32 @@ class CVLoDPatchExtensions(APPatchExtension):
                                 else:
                                     scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] \
                                         |= PickupFlags.INVISIBLE
+                        # If it's not a Location with a pickup to change, Permanent Powerups are on, and the pickup is
+                        # a PowerUp, change it to a Red Jewel(L).
+                        elif slot_patch_info["options"]["permanent_powerups"] and \
+                                scene.one_hit_special_breakables[actor["var_c"]]["pickup_id"] == Pickups.POWERUP:
+                            scene.one_hit_special_breakables[actor["var_c"]]["pickup_id"] = Pickups.RED_JEWEL_L
 
                     # If it's a 3HB, get that 3HB's regular flag ID from its 3HB flag data to figure out which one it
                     # is, and then write the Items it should have into the scene's list of 3HB drop IDs.
                     if actor["object_id"] == Objects.THREE_HIT_BREAKABLE:
                         three_hit = scene.three_hit_breakables[actor["var_c"]]
                         three_hit_info = THREE_HIT_BREAKABLES_INFO[three_hit["flag_id"]]
-                        # Check if the 3HB's first flag ID has a Location created for it. If not, skip this 3HB.
-                        if three_hit_info.new_first_flag_id not in loc_values:
-                            continue
                         # Take the difference in the 3HB's pickup IDs start address and the scene's general 3HB pickup
                         # IDs array start divided by 2 to know which index in the scene's 3HB pickup IDs array to start
                         # writing the 3HB's new pickup IDs into.
                         first_3hb_pickup_index = (three_hit["pickup_array_start"] - scene.three_hit_drops_start) // 2
+                        # Check if the 3HB's first flag ID has a Location created for it. If not, skip this 3HB.
+                        if three_hit_info.new_first_flag_id not in loc_values:
+                            # Before skipping, however, if Permanent Powerups are on, check for any PowerUps that the
+                            # 3HB might normally drop and replace them with Red Jewel(L)s.
+                            if slot_patch_info["options"]["permanent_powerups"]:
+                                for three_hit_pickup_index in range(three_hit["pickup_count"]):
+                                    if scene.three_hit_drop_ids[first_3hb_pickup_index +
+                                                                three_hit_pickup_index] == Pickups.POWERUP:
+                                        scene.three_hit_drop_ids[first_3hb_pickup_index
+                                                                 + three_hit_pickup_index] = Pickups.RED_JEWEL_L
+                            continue
                         three_hit_invisible_bits = 0
                         for three_hit_pickup_index in range(three_hit["pickup_count"]):
                             scene.three_hit_drop_ids[first_3hb_pickup_index + three_hit_pickup_index] = \
@@ -2903,6 +2930,61 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int32(0x2FA64, 0x0C0FFA88)   # JAL  0x803FEA20
             patcher.write_int32s(0xFFEA20, patches.shimmy_speed_modifier)
 
+        # Permanent PowerUp stuff
+        if slot_patch_info["options"]["permanent_powerups"]:
+            # Make receiving PowerUps increase the unused menu PowerUp counter instead of the one outside the save
+            # struct.
+            patcher.write_int32(0x87E20, 0x916BAB4F)  # LBU T3, 0xAB4F (T3)
+            patcher.write_int32(0x87E38, 0xA02CAB4F)  # SB  T4, 0xAB4F (AT)
+            patcher.write_int32(0x905A4, 0x90C3288F)  # LBU V1, 0x288F (A2)
+            patcher.write_int32(0x905F8, 0x90C3288F)  # LBU V1, 0x288F (A2)
+            patcher.write_int32(0x90608, 0xA0CB288F)  # SB  T3, 0x288F (A2)
+            # Make common attack stuff check the menu PowerUp counter.
+            patcher.write_int32(0x45B14, 0x904A288F)  # LBU   T2, 0x288F (V0)
+            patcher.write_int32(0x45B68, 0x904F288F)  # LBU   T7, 0x288F (V0)
+            patcher.write_int32(0x5EC58, 0x9049288F)  # LBU   T1, 0x288F (V0)
+            patcher.write_int32(0x5EC8C, 0x9049288F)  # LBU   T1, 0x288F (V0)
+            # Make Reinhardt's whip check the menu PowerUp counter.
+            patcher.write_int32(0x74780C, 0x9125288F)  # LBU   A1, 0x288F (T1)
+            # Make Carrie's orb check the menu PowerUp counter.
+            patcher.write_int32(0x74FE9C, 0x9102288F)  # LBU   V0, 0x288F (T0)
+            patcher.write_int32(0x753C38, 0x93CB288F)  # LBU   T3, 0x288F (FP)
+            patcher.write_int32(0x753FD8, 0x93CE288F)  # LBU   T6, 0x288F (FP)
+            patcher.write_int32(0x755760, 0x92B9288F)  # LBU   T9, 0x288F (S5)
+            patcher.write_int32(0x7557AC, 0x92A2288F)  # LBU   V0, 0x288F (S5)
+            patcher.write_int32(0x7558C0, 0x92B8288F)  # LBU   T8, 0x288F (S5)
+            patcher.write_int32(0x7559E4, 0x92B8288F)  # LBU   T8, 0x288F (S5)
+            patcher.write_int32(0x755A58, 0x92AE288F)  # LBU   T6, 0x288F (S5)
+            patcher.write_int32(0x755AC8, 0x92AD288F)  # LBU   T5, 0x288F (S5)
+            patcher.write_int32(0x755B50, 0x92B8288F)  # LBU   T8, 0x288F (S5)
+            # Make Cornell's shockwave check the menu PowerUp counter.
+            patcher.write_int32(0x75D2DC, 0x90E2288F)  # LBU   V0, 0x288F (A3)
+            patcher.write_int32(0x75FAC8, 0x924C288F)  # LBU   T4, 0x288F (S2)
+            # Make Henry's gun check the menu PowerUp counter.
+            patcher.write_int32(0x765E20, 0x90A3288F)  # LBU   V1, 0x288F (A1)
+            patcher.write_int32(0x768B74, 0x916B288F)  # LBU   T3, 0x288F (T3)
+            # Make enemies check the menu PowerUp counter when hit.
+            patcher.write_int32(0x8CBC, 0x916BAB4F, NIFiles.OVERLAY_SKELETON_WARRIOR)  # LBU   T3, 0xAB4F (T3)
+            patcher.write_int32(0x275C, 0x9108AB4F, NIFiles.OVERLAY_CERBERUS)  # LBU   T0, 0xAB4F (T0)
+            patcher.write_int32(0x4378, 0x9042AB4F, NIFiles.OVERLAY_WERE_JAGUAR_AND_BULL)  # LBU   V0, 0xAB4F (V0)
+            # Prevent PowerUps from dropping from regular enemies and boss projectiles.
+            patcher.write_int32(0x52F14, 0x34020002)  # ORI   V0, R0, 0x0002
+            patcher.write_int32(0x494, 0x34080002, NIFiles.OVERLAY_SLIME)  # ORI   T0, R0, 0x0002
+            patcher.write_int32(0x1E70, 0x340B0002, NIFiles.OVERLAY_WHITE_DRAGONS)  # ORI   T3, R0, 0x0002
+            patcher.write_int32(0x49AC, 0x34090002, NIFiles.OVERLAY_WHITE_DRAGONS)  # ORI   T1, R0, 0x0002
+            patcher.write_int32(0x3118, 0x34190002, NIFiles.OVERLAY_CERBERUS)  # ORI   T9, R0, 0x0002
+            patcher.write_byte(0x18EF, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_WERE_TIGER)
+            patcher.write_byte(0xC8FB, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_DRACULA)
+            patcher.write_byte(0x584F, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_TRUE_DRACULA)
+            # Rename the PowerUp to "PermaUp"
+            patcher.write_bytes(0xB8A34, cvlod_string_to_bytearray("PermaUp"))
+        # Replace the PowerUp in the Forest Special1 Bridge 3HB rock with an L jewel if 3HBs aren't randomized
+        #    if not options.multi_hit_breakables.value:
+        # patcher.write_byte(0x10C7A1, 0x03)
+        # Change the appearance of the Pot-Pourri to that of a larger PowerUp regardless of the above setting, so other
+        # game PermaUps are distinguishable.
+        # patcher.write_int32s(0xEE558, [0x06005F08, 0x3FB00000, 0xFFFFFF00])
+
         # Change the starting stage to whatever stage the player is actually starting at.
         patcher.write_byte(0x15DB, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_scene_id,
                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
@@ -3026,39 +3108,9 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Fan meeting room ambience fix
         # patcher.write_int32(0x109964, 0x803FE13C)
 
-        # Increase shimmy speed
-        # if options.increase_shimmy_speed.value:
-        # patcher.write_byte(0xA4241, 0x5A)
-
         # Disable landing fall damage
         # if options.fall_guard.value:
         # patcher.write_byte(0x27B23, 0x00)
-
-        # Permanent PowerUp stuff
-        # if options.permanent_powerups.value:
-        # Make receiving PowerUps increase the unused menu PowerUp counter instead of the one outside the save struct
-        # patcher.write_int32(0xBF2EC, 0x806B619B)  # LB	T3, 0x619B (V1)
-        # patcher.write_int32(0xBFC5BC, 0xA06C619B)  # SB	T4, 0x619B (V1)
-        # Make Reinhardt's whip check the menu PowerUp counter
-        # patcher.write_int32(0x69FA08, 0x80CC619B)  # LB	T4, 0x619B (A2)
-        # patcher.write_int32(0x69FBFC, 0x80C3619B)  # LB	V1, 0x619B (A2)
-        # patcher.write_int32(0x69FFE0, 0x818C9C53)  # LB	T4, 0x9C53 (T4)
-        # Make Carrie's orb check the menu PowerUp counter
-        # patcher.write_int32(0x6AC86C, 0x8105619B)  # LB	A1, 0x619B (T0)
-        # patcher.write_int32(0x6AC950, 0x8105619B)  # LB	A1, 0x619B (T0)
-        # patcher.write_int32(0x6AC99C, 0x810E619B)  # LB	T6, 0x619B (T0)
-        # patcher.write_int32(0x5AFA0, 0x80639C53)  # LB	V1, 0x9C53 (V1)
-        # patcher.write_int32(0x5B0A0, 0x81089C53)  # LB	T0, 0x9C53 (T0)
-        # patcher.write_byte(0x391C7, 0x00)  # Prevent PowerUps from dropping from regular enemies
-        # patcher.write_byte(0xEDEDF, 0x03)  # Make any vanishing PowerUps that do show up L jewels instead
-        # Rename the PowerUp to "PermaUp"
-        # patcher.write_bytes(0xEFDEE, cvlod_string_to_bytearray("PermaUp"))
-        # Replace the PowerUp in the Forest Special1 Bridge 3HB rock with an L jewel if 3HBs aren't randomized
-        #    if not options.multi_hit_breakables.value:
-        # patcher.write_byte(0x10C7A1, 0x03)
-        # Change the appearance of the Pot-Pourri to that of a larger PowerUp regardless of the above setting, so other
-        # game PermaUps are distinguishable.
-        # patcher.write_int32s(0xEE558, [0x06005F08, 0x3FB00000, 0xFFFFFF00])
 
         # Write the randomized (or disabled) music ID list and its associated code
         # if options.background_music.value:

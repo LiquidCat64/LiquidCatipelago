@@ -121,6 +121,13 @@ POSSIBLE_EXTRA_FILLER = [item_names.jewel_rs, item_names.jewel_rl,
 HIGHER_SPAWNING_ITEMS = [Items.CROSS, Items.AXE, Items.WINCH_LEVER, Items.CREST_HALF_A, Items.CREST_HALF_B,
                          Items.ROSE_BROOCH]
 
+# Pickups that, in this randomizer, are actually using the appearance of a different pickup. Unique pickups that have
+# an identical appearance to another pickup (like some keys) are being used to have more possible appearances for
+# pickups to assume.
+OTHER_APPEARANCE_PICKUPS = {item_names.permaup: Pickups.CLOCKTOWER_KEY_A,
+                            item_names.quest_key_clock_a: Pickups.GARDEN_KEY,
+                            item_names.quest_key_clock_b: Pickups.COPPER_KEY}
+
 def get_item_names_to_ids() -> dict[str, int]:
     return {item: data.item_id for item, data in ALL_CVLOD_ITEMS.items()}
 
