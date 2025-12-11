@@ -255,6 +255,7 @@ class CVLoDWorld(World):
                                 "skip_waterway_blocks": self.options.skip_waterway_blocks.value,
                                 "countdown": self.options.countdown.value,
                                 "increase_shimmy_speed": self.options.increase_shimmy_speed.value,
+                                "fall_guard": self.options.fall_guard.value,
                                 "window_color_r": self.options.window_color_r.value,
                                 "window_color_g": self.options.window_color_g.value,
                                 "window_color_b": self.options.window_color_b.value,

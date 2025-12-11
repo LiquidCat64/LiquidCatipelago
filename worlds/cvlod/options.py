@@ -319,7 +319,7 @@ class VincentFightCondition(Choice):
 
 class CastleKeepEndingSequence(Choice):
     """Which character final boss and ending sequence you will go through at Castle Keep upon making it inside Dracula's chamber.
-    Reinhardt Carrie Timed = You will receive either their good or bad ending depending on whether you took 16 in-game days to reach the end."""
+    Reinhardt Carrie Timed = You will receive either their good or bad ending depending on whether you took 16 in-game days to reach Dracula's chamber, regardless of whether you fought Vincent."""
     display_name = "Castle Keep Ending Sequence"
     option_reinhardt_carrie_good = 0
     option_reinhardt_carrie_bad = 1
@@ -479,32 +479,32 @@ class WindowColorR(Range):
     """The red value for the background color of the text windows during gameplay."""
     display_name = "Window Color R"
     range_start = 0
-    range_end = 15
-    default = 10
+    range_end = 255
+    default = 160
 
 
 class WindowColorG(Range):
     """The green value for the background color of the text windows during gameplay."""
     display_name = "Window Color G"
     range_start = 0
-    range_end = 15
-    default = 10
+    range_end = 255
+    default = 160
 
 
 class WindowColorB(Range):
     """The blue value for the background color of the text windows during gameplay."""
     display_name = "Window Color B"
     range_start = 0
-    range_end = 15
-    default = 10
+    range_end = 255
+    default = 160
 
 
 class WindowColorA(Range):
     """The alpha value for the background color of the text windows during gameplay."""
     display_name = "Window Color A"
     range_start = 0
-    range_end = 15
-    default = 6
+    range_end = 255
+    default = 96
 
 
 class CVLoDDeathLink(Choice):
@@ -574,7 +574,7 @@ class CVLoDOptions(PerGameCommonOptions):
     increase_shimmy_speed: IncreaseShimmySpeed
     # background_music: BackgroundMusic
     # map_lighting: MapLighting
-    # fall_guard: FallGuard
+    fall_guard: FallGuard
     window_color_r: WindowColorR
     window_color_g: WindowColorG
     window_color_b: WindowColorB

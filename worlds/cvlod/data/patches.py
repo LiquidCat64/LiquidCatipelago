@@ -60,6 +60,8 @@ remote_item_giver = [
     0x1300FFF8,  # BGTZ  T8,     [backward 0x08]
     0x00000000,  # NOP
     0x8DED0038,  # LW    T5, 0x0038 (T7)
+    0x11A0FFF5,  # BEQZ  T5,     [backward 0x0B]
+    0x00000000,  # NOP
     0x91AE0026,  # LBU   T6, 0x0026 (T5)
     # Non-multiworld item byte occupied?
     0x9164AA4C,  # LBU	 A0, 0xAA4C (T3)
@@ -357,26 +359,19 @@ renon_cutscene_checker = [
 ]
 
 ck_door_music_player = [
-    # Plays Castle Keep's song if you spawn in front of Dracula's door (teleporting via the warp menu) and haven't
-    # started the escape sequence yet.
-    0x17010002,  # BNE   T8, AT, [forward 0x02]
+    # Plays Castle Keep's song if you spawn in front of the main Castle Keep entrance or Dracula's door (teleporting via
+    # the warp menu) and haven't started the escape sequence yet (the way this is hooked means checking for the latter
+    # shouldn't be necessary).
+
+    # Check for spawn entrance 0 or 1. If either, put us on the "play Castle Keep's song" routine.
+    0x10400005,  # BEQZ  V0,     [forward 0x05]
+    0x34080001,  # ORI   T0, R0, 0x0001
+    0x10480003,  # BEQ   V0, T0, [forward 0x03]
     0x00000000,  # NOP
-    0x08063DF9,  # J     0x8018F7E4
-    0x240A0000,  # ADDIU T2, R0, 0x0000
-    0x3C088039,  # LUI   T0, 0x8039
-    0x91089BFA,  # LBU   T0, 0x9BFA (T0)
-    0x31080002,  # ANDI  T0, T0, 0x0002
-    0x51090001,  # BEQL  T0, T1, [forward 0x01]
-    0x254A0001,  # ADDIU T2, T2, 0x0001
-    0x24080003,  # ADDIU T0, R0, 0x0003
-    0x51180001,  # BEQL  T0, T8, [forward 0x01]
-    0x254A0001,  # ADDIU T2, T2, 0x0001
-    0x240B0002,  # ADDIU T3, R0, 0x0002
-    0x114B0002,  # BEQ   T2, T3, [forward 0x02]
+    0x080B931D,  # J     0x802E4C74
     0x00000000,  # NOP
-    0x08063DFD,  # J     0x8018F7F4
+    0x080B931A,  # J     0x802E4C68
     0x00000000,  # NOP
-    0x08063DF9   # J     0x8018F7E4
 ]
 
 drac_condition_checker = [
@@ -390,6 +385,29 @@ drac_condition_checker = [
     0x24020001,  # ADDIU V0, R0, 0x0001
     0x03E00008,  # JR    RA
     0x00000000   # NOP
+]
+
+bad_ending_time_checker = [
+    # Extra spawn condition for the White Jewel in Dracula's chamber that checks to see if too many days have passed
+    # to receive the Good Ending. If so, the Bad Ending flag will be set. The jewel will be allowed to spawn regardless.
+    # This should account for being able to completely avoid vampire Vincent's trigger if you get the Castle Keep warp.
+
+    # Multiply the weeks counter by 7 and add that to the "current day of the week" counter to get the total days
+    # passed. If less than 16, don't set the Bad Ending flag.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9509AB1C,  # LHU   T1, 0xAB1C (T0)
+    0x950AAB1E,  # LHU   T2, 0xAB1E (T0)
+    0x340B0007,  # ORI   T3, R0, 0x0007
+    0x012B0019,  # MULTU T1, T3
+    0x00004812,  # MFLO  T1
+    0x012A4821,  # ADDU  T1, T1, T2
+    0x292C0010,  # SLTI  T4, T1, 0x0010
+    0x15800003,  # BNEZ  T4,     [forward 0x03]
+    0x9109AA95,  # LBU   T1, 0xAA95 (T0)
+    0x35290080,  # ORI   T1, T1, 0x0080
+    0xA109AA95,  # SB    T1, 0xAA95 (T0)
+    0x03E00008,  # JR    RA
+    0x34020001,  # ORI   V0, R0, 0x0001
 ]
 
 continue_cursor_start_checker = [
@@ -1897,31 +1915,43 @@ art_tower_knight_spawn_check = [
     0x00000000
 ]
 
-castle_crumbling_cornell_henry_checker = [
-    # Teleports Cornell and Henry to their respective "good ending" cutscenes during the castle crumbling sequence
-    # after beating Centipede Dracula. Cornell's will simply be his regular ending while Henry's will be his
-    # "all children rescued" ending.
+castle_sitting_henry_checker = [
+    # Teleports Henry to his "all children rescued" cutscene during the "sitting to watch the castle crumble"
+    # cutscene after beating Dracula instead of the usual castle crumbling sequence. This cutscene also opens with the
+    # castle crumbling, so it feels more natural for him to go directly here.
+
+    # Check the current character value for Henry. If true, switch the spawn point for the current map to 1
+    # (for blue skies) and play his cutscene.
+    0x3C0B801D,  # LUI   T3, 0x801D
+    0x8568AB34,  # LH    T0, 0xAB34 (T3)
+    0x34090003,  # ORI   T1, R0, 0x00003
+    0x15090006,  # BNE   T0, T1, [forward 0x06]
+    0x340A0031,  # ORI   T2, R0, 0x0031
+    0xA56AAE8E,  # SH    T2, 0xAE8E (T3)
+    0x340A001C,  # ORI   T2, R0, 0x001C
+    0xA56AAE78,  # SH    T2, 0xAE78 (T3)
+    0x340A0002,  # ORI   T2, R0, 0x0002
+    0xA56AAE7A,  # SH    T2, 0xAE7A (T3)
+    0x03E00008,  # JR    RA
+    0x00000000,  # NOP
+]
+
+castle_crumbling_cornell_checker = [
+    # Teleports Cornell to his regular ending cutscene during the castle crumbling sequence after beating Centipede
+    # Dracula.
 
     # Check the current character value for Cornell. If true, switch the scene to Cornell's ending forest and play
     # his cutscene.
     0x84482874,  # LH    T0, 0x2874 (V0)
     0x34090002,  # ORI   T1, R0, 0x00002
-    0x15090006,  # BNE   T0, T1, [forward 0x06]
+    0x15090005,  # BNE   T0, T1, [forward 0x05]
     0x34090003,  # ORI   T1, R0, 0x0003
     0x340A002D,  # ORI   T2, R0, 0x002D
     0xA44A2BB8,  # SH    T2, 0x2BB8 (V0)
     0x340A0030,  # ORI   T2, R0, 0x0030
-    0x0B8007A0,  # J     0x0E001E80
     0xA44A2BCE,  # SH    T2, 0x2BCE (V0)
-    # Check the current character value for Henry. If true, switch the spawn point for the current map to 1
-    # (for blue skies) and play his cutscene.
-    0x15090004,  # BNE   T0, T1, [forward 0x04]
-    0x340A0031,  # ORI   T2, R0, 0x0031
-    0xA44A2BCE,  # SH    T2, 0x2BCE (V0)
-    0x340A0002,  # ORI   T2, R0, 0x0002
-    0xA44A2BBA,  # SH    T2, 0x2BBA (V0)
     0x0B8007A0,  # J     0x0E001E80
-    0x00000000   # NOP
+    0x00000000,  # NOP
 ]
 
 malus_bad_end_cornell_henry_checker = [

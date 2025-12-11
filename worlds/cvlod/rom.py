@@ -278,24 +278,24 @@ class CVLoDPatchExtensions(APPatchExtension):
                             NIFiles.OVERLAY_PAUSE_MENU)
 
         # Enable changing the item model/visibility on any item instance.
-        patcher.write_int32s(0x107740, [0x0C0FF0C0,   # JAL   0x803FC300
+        patcher.write_int32s(0x107740, [0x0C0FF380,   # JAL   0x803FCE00
                                         0x25CFFFFF])  # ADDIU T7, T6, 0xFFFF
-        patcher.write_int32s(0xFFC300, patches.item_customizer)
-        patcher.write_int32s(0x1078B0, [0x0C0FF0CB,   # JAL   0x803FC32C
+        patcher.write_int32s(0xFFCE00, patches.item_customizer)
+        patcher.write_int32s(0x1078B0, [0x0C0FF38B,   # JAL   0x803FCE2C
                                         0x94C90038])  # LHU   T1, 0x0038 (A2)
-        patcher.write_int32s(0xFFC32C, patches.pickup_model_switcher)
-        patcher.write_int32s(0x107A5C, [0x0C0FF0EC,   # JAL   0x803FC3B0
+        patcher.write_int32s(0xFFCE2C, patches.pickup_model_switcher)
+        patcher.write_int32s(0x107A5C, [0x0C0FF3AC,   # JAL   0x803FCEB0
                                         0x94CF0038])  # LHU   T7, 0x0038 (A2)
-        patcher.write_int32s(0xFFC3B0, patches.pickup_spawn_height_switcher)
-        patcher.write_int32s(0x108024, [0x0C0FF0F4,   # JAL   0x803FC3D0
+        patcher.write_int32s(0xFFCEB0, patches.pickup_spawn_height_switcher)
+        patcher.write_int32s(0x108024, [0x0C0FF3B4,   # JAL   0x803FCED0
                                         0x96090038])  # LHU   T1, 0x0038 (S0)
-        patcher.write_int32s(0xFFC3D0, patches.pickup_spin_speed_switcher)
-        patcher.write_int32s(0x108E80, [0x0C0FF0FC,   # JAL   0x803FC3F0
+        patcher.write_int32s(0xFFCED0, patches.pickup_spin_speed_switcher)
+        patcher.write_int32s(0x108E80, [0x0C0FF3BC,   # JAL   0x803FCEF0
                                         0x948F0038])  # LHU   T7, 0x0038 (A0)
-        patcher.write_int32s(0xFFC3F0, patches.pickup_shine_size_switcher)
-        patcher.write_int32s(0x108EB0, [0x0C0FF104,   # JAL   0x803FC410
+        patcher.write_int32s(0xFFCEF0, patches.pickup_shine_size_switcher)
+        patcher.write_int32s(0x108EB0, [0x0C0FF3C4,   # JAL   0x803FCF10
                                         0x96190038])  # LHU   T9, 0x0038 (S0)
-        patcher.write_int32s(0xFFC410, patches.pickup_shine_height_switcher)
+        patcher.write_int32s(0xFFCF10, patches.pickup_shine_height_switcher)
 
         # Enable the Game Over's "Continue" menu starting the cursor on whichever checkpoint is most recent
         patcher.write_int32s(0x82120, [0x0C0FF2B4,  # JAL 0x803FCAD0
@@ -385,10 +385,10 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int16(0x82CC8A, 0x0330)  # CT beneath final slide
 
         # Write the specified window colors
-        patcher.write_byte(0x8881A, slot_patch_info["options"]["window_color_r"] << 4)
-        patcher.write_byte(0x8881B, slot_patch_info["options"]["window_color_g"] << 4)
-        patcher.write_byte(0x8881E, slot_patch_info["options"]["window_color_b"] << 4)
-        patcher.write_byte(0x8881F, slot_patch_info["options"]["window_color_a"] << 4)
+        patcher.write_byte(0x8881A, slot_patch_info["options"]["window_color_r"])
+        patcher.write_byte(0x8881B, slot_patch_info["options"]["window_color_g"])
+        patcher.write_byte(0x8881E, slot_patch_info["options"]["window_color_b"])
+        patcher.write_byte(0x8881F, slot_patch_info["options"]["window_color_a"])
 
 
         # # # # # # # # # # #
@@ -2311,6 +2311,8 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][1]["spawn_flags"] |= \
                 ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
 
+        # Prevent the Vincent fight cutscene from setting the Bad Ending flag. We will be handling that our own way...
+        patcher.write_int32(0x10A4F4, 0x00000000)
         # If the Vincent Fight Condition is Always, make the Vincent fight intro cutscene trigger universal to everyone
         # and remove the "16 days passed?" check in its cutscene trigger settings.
         if slot_patch_info["options"]["vincent_fight_condition"] == VincentFightCondition.option_always:
@@ -2329,6 +2331,17 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Remove Cornell's White Jewel from Dracula's chamber and make Reinhardt and Carrie's universal.
         patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["proxy"][4]["spawn_flags"] = 0
         patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["proxy"][5]["delete"] = True
+
+        # Play Castle Keep's song if teleporting in front of Dracula's door outside the escape sequence.
+        ck_door_music_check_start = len(patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].overlay)
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int32(
+            0x10D8, 0x080B0000 | ((ck_door_music_check_start + (SCENE_OVERLAY_RDRAM_START & 0xFFFFFF)) // 4))
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int32s(ck_door_music_check_start,
+                                                                     patches.ck_door_music_player)
+
+        # Make Dracula Ultimate's weak point vulnerable to Carrie's orbs (this also has the side effect of making it
+        # vulnerable to the axe lightning strike, but actually getting that to hit it is impossible anyway...right?)
+        patcher.write_int16(0xDDA, 0x07C0, NIFiles.OVERLAY_DRACULA_ULTIMATE)
 
         # Prevent Dracula's doors from opening if the required amount of the goal item (Special2 normally) is not found.
         drac_door_check_start = len(patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].overlay)
@@ -2349,7 +2362,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = ("The door is sealed\n"
                                                                                  "by a crystalline force...🅰0/\f"
                                                                                  "You'll need the power\n"
-                                                                                 "of the big crystal in\n"
+                                                                                 "of the Big Crystal in\n"
                                                                                  "Castle Center's basement\n"
                                                                                  "to undo the seal.🅰0/")
             patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int16(drac_door_check_start + 0xE, 1)
@@ -2559,15 +2572,30 @@ class CVLoDPatchExtensions(APPatchExtension):
                 patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["proxy"][4]["spawn_flags"] = \
                     ActorSpawnFlags.SET_FLAG_ON_SPAWN
                 patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["proxy"][4]["flag_id"] = 0x1A8
+            # Otherwise, meaning Reinhardt Carrie Timed was chosen, set a custom spawn condition on the White Jewel
+            # that will set the Bad Ending flag if 16 or more in-game days have passed.
+            else:
+                ck_bad_ending_time_check_start = len(patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].overlay)
+                patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["proxy"][4]["spawn_flags"] = \
+                    ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
+                patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].actor_lists["proxy"][4]["extra_condition_ptr"] = \
+                    ck_bad_ending_time_check_start + SCENE_OVERLAY_RDRAM_START
+                patcher.scenes[Scenes.CASTLE_KEEP_DRAC_CHAMBER].write_ovl_int32s(ck_bad_ending_time_check_start,
+                                                                                 patches.bad_ending_time_checker)
 
-        # Make the castle crumbling cutscene send Cornell and Henry to their respective endings.
+        # Make the "sitting down to watch the castle crumble" cutscene send Henry to his respective ending.
+        patcher.write_int32(0x694, 0x0B8001DC, NIFiles.OVERLAY_CS_WATCHING_CASTLE_CRUMBLE) # J 0x0E000770
+        patcher.write_int32s(0x770, patches.castle_sitting_henry_checker,
+                             NIFiles.OVERLAY_CS_WATCHING_CASTLE_CRUMBLE)
+
+        # Make the castle crumbling cutscene send Cornell to his respective ending.
         # NOP the branch instruction that skips starting a different cutscene if the player isn't Reinhardt or Carrie.
         # Reinhardt's routine should run for the other two characters.
         patcher.write_int32(0x1CF4, 0x00000000, NIFiles.OVERLAY_CS_CASTLE_CRUMBLING)
         # At the end of Reinhardt's ending cutscene setter routine, jump to a hack that switches it to Cornell or Henry
         # instead.
         patcher.write_int32(0x1DB4, 0x0B80107C, NIFiles.OVERLAY_CS_CASTLE_CRUMBLING) # J 0x0E0041F0
-        patcher.write_int32s(0x41F0, patches.castle_crumbling_cornell_henry_checker,
+        patcher.write_int32s(0x41F0, patches.castle_crumbling_cornell_checker,
                              NIFiles.OVERLAY_CS_CASTLE_CRUMBLING)
 
         # Make the Bad Ending Malus Appears cutscene send Cornell and Henry to their own respective bad ends.
@@ -2962,7 +2990,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int32(0x75FAC8, 0x924C288F)  # LBU   T4, 0x288F (S2)
             # Make Henry's gun check the menu PowerUp counter.
             patcher.write_int32(0x765E20, 0x90A3288F)  # LBU   V1, 0x288F (A1)
-            patcher.write_int32(0x768B74, 0x916B288F)  # LBU   T3, 0x288F (T3)
+            patcher.write_int32(0x768B74, 0x916BAB4F)  # LBU   T3, 0xAB4F (T3)
             # Make enemies check the menu PowerUp counter when hit.
             patcher.write_int32(0x8CBC, 0x916BAB4F, NIFiles.OVERLAY_SKELETON_WARRIOR)  # LBU   T3, 0xAB4F (T3)
             patcher.write_int32(0x275C, 0x9108AB4F, NIFiles.OVERLAY_CERBERUS)  # LBU   T0, 0xAB4F (T0)
@@ -2978,12 +3006,14 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_byte(0x584F, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_TRUE_DRACULA)
             # Rename the PowerUp to "PermaUp"
             patcher.write_bytes(0xB8A34, cvlod_string_to_bytearray("PermaUp"))
-        # Replace the PowerUp in the Forest Special1 Bridge 3HB rock with an L jewel if 3HBs aren't randomized
-        #    if not options.multi_hit_breakables.value:
-        # patcher.write_byte(0x10C7A1, 0x03)
-        # Change the appearance of the Pot-Pourri to that of a larger PowerUp regardless of the above setting, so other
-        # game PermaUps are distinguishable.
-        # patcher.write_int32s(0xEE558, [0x06005F08, 0x3FB00000, 0xFFFFFF00])
+
+        # If Fall Guard is enabled, NOP the instructions that store the updated player state stuff for when they land
+        # hard enough to lose health but NOT hard enough to be OHKO'd by the floor.
+        if slot_patch_info["options"]["fall_guard"]:
+            patcher.write_int32(0x24BA4, 0x00000000)
+            patcher.write_int32(0x24BB4, 0x00000000)
+            # Remove non-fatal health loss when ledge grabbing.
+            patcher.write_int32(0x2F214, 0x00000000)
 
         # Change the starting stage to whatever stage the player is actually starting at.
         patcher.write_byte(0x15DB, CVLOD_STAGE_INFO[slot_patch_info["stages"][0]["name"]].start_scene_id,
@@ -3048,20 +3078,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32(0xA99AC, 0x080FF0B8)  # J 0x803FC2E0
         # patcher.write_int32s(0xBFC2E0, patches.boss_save_stopper)
 
-        # Play Castle Keep's song if teleporting in front of Dracula's door outside the escape sequence
-        # patcher.write_int32(0x6E937C, 0x080FF12E)  # J 0x803FC4B8
-        # patcher.write_int32s(0xBFC4B8, patches.ck_door_music_player)
-
-        # Change the item healing values if "Nerf Healing" is turned on
-        # if options.nerf_healing_items.value:
-        # patcher.write_byte(0xB56371, 0x50)  # Healing kit   (100 -> 80)
-        # patcher.write_byte(0xB56374, 0x32)  # Roast beef    ( 80 -> 50)
-        # patcher.write_byte(0xB56377, 0x19)  # Roast chicken ( 50 -> 25)
-
-        # Disable loading zone healing if turned off
-        # if not options.loading_zone_heals.value:
-        # patcher.write_byte(0xD99A5, 0x00)  # Skip all loading zone checks
-
         # Fix a vanilla issue wherein saving in a character-exclusive stage as the other character would incorrectly
         # display the name of that character's equivalent stage on the save file instead of the one they're actually in.
         # patcher.write_byte(0xC9FE3, 0xD4)
@@ -3108,10 +3124,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Fan meeting room ambience fix
         # patcher.write_int32(0x109964, 0x803FE13C)
 
-        # Disable landing fall damage
-        # if options.fall_guard.value:
-        # patcher.write_byte(0x27B23, 0x00)
-
         # Write the randomized (or disabled) music ID list and its associated code
         # if options.background_music.value:
         # patcher.write_int32(0x14588, 0x08060D60)  # J 0x80183580
@@ -3119,10 +3131,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32s(0x106770, patches.music_modifier)
         # patcher.write_int32(0x15780, 0x0C0FF36E)  # JAL 0x803FCDB8
         # patcher.write_int32s(0xBFCDB8, patches.music_comparer_modifier)
-
-        # Once-per-frame gameplay checks
-        # patcher.write_int32(0x6C848, 0x080FF40D)  # J 0x803FD034
-        # patcher.write_int32(0xBFD058, 0x0801AEB5)  # J 0x8006BAD4
 
         # Everything related to dropping the previous sub-weapon
         # if options.drop_previous_sub_weapon.value:
