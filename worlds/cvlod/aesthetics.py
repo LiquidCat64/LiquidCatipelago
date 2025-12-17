@@ -467,9 +467,9 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
     return location_values
 
 
-def get_location_text(world: "CVLoDWorld", active_locations: Iterable[Location]) -> dict[int, tuple[str, str]]:
-    """Gets all in-game text specific to every created Location, both the Item's name and the Item's player's name.
-    Text will be returned mapped to their respective Location IDs."""
+def get_location_text(world: "CVLoDWorld", active_locations: Iterable[Location]) -> dict[int, tuple[str, str, bool]]:
+    """Gets the patch data for all in-game text specific to every created Location, including the Item's name, the Item's player's name, and whether it's progression.
+    The data will be returned mapped to their respective Location IDs."""
     location_text = {}
 
     for loc in active_locations:
@@ -477,19 +477,25 @@ def get_location_text(world: "CVLoDWorld", active_locations: Iterable[Location])
         if not loc.address:
             continue
 
-        # If the Item is local, put a blank string for the player name.
+        # If the Item's name is longer than 103 characters, truncate the name to inject at 103.
+        if len(loc.item.name) > 103:
+            item_name = loc.item.name[0:103]
+        else:
+            item_name = loc.item.name
+
+        # If the Item is local, put an empty string for the player name. The slot's own name will never be shown in-game
+        # when it comes to local Items, so we'll be using that to determine if it's local while patching.
         if loc.item.player == world.player:
             player_name = ""
         # Otherwise, get the actual player name.
         else:
             player_name = world.multiworld.get_player_name(loc.item.player)
+            # The player name should not be more than 16 characters. But truncate it at that just to be safe!
+            if len(player_name) > 16:
+                player_name = player_name[0:16]
 
-        # If the Item is progression, surround the Item name in the "color text" character.
-        item_name = loc.item.name
-        if loc.advancement:
-            item_name = "✨" + item_name + "✨"
-
-        location_text[loc.address] = (item_name, player_name)
+        # The location text data format should be (item name string, player name string, progression boolean)
+        location_text[loc.address] = (item_name, player_name, loc.advancement)
 
     # Return the final dict of Location text.
     return location_text

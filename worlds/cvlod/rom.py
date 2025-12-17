@@ -18,7 +18,8 @@ from .locations import CVLOD_LOCATIONS_INFO, THREE_HIT_BREAKABLES_INFO, HIGHER_S
 from .patcher import CVLoDRomPatcher, CVLoDSceneTextEntry, CVLoDNormalActorEntry, CVLoDSpawnEntranceEntry, \
     SCENE_OVERLAY_RDRAM_START
 from .stages import CVLOD_STAGE_INFO
-from .cvlod_text import cvlod_string_to_bytearray, cvlod_text_wrap, cvlod_bytes_to_string, LEN_LIMIT_MAP_TEXT
+from .cvlod_text import cvlod_string_to_bytearray, cvlod_text_wrap, cvlod_bytes_to_string, LEN_LIMIT_MAP_TEXT, \
+    LEN_LIMIT_MULTIWORLD_TEXT
 # from .aesthetics import renon_item_dialogue
 from .options import StageLayout, VincentFightCondition, RenonFightCondition, PostBehemothBoss, RoomOfClocksBoss, \
     DuelTowerFinalBoss, CastleKeepEndingSequence, DeathLink, DraculasCondition, InvisibleItems, \
@@ -48,6 +49,7 @@ START_INVENTORY_POWERUPS_ADDR = NG_EXTRAS_START + 0x43
 START_INVENTORY_SUBWEAPON_ADDR = NG_EXTRAS_START + 0x4B
 START_INVENTORY_SUBWEAPON_LEVEL_ADDR = NG_EXTRAS_START + 0x53
 START_INVENTORY_ICE_TRAP_ADDR = NG_EXTRAS_START + 0x5B
+MULTIWORLD_ITEM_TEXTS_START = 0xFA0000
 
 FOREST_OVL_CHARNEL_ITEMS_START = 0x7C60  # 0x802EB7D0
 CHARNEL_ITEM_LEN = 0xC
@@ -314,7 +316,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32s(0xFFCB40, patches.load_clearer)
 
         # NPC items rework
-        patcher.write_int32s(0xFFC6F0, patches.npc_item_rework)
+        patcher.write_int32s(0xFFC6E8, patches.npc_item_rework)
         # Change all the NPC item gives to run through the new routine, and write all their item values.
         # Fountain Top Shine
         if CVLOD_LOCATIONS_INFO[loc_names.villafy_fountain_shine].flag_id in loc_values:
@@ -324,7 +326,9 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int16(0x36E, 0x0068, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
             patcher.write_bytes(0x720, cvlod_string_to_bytearray("...🅰0/", add_end_char=True),
                                 NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
-            patcher.write_int16(0xFFC6F0, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villafy_fountain_shine].flag_id][0])
+            patcher.write_int16s(0xFFC6E8,
+                                 [loc_values[CVLOD_LOCATIONS_INFO[loc_names.villafy_fountain_shine].flag_id][0],
+                                  CVLOD_LOCATIONS_INFO[loc_names.villafy_fountain_shine].flag_id])
         # 6am Rose Patch
         if CVLOD_LOCATIONS_INFO[loc_names.villafo_6am_roses].flag_id in loc_values:
             patcher.write_int16(0x1E2, 0x8040, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
@@ -333,28 +337,36 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int16(0x1F2, 0x0078, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
             patcher.write_bytes(0x380, cvlod_string_to_bytearray("...🅰0/", add_end_char=True),
                                 NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
-            patcher.write_int16(0xFFC6F0 + 2, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villafo_6am_roses].flag_id][0])
+            patcher.write_int16s(0xFFC6E8 + 0x4,
+                                 [loc_values[CVLOD_LOCATIONS_INFO[loc_names.villafo_6am_roses].flag_id][0],
+                                  CVLOD_LOCATIONS_INFO[loc_names.villafo_6am_roses].flag_id])
         # Vincent
         if CVLOD_LOCATIONS_INFO[loc_names.villala_vincent].flag_id in loc_values:
             patcher.write_int16(0x180E, 0x8040, NIFiles.OVERLAY_VINCENT)
             patcher.write_int16(0x1812, 0xC700, NIFiles.OVERLAY_VINCENT)
             patcher.write_byte(0x1817, 0x02, NIFiles.OVERLAY_VINCENT)
             patcher.write_int16(0x181E, 0x027F, NIFiles.OVERLAY_VINCENT)
-            patcher.write_int16(0xFFC6F0 + 4, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villala_vincent].flag_id][0])
+            patcher.write_int16s(0xFFC6E8 + 0x8,
+                                 [loc_values[CVLOD_LOCATIONS_INFO[loc_names.villala_vincent].flag_id][0],
+                                  CVLOD_LOCATIONS_INFO[loc_names.villala_vincent].flag_id])
         # Mary
         if CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id in loc_values:
             patcher.write_int16(0xB16, 0x8040, NIFiles.OVERLAY_MARY)
             patcher.write_int16(0xB1A, 0xC700, NIFiles.OVERLAY_MARY)
             patcher.write_byte(0xB1F, 0x03, NIFiles.OVERLAY_MARY)
             patcher.write_int16(0xB26, 0x0086, NIFiles.OVERLAY_MARY)
-            patcher.write_int16(0xFFC6F0 + 6, loc_values[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0])
+            patcher.write_int16s(0xFFC6E8 + 0xC,
+                                 [loc_values[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0],
+                                  CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id])
         # Heinrich Meyer
         if CVLOD_LOCATIONS_INFO[loc_names.ccll_heinrich].flag_id in loc_values:
             patcher.write_int16(0x962A, 0x8040, NIFiles.OVERLAY_LIZARD_MEN)
             patcher.write_int16(0x962E, 0xC700, NIFiles.OVERLAY_LIZARD_MEN)
             patcher.write_byte(0x9633, 0x04, NIFiles.OVERLAY_LIZARD_MEN)
             patcher.write_int16(0x963A, 0x0284, NIFiles.OVERLAY_LIZARD_MEN)
-            patcher.write_int16(0xFFC6F0 + 8, loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccll_heinrich].flag_id][0])
+            patcher.write_int16s(0xFFC6E8 + 0x10,
+                                 [loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccll_heinrich].flag_id][0],
+                                  CVLOD_LOCATIONS_INFO[loc_names.ccll_heinrich].flag_id])
 
         # Disable the 3HBs checking and setting flags when breaking them and enable their individual items checking and
         # setting flags instead.
@@ -797,6 +809,14 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int16(0xAE2, CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id, NIFiles.OVERLAY_MARY)
         patcher.write_int16(0xB12, CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id, NIFiles.OVERLAY_MARY)
 
+        # The Stone Dogs normally don't spawn if we entered through the servant path entrance. Allow them to spawn if
+        # we are currently in the "meeting Malus" cutscene.
+        stone_dog_cutscene_check_start = len(patcher.scenes[Scenes.VILLA_MAZE].overlay)
+        patcher.scenes[Scenes.VILLA_MAZE].write_ovl_int32(
+            0xC00, 0x0C0B0000 | ((stone_dog_cutscene_check_start + (SCENE_OVERLAY_RDRAM_START & 0xFFFFFF)) // 4))
+        patcher.scenes[Scenes.VILLA_MAZE].write_ovl_int32s(stone_dog_cutscene_check_start,
+                                                           patches.stone_dog_cutscene_checker)
+
         # Give Child Henry his Cornell behaviors for everyone.
         patcher.write_int32(0x1B8, 0x24020002, NIFiles.OVERLAY_CHILD_HENRY)  # ADDIU V0, R0, 0x0002
         patcher.write_byte(0x613, 0x04, NIFiles.OVERLAY_CHILD_HENRY)
@@ -914,15 +934,39 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_byte(0xD3B13, 0x12)
             patcher.write_int16(0xD3B16, 0xFFE7)
 
-        # Generate Mary's item text here, if her Location is created.
+        # If Vincent doesn't have an Item with the word "key" in its name, change his dialogue for when he gives you
+        # the Item.
+        if CVLOD_LOCATIONS_INFO[loc_names.villala_vincent].flag_id in loc_text:
+            if "key" not in loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_vincent].flag_id][0].lower():
+                patcher.scenes[Scenes.VILLA_LIVING_AREA].scene_text[29]["text"] = (
+                    patcher.scenes[Scenes.VILLA_LIVING_AREA].scene_text[29]["text"][:40] +
+                    "...uhhhhh.🅰0/\f"
+                    "I don't recall ever finding\n"
+                    "a key. But in the rose garden,\n"
+                    "I nearly tripped upon this!🅰0/\f" +
+                    "You may have it. It takes\n"
+                    "more than such worthless\n"
+                    "trash to best me!🅰0/")
+
+
+        # Generate Mary's Item text here, if her Location is created.
         mary_item_text = ""
         if CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id in loc_text:
+            # If Mary has a progression Item, wrap the Item name string up in the "color text" character to color it.
+            mary_item_color = ""
+            if loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][2]:
+                mary_item_color = "✨"
+
             # If it's a local Item she has, have her say she will give it to you.
             if not loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][1]:
-                mary_item_text = f"give you this {loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0]}"
+                mary_item_text = (f"give you this {mary_item_color}"
+                                  f"{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0]}"
+                                  f"{mary_item_text}")
             # Otherwise, have her say she will send it to [player].
             else:
-                mary_item_text = (f"send this {loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0]} to "
+                mary_item_text = (f"send this {mary_item_color}"
+                                  f"{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0]}"
+                                  f"{mary_item_color} to "
                                   f"{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][1]}")
 
 
@@ -1830,6 +1874,20 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 1"][36]["spawn_flags"] |= \
             ActorSpawnFlags.CORNELL
 
+        # If Heinrich Meyer doesn't have an Item with the word "key" in its name, change his dialogue for when he gives
+        # you the Item.
+        if CVLOD_LOCATIONS_INFO[loc_names.ccll_heinrich].flag_id in loc_text:
+            if "key" not in loc_text[CVLOD_LOCATIONS_INFO[loc_names.ccll_heinrich].flag_id][0].lower():
+                patcher.scenes[Scenes.CASTLE_CENTER_LIZARD_LAB].scene_text[18]["text"] = (
+                    patcher.scenes[Scenes.CASTLE_CENTER_LIZARD_LAB].scene_text[18]["text"][:343] +
+                    "I had a key for the torture\n"
+                    "chamber, but now it's...this?\n"
+                    "Take it instead, I guess!🅰0/")
+            # Otherwise, cut off the "You received the key" bit.
+            else:
+                patcher.scenes[Scenes.CASTLE_CENTER_LIZARD_LAB].scene_text[18]["text"] = \
+                        patcher.scenes[Scenes.CASTLE_CENTER_LIZARD_LAB].scene_text[18]["text"][:412]
+
         # Change some shelf decoration Nitros and Mandragoras into actual items.
         # Mandragora shelf right
         patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][14]["x_pos"] = -4.0
@@ -2021,7 +2079,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int16(0x662, mandrag_with_nitro_location & 0xFFFF, NIFiles.OVERLAY_INGREDIENT_SET_TEXTBOX)
 
         # Custom message for if you try checking the downstairs Castle Center crack before removing the seal, explaining
-        # why we can't do that.
+        # why we Can't Do That(TM).
         patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].scene_text[17]["text"] = ("The Furious Nerd Curse\n" 
                                                                                 "prevents you from setting\n" 
                                                                                 "anything until the seal\n" 
@@ -3034,6 +3092,46 @@ class CVLoDPatchExtensions(APPatchExtension):
             if len(starting_flags) % 2:
                 starting_flags += [0]
             patcher.write_int16s(0x450, starting_flags, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
+
+        # Everything relating to loading the other game items text.
+        patcher.write_int32s(0x108550, [0x080FF88F,   # J     0x803FE23C
+                                        0x00000000])  # NOP
+        patcher.write_int32(0x87DC4, 0x0C0FF89E)  # JAL 0x803FE278
+        patcher.write_int32(0x87E60, 0x0C0FF8A7)  # JAL 0x803FE29C
+        patcher.write_int32(0x87E70, 0x0C0FF8B8)  # JAL	0x803FE2E0
+        patcher.write_int32s(0x87E8C, [0x0C0FF8CA,   # JAL 0x803FE328
+                                       0x3C014000])  # LUI AT, 0x4000
+        patcher.write_int32s(0xFFE23C, patches.multiworld_item_name_loader)
+        patcher.write_bytes(0x1F1CC, [0x00 for _ in range(264)])
+        patcher.write_bytes(0x1F2DC, [0x00 for _ in range(264)])
+
+        # Write the item/player names for other game items.
+        for loc_id, text in loc_text.items():
+            # If the player name text is an empty string, don't write the text for this Location as it has a local Item.
+            if not text[1]:
+                continue
+
+            # Build the final string, properly wrapped and all.
+            multiworld_text = cvlod_text_wrap(f"{text[0]}\nfor {text[1]}", textbox_len_limit=LEN_LIMIT_MULTIWORLD_TEXT)
+            # If the Item is Progression, wrap the whole string up in the "color text" character to indicate such.
+            if text[2]:
+                multiworld_text = "✨" + multiworld_text + "✨"
+            # Count the number of newlines. This will be written into our text buffer header.
+            num_lines = multiworld_text.count("\n")
+
+            # Multiply the Location ID by 256 and add it to the ROM start address for all the multiworld item texts
+            # to get the start address of our current text.
+            text_address = MULTIWORLD_ITEM_TEXTS_START + (256 * loc_id)
+            # Write the number of lines first thing into our two-byte header.
+            patcher.write_byte(text_address, num_lines + 1)
+            # Write the actual text after the header.
+            patcher.write_bytes(text_address + 2, cvlod_string_to_bytearray(multiworld_text, wrap=False,
+                                                                            add_end_char=True))
+
+        # Write the secondary name the client will use to distinguish a vanilla ROM from an AP one.
+        #patch.write_token(APTokenTypes.WRITE, 0xBFBFD0, "ARCHIPELAGO1".encode("utf-8"))
+        # Write the slot authentication
+        #patch.write_token(APTokenTypes.WRITE, 0xBFBFE0, bytes(world.auth))
 
         return patcher.get_output_rom()
 

@@ -476,7 +476,7 @@ class MapLighting(Choice):
 
 
 class WindowColorR(Range):
-    """The red value for the background color of the text windows during gameplay."""
+    """The red (RR) value for the background color of the text windows during gameplay."""
     display_name = "Window Color R"
     range_start = 0
     range_end = 255
@@ -484,7 +484,7 @@ class WindowColorR(Range):
 
 
 class WindowColorG(Range):
-    """The green value for the background color of the text windows during gameplay."""
+    """The green (GG) value for the background color of the text windows during gameplay."""
     display_name = "Window Color G"
     range_start = 0
     range_end = 255
@@ -492,7 +492,7 @@ class WindowColorG(Range):
 
 
 class WindowColorB(Range):
-    """The blue value for the background color of the text windows during gameplay."""
+    """The blue (BB) value for the background color of the text windows during gameplay."""
     display_name = "Window Color B"
     range_start = 0
     range_end = 255
@@ -500,7 +500,7 @@ class WindowColorB(Range):
 
 
 class WindowColorA(Range):
-    """The alpha value for the background color of the text windows during gameplay."""
+    """The alpha (AA) value for the background color of the text windows during gameplay."""
     display_name = "Window Color A"
     range_start = 0
     range_end = 255

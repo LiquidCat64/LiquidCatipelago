@@ -67,7 +67,8 @@ remote_item_giver = [
     0x9164AA4C,  # LBU	 A0, 0xAA4C (T3)
     0x10800007,  # BEQZ	 A0,     [forward 0x07]
     0x00000000,  # NOP
-    # If the textbox state is not 0, don't set the timer nor clear the buffer.
+    # If the textbox state is not 0, call the prepare item textbox function without setting the timer nor clearing the
+    # buffer. It will have to be called again on the subsequent frame(s) if that's the case.
     0x15C00003,  # BNEZ  T6,     [forward 0x03]
     0x24090090,  # ADDIU T1, R0, 0x0090
     0xA169AA4E,  # SB	 T1, 0xAA4E (T3)
@@ -76,17 +77,28 @@ remote_item_giver = [
     0x00000000,  # NOP
     # Multiworld item byte occupied?
     0x9164AA4D,  # LBU	 A0, 0xAA4D (T3)
-    0x1080000A,  # BEQZ	 A0,     [forward 0x0A]
+    0x10800013,  # BEQZ	 A0,     [forward 0x13]
     0x00000000,  # NOP
-    # If the textbox state is not 0, don't set the timer, clear the buffer, nor increment the multiworld item index.
-    0x15C00006,  # BNEZ  T6,     [forward 0x06]
+    # If the textbox state is not 0, again, call the item textbox without setting the timer, clearing the buffer, nor
+    # increment the multiworld item index. Don't copy the incoming multiworld item text buffer either.
+    0x15C0000F,  # BNEZ  T6,     [forward 0x0F]
     0x24090090,  # ADDIU T1, R0, 0x0090
     0xA169AA4E,  # SB	 T1, 0xAA4E (T3)
     0xA160AA4D,  # SB	 R0, 0xAA4D (T3)
-    # Increment the multiworld received item index here
+    # Increment the multiworld received item index here.
     0x956AABBE,  # LHU   T2, 0xABBE (T3)
     0x254A0001,  # ADDIU T2, T2, 0x0001
     0xA56AABBE,  # SH    T2, 0xABBE (T3)
+    # Copy the "incoming multiworld text buffer" into the primary one used for hijacking the item textbox.
+    0x3C088002,  # LUI   T0, 0x8002
+    0x34090000,  # ORI   T1, R0, 0x0000
+    0x340B0042,  # ORI   T3, R0, 0x0042
+    0x112B0005,  # BEQ   T1, T3, [forward 0x05]
+    0x8D0AE6DC,  # LW    T2, 0xE6DC (T0)
+    0xAD0AE5CC,  # SW    T2, 0xE5CC (T0)
+    0x25290001,  # ADDIU T1, T1, 0x0001
+    0x1000FFFB,  # B             [backward 0x05]
+    0x25080004,  # ADDIU T0, T0, 0x0004
     0x08021C1C,  # J     0x80087070 TODO: Detect the surface below the player for sub-weapon dropping.
     0x00000000,  # NOP
     # DeathLink-specific checks
@@ -200,14 +212,16 @@ give_powerup_stopper = [
 
 npc_item_rework = [
     # Hack to make NPC items show item textboxes when received.
-    0x00180024,  # Item values
-    0x001B001F,
+    0x00180000,
+    0x00240000,  # Item values
+    0x001B0000,
+    0x001F0000,
     0x00200000,
     0x00000000,
     0x3C088040,  # LUI   T0, 0x8040
-    0x00044840,  # SLL   T1, A0, 1
+    0x00044880,  # SLL   T1, A0, 2
     0x01094021,  # ADDIU T0, T0, T1
-    0x950AC6F0,  # LHU   T2, 0xC6F0 (T0)
+    0x950AC6E8,  # LHU   T2, 0xC6E8 (T0)
     0x314B00FF,  # ANDI  T3, T2, 0x00FF
     0x3C0C801D,  # LUI   T4, 0x801D
     0xA18BAA4C,  # SB    T3, 0xAA4C (T4)
@@ -222,7 +236,17 @@ npc_item_rework = [
     0x91F8ABA0,  # LBU   T8, 0xABA0 (T7)
     0x2718FFFF,  # ADDIU T8, T8, 0xFFFF
     0xA1F8ABA0,  # SB    T8, 0xABA0 (T7)
-    0x03E00008,  # JR    RA
+    # Copy from the ROM the off-world Item string corresponding to that NPC Item.
+    0x3C0B00FA,  # LUI   T3, 0x00FA
+    0x9509C6EA,  # LHU   T1, 0xC6EA (T0)
+    # Shift the flag ID up by 8 and add it to 0xFA0000 to get the start address for this NPC Item's string.
+    0x00094A00,  # SLL   T1, T1, 8
+    0x01692021,  # ADDU  A0, T3, T1
+    0x3C058001,  # LUI   A1, 0x8001
+    0x34A5E5CC,  # ORI   A1, A1, 0xE5CC
+    # Run the "rom copy" function with all necessary arguments. We should return to the NPC code right after that.
+    0x0800690B,  # J     0x8001A42C
+    0x34060100,  # ORI   A2, R0, 0x0100
 ]
 
 double_component_checker = [
@@ -325,7 +349,7 @@ mandragora_with_nitro_setter = [
 ]
 
 cutscene_active_checkers = [
-    # Returns True (1) if we are not currently in a cutscene or False (0) if we are in V0. Custom actor spawn condition
+    # Returns True (1) if we are NOT currently in a cutscene or False (0) if we are in V0. Custom actor spawn condition
     # for things like the Cornell intro actors in Castle Center.
     0x3C08801D,  # LUI   T0, 0x801D
     0x9109AE8B,  # LBU   T1, 0xAE8B (T0)
@@ -334,7 +358,7 @@ cutscene_active_checkers = [
     0x24020001,  # ADDIU V0, R0, 0x0001
     0x03E00008,  # JR    RA
     0x00000000,
-    # Returns True (1) if we are currently in a cutscene or False (0) if we are not in V0. Custom actor spawn condition
+    # Returns True (1) if we are currently in a cutscene or False (0) if we are NOT in V0. Custom actor spawn condition
     # for things like the Cornell intro actors in Castle Center.
     0x3C08801D,  # LUI   T0, 0x801D
     0x9109AE8B,  # LBU   T1, 0xAE8B (T0)
@@ -343,6 +367,23 @@ cutscene_active_checkers = [
     0x24020000,  # ADDIU V0, R0, 0x0000
     0x03E00008,  # JR    RA
     0x00000000,
+]
+
+stone_dog_cutscene_checker = [
+    # Extension to the custom spawn condition on the Stone Dog actors that checks to see if we are in the
+    # "meeting Malus" cutscene and, if we are, allows the Stone Dogs to spawn. Otherwise, the Stone Dogs' other spawn
+    # checks will proceed as normal. This fixes an edge case wherein they don't spawn if we entered the scene through
+    # the servant entrance door, enabling the Malus chase to be done without the dogs involved.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9109AE8B,  # LBU   T1, 0xAE8B (T0)
+    0x340A000E,  # ORI   T2, R0, 0x000E  <- Meeting Malus cutscene ID
+    # Jump to the flag check function if we are not in the cutscene. Return now with 1 in V0 if we are.
+    0x112A0003,  # BEQ   T1, T2, [forward 0x03]
+    0x00000000,  # NOP
+    0x03200008,  # JR    T9
+    0x00000000,  # NOP
+    0x03E00008,  # JR    RA
+    0x24020001,  # ADDIU V0, R0, 0x0001
 ]
 
 renon_cutscene_checker = [
@@ -1640,98 +1681,98 @@ multiworld_item_name_loader = [
     # in the item textbox what the item is and who it's for. The flag index it calculates determines from what part of
     # the ROM to load the item name from. If the item being picked up is a white jewel or a contract, it will always
     # load from a part of the ROM that has nothing in it to ensure their set "flag" values don't yield unintended names.
-    0x3C088040,  # LUI   T0, 0x8040
-    0xAD03E238,  # SW    V1, 0xE238 (T0)
-    0x92080039,  # LBU   T0, 0x0039 (S0)
-    0x11000003,  # BEQZ  T0,     [forward 0x03]
-    0x24090012,  # ADDIU T1, R0, 0x0012
-    0x15090003,  # BNE   T0, T1, [forward 0x03]
-    0x24080000,  # ADDIU T0, R0, 0x0000
-    0x10000010,  # B             [forward 0x10]
-    0x24080000,  # ADDIU T0, R0, 0x0000
-    0x920C0055,  # LBU   T4, 0x0055 (S0)
-    0x8E090058,  # LW    T1, 0x0058 (S0)
-    0x1120000C,  # BEQZ  T1,     [forward 0x0C]
-    0x298A0011,  # SLTI  T2, T4, 0x0011
-    0x51400001,  # BEQZL T2,     [forward 0x01]
-    0x258CFFED,  # ADDIU T4, T4, 0xFFED
-    0x240A0000,  # ADDIU T2, R0, 0x0000
-    0x00094840,  # SLL   T1, T1, 1
-    0x5520FFFE,  # BNEZL T1,     [backward 0x02]
-    0x254A0001,  # ADDIU T2, T2, 0x0001
-    0x240B0020,  # ADDIU T3, R0, 0x0020
-    0x018B0019,  # MULTU T4, T3
-    0x00004812,  # MFLO  T1
-    0x012A4021,  # ADDU  T0, T1, T2
-    0x00084200,  # SLL   T0, T0, 8
-    0x3C0400BB,  # LUI   A0, 0x00BB
-    0x24847164,  # ADDIU A0, A0, 0x7164
-    0x00882020,  # ADD   A0, A0, T0
-    0x3C058018,  # LUI   A1, 0x8018
-    0x34A5BF98,  # ORI   A1, A1, 0xBF98
-    0x0C005DFB,  # JAL   0x800177EC
-    0x24060100,  # ADDIU A2, R0, 0x0100
-    0x3C088040,  # LUI   T0, 0x8040
-    0x8D03E238,  # LW    V1, 0xE238 (T0)
-    0x3C1F8012,  # LUI   RA, 0x8012
-    0x27FF5BA4,  # ADDIU RA, RA, 0x5BA4
-    0x0804EF54,  # J     0x8013BD50
-    0x94640002,  # LHU   A0, 0x0002 (V1)
-    # Changes the Y screen position of the textbox depending on how many line breaks there are.
-    0x3C088019,  # LUI   T0, 0x8019
-    0x9108C097,  # LBU   T0, 0xC097 (T0)
-    0x11000005,  # BEQZ  T0,     [forward 0x05]
-    0x2508FFFF,  # ADDIU T0, T0, 0xFFFF
-    0x11000003,  # BEQZ  T0,     [forward 0x03]
-    0x00000000,  # NOP
-    0x1000FFFC,  # B             [backward 0x04]
-    0x24C6FFF1,  # ADDIU A2, A2, 0xFFF1
-    0x0804B33F,  # J     0x8012CCFC
-    # Changes the length and number of lines on the textbox if there's a multiworld message in the buffer.
-    0x3C088019,  # LUI   T0, 0x8019
-    0x9108C097,  # LBU   T0, 0xC097 (T0)
-    0x11000003,  # BEQZ  T0, [forward 0x03]
-    0x00000000,  # NOP
-    0x00082821,  # ADDU  A1, R0, T0
-    0x240600B6,  # ADDIU A2, R0, 0x00B6
-    0x0804B345,  # J     0x8012CD14
-    0x00000000,  # NOP
-    # Redirects the text to the multiworld message buffer if a message exists in it.
-    0x3C088019,  # LUI   T0, 0x8019
-    0x9108C097,  # LBU   T0, 0xC097 (T0)
+
+    # As we're picking up a pickup, before running the prepare item textbox function, copy from the ROM the off-world
+    # Item string corresponding to that pickup.
+    0x3C0800FA,  # LUI   T0, 0x00FA
+    0x9609005A,  # LHU   T1, 0x005A (S0)
+    # Shift the flag ID up by 8 and add it to 0xFA0000 to get the start address for this pickup's string.
+    0x00094A00,  # SLL   T1, T1, 8
+    0x01092021,  # ADDU  A0, T0, T1
+    0x3C058001,  # LUI   A1, 0x8001
+    0x34A5E5CC,  # ORI   A1, A1, 0xE5CC
+    # Run the "rom copy" function with all necessary arguments.
+    0x0C00690B,  # JAL   0x8001A42C
+    0x34060100,  # ORI   A2, R0, 0x0100
+    0x96030038,  # LHU   V1, 0x0038 (S0)
+    # Return to and continue the pickup routine like normal.
+    0x3C048019,  # LUI   A0, 0x8019
+    0x00037880,  # SLL   T7, T7, V1
+    0x01E37821,  # ADDU  T7, T7, V1
+    0x08061F2A,  # J     0x80187CA8
+    0x000F7880,  # SLL   T7, T7, 2
+    0x00000000,
+    # Redirect the text to the multiworld message buffer if a message exists in it.
+    0x3C088002,  # LUI   T0, 0x8002
+    0x9108E5CC,  # LBU   T0, 0xE5CD (T0)
     0x11000004,  # BEQZ  T0,     [forward 0x04]
     0x00000000,  # NOP
-    0x3C048018,  # LUI   A0, 0x8018
-    0x3484BF98,  # ORI   A0, A0, 0xBF98
+    0x3C048001,  # LUI   A0, 0x8001
+    0x3484E5CE,  # ORI   A0, A0, 0xE5CE
     0x24050000,  # ADDIU A1, R0, 0x0000
-    0x0804B39F,  # J     0x8012CE7C
-    # Copy the "item from player" text when being given an item through the multiworld via the game's copy function.
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x00000000,  # NOP
-    0x3C088040,  # LUI   T0, 0x8040
-    0xAD1FE33C,  # SW    RA, 0xE33C (T0)
-    0xA104E338,  # SB    A0, 0xE338 (T0)
-    0x3C048019,  # LUI   A0, 0x8019
-    0x2484C0A8,  # ADDIU A0, A0, 0xC0A8
-    0x3C058019,  # LUI   A1, 0x8019
-    0x24A5BF98,  # ADDIU A1, A1, 0xBF98
-    0x0C000234,  # JAL   0x800008D0
-    0x24060100,  # ADDIU A2, R0, 0x0100
-    0x3C088040,  # LUI   T0, 0x8040
-    0x8D1FE33C,  # LW    RA, 0xE33C (T0)
-    0x0804EDCE,  # J     0x8013B738
-    0x9104E338,  # LBU   A0, 0xE338 (T0)
-    0x00000000,  # NOP
-    # Neuters the multiworld item text buffer if giving a non-multiworld item through the in-game remote item rewarder
-    # byte before then jumping to item_prepareTextbox.
-    0x24080011,  # ADDIU T0, R0, 0x0011
-    0x10880004,  # BEQ   A0, T0, [forward 0x04]
-    0x24080012,  # ADDIU T0, R0, 0x0012
-    0x10880002,  # BEQ   A0, T0, [forward 0x02]
-    0x3C088019,  # LUI   T0, 0x8019
-    0xA100C097,  # SB    R0, 0xC097 (T0)
-    0x0804EDCE   # J     0x8013B738
+    0x08020FE8,  # J     0x80083FA0
+    0x00000000,
+    # Change the Y screen position and number of lines of the textbox depending on how many line breaks there are.
+    # If we have a value of 0 lines, skip this routine entirely and go straight to the set text function.
+    0x3C088002,  # LUI   T0, 0x8002
+    0x9108E5CC,  # LBU   T0, 0xE5CC (T0)
+    0x1100000C,  # BEQZ  T0,     [forward 0x0C]
+    # If the number of lines is 5 or higher, set it down to the max of 4.
+    0x29090005,  # SLTI  T1, T0, 0x0005
+    0x51200001,  # BEQZL T1,     [forward 0x01]
+    0x34080004,  # ORI   T0, R0, 0x0004
+    0xAFA80018,  # SW    T0, 0x0018 (SP)
+    # Add 16.0f times the number of lines we have to the textbox Y value to raise it higher on-screen.
+    0x3C0A4180,  # LUI   T2, 0x4180
+    0x448A1800,  # MTC1  T2, F3
+    0x2508FFFF,  # ADDIU T0, T0, 0xFFFF
+    0x44885000,  # MTC1  T0, F10
+    0x468052A0,  # CVT.S.W   F10, F10
+    0x460A18C2,  # MUL.S F3, F3, F10
+    0x46032100,  # ADD.S F4, F4, F3
+    0xE7A40010,  # SWC1  F4, 0x0010 (SP)
+    0x08020C02,  # J     0x80083008
+    0x00000000,
+    # Change the textbox's background X and Y size depending on how many line breaks there are.
+    # If we have a value of 0 lines, skip this routine entirely and go straight to the set background size function.
+    0x3C088002,  # LUI   T0, 0x8002
+    0x9108E5CC,  # LBU   T0, 0xE5CC (T0)
+    0x1100000D,  # BEQZ  T0,     [forward 0x0D]
+    # If the number of lines is 5 or higher, set it down to the max of 4.
+    0x29090005,  # SLTI  T1, T0, 0x0005
+    0x51200001,  # BEQZL T1,     [forward 0x01]
+    0x34080004,  # ORI   T0, R0, 0x0004
+    # Extend the background X size from 150.0f to 190.0f (its PAL version size)
+    0x3C05433E,  # LUI   A1, 0x433E
+    # Add 16.0f times the number of lines we have to the background Y size to extend it further downward.
+    0x3C0A4180,  # LUI   T2, 0x4180
+    0x448A1800,  # MTC1  T2, F3
+    0x44862000,  # MTC1  A2, F4
+    0x2508FFFF,  # ADDIU T0, T0, 0xFFFF
+    0x44885000,  # MTC1  T0, F10
+    0x468052A0,  # CVT.S.W   F10, F10
+    0x460A18C2,  # MUL.S F3, F3, F10
+    0x46032100,  # ADD.S F4, F4, F3
+    0x44062000,  # MFC1  A2, F4
+    0x08020F94,  # J     0x80083E50
+    0x00000000,
+    # Change the textbox's "open" timer depending on how many line breaks there are.
+    # If we have a value of 0 lines, skip this routine entirely.
+    0x3C098002,  # LUI   T1, 0x8002
+    0x9128E5CC,  # LBU   T0, 0xE5CC (T1)
+    0x11000008,  # BEQZ  T0,     [forward 0x08]
+    0x44814000,  # MTC1  AT, F8
+    # Add a half second for the textbox to remain open for every line there is minus 1.
+    0x3C0A3F00,  # LUI   T2, 0x3F00
+    0x448A1800,  # MTC1  T2, F3
+    0x2508FFFF,  # ADDIU T0, T0, 0xFFFF
+    0x44885000,  # MTC1  T0, F10
+    0x468052A0,  # CVT.S.W   F10, F10
+    0x460A18C2,  # MUL.S F3, F3, F10
+    0x46034200,  # ADD.S F8, F8, F3
+    0x03E00008,  # JR    RA
+    # At this point, neuter the multiworld text buffer by clearing the lines counter, since it's no longer needed.
+    0xA120E5CC,  # SB    R0, 0xE5CC (T1)
 ]
 
 ice_trap_initializer = [
