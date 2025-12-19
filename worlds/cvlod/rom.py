@@ -1,3 +1,4 @@
+import base64
 import json
 import Utils
 
@@ -32,8 +33,9 @@ if TYPE_CHECKING:
 
 CVLOD_US_HASH = "25258460f98f567497b24844abe3a05b"
 
-ARCHIPELAGO_IDENTIFIER_START = 0xFFFF00
-ARCHIPELAGO_PATCH_IDENTIFIER = "ARCHIPELAG01"
+ARCHIPELAGO_IDENTIFIER_START = 0xFFBFD0
+ARCHIPELAGO_PATCH_COMPAT_VER = 1
+ARCHIPELAGO_CLIENT_COMPAT_VER = "ARCHIPELAG02"
 AUTH_NUMBER_START = 0xFFFF10
 QUEUED_TEXT_STRING_START = 0x7CEB00
 MULTIWORLD_TEXTBOX_POINTERS_START = 0x671C10
@@ -72,7 +74,8 @@ VILLA_MAZE_CORNELL_ENEMY_INDEXES = [66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 
 CC_CORNELL_INTRO_ACTOR_LISTS = {Scenes.CASTLE_CENTER_BASEMENT: "room 1",
                                 Scenes.CASTLE_CENTER_BOTTOM_ELEV: "init",
                                 Scenes.CASTLE_CENTER_FACTORY: "room 1",
-                                Scenes.CASTLE_CENTER_LIZARD_LAB: "room 2"}
+                                Scenes.CASTLE_CENTER_LIZARD_LAB: "room 2",
+                                Scenes.CASTLE_KEEP_EXTERIOR: "proxy"}
 
 
 class CVLoDPatchExtensions(APPatchExtension):
@@ -82,6 +85,22 @@ class CVLoDPatchExtensions(APPatchExtension):
     def patch_rom(caller: APProcedurePatch, input_rom: bytes, slot_patch_file) -> bytes:
         patcher = CVLoDRomPatcher(bytearray(input_rom))
         slot_patch_info = json.loads(caller.get_file(slot_patch_file).decode("utf-8"))
+
+        # Check to see if the patch was generated on a compatible APWorld version.
+        # If the Slot Patch Info doesn't contain a "patch compatibility" key, or if it does, but the compatibility
+        # version doesn't match with this APWorld's, consider it incompatible.
+        compatible = True
+        if "patch compatibility" in slot_patch_info:
+            if slot_patch_info["patch compatibility"] != ARCHIPELAGO_PATCH_COMPAT_VER:
+                compatible = False
+        else:
+            compatible = False
+
+        # If incompatible, stop executing and raise an exception.
+        if not compatible:
+            raise Exception("Incompatible patch/APWorld version. Please verify your Legacy of Darkness APWorld matches "
+                            "the one that generated this .apcvlod file, and (preferably) that both are up-to-date.")
+
         # Determine what flags should be set upon beginning a new game.
         starting_flags = []
 
@@ -208,7 +227,17 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32(0x1618, 0xA04B2BBB, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON) # SB  T3, 0x2BBB (V0)
         # Make the starting level the same for Henry as everyone else.
         patcher.write_byte(0x15D5, 0x00, NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
-
+        # Fix the intro narration not removing the widescreen borders if not skipped or skipped too late (by ensuring
+        # it will ALWAYS call the "camera_setClippingAndScissoring" function).
+        patcher.write_int32(0x1684, 0x0B800000 |
+                            (patcher.get_decompressed_file_size(NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON) // 4),
+                            NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
+        patcher.write_int32s(patcher.get_decompressed_file_size(NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON),
+                             [0x3C198018,   # LUI T9, 0x8018
+                              0x3739AA70,   # ORI T9, T9, 0xAA70
+                              0x03200008,   # JR  T9
+                              0x34040000],  # ORI A0, R0, 0x0000
+                             NIFiles.OVERLAY_CS_INTRO_NARRATION_COMMON)
         # Active cutscene checker routines for certain actors.
         patcher.write_int32s(0xFFCDA0, patches.cutscene_active_checkers)
 
@@ -298,6 +327,14 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32s(0x108EB0, [0x0C0FF3C4,   # JAL   0x803FCF10
                                         0x96190038])  # LHU   T9, 0x0038 (S0)
         patcher.write_int32s(0xFFCF10, patches.pickup_shine_height_switcher)
+
+        # Everything related to dropping the previous sub-weapon
+        # if options.drop_previous_sub_weapon.value:
+        # patcher.write_int32(0xBFD034, 0x080FF3FF)  # J 0x803FCFFC
+        # patcher.write_int32(0xBFC18C, 0x080FF3F2)  # J 0x803FCFC8
+        patcher.write_int32s(0xFFCFC4, patches.prev_subweapon_spawn_checker)
+        patcher.write_int32s(0xFFCFFC, patches.prev_subweapon_fall_checker)
+        patcher.write_int32s(0xFFD060, patches.prev_subweapon_dropper)
 
         # Enable the Game Over's "Continue" menu starting the cursor on whichever checkpoint is most recent
         patcher.write_int32s(0x82120, [0x0C0FF2B4,  # JAL 0x803FCAD0
@@ -1851,11 +1888,13 @@ class CVLoDPatchExtensions(APPatchExtension):
                     actor["spawn_flags"] &= ActorSpawnFlags.NO_CHARACTERS
                     actor["spawn_flags"] |= ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
                     actor["extra_condition_ptr"] = 0x803FCDA0
-                # Is it exclusive to Reinhardt or Carrie and NOT Cornell? If so, put the custom "Not in a cutscene?"
-                # check on it because it's a Reinhardt/Carrie actor we are NOT meant to see in Cornell's intro.
-                elif not actor["spawn_flags"] & ActorSpawnFlags.CORNELL and \
+                # Is it exclusive to Reinhardt or Carrie and NOT Cornell? Or maybe it's a freestanding Interactable
+                # that may be invisible-turned-visible? If so, put the custom "Not in a cutscene?" check on it because
+                # it's an actor we are NOT meant to see in Cornell's intro.
+                elif (not actor["spawn_flags"] & ActorSpawnFlags.CORNELL and \
                         (actor["spawn_flags"] & ActorSpawnFlags.REINHARDT |
-                         actor["spawn_flags"] & ActorSpawnFlags.CARRIE):
+                         actor["spawn_flags"] & ActorSpawnFlags.CARRIE)) or \
+                        (actor["object_id"] == Objects.INTERACTABLE):
                     actor["spawn_flags"] |= ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
                     actor["extra_condition_ptr"] = 0x803FCDBC
 
@@ -3117,21 +3156,21 @@ class CVLoDPatchExtensions(APPatchExtension):
             if text[2]:
                 multiworld_text = "✨" + multiworld_text + "✨"
             # Count the number of newlines. This will be written into our text buffer header.
-            num_lines = multiworld_text.count("\n")
+            num_lines = multiworld_text.count("\n") + 1
 
             # Multiply the Location ID by 256 and add it to the ROM start address for all the multiworld item texts
             # to get the start address of our current text.
             text_address = MULTIWORLD_ITEM_TEXTS_START + (256 * loc_id)
             # Write the number of lines first thing into our two-byte header.
-            patcher.write_byte(text_address, num_lines + 1)
+            patcher.write_byte(text_address, num_lines)
             # Write the actual text after the header.
             patcher.write_bytes(text_address + 2, cvlod_string_to_bytearray(multiworld_text, wrap=False,
                                                                             add_end_char=True))
 
-        # Write the secondary name the client will use to distinguish a vanilla ROM from an AP one.
-        #patch.write_token(APTokenTypes.WRITE, 0xBFBFD0, "ARCHIPELAGO1".encode("utf-8"))
-        # Write the slot authentication
-        #patch.write_token(APTokenTypes.WRITE, 0xBFBFE0, bytes(world.auth))
+        # Write the compatibility version string the client will use to distinguish a vanilla ROM from an AP one.
+        patcher.write_bytes(ARCHIPELAGO_IDENTIFIER_START, ARCHIPELAGO_CLIENT_COMPAT_VER.encode("utf-8"))
+        # Write the slot's authentication number.
+        patcher.write_bytes(ARCHIPELAGO_IDENTIFIER_START + 0x10, base64.b64decode(slot_patch_info["auth"].encode()))
 
         return patcher.get_output_rom()
 
@@ -3230,14 +3269,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32(0x15780, 0x0C0FF36E)  # JAL 0x803FCDB8
         # patcher.write_int32s(0xBFCDB8, patches.music_comparer_modifier)
 
-        # Everything related to dropping the previous sub-weapon
-        # if options.drop_previous_sub_weapon.value:
-        # patcher.write_int32(0xBFD034, 0x080FF3FF)  # J 0x803FCFFC
-        # patcher.write_int32(0xBFC18C, 0x080FF3F2)  # J 0x803FCFC8
-        # patcher.write_int32s(0xBFCFC4, patches.prev_subweapon_spawn_checker)
-        # patcher.write_int32s(0xBFCFFC, patches.prev_subweapon_fall_checker)
-        # patcher.write_int32s(0xBFD060, patches.prev_subweapon_dropper)
-
         # Ice Trap stuff
         # patcher.write_int32(0x697C60, 0x080FF06B)  # J 0x803FC18C
         # patcher.write_int32(0x6A5160, 0x080FF06B)  # J 0x803FC18C
@@ -3284,22 +3315,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32s(0x6A6718, [0x0C0FF7C6,  # JAL   0x803FDF18
         #                                0x8C4E0000])  # LW    T6, 0x0000 (V0)
         # patcher.write_int32s(0xBFDEC4, patches.panther_jump_preventer)
-
-        # if loc.item.player != player:
-        #        inject_address = 0xBB7164 + (256 * (loc.address & 0xFFF))
-        #        wrapped_name, num_lines = cvlod_text_wrap(item_name + "\nfor " + multiworld.get_player_name(
-        #            loc.item.player), 96)
-        # patcher.write_bytes(inject_address, get_item_text_color(loc) + cvlod_string_to_bytearray(wrapped_name))
-        # patcher.write_byte(inject_address + 255, num_lines)
-
-        # Everything relating to loading the other game items text
-        # patcher.write_int32(0xA8D8C, 0x080FF88F)  # J   0x803FE23C
-        # patcher.write_int32(0xBEA98, 0x0C0FF8B4)  # JAL 0x803FE2D0
-        # patcher.write_int32(0xBEAB0, 0x0C0FF8BD)  # JAL 0x803FE2F8
-        # patcher.write_int32(0xBEACC, 0x0C0FF8C5)  # JAL 0x803FE314
-        # patcher.write_int32s(0xBFE23C, patches.multiworld_item_name_loader)
-        # patcher.write_bytes(0x10F188, [0x00 for _ in range(264)])
-        # patcher.write_bytes(0x10F298, [0x00 for _ in range(264)])
 
 
 class CVLoDProcedurePatch(APProcedurePatch):
@@ -3361,17 +3376,7 @@ def write_patch(world: "CVLoDWorld", patch: CVLoDProcedurePatch, offset_data: Di
     #                                                             append_end=False)
     #        shopsanity_desc_text += cv64_string_to_bytearray(renon_item_dialogue[shop_desc_list[i][0]])
     #    patch.write_token(APTokenTypes.WRITE, 0x1AD00, bytes(shopsanity_name_text))
-    #    patch.write_token(APTokenTypes.WRITE, 0x1A800, bytes(shopsanity_desc_text))
-
-    # mary_text = cvlod_text_wrap(mary_text, 254)
-
-    #patch.write_token(APTokenTypes.WRITE, 0x78EAE0,
-    #                  bytes(cvlod_string_to_bytearray(mary_text[0] + (" " * (866 - len(mary_text[0]))))[0]))
-
-    # Write the secondary name the client will use to distinguish a vanilla ROM from an AP one.
-    #patch.write_token(APTokenTypes.WRITE, 0xFFBFD0, "ARCHIPELAG01".encode("utf-8"))
-    # Write the slot authentication
-    #patch.write_token(APTokenTypes.WRITE, 0xFFBFE0, bytes(world.auth))
+    #    patch.write_token(APTokenTypes.WRITE, 0x1A800, bytes(shopsanity_desc_text)))
 
 
 def get_base_rom_bytes(file_name: str = "") -> bytes:

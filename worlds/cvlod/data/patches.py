@@ -401,13 +401,21 @@ renon_cutscene_checker = [
 
 ck_door_music_player = [
     # Plays Castle Keep's song if you spawn in front of the main Castle Keep entrance or Dracula's door (teleporting via
-    # the warp menu) and haven't started the escape sequence yet (the way this is hooked means checking for the latter
-    # shouldn't be necessary).
+    # the warp menu), haven't started the escape sequence yet (the way this is hooked means checking for the latter
+    # shouldn't be necessary), and if we're not in a cutscene (fun fact: this entrance is used in Cornell's intro when
+    # Gilles De Rais is climbing the stairs).
 
-    # Check for spawn entrance 0 or 1. If either, put us on the "play Castle Keep's song" routine.
+    # Check for spawn entrance 0 or 1. If neither, put us on the routine that doesn't play the song.
     0x10400005,  # BEQZ  V0,     [forward 0x05]
     0x34080001,  # ORI   T0, R0, 0x0001
     0x10480003,  # BEQ   V0, T0, [forward 0x03]
+    0x00000000,  # NOP
+    0x080B931D,  # J     0x802E4C74
+    0x00000000,  # NOP
+    # Check if there's a cutscene playing. If there isn't, allow Castle Keep's song to play.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9109AE8B,  # LBU   T1, 0xAE8B (T0)
+    0x11200003,  # BEQZ  T1,     [forward 0x03]
     0x00000000,  # NOP
     0x080B931D,  # J     0x802E4C74
     0x00000000,  # NOP
@@ -1323,7 +1331,7 @@ special_sound_notifs = [
     # Special1 (Should play the teleport sound if the new number of them is equal to an amount that would unlock a new
     # warp destination).
     0x24080000,  # ADDIU T0, R0, 0x0000   <- Special1s per warp
-    0x0103001B,  # DIVU  T0, V1
+    0x0068001B,  # DIVU  V1, T0
     # After dividing the S1s per warp by our current S1 count, if the remainder is not 0, don't play the warp notif.
     0x00005010,  # MFHI  T2
     0x15400006,  # BNEZ  T2,     [forward 0x06]
@@ -1762,8 +1770,8 @@ multiworld_item_name_loader = [
     0x9128E5CC,  # LBU   T0, 0xE5CC (T1)
     0x11000008,  # BEQZ  T0,     [forward 0x08]
     0x44814000,  # MTC1  AT, F8
-    # Add a half second for the textbox to remain open for every line there is minus 1.
-    0x3C0A3F00,  # LUI   T2, 0x3F00
+    # Add 0.75 seconds to the "textbox remaining open timer" for every line there is minus 1.
+    0x3C0A3F40,  # LUI   T2, 0x3F40
     0x448A1800,  # MTC1  T2, F3
     0x2508FFFF,  # ADDIU T0, T0, 0xFFFF
     0x44885000,  # MTC1  T0, F10
@@ -1868,9 +1876,9 @@ door_map_music_player = [
 pink_sorcery_diamond_customizer = [
     # Gives each item that drops from the pink Tower of Sorcery diamond its own unique flag and additional settings
     # attributes.
-    0x03494000,
-    0x034A4000,
-    0x034B4000,
+    0x03104000,
+    0x03114000,
+    0x03124000,
     0x00000000,
     0x00104080,  # SLL   T0, S0, 2
     0x3C09802F,  # LUI   T1, 0x802F
