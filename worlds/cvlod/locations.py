@@ -2,7 +2,6 @@ import logging
 
 from BaseClasses import Location
 from .data import loc_names, item_names
-from .data.enums import Scenes
 from .options import CVLoDOptions, SubWeaponShuffle, DraculasCondition, RenonFightCondition, VincentFightCondition, \
     VillaState, CastleWallState
 
@@ -557,7 +556,7 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.ctf_slope_slab1:              CVLoDLocationData(0x2F1, 15, item_names.gold_500),
     loc_names.ctf_slope_slab2:              CVLoDLocationData(0x2F2, 15, item_names.powerup),
     loc_names.ctf_slope_slab3:              CVLoDLocationData(0x2F3, 15, item_names.gold_500),
-    loc_names.ctf_walkway_mid:              CVLoDLocationData(0x2FF, 15, item_names.powerup),
+    loc_names.ctf_walkway_mid:              CVLoDLocationData(0x25F, 15, item_names.powerup),
 
     # Castle Keep
     loc_names.ck_renon_sw:    CVLoDLocationData(0x176, 16, item_names.use_ampoule),

@@ -45,12 +45,12 @@ ROM_PADDING_BYTE = 0x00
 NG_EXTRAS_START = 0xFFC800
 INITIAL_COUNTDOWN_ARRAY_START = NG_EXTRAS_START - 0x30
 START_INVENTORY_ARRAY_START = NG_EXTRAS_START - 0x60
-START_INVENTORY_GOLD_UPPER_ADDR = NG_EXTRAS_START + 0x36
-START_INVENTORY_GOLD_LOWER_ADDR = NG_EXTRAS_START + 0x3A
-START_INVENTORY_POWERUPS_ADDR = NG_EXTRAS_START + 0x43
-START_INVENTORY_SUBWEAPON_ADDR = NG_EXTRAS_START + 0x4B
-START_INVENTORY_SUBWEAPON_LEVEL_ADDR = NG_EXTRAS_START + 0x53
-START_INVENTORY_ICE_TRAP_ADDR = NG_EXTRAS_START + 0x5B
+START_INVENTORY_GOLD_UPPER_ADDR = NG_EXTRAS_START + 0x3E
+START_INVENTORY_GOLD_LOWER_ADDR = NG_EXTRAS_START + 0x42
+START_INVENTORY_POWERUPS_ADDR = NG_EXTRAS_START + 0x4B
+START_INVENTORY_SUBWEAPON_ADDR = NG_EXTRAS_START + 0x53
+START_INVENTORY_SUBWEAPON_LEVEL_ADDR = NG_EXTRAS_START + 0x5B
+START_INVENTORY_ICE_TRAP_ADDR = NG_EXTRAS_START + 0x63
 MULTIWORLD_ITEM_TEXTS_START = 0xFA0000
 
 FOREST_OVL_CHARNEL_ITEMS_START = 0x7C60  # 0x802EB7D0
@@ -242,8 +242,37 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32s(0xFFCDA0, patches.cutscene_active_checkers)
 
         # Ambience silencing fix and map refresher.
-        patcher.write_int32(0x1BB20, 0x080FF280)  # J 0x803FCA00
-        patcher.write_int32s(0xFFCA00, patches.ambience_silencer)
+        patcher.write_int32(0x1BB20, 0x080FF400)  # J 0x803FD000
+        patcher.write_int32s(0xFFD000, patches.ambience_silencer)
+        # NOP the vanilla game's calls to silence ambience noises to save on sound operations
+        # (including the Teleport Jewels').
+        patcher.write_int32(0xD3200, 0x00000000)
+
+        patcher.write_int32(0xD345C, 0x00000000)
+        patcher.write_int32(0xD3438, 0x00000000)
+        patcher.write_int32(0xD3464, 0x00000000)
+        patcher.write_int32(0xD3484, 0x00000000)
+        patcher.write_int32(0xD348C, 0x00000000)
+        patcher.write_int32(0xD34B4, 0x00000000)
+        patcher.write_int32(0xD34BC, 0x00000000)
+        patcher.write_int32(0xD34DC, 0x00000000)
+        patcher.write_int32(0xD34E4, 0x00000000)
+        patcher.write_int32(0xD3618, 0x00000000)
+        patcher.write_int32(0xD3620, 0x00000000)
+        patcher.write_int32(0xF6E40, 0x00000000)
+        # Change the Fan Meeting Room's "play sound" function call into a "set new song to play" call when it tries to
+        # play the fan ambience noises, so they should be more likely to play.
+        patcher.write_int16(0xF744E, 0x731C)
+
+        # Warp menu-opening code
+        patcher.write_int32(0x86FE4, 0x080FF254)  # J   0x803FC950
+        patcher.write_int32s(0xFFC950, patches.warp_menu_opener)
+        # Make the "init boss bar" function set our custom "prevent warping" byte.
+        patcher.write_int32(0x90B54, 0x080FF26C)  # J   0x803FC9B0
+        patcher.write_int32s(0xFFC9B0, [0x3C08801D,   # LUI  T0, 0x801D
+                                        0x34090001,   # ORI  T1, R0, 0x0001
+                                        0x03E00008,   # JR   RA
+                                        0xA109AA4B])  # SB   T1, 0xAA4B (T0)
 
         # Enable being able to carry multiple Special jewels, Nitros, Mandragoras, and Key Items simultaneously, and
         # make the Special1 and 2 play sounds when you reach milestones with them.
@@ -329,12 +358,13 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32s(0xFFCF10, patches.pickup_shine_height_switcher)
 
         # Everything related to dropping the previous sub-weapon
+        # TODO: Actually implement Drop Previous Sub Weapon
         # if options.drop_previous_sub_weapon.value:
         # patcher.write_int32(0xBFD034, 0x080FF3FF)  # J 0x803FCFFC
         # patcher.write_int32(0xBFC18C, 0x080FF3F2)  # J 0x803FCFC8
-        patcher.write_int32s(0xFFCFC4, patches.prev_subweapon_spawn_checker)
-        patcher.write_int32s(0xFFCFFC, patches.prev_subweapon_fall_checker)
-        patcher.write_int32s(0xFFD060, patches.prev_subweapon_dropper)
+        # patcher.write_int32s(0xFFCFC4, patches.prev_subweapon_spawn_checker)
+        # patcher.write_int32s(0xFFCFFC, patches.prev_subweapon_fall_checker)
+        # patcher.write_int32s(0xFFD060, patches.prev_subweapon_dropper)
 
         # Enable the Game Over's "Continue" menu starting the cursor on whichever checkpoint is most recent
         patcher.write_int32s(0x82120, [0x0C0FF2B4,  # JAL 0x803FCAD0
@@ -1891,7 +1921,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                 # Is it exclusive to Reinhardt or Carrie and NOT Cornell? Or maybe it's a freestanding Interactable
                 # that may be invisible-turned-visible? If so, put the custom "Not in a cutscene?" check on it because
                 # it's an actor we are NOT meant to see in Cornell's intro.
-                elif (not actor["spawn_flags"] & ActorSpawnFlags.CORNELL and \
+                elif (not actor["spawn_flags"] & ActorSpawnFlags.CORNELL and
                         (actor["spawn_flags"] & ActorSpawnFlags.REINHARDT |
                          actor["spawn_flags"] & ActorSpawnFlags.CARRIE)) or \
                         (actor["object_id"] == Objects.INTERACTABLE):
@@ -2123,19 +2153,6 @@ class CVLoDPatchExtensions(APPatchExtension):
                                                                                 "prevents you from setting\n" 
                                                                                 "anything until the seal\n" 
                                                                                 "is removed!🅰0/")
-
-        # Disable the rapid flashing effect in the CC planetarium cutscene to ensure it won't trigger seizures.
-        # TODO: Make this an option.
-        #patcher.write_int32(0xC5C, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xCD0, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xC64, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xC74, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xC80, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xC88, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xC90, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xC9C, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xCB4, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
-        #patcher.write_int32(0xCC8, 0x00000000, NIFiles.OVERLAY_CC_PLANETARIUM_SOLVED_CS)
 
 
         # # # # # # # # # # # # # #
@@ -2437,7 +2454,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                                                                      patches.ck_door_music_player)
 
         # Make Dracula Ultimate's weak point vulnerable to Carrie's orbs (this also has the side effect of making it
-        # vulnerable to the axe lightning strike, but actually getting that to hit it is impossible anyway...right?)
+        # vulnerable to the Axe lightning strike, but actually hitting it with that seems impossible anyway...right?)
         patcher.write_int16(0xDDA, 0x07C0, NIFiles.OVERLAY_DRACULA_ULTIMATE)
 
         # Prevent Dracula's doors from opening if the required amount of the goal item (Special2 normally) is not found.
@@ -2455,6 +2472,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Write different option values and door messages and name the Special2 differently depending on what
         # Dracula's Condition is. The option values will be written to both the door check and the Dracula special
         # sound notif check.
+        boss_extension_hack = patches.special2_giver.copy()
+        boss_extension_hack_liz = patches.special2_giver_lizard_edition.copy()
         if slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_crystal:
             patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = ("The door is sealed\n"
                                                                                  "by a crystalline force...🅰0/\f"
@@ -2471,6 +2490,9 @@ class CVLoDPatchExtensions(APPatchExtension):
                 0x548, 0x0C0B0000 | ((crystal_s2_giver_start + (SCENE_OVERLAY_RDRAM_START & 0xFFFFFF)) // 4))
             patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].write_ovl_int32s(crystal_s2_giver_start,
                                                                            patches.special2_giver)
+            # NOP the Special2-giving part of the boss extension hack so bosses won't give Special2s.
+            boss_extension_hack[len(boss_extension_hack)-3] = 0x00000000
+            boss_extension_hack_liz[len(boss_extension_hack_liz)-3] = 0x00000000
         #    special2_text = "The crystal is on!\n" \
         #                    "Time to teach the old man\n" \
         #                    "a lesson!"
@@ -2485,112 +2507,6 @@ class CVLoDPatchExtensions(APPatchExtension):
                 drac_door_check_start + 0xE, slot_patch_info["options"]["bosses_required"])
             patcher.write_int16(0xFFDA52, slot_patch_info["options"]["bosses_required"])
             patcher.write_bytes(0xB8998, cvlod_string_to_bytearray("Trophy  "))
-            # Make everything with a health bar give Trophies.
-            # Sea Monster
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_SEA_MONSTER)
-            patcher.write_int32(0x7250, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_SEA_MONSTER)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_SEA_MONSTER)
-            # King Skeleton 1
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_KING_SKELETON)
-            patcher.write_int32(0x3FBC, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_KING_SKELETON)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_KING_SKELETON)
-            # Were-Tiger (Forest)
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_WERE_TIGER)
-            patcher.write_int32(0x1844, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_WERE_TIGER)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_WERE_TIGER)
-            # Werewolf (Forest)
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_WEREWOLF)
-            patcher.write_int32(0x3ADC, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_WEREWOLF)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_WEREWOLF)
-            patcher.write_int32(boss_s2_giver_start + 8, 0x02000008, NIFiles.OVERLAY_WEREWOLF)  # JR S0
-            # King Skeleton 2
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_KING_SKELETON)
-            patcher.write_int32(0x43E0, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_KING_SKELETON)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_KING_SKELETON)
-            patcher.write_int32(boss_s2_giver_start + 8, 0x0BC019E3, NIFiles.OVERLAY_KING_SKELETON)  # J 0x0F00678C
-            # White Dragons
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_WHITE_DRAGONS)
-            patcher.write_int32(0x20B8, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_WHITE_DRAGONS)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_WHITE_DRAGONS)
-            # All Villa interior vampires
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_MALE_VAMPIRES)
-            patcher.write_int32(0x1BD0, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_MALE_VAMPIRES)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_MALE_VAMPIRES)
-            # Hard Mode Gardener (not currently implemented)
-            # boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_GARDENER)
-            # patcher.write_int32(0x2D84, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_GARDENER)
-            # patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_GARDENER)
-            # Gilles De Rais (use the same hack as the one above for the Villa interior vampires)
-            patcher.write_int32(0xA9A0, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_MALE_VAMPIRES)
-            # J.A. Oldrey in crypt (use the same hack as the one above for the Villa interior vampires)
-            patcher.write_int32(0x1AF8, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_MALE_VAMPIRES)
-            # Undead Maiden
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_FEMALE_VAMPIRES)
-            patcher.write_int32(0x4AD8, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_FEMALE_VAMPIRES)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_FEMALE_VAMPIRES)
-            # Queen Algenie
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_QUEEN_ALGENIE)
-            patcher.write_int32(0x5820, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_QUEEN_ALGENIE)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_QUEEN_ALGENIE)
-            # Lizard-man Trio
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_LIZARD_MEN)
-            patcher.write_int32s(0xBC18, [0x0BC00000 | (boss_s2_giver_start // 4),  # J
-                                          0x03295023],  # SUBU T2, T9, T1
-                                 NIFiles.OVERLAY_LIZARD_MEN)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver_lizard_edition, NIFiles.OVERLAY_LIZARD_MEN)
-            # Medusa
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_MEDUSA)
-            patcher.write_int32(0x4F44, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_MEDUSA)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_MEDUSA)
-            patcher.write_int32(boss_s2_giver_start + 8, 0x02200008, NIFiles.OVERLAY_MEDUSA)  # JR S1
-            # Harpy
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_HARPY)
-            patcher.write_int32(0x7784, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_HARPY)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_HARPY)
-            # Behemoth
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_BEHEMOTH)
-            patcher.write_int32(0x369C, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_BEHEMOTH)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_BEHEMOTH)
-            # Rosa
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_ROSA)
-            patcher.write_int32(0x5750, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_ROSA)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_ROSA)
-            # Camilla
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_CAMILLA)
-            patcher.write_int32(0x4198, 0x0FC03B80, NIFiles.OVERLAY_CAMILLA)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_CAMILLA)
-            patcher.write_int32(boss_s2_giver_start + 8, 0x0BC011FE, NIFiles.OVERLAY_CAMILLA)  # J 0x0F00EE00
-            # All possible Duel Tower opponents
-            boss_s2_giver_start = len(patcher.scenes[Scenes.DUEL_TOWER].overlay)
-            patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32(
-                0x635C, 0x0C0B0000 | ((boss_s2_giver_start + (SCENE_OVERLAY_RDRAM_START & 0xFFFFFF)) // 4))
-            patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32s(boss_s2_giver_start, patches.special2_giver)
-            # Security Crystal
-            boss_s2_giver_start = len(patcher.scenes[Scenes.SCIENCE_LABS].overlay)
-            patcher.scenes[Scenes.SCIENCE_LABS].write_ovl_int32(
-                0x11060, 0x0C0B0000 | ((boss_s2_giver_start + (SCENE_OVERLAY_RDRAM_START & 0xFFFFFF)) // 4))
-            patcher.scenes[Scenes.SCIENCE_LABS].write_ovl_int32s(boss_s2_giver_start, patches.special2_giver)
-            # Death
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_CS_DEATH_DEFEATED)
-            patcher.write_int32(0xF88, 0x0F800000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_CS_DEATH_DEFEATED)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_CS_DEATH_DEFEATED)
-            # Actrise
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_CS_ACTRISE_DEFEATED)
-            patcher.write_int32(0xF20, 0x0F800000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_CS_ACTRISE_DEFEATED)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_CS_ACTRISE_DEFEATED)
-            # Ortega
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_CS_ORTEGA_DEFEATED)
-            patcher.write_int32(0x3A18, 0x0F800000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_CS_ORTEGA_DEFEATED)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_CS_ORTEGA_DEFEATED)
-            # Renon
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_DEMON_RENON)
-            patcher.write_int32(0xB54, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_DEMON_RENON)
-            patcher.write_int32(0xD6C, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_DEMON_RENON)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_DEMON_RENON)
-            # Vincent
-            boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_VINCENT)
-            patcher.write_int32(0x5DF8, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_VINCENT)
-            patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_VINCENT)
         #    special2_text = f"Proof you killed a powerful\n" \
         #                    f"Night Creature. Earn {required_s2s}/{total_s2s}\n" \
         #                    f"to battle Dracula."
@@ -2604,12 +2520,130 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int16(
                 drac_door_check_start + 0xE, slot_patch_info["options"]["required_special2s"])
             patcher.write_int16(0xFFDA52, slot_patch_info["options"]["required_special2s"])
+            # NOP the Special2-giving part of the boss extension hack so bosses won't give Special2s.
+            boss_extension_hack[len(boss_extension_hack)-3] = 0x00000000
+            boss_extension_hack_liz[len(boss_extension_hack_liz)-3] = 0x00000000
         #    special2_text = f"Need {required_s2s}/{total_s2s} to kill Dracula.\n" \
         #                    f"Looking closely, you see...\n" \
         #                    f"a piece of him within?"
         # else:
         #    special2_text = "If you're reading this,\n" \
         #                    "how did you get a Special2!?"
+
+        # Apply the common boss defeat extension hack to every boss fight in the game.
+        # Sea Monster
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_SEA_MONSTER)
+        patcher.write_int32(0x7250, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_SEA_MONSTER)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_SEA_MONSTER)
+        # King Skeleton 1
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_KING_SKELETON)
+        patcher.write_int32(0x3FBC, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_KING_SKELETON)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_KING_SKELETON)
+        # Were-Tiger (Forest)
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_WERE_TIGER)
+        patcher.write_int32(0x1844, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_WERE_TIGER)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_WERE_TIGER)
+        # Werewolf (Forest)
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_WEREWOLF)
+        patcher.write_int32(0x3ADC, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_WEREWOLF)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_WEREWOLF)
+        patcher.write_int32(boss_s2_giver_start + ((len(boss_extension_hack) - 2) * 4),
+                            0x02000008, NIFiles.OVERLAY_WEREWOLF)  # JR S0
+        # King Skeleton 2
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_KING_SKELETON)
+        patcher.write_int32(0x43E0, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_KING_SKELETON)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_KING_SKELETON)
+        patcher.write_int32(boss_s2_giver_start + ((len(boss_extension_hack) - 2) * 4),
+                            0x0BC019E3, NIFiles.OVERLAY_KING_SKELETON)  # J 0x0F00678C
+        # White Dragons
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_WHITE_DRAGONS)
+        patcher.write_int32(0x20B8, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_WHITE_DRAGONS)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_WHITE_DRAGONS)
+        # All Villa interior vampires
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_MALE_VAMPIRES)
+        patcher.write_int32(0x1BD0, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_MALE_VAMPIRES)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_MALE_VAMPIRES)
+        # Gilles De Rais (use the same hack as the one above for the Villa interior vampires)
+        patcher.write_int32(0xA9A0, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_MALE_VAMPIRES)
+        # J.A. Oldrey in crypt (use the same hack as the one above for the Villa interior vampires)
+        patcher.write_int32(0x1AF8, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_MALE_VAMPIRES)
+        # Undead Maiden
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_FEMALE_VAMPIRES)
+        patcher.write_int32(0x4AD8, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_FEMALE_VAMPIRES)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_FEMALE_VAMPIRES)
+        # Hard Mode Gardener (never gives Special2s no matter what, but will always un-set the "can't warp" byte)
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_GARDENER)
+        patcher.write_int32(0x2D84, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_GARDENER)
+        patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_GARDENER)
+        patcher.write_int32(boss_s2_giver_start + ((len(patches.special2_giver) - 3) * 4),
+                            0x00000000, NIFiles.OVERLAY_GARDENER)  # NOP
+        # Queen Algenie
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_QUEEN_ALGENIE)
+        patcher.write_int32(0x5820, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_QUEEN_ALGENIE)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_QUEEN_ALGENIE)
+        # Lizard-man Trio
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_LIZARD_MEN)
+        patcher.write_int32s(0xBC18, [0x0BC00000 | (boss_s2_giver_start // 4),  # J
+                                      0x03295023],  # SUBU T2, T9, T1
+                             NIFiles.OVERLAY_LIZARD_MEN)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack_liz, NIFiles.OVERLAY_LIZARD_MEN)
+        # Medusa
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_MEDUSA)
+        patcher.write_int32(0x4F44, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_MEDUSA)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_MEDUSA)
+        patcher.write_int32(boss_s2_giver_start + ((len(boss_extension_hack) - 2) * 4),
+                            0x02200008, NIFiles.OVERLAY_MEDUSA)  # JR S1
+        # Harpy
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_HARPY)
+        patcher.write_int32(0x7784, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_HARPY)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_HARPY)
+        # Behemoth
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_BEHEMOTH)
+        patcher.write_int32(0x369C, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_BEHEMOTH)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_BEHEMOTH)
+        # Rosa
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_ROSA)
+        patcher.write_int32(0x5750, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_ROSA)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_ROSA)
+        # Camilla
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_CAMILLA)
+        patcher.write_int32(0x4198, 0x0FC03B80, NIFiles.OVERLAY_CAMILLA)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_CAMILLA)
+        patcher.write_int32(boss_s2_giver_start + ((len(boss_extension_hack) - 2) * 4),
+                            0x0BC011FE, NIFiles.OVERLAY_CAMILLA)  # J 0x0F00EE00
+        # All possible Duel Tower opponents
+        boss_s2_giver_start = len(patcher.scenes[Scenes.DUEL_TOWER].overlay)
+        patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32(
+            0x635C, 0x0C0B0000 | ((boss_s2_giver_start + (SCENE_OVERLAY_RDRAM_START & 0xFFFFFF)) // 4))
+        patcher.scenes[Scenes.DUEL_TOWER].write_ovl_int32s(boss_s2_giver_start, boss_extension_hack)
+        # Security Crystal
+        boss_s2_giver_start = len(patcher.scenes[Scenes.SCIENCE_LABS].overlay)
+        patcher.scenes[Scenes.SCIENCE_LABS].write_ovl_int32(
+            0x11060, 0x0C0B0000 | ((boss_s2_giver_start + (SCENE_OVERLAY_RDRAM_START & 0xFFFFFF)) // 4))
+        patcher.scenes[Scenes.SCIENCE_LABS].write_ovl_int32s(boss_s2_giver_start, boss_extension_hack)
+        # Death
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_CS_DEATH_DEFEATED)
+        patcher.write_int32(0xF88, 0x0F800000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_CS_DEATH_DEFEATED)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_CS_DEATH_DEFEATED)
+        # Actrise
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_CS_ACTRISE_DEFEATED)
+        patcher.write_int32(0xF20, 0x0F800000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_CS_ACTRISE_DEFEATED)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_CS_ACTRISE_DEFEATED)
+        # Ortega
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_CS_ORTEGA_DEFEATED)
+        patcher.write_int32(0x3A18, 0x0F800000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_CS_ORTEGA_DEFEATED)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_CS_ORTEGA_DEFEATED)
+        # Renon (Do NOT un-set the "can't warp" byte; we'll let the scene transition hack do that)
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_DEMON_RENON)
+        patcher.write_int32(0xB54, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_DEMON_RENON)
+        patcher.write_int32(0xD6C, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_DEMON_RENON)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_DEMON_RENON)
+        patcher.write_int32(boss_s2_giver_start + ((len(boss_extension_hack) - 1) * 4),
+                            0x00000000, NIFiles.OVERLAY_DEMON_RENON)  # NOP
+        # Vincent
+        boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_VINCENT)
+        patcher.write_int32(0x5DF8, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_VINCENT)
+        patcher.write_int32s(boss_s2_giver_start, boss_extension_hack, NIFiles.OVERLAY_VINCENT)
 
         # If the Castle Keep Ending Sequence option is Cornell, make Cornell's cutscene trigger in Dracula's chamber
         # universal to everyone and remove Reinhardt and Carrie's.
@@ -2920,8 +2954,8 @@ class CVLoDPatchExtensions(APPatchExtension):
             # If the current stage is Clock Tower, write the values in its other inaccessible start loading zone as well
             # (just in case).
             if stage["name"] == stage_names.CLOCK:
-                patcher.scenes[Scenes.CLOCK_TOWER_GEAR_CLIMB].loading_zones[1]["scene_id"] = prev_scene
-                patcher.scenes[Scenes.CLOCK_TOWER_GEAR_CLIMB].loading_zones[1]["spawn_id"] = prev_spawn
+                patcher.scenes[Scenes.CLOCK_TOWER_GEAR_CLIMB].loading_zones[2]["scene_id"] = prev_scene
+                patcher.scenes[Scenes.CLOCK_TOWER_GEAR_CLIMB].loading_zones[2]["spawn_id"] = prev_spawn
 
 
             # Figure out what next stage start-associated values to put in the current stage's end transition(s).
@@ -3238,10 +3272,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32(0x27A70, 0x10000008)  # B [forward 0x08]
         # patcher.write_int32s(0xBFC0D0, patches.deathlink_nitro_edition)
 
-        # Warp menu-opening code
-        # patcher.write_int32(0x86FE4, 0x0C0FF254)  # JAL	0x803FC950
-        # patcher.write_int32s(0xFFC950, patches.warp_menu_opener)
-
         # Sub-weapon check function hook
         # patcher.write_int32(0xBF32C, 0x00000000)  # NOP
         # patcher.write_int32(0xBF330, 0x080FF05E)  # J	0x803FC178
@@ -3251,15 +3281,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32(0xADD68, 0x0C04AB12)  # JAL 0x8012AC48
         # patcher.write_int32s(0xADE28, patches.stage_select_overwrite)
         # patcher.write_byte(0xADE47, s1s_per_warp)
-
-        # Fix for the door sliding sound playing infinitely if leaving the fan meeting room before the door closes entirely.
-        # Hooking this in the ambience silencer code does nothing for some reason.
-        # patcher.write_int32s(0xAE10C, [0x08004FAB,  # J   0x80013EAC
-        #                           0x3404829B])  # ORI A0, R0, 0x829B
-        # patcher.write_int32s(0xD9E8C, [0x08004FAB,  # J   0x80013EAC
-        #                           0x3404829B])  # ORI A0, R0, 0x829B
-        # Fan meeting room ambience fix
-        # patcher.write_int32(0x109964, 0x803FE13C)
 
         # Write the randomized (or disabled) music ID list and its associated code
         # if options.background_music.value:
