@@ -14,7 +14,8 @@ from .stages import get_active_stages, shuffle_stages, get_stage_exits, get_acti
     find_stage_in_list, get_regions_from_all_active_stages, verify_branches, CVLoDActiveStage, MISC_REGIONS, \
     ALL_CVLOD_REGIONS
 from .rules import CVLoDRules
-from .data import item_names, reg_names, ent_names, stage_names
+from .data import item_names, reg_names, ent_names
+from .data.enums import StageNames
 from worlds.AutoWorld import WebWorld, World
 from .aesthetics import randomize_lighting, shuffle_sub_weapons, randomize_music, get_start_inventory_data,\
     get_location_write_values, randomize_shop_prices, get_transition_write_values,  get_countdown_numbers,\
@@ -98,7 +99,7 @@ class CVLoDWorld(World):
         # Prevent Clock Tower from being Stage 1 if more than 4 Special1s are needed to warp out of it and 3HBs are off.
         # This start is simply too constrained for the generator to handle when many S1s are needed to warp.
         if self.options.special1s_per_warp > 4 and not self.options.multi_hit_breakables:
-            stage_1_blacklist[stage_names.CLOCK] = ("Too many Special1s needed to warp out for the generator to handle "
+            stage_1_blacklist[StageNames.CLOCK] = ("Too many Special1s needed to warp out for the generator to handle "
                                                     "with Multi Hit Breakables disabled.")
 
         # Get the slot's "intended" stage list in the order said stages appear in.
@@ -107,7 +108,7 @@ class CVLoDWorld(World):
         # If Dracula's Condition is Crystal, check to see if Castle Center is in the stage list. If it's not, then we'll
         # have to change it to something else.
         if self.options.draculas_condition == DraculasCondition.option_crystal \
-                and stage_names.CENTER not in active_stage_order:
+                and StageNames.CENTER not in active_stage_order:
             logging.warning(f"[{self.player_name}] Dracula's Condition cannot be Crystal if Castle Center is not "
                             f"present in the stage list. It will be changed to None instead.")
             self.options.draculas_condition.value = DraculasCondition.option_none
@@ -116,12 +117,12 @@ class CVLoDWorld(World):
         verify_branches(self, active_stage_order)
 
         # Shuffle the stages if the option is on and the list is not just Castle Keep.
-        if self.options.stage_shuffle and active_stage_order != [stage_names.KEEP]:
+        if self.options.stage_shuffle and active_stage_order != [StageNames.KEEP]:
             active_stage_order = shuffle_stages(self, active_stage_order, stage_1_blacklist)
 
         # Add Castle Keep onto the end if it isn't present.
-        if stage_names.KEEP not in active_stage_order:
-            active_stage_order.append(stage_names.KEEP)
+        if StageNames.KEEP not in active_stage_order:
+            active_stage_order.append(StageNames.KEEP)
 
         # Get the final list of stage infos that we will save for later generation stages.
         self.active_stage_info = get_stage_exits(self.options, active_stage_order)
@@ -259,7 +260,8 @@ class CVLoDWorld(World):
                                 "window_color_r": self.options.window_color_r.value,
                                 "window_color_g": self.options.window_color_g.value,
                                 "window_color_b": self.options.window_color_b.value,
-                                "window_color_a": self.options.window_color_a.value},
+                                "window_color_a": self.options.window_color_a.value,
+                                "death_link": self.options.death_link.value},
                            "start inventory": get_start_inventory_data(self.player, self.options,
                                                                        self.multiworld.precollected_items[self.player]),
                            "initial countdowns": get_countdown_numbers(self.options, active_locations),

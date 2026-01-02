@@ -44,6 +44,7 @@ remote_item_giver = [
     0x916AAA4E,  # LBU	 T2, 0xAA4E (T3)
     0x012A4821,  # ADDU  T1, T1, T2
     0x11200006,  # BEQZ	 T1,     [forward 0x06]
+    # If it isn't, decrement it by 1 frame and return.
     0x8D6CAC0C,  # LW    T4, 0xAC0C (T3)
     0x11400002,  # BEQZ  T2,     [forward 0x02]
     0x254AFFFF,  # ADDIU T2, T2, 0xFFFF
@@ -66,11 +67,14 @@ remote_item_giver = [
     # Non-multiworld item byte occupied?
     0x9164AA4C,  # LBU	 A0, 0xAA4C (T3)
     0x10800007,  # BEQZ	 A0,     [forward 0x07]
-    0x00000000,  # NOP
+    # Grab the DeathLink byte now for later comparisons.
+    0x9178AA4F,  # LBU   T8, 0xAA4F (T3)
     # If the textbox state is not 0, call the prepare item textbox function without setting the timer nor clearing the
     # buffer. It will have to be called again on the subsequent frame(s) if that's the case.
-    0x15C00003,  # BNEZ  T6,     [forward 0x03]
+    0x15C00004,  # BNEZ  T6,     [forward 0x04]
     0x24090090,  # ADDIU T1, R0, 0x0090
+    # If the DeathLink byte is set, don't set the delay timer so that we can properly get killed on the next frame.
+    0x53000001,  # BEQZL T8,     [forward 0x01]
     0xA169AA4E,  # SB	 T1, 0xAA4E (T3)
     0xA160AA4C,  # SB	 R0, 0xAA4C (T3)
     0x08021C1C,  # J     0x80087070
@@ -81,8 +85,10 @@ remote_item_giver = [
     0x00000000,  # NOP
     # If the textbox state is not 0, again, call the item textbox without setting the timer, clearing the buffer, nor
     # increment the multiworld item index. Don't copy the incoming multiworld item text buffer either.
-    0x15C0000F,  # BNEZ  T6,     [forward 0x0F]
+    0x15C00010,  # BNEZ  T6,     [forward 0x10]
     0x24090090,  # ADDIU T1, R0, 0x0090
+    # If the DeathLink byte is set, don't set the delay timer so that we can properly get killed on the next frame.
+    0x53000001,  # BEQZL T8,     [forward 0x01]
     0xA169AA4E,  # SB	 T1, 0xAA4E (T3)
     0xA160AA4D,  # SB	 R0, 0xAA4D (T3)
     # Increment the multiworld received item index here.
@@ -103,56 +109,62 @@ remote_item_giver = [
     0x00000000,  # NOP
     # DeathLink-specific checks
     # Received any DeathLinks?
-    0x9164AA4F,  # LBU   A0, 0xAA4F (T3)
-    0x14800002,  # BNEZ  A0,     [forward 0x02]
-    # Is the player dead?
+    0x17000002,  # BNEZ  T8,     [forward 0x02]
+    # Is the player already dead?
     0x9169AB84,  # LBU   T1, 0xAB84 (T3)
     0x03E00008,  # JR    RA TODO: Ice Traps
     0x312A0080,  # ANDI  T2, T1, 0x0080
     0x11400002,  # BEQZ  T2,     [forward 0x02]
     0x00000000,  # NOP
     0x03E00008,  # JR    RA
+    # If we make it all the way here, kill the player. If Explosive Deathlink is enabled, this is where the Nitro part
+    # will begin.
+    # Set the delay timer to further ensure we don't get killed again on subsequent frames.
+    0x24080010,  # ADDIU T0, R0, 0x0010
+    0xA168AA4E,  # SB    T0, 0xAA4E (T3)
+    # Give the player the "Death" status and return.
     0x35290080,  # ORI   T1, T1, 0x0080
-    0xA169AB84,  # SB    T1, 0xAB84 (T3)
-    0x2484FFFF,  # ADDIU A0, A0, 0xFFFF
-    0x24080001,  # ADDIU T0, R0, 0x0001
     0x03E00008,  # JR    RA
-    0xA168AA4B,  # SB    T0, 0xAA4B (T3)
+    0xA169AB84,  # SB    T1, 0xAB84 (T3)
 ]
 
 deathlink_nitro_edition = [
     # Alternative to the end of the above DeathLink-specific checks that kills the player with the Nitro explosion
     # instead of the normal death.
-    0x91690043,  # LBU   T1, 0x0043 (T3)
-    0x080FF076,  # J     0x803FC1D8
-    0x3C088034,  # LUI   T0, 0x8034
-    0x91082BFE,  # LBU   T0, 0x2BFE (T0)
-    0x11000002,  # BEQZ  T0,     [forward 0x02]
+
+    # Check to see if the player is in an alright state before exploding them. If not, then the Nitro explosion spawn
+    # code will be aborted, and they should eventually explode after getting out of that state.
+    # Start by trying to get the player's state flags. If we find that something about the player object is not
+    # currently created, abort now so we don't try pulling from a null pointer.
+    0x8D64ABDC,  # LW    A0, 0xABDC (T3)
+    0x14800003,  # BNEZ  A0,      [forward 0x03]
     0x00000000,  # NOP
     0x03E00008,  # JR    RA
-    0x35290080,  # ORI   T1, T1, 0x0080
-    0xA1690043,  # SB    T1, 0x0043 (T3)
-    0x2484FFFF,  # ADDIU A0, A0, 0xFFFF
-    0x24080001,  # ADDIU T0, R0, 0x0001
+    0x00000000,  # NOP
+    0x94880000,  # LHU   T0, 0x0000 (A0)
+    0x15000003,  # BNEZ  T0,      [forward 0x03]
+    0x8C880034,  # LW    T0, 0x0034 (A0)
     0x03E00008,  # JR    RA
-    0xA168FFFD,  # SB    T0, 0xFFFD (T3)
-]
-
-nitro_fall_killer = [
-    # Custom code to force the instant fall death if at a high enough falling speed after getting killed by the Nitro
-    # explosion, since the game doesn't run the checks for the fall death after getting hit by said explosion and could
-    # result in a softlock when getting blown into an abyss.
-    0x3C0C8035,  # LUI   T4, 0x8035
-    0x918807E2,  # LBU   T0, 0x07E2 (T4)
-    0x2409000C,  # ADDIU T1, R0, 0x000C
-    0x15090006,  # BNE   T0, T1, [forward 0x06]
-    0x3C098035,  # LUI   T1, 0x8035
-    0x91290810,  # LBU   T1, 0x0810 (T1)
-    0x240A00C1,  # ADDIU T2, R0, 0x00C1
-    0x152A0002,  # BNE   T1, T2, [forward 0x02]
-    0x240B0001,  # ADDIU T3, R0, 0x0001
-    0xA18B07E2,  # SB    T3, 0x07E2 (T4)
-    0x03E00008   # JR    RA
+    0x00000000,  # NOP
+    0x15000003,  # BNEZ  T0,      [forward 0x03]
+    0x00000000,  # NOP
+    0x03E00008,  # JR    RA
+    0x00000000,  # NOP
+    # Now that we have the player flags, check them for any unsafe states. Unsafe states so far include:
+    # interacting/going through a door (00200000), knocked back or grabbed by something (00008000),
+    # having iframes (20000000).
+    0x8D080000,  # LW    T0, 0x0000 (T0)
+    0x3C092020,  # LUI   T1, 0x2020
+    0x35298000,  # ORI   T1, T1, 0x8000
+    0x01095024,  # AND   T2, T0, T1
+    0x1540FFF9,  # BNEZ  T2,     [backward 0x07]
+    # If we make it all the way here, explode the player.
+    # Set the delay timer to further ensure we don't get exploded again on subsequent frames.
+    0x24080010,  # ADDIU T0, R0, 0x0010
+    0xA168AA4E,  # SB    T0, 0xAA4E (T3)
+    # Create the Nitro explosion actor with the player actor as its parent.
+    0x08000904,  # J     0x80002410
+    0x240500A8,  # ADDIU A1, R0, 0x00A8
 ]
 
 warp_menu_opener = [
@@ -207,12 +219,84 @@ give_subweapon_stopper = [
     0x0804F0BF,  # J     0x8013C2FC
 ]
 
-give_powerup_stopper = [
-    # Extension to "give PowerUp" function to not increase the player's PowerUp count beyond 2
-    0x240D0002,  # ADDIU T5, R0, 0x0002
-    0x556D0001,  # BNEL  T3, T5, [forward 0x01]
-    0xA46C6234,  # SH    T4, 0x6234 (V1)
-    0x0804F0BF   # J     0x8013C2FC
+file_select_stage_position_setter = [
+    # Sets a custom string on a File Select file for the stage number for that stage's actual randomizer position.
+    # Rando stage positions can have more than just numbers, so setting the text using a text pool instead of a given
+    # number is necessary.
+
+    # Call the "get message from pool" function with A0 = the start of the pool at 0x0F003A80, and A1 = the stage number
+    # minus 1.
+    0x3C198008,  # LUI   T9, 0x8008
+    0x37393FA0,  # ORI   T9, T9, 0x3FA0
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x8D088D8C,  # LW    T0, 0x8D8C (T0)
+    0x0320F809,  # JALR  RA, T9
+    0x25043A80,  # ADDIU A0, T0, 0x3A80
+    # Call the "set custom formatted text" function on the stage number textbox using the resulting pointer from the
+    # above call, and then jump back.
+    0x3C198008,  # LUI   T9, 0x8008
+    0x37393864,  # ORI   T9, T9, 0x3864
+    0x8E040014,  # LW    A0, 0x0014 (S0)
+    0x0320F809,  # JALR  RA, T9
+    0x00022825,  # OR    A1, R0, V0
+    0x0BC00493,  # J     0x0F00124C
+]
+
+pause_menu_stage_position_setter = [
+    # Sets a custom string on the Pause Menu for the stage number for that scene's stage's actual randomizer position.
+    # Rando stage positions can have more than just numbers, so setting the text using a text pool instead of a given
+    # number is necessary.
+
+    # Call the "get message from pool" function with A0 = the start of the pool at 0x0F003A80, and A1 = the stage number
+    # minus 1.
+    0x3C0F0F00,  # LUI   T7, 0x0F00
+    0x25EF4D28,  # ADDIU T7, T7, 0x4D28
+    0x030F1821,  # ADDU  V1, T8, T7
+    0x90650000,  # LBU   A1, 0x0000 (V1)
+    0x3C198008,  # LUI   T9, 0x8008
+    0x37393FA0,  # ORI   T9, T9, 0x3FA0
+    0x27BDFFF8,  # ADDIU SP, SP, -0x08
+    0xAFA80000,  # SW    T0, 0x0000 (SP)
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x8D088D4C,  # LW    T0, 0x8D4C (T0)
+    0x0320F809,  # JALR  RA, T9
+    0x25044FB0,  # ADDIU A0, T0, 0x4FB0
+    # Jump ahead to the "textboxObject_setParams_customFormattedString" block of Reinhardt/Carrie-specific code with
+    # the resulting pointer from the above call in A1.
+    0x8FA80000,  # LW    T0, 0x0000 (SP)
+    0x27BD0008,  # ADDIU SP, SP, 0x08
+    0x0BC00220,  # J     0x0F000880
+    0x00022825,  # OR    A1, R0, V0
+]
+
+pause_menu_extra_scene_checks = [
+    # Additional scene-specific checks for displaying the Pause Menu's stage number. Specifically, for the
+    # Medusa/Algenie Arena and Fan Meeting Rooms to check which stage's setup it's using.
+    0x3C02801D,  # LUI   V0, 0x801D
+    0x9042AAB4,  # LBU   V0, 0xAAB4 (V0)
+    # If we're in the Algenie/Medusa Arena scene, check which alt setup flag is set and consider ourselves actually in
+    # either Tunnel or Waterway.
+    0x34010013,  # ORI   AT, R0, 0x0013
+    0x14610007,  # BNE   V1, AT, [forward 0x07]
+    0x304F0040,  # ANDI  T7, V0, 0x0040
+    0x55E00004,  # BNEZL T7,     [forward 0x04]
+    0x34080007,  # ORI   T0, R0, 0x0007  <- Tunnel scene ID
+    0x304F0020,  # ANDI  T7, V0, 0x0020
+    0x55E00001,  # BNEZL T7,     [forward 0x01]
+    0x34080008,  # ORI   T0, R0, 0x0008  <- Waterway scene ID
+    0x0BC001FA,  # J     0x0F0007E8
+    # If we're in the Fan Meeting Room scene, check which alt setup flag is set and consider ourselves actually in
+    # either Castle Center Basement or The Outer Wall.
+    0x34010019,  # ORI   AT, R0, 0x0019
+    0x14610006,  # BNE   V1, AT, [forward 0x06]
+    0x304F0040,  # ANDI  T7, V0, 0x0040
+    0x55E00004,  # BNEZL T7,     [forward 0x04]
+    0x34080009,  # ORI   T0, R0, 0x0009  <- CC Basement scene ID
+    0x304F0010,  # ANDI  T7, V0, 0x0010
+    0x55E00001,  # BNEZL T7,     [forward 0x01]
+    0x3408002A,  # ORI   T0, R0, 0x002A  <- Outer Wall scene ID
+    0x0BC001FA,  # J     0x0F0007E8
+    0x00000000,  # NOP
 ]
 
 npc_item_rework = [
@@ -1857,7 +1941,9 @@ multiworld_item_name_loader = [
     0x08061F2A,  # J     0x80187CA8
     0x000F7880,  # SLL   T7, T7, 2
     0x00000000,
-    # Redirect the text to the multiworld message buffer if a message exists in it.
+    # Redirect the text to the multiworld message buffer if a message exists in it. Skip this if we're looking at a
+    # White Jewel, as White Jewel identifiers occupy the same value as event flag IDs on other pickups.
+    0x10A00007,  # BEQZ  A1,     [forward 0x07]
     0x3C088002,  # LUI   T0, 0x8002
     0x9108E5CC,  # LBU   T0, 0xE5CD (T0)
     0x11000004,  # BEQZ  T0,     [forward 0x04]

@@ -31,7 +31,7 @@ CVLOD_COMMAND_CHARS = {"↗": 0xA0,  # Jump ahead to a corresponding 0xA1 charac
                        "👈": 0xAE,  # End player character-exclusive text.
                        "⏸": 0xAF,  # Pause text and insert newline. Arg = How many frames to wait on.
                        "\f": 0xB2,  # Clear the text currently in the textbox (without closing it).
-                       "\r": 0xB5,  # Close entire textbox. Typically used to mark the end of a text pool.
+                       "\r": 0xB5,  # End of the ENTIRE text pool. There should be no more text string after this.
                        "\n": 0xB6,  # Insert newline (without pausing).
                        " ": 0xB7}  # Insert space.
 CVLOD_COMMAND_CHARS_INV = {value: key for key, value in CVLOD_COMMAND_CHARS.items()}
@@ -142,6 +142,29 @@ def cvlod_string_to_bytearray(cvlod_text: str, len_limit: int = LEN_LIMIT_MAP_TE
     if add_end_char:
         text_bytes.extend(CVLOD_STRING_END_CHARACTER)
     return text_bytes
+
+
+def cvlod_strings_to_pool(cvlod_texts: [str], len_limit: int = LEN_LIMIT_MAP_TEXT,
+                          max_lines: int = 0, wrap: bool = True, textbox_a_advance: bool = False) -> bytearray:
+    """
+    Converts a list of strings into an entire text pool bytearray following Castlevania: Legacy of Darkness's text format.
+
+    Supports wrapping each line in the same way as the single string function.
+    """
+    text_pool_bytes = bytearray(0)
+    for pool_text in cvlod_texts:
+        text_pool_bytes += (cvlod_string_to_bytearray(pool_text, len_limit=len_limit, max_lines=max_lines, wrap=wrap,
+                                                      textbox_a_advance=textbox_a_advance, add_end_char=True))
+
+    # Add the character indicating the end of the entire text pool.
+    text_pool_bytes += CVLOD_TEXT_POOL_END_CHARACTER
+
+    # Pad the text data to be 4-aligned.
+    if len(text_pool_bytes) % 4:
+        text_pool_bytes += b'\x00\x00'
+
+    # Return the final result
+    return text_pool_bytes
 
 
 def cvlod_bytes_to_string(cvlod_str_bytes: bytes) -> str:
@@ -325,7 +348,7 @@ def cvlod_text_wrap(cvlod_text: str, textbox_len_limit: int = LEN_LIMIT_MAP_TEXT
 
 def cvlod_command_scrubber(cvlod_text: str) -> str:
     """Scrubs all command characters from a given text string, replacing them with the default text character.
-    Good for any Archipelago names that might try to be sneaky."""
+    Good for any Archipelago player/item names that might try to be sneaky here..."""
     new_text = ""
 
     for char in cvlod_text:

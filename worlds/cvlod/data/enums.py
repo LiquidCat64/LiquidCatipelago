@@ -1,4 +1,5 @@
-from enum import Enum, IntEnum, IntFlag
+from enum import IntEnum, IntFlag, StrEnum
+
 
 class Players(IntEnum):
     REINHARDT = 0
@@ -9,6 +10,44 @@ class Players(IntEnum):
 class Costumes(IntEnum):
     NORMAL = 0
     ALTERNATE = 1
+
+class StageIDs(IntEnum):
+    FOGGY = 0
+    FOREST = 1
+    C_WALL = 2
+    VILLA = 3
+    OUTER = 4
+    TUNNEL = 5
+    WATERWAY = 6
+    CENTER = 7
+    ART = 8
+    RUINS = 9
+    SCIENCE = 10
+    DUEL = 11
+    EXECUTION = 12
+    SORCERY = 13
+    ROOM = 14
+    CLOCK = 15
+    KEEP = 16
+
+class StageNames(StrEnum):
+    FOGGY = "Foggy Lake"
+    FOREST = "Forest of Silence"
+    C_WALL = "Castle Wall"
+    VILLA = "Villa"
+    TUNNEL = "Tunnel"
+    WATERWAY = "Underground Waterway"
+    OUTER = "The Outer Wall"
+    ART = "Art Tower"
+    RUINS = "Tower of Ruins"
+    CENTER = "Castle Center"
+    SCIENCE = "Tower of Science"
+    DUEL = "Duel Tower"
+    EXECUTION = "Tower of Execution"
+    SORCERY = "Tower of Sorcery"
+    ROOM = "Room of Clocks"
+    CLOCK = "Clock Tower"
+    KEEP = "Castle Keep"
 
 class Items(IntEnum):
     WHITE_JEWEL = 0x01

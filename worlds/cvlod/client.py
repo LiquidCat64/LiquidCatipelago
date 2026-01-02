@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 from .cvlod_text import cvlod_text_wrap, cvlod_string_to_bytearray, LEN_LIMIT_MULTIWORLD_TEXT
 from .rom import ARCHIPELAGO_CLIENT_COMPAT_VER, ARCHIPELAGO_IDENTIFIER_START
+from .data.enums import Scenes, Players, Items, StageNames
 
 from BaseClasses import ItemClassification
 from NetUtils import ClientStatus
@@ -14,14 +15,26 @@ if TYPE_CHECKING:
 GAME_STATE_ADDRESS = 0x1CAA30  # Not actually a natural consistent address, but one the game is hacked to mirror it to.
 QUEUED_REMOTE_RECEIVES_START = 0x1CAA4C
 SAVE_STRUCT_START = 0x1CAA60
+GAMEPLAY_STATE_FLAGS_START = 0x1CABC8
 NUM_RECEIVED_ITEMS_ADDRESS = 0x1CABBE
 CURRENT_CUTSCENE_ID_ADDRESS = 0x1CAE8B
-QUEUED_TEXT_STRING_START = 0x1E6DC
+QUEUED_TEXTBOX_TEXT_START = 0x1E5CC
+QUEUED_MULTIWORLD_MSG_START = 0x1E6DC
 ROM_NAME_START = 0x20
 
 GAME_STATE_GAMEPLAY = 0x03
 GAME_STATE_CREDITS = 0x0A
 ENDING_CUTSCENE_IDS = [0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F, 0x30, 0x31, 0x3C]
+
+DEATHLINK_AREA_NUMBERS = [1, 2, 2, 3, 3, 3, 3, 4, 5, 9, 9, 9, 9, 9, 9, 9,
+                          0, 0, 0, 17, 16, 16, 17, 15, 16, 17, 3, 14, 17, 13, 12, 12,
+                          12, 10, 10, 8, 8, 7, 7, 11, 15, 15, 6, 17, 17, 17, 16, 17, 17, 17]
+
+DEATHLINK_AREA_NAMES = [StageNames.FOGGY, StageNames.FOREST, StageNames.C_WALL, StageNames.VILLA,
+                        StageNames.TUNNEL, StageNames.WATERWAY, StageNames.OUTER, StageNames.ART, StageNames.RUINS,
+                        StageNames.CENTER, StageNames.SCIENCE, StageNames.DUEL, StageNames.EXECUTION,
+                        StageNames.SORCERY, StageNames.ROOM, StageNames.CLOCK, StageNames.KEEP,
+                        "Level: You Cheated"]
 
 class CastlevaniaLoDClient(BizHawkClient):
     game = "Castlevania - Legacy of Darkness"
@@ -33,6 +46,7 @@ class CastlevaniaLoDClient(BizHawkClient):
     death_causes: list[str]
     currently_dead: bool
     currently_shopping: bool
+    alt_scene_setup: str
 
     async def validate_rom(self, ctx: "BizHawkClientContext") -> bool:
         from CommonClient import logger
@@ -74,6 +88,7 @@ class CastlevaniaLoDClient(BizHawkClient):
         self.death_causes = []
         self.currently_dead = False
         self.currently_shopping = False
+        self.alt_scene_setup = ""
 
     def on_package(self, ctx: "BizHawkClientContext", cmd: str, args: dict) -> None:
         if cmd != "Bounced" or "tags" not in args or ctx.slot is None:
@@ -84,11 +99,17 @@ class CastlevaniaLoDClient(BizHawkClient):
                 # If the other game sent a death with a blank string for the cause, use the default death message.
                 if cause == "":
                     cause = f"{args['data']['source']} killed you without a word!"
-                # Truncate the death cause message at 120 characters (this is around the max we can send to the game).
-                if len(cause) > 120:
-                    cause = cause[0:120]
+                # Truncate the death cause message at 130 characters (this is almost the max we can send to the game).
+                if len(cause) > 130:
+                    cause = cause[0:130]
             else:
-                cause = f"{args['data']['source']} killed you!"
+                cause = f"{args['data']['source']} killed you without a word!"
+
+            # Highlight the player that killed us in the game's yellow text.
+            if args['data']['source'] in cause:
+                words = cause.split(args['data']['source'], 1)
+                cause = words[0] + "✨" + args['data']['source'] + "✨" + words[1]
+
             self.death_causes.append(cause)
 
     async def game_watcher(self, ctx: "BizHawkClientContext") -> None:
@@ -99,18 +120,20 @@ class CastlevaniaLoDClient(BizHawkClient):
             read_state = await bizhawk.read(ctx.bizhawk_ctx, [(GAME_STATE_ADDRESS, 1, "RDRAM"),
                                                               (QUEUED_REMOTE_RECEIVES_START, 4, "RDRAM"),
                                                               (SAVE_STRUCT_START, 356, "RDRAM"),
+                                                              (GAMEPLAY_STATE_FLAGS_START, 4, "RDRAM"),
                                                               (CURRENT_CUTSCENE_ID_ADDRESS, 1, "RDRAM"),
                                                               (ARCHIPELAGO_IDENTIFIER_START + 0xE, 2, "ROM")])
 
             game_state = int.from_bytes(read_state[0], "big")
+            queued_receieve_bytes = read_state[1]
             save_struct = read_state[2]
-            written_deathlinks = int.from_bytes(bytearray(read_state[1][5:]), "big")
-            deathlink_induced_death = int.from_bytes(bytearray(read_state[1][0:1]), "big")
-            cutscene_value = int.from_bytes(read_state[3], "big")
+            gameplay_state_flags = int.from_bytes(read_state[3], "big")
+            cutscene_value = int.from_bytes(read_state[4], "big")
             num_received_items = int.from_bytes(bytearray(save_struct[0x15E:0x160]), "big")
-            slot_flags = int.from_bytes(read_state[4], "big")
+            slot_flags = int.from_bytes(read_state[5], "big")
+            curr_hp = int.from_bytes(save_struct[0xDA:0xDC], "big")
 
-            # Make sure we are in the Gameplay or Credits states before detecting sent locations and/or DeathLinks.
+            # Make sure we are in the Gameplay or Credits states before detecting/giving anything from the Multiworld.
             # If we are in any other state, such as the Game Over state, set self_induced_death to false, so we can once
             # again send a DeathLink once we are back in the Gameplay state.
             if game_state not in [GAME_STATE_GAMEPLAY, GAME_STATE_CREDITS]:
@@ -129,33 +152,97 @@ class CastlevaniaLoDClient(BizHawkClient):
             #            "create_as_hint": 0
             #        }])
 
-            # Send a DeathLink if we died on our own independently of receiving another one.
-            #if "DeathLink" in ctx.tags and save_struct[0xA4] & 0x80 and not self.self_induced_death and not \
-            #        deathlink_induced_death:
-            #    self.self_induced_death = True
-            #    if save_struct[0xA4] & 0x08:
-            #        # Special death message for dying while having the Vamp status.
-            #        await ctx.send_death(f"{ctx.player_names[ctx.slot]} became a vampire and drank your blood!")
-            #    else:
-            #        await ctx.send_death(f"{ctx.player_names[ctx.slot]} perished. Dracula has won!")
+            # Send a DeathLink if we died on our own independently of receiving another one, or if Child Henry died.
+            # To know if Child Henry died during the escort sequence, check for flags 00004000 and 00000080 both being
+            # set in the gameplay state flags.
+            if "DeathLink" in ctx.tags and not self.currently_dead and \
+                    (curr_hp == 0 or 0x00004080 & gameplay_state_flags == 0x00004080):
+                self.currently_dead = True
 
-            # Write any DeathLinks received along with the corresponding death cause starting with the oldest.
-            # To minimize Bizhawk Write jank, the DeathLink write will be prioritized over the item received one.
-            #if self.received_deathlinks and not self.self_induced_death and not written_deathlinks:
-            #    death_text, num_lines = cvlod_text_wrap(self.death_causes[0], 96)
-            #    await bizhawk.write(ctx.bizhawk_ctx, [(0x1CAA4F, [0x01], "RDRAM"),
-            #                                          (0x389BDF, [0x11], "RDRAM"),
-            #                                          (0x18BF98, bytearray([0xA2, 0x0B]) +
-            #                                           cvlod_string_to_bytearray(death_text, False), "RDRAM"),
-            #                                          (0x18C097, [num_lines], "RDRAM")])
-            #    self.received_deathlinks -= 1
-            #    del self.death_causes[0]
-            #else:
-                # If the game hasn't received all items yet, the received item struct doesn't contain an item, the
-                # current number of received items still matches what we read before, and there are no open text boxes,
-                # then fill it with the next item and write the "item from player" text in its buffer. The game will
-                # increment the number of received items on its own.
-            if num_received_items < len(ctx.items_received):
+                # If the player died at the Castle Keep exterior map on one of the Room of Clocks boss towers
+                # (determinable by checking the entrance value as well as the map value), consider Room of Clocks the
+                # actual area of death.
+                if save_struct[0x131] == Scenes.CASTLE_KEEP_EXTERIOR and save_struct[0x133] in [0, 1]:
+                    area_of_death = StageNames.ROOM
+                # If they died in Renon's arena in Room of Clocks (entrance 3), consider Castle Keep the actual area.
+                elif save_struct[0x131] == Scenes.ROOM_OF_CLOCKS and save_struct[0x133] == 3:
+                    area_of_death = StageNames.KEEP
+                # If we're in the Fan Meeting Room or Algenie/Medusa Arena scenes, check the current alternate scene
+                # identifier to determine which stage-specific scene setup we're in.
+                elif save_struct[0x131] == Scenes.ALGENIE_MEDUSA_ARENA and self.alt_scene_setup:
+                    if self.alt_scene_setup == "a":
+                        area_of_death = StageNames.TUNNEL
+                    else:
+                        area_of_death = StageNames.WATERWAY
+                elif save_struct[0x131] == Scenes.FAN_MEETING_ROOM and self.alt_scene_setup:
+                    if self.alt_scene_setup == "b":
+                        area_of_death = StageNames.CENTER
+                    else:
+                        area_of_death = StageNames.OUTER
+                # Otherwise, determine what area the player perished in from the current map ID.
+                else:
+                    area_of_death = DEATHLINK_AREA_NAMES[DEATHLINK_AREA_NUMBERS[save_struct[0x131]]]
+
+                # If Child Henry was the one who perished (read: we still have health), use a special message.
+                # The message will be extra special if we are Adult Henry!
+                if curr_hp and save_struct[0xD5] == Players.HENRY:
+                    death_message = (f'"My sincere apologies, but {ctx.player_names[ctx.slot]}, in letting their '
+                                     f'younger self get killed, created a huge paradox! For the sake of your own '
+                                     f'timeline not collapsing in on itself, I took it upon myself to rewind you all '
+                                     f'safely. Until we meet again!"\n'
+                                     '-Saint Germain')
+                elif curr_hp:
+                    death_message = (f"{ctx.player_names[ctx.slot]} failed to protect little Henry, whose vengeful "
+                                     f"spirit murdered everyone!")
+                # If we had the Vamp status while dying, use a special message for it.
+                elif save_struct[0xA4] & 0x08:
+                    death_message = (f"{ctx.player_names[ctx.slot]} became a vampire at {area_of_death} and drank your "
+                                     f"blood!")
+                # Otherwise, use the generic one.
+                else:
+                    death_message = f"{ctx.player_names[ctx.slot]} perished in {area_of_death}. Dracula has won!"
+
+                # Send the death.
+                await ctx.send_death(death_message)
+
+                # Record the time in which the death was sent so when we receive the packet we can tell it wasn't our
+                # own death. ctx.on_deathlink overwrites it later, so it MUST be grabbed now.
+                self.time_of_sent_death = ctx.last_death_link
+
+            # If we have any queued death causes, and the non-multiworld remote item byte is unoccupied, handle
+            # DeathLink giving here.
+            if self.death_causes and not self.currently_dead:
+                # Inject the oldest cause text as a textbox message. It will be written not in the muitworld message
+                # buffer, but directly in the main textbox buffer that the mult buffer would normally get copied to.
+                # This is because we're giving an Item in the non-multi byte to cue up this textbox.
+                death_text = cvlod_text_wrap(self.death_causes[0], LEN_LIMIT_MULTIWORLD_TEXT)
+                await bizhawk.write(ctx.bizhawk_ctx,
+                                    [(QUEUED_TEXTBOX_TEXT_START + 2,
+                                      cvlod_string_to_bytearray(death_text, wrap=False, add_end_char=True), "RDRAM"),
+                                     # Count the number of newlines. This will be written into our text buffer header.
+                                     (QUEUED_TEXTBOX_TEXT_START, [death_text.count("\n") + 1], "RDRAM"),
+                                     # Set the "DeathLink byte" to 1 so the game will handle killing the player.
+                                     (QUEUED_REMOTE_RECEIVES_START + 3, b"\x01", "RDRAM"),
+                                     # Give a Special3 (AP Item) to cue the textbox.
+                                     (QUEUED_REMOTE_RECEIVES_START, [Items.SPECIAL3], "RDRAM")])
+
+                # Delete the oldest death cause that we just wrote and set currently_dead to True so the client doesn't
+                # think we just died on our own on the subsequent frames before the Game Over state.
+                del(self.death_causes[0])
+                self.currently_dead = True
+
+            # If somehow we have more than 0 HP, Child Henry is alive, and the DeathLink byte is un-set while the client
+            # thinks we are dead at this point, set ourselves back to alive. The player likely loaded a savestate while
+            # in the dying animation and before the game state changed to Game Over.
+            elif curr_hp > 0 and 0x00004080 & gameplay_state_flags == 0x00000000 and self.currently_dead \
+                    and not queued_receieve_bytes[3]:
+                self.currently_dead = False
+
+            # If the game hasn't received all items yet, the received item struct doesn't contain an item, the current
+            # number of received items still matches what we read before, and there are no open text boxes, then fill
+            # it with the next item and write the "item from player" text in its buffer. The game will increment the
+            # number of received items on its own.
+            elif num_received_items < len(ctx.items_received) and not self.currently_dead:
                 next_item = ctx.items_received[num_received_items]
                 # If the Item was sent by a different player, generate a custom string saying who the Item was from.
                 if next_item.player != ctx.slot:
@@ -176,8 +263,8 @@ class CastlevaniaLoDClient(BizHawkClient):
 
                 await bizhawk.guarded_write(ctx.bizhawk_ctx,
                                             [(QUEUED_REMOTE_RECEIVES_START + 1, [next_item.item & 0xFF], "RDRAM"),
-                                             (QUEUED_TEXT_STRING_START, [num_lines], "RDRAM"),
-                                             (QUEUED_TEXT_STRING_START + 2,
+                                             (QUEUED_MULTIWORLD_MSG_START, [num_lines], "RDRAM"),
+                                             (QUEUED_MULTIWORLD_MSG_START + 2,
                                               cvlod_string_to_bytearray(received_text, wrap=False, add_end_char=True),
                                               "RDRAM")],
                                             # Make sure the number of received items and inventory to overwrite are
@@ -207,6 +294,18 @@ class CastlevaniaLoDClient(BizHawkClient):
                     # To get the proper flag ID, take the word index, right shift it up by 5, and add the bit index to
                     # that.
                     flag_id = (word_index << 5) + bit_index
+
+                    # Check if it's one of the randomizer's alternate setup flags that is set (0x2A1, 0x2A2, or 0x2A3).
+                    # This is how we tell which stage-specific "version" of the Queen Algenie/Medusa Arena and
+                    # Fan Meeting Room scenes we're in.
+                    if flag_id == 0x2A1:
+                        self.alt_scene_setup = "a"
+                    elif flag_id == 0x2A2:
+                        self.alt_scene_setup = "b"
+                    elif flag_id == 0x2A3:
+                        self.alt_scene_setup = "c"
+                    else:
+                        self.alt_scene_setup = ""
 
                     # If the flag that we detected as set is an active Location ID, record it.
                     if flag_id in ctx.server_locations:

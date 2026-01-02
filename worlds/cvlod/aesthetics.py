@@ -1,9 +1,7 @@
-import base64
-
 from BaseClasses import ItemClassification, Location, Item
-from .data import item_names, reg_names, stage_names, ent_names, loc_names
-from .data.enums import NIFiles, Scenes, Items, Pickups
-from .options import CVLoDOptions, BackgroundMusic, Countdown, IceTrapAppearance, InvisibleItems, StageLayout, \
+from .data import item_names, reg_names, ent_names
+from .data.enums import NIFiles, Pickups, StageNames
+from .options import CVLoDOptions, BackgroundMusic, Countdown, IceTrapAppearance, InvisibleItems, \
     CastleCenterBranchingPaths, VillaBranchingPaths
 from .stages import CVLOD_STAGE_INFO
 from .locations import CVLOD_LOCATIONS_INFO, NPC_LOCATIONS, LOC_IDS_TO_INFO
@@ -531,7 +529,7 @@ def get_transition_write_values(options: CVLoDOptions, active_stage_info: list[C
                 # If the previous stage is Castle Center, and either Castle Center Branching Paths is set to One Carrie
                 # or the stage position has the altternate path indicator "'" in it, increment the spawn ID by 1 to get
                 # us Carrie's CC exit (it's Reinhardt's by default).
-                if stage["connecting_stages"]["prev"][0] == stage_names.CENTER and \
+                if stage["connecting_stages"]["prev"][0] == StageNames.CENTER and \
                         (options.castle_center_branching_paths == CastleCenterBranchingPaths.option_one_carrie or
                          "'" in stage["position"]):
                     prev_spawn += 1
@@ -558,7 +556,7 @@ def get_transition_write_values(options: CVLoDOptions, active_stage_info: list[C
 
             # If the stage is Villa, and Villa Branching Paths are higher than 1, figure out the Villa's alternate
             # end transition values.
-            if stage["name"] == stage_names.VILLA:
+            if stage["name"] == StageNames.VILLA:
                 if options.villa_branching_paths != VillaBranchingPaths.option_one:
                     transition_values.update({ent_names.villac_end_ca:
                              (CVLOD_STAGE_INFO[stage["connecting_stages"]["next alt 1"][0]].start_scene_id,
@@ -571,7 +569,7 @@ def get_transition_write_values(options: CVLoDOptions, active_stage_info: list[C
 
             # If the stage is Castle Center, and CC Branching Paths are 2, figure out CC's alternate end transition
             # values.
-            if stage["name"] == stage_names.CENTER and \
+            if stage["name"] == StageNames.CENTER and \
                     options.castle_center_branching_paths == CastleCenterBranchingPaths.option_two:
                 transition_values.update({ent_names.ccte_exit_c:
                         (CVLOD_STAGE_INFO[stage["connecting_stages"]["next alt 1"][0]].start_scene_id,

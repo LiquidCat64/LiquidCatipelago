@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from Options import OptionGroup, Choice, DefaultOnToggle, PerGameCommonOptions, Range, Toggle, TextChoice, FreeText, \
     StartInventoryPool, DeathLink
+from .data.enums import StageIDs
 
 
 class StageLayout(TextChoice):
@@ -32,22 +33,22 @@ class StageShuffle(Toggle):
 class ShuffledStartingStage(Choice):
     """Which stage to start at if Stage Shuffle is turned on."""
     display_name = "Shuffled Starting Stage"
-    option_foggy_lake = 0
-    option_forest_of_silence = 1
-    option_castle_wall = 2
-    option_villa = 3
-    option_tunnel = 4
-    option_underground_waterway = 5
-    option_the_outer_wall = 6
-    option_art_tower = 7
-    option_tower_of_ruins = 8
-    option_castle_center = 9
-    option_tower_of_science = 10
-    option_duel_tower = 11
-    option_tower_of_execution = 12
-    option_tower_of_sorcery = 13
-    option_room_of_clocks = 14
-    option_clock_tower = 15
+    option_foggy_lake = StageIDs.FOGGY
+    option_forest_of_silence = StageIDs.FOREST
+    option_castle_wall = StageIDs.C_WALL
+    option_villa = StageIDs.VILLA
+    option_the_outer_wall = StageIDs.OUTER
+    option_tunnel = StageIDs.TUNNEL
+    option_underground_waterway = StageIDs.WATERWAY
+    option_castle_center = StageIDs.CENTER
+    option_art_tower = StageIDs.ART
+    option_tower_of_ruins = StageIDs.RUINS
+    option_tower_of_science = StageIDs.SCIENCE
+    option_duel_tower = StageIDs.DUEL
+    option_tower_of_execution = StageIDs.EXECUTION
+    option_tower_of_sorcery = StageIDs.SORCERY
+    option_room_of_clocks = StageIDs.ROOM
+    option_clock_tower = StageIDs.CLOCK
     default = "random"
 
 
@@ -71,7 +72,6 @@ class CastleCenterBranchingPaths(Choice):
     option_one_carrie = 1
     option_two = 2
     default = 2
-
 
 
 class WarpOrder(Choice):
@@ -579,7 +579,7 @@ class CVLoDOptions(PerGameCommonOptions):
     window_color_g: WindowColorG
     window_color_b: WindowColorB
     window_color_a: WindowColorA
-    # death_link: DeathLink
+    death_link: DeathLink
 
 
 cvlod_option_groups = [

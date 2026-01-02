@@ -1,8 +1,8 @@
 import logging
 
-from .data import reg_names, ent_names, loc_names, stage_names
+from .data import reg_names, ent_names, loc_names
 from .options import CVLoDOptions, WarpOrder, StageLayout, VillaBranchingPaths, CastleCenterBranchingPaths
-from .data.enums import Scenes
+from .data.enums import Scenes, StageIDs, StageNames
 
 from BaseClasses import Region
 from typing import TYPE_CHECKING, NamedTuple, TypedDict
@@ -36,9 +36,8 @@ class CVLoDStageData(NamedTuple):
     end_scene_id: int  # The scene ID that the end of the stage is in.
     end_spawn_id: int  # The player spawn location ID for the end of the stage. This and "end map id" are both written
     end_zone_id: int | None  # ID for the loading zone in the scene that takes the player to the next stage normally.
-    id_number: int  # Unique ID number for this stage for this apworld to refer to in stuff like player options.
-    # to the next stage's beginning loading zone (if it exists) to make it send the player to the
-    # previous stage in the world's determined stage order.
+    id_number: int  # Internal ID number for this stage that the game uses in a few places. This apworld also uses it
+                    # for stuff like player options.
     regions: dict[str, CVLoDRegionData]  # Info for each AP Region that make up the stage. If the stage is one of the
     # slot's active stages, its Regions and their corresponding Locations and Entrances will all be created.
 
@@ -58,11 +57,11 @@ MISC_REGIONS = {
 }
 
 CVLOD_STAGE_INFO = {
-    stage_names.FOGGY:
+    StageNames.FOGGY:
         CVLoDStageData(reg_names.fld_above, "", Scenes.FOGGY_LAKE_ABOVE_DECKS, 0x00, None,
                        reg_names.flb_below, Scenes.FOGGY_LAKE_BELOW_DECKS, 0x02,
                        reg_names.flp_pier, ent_names.flp_end, Scenes.FOGGY_LAKE_PIER, 0x01, 0,
-                       0,
+                       StageIDs.FOGGY,
                        # Above Decks
                        {reg_names.fld_above: CVLoDRegionData(locations=[loc_names.fld_forecast_port,
                                                                         loc_names.fld_forecast_starboard,
@@ -104,11 +103,11 @@ CVLOD_STAGE_INFO = {
                                                                        loc_names.flp_statue_r],
                                                             entrances=[ent_names.flp_end])}),
 
-    stage_names.FOREST:
+    StageNames.FOREST:
         CVLoDStageData(reg_names.forest_start, "", Scenes.FOREST_OF_SILENCE, 0x00, 0,
                        reg_names.forest_half_2, Scenes.FOREST_OF_SILENCE, 0x06,
                        reg_names.forest_end, ent_names.forest_end, Scenes.FOREST_OF_SILENCE, 0x01, 1,
-                       1,
+                       StageIDs.FOREST,
                        {reg_names.forest_start: CVLoDRegionData(locations=[loc_names.forest_pier_center,
                                                                            loc_names.forest_pier_end,
                                                                            loc_names.event_forest_boss_1],
@@ -140,11 +139,11 @@ CVLOD_STAGE_INFO = {
                                                                          loc_names.forest_skelly_mouth],
                                                               entrances=[ent_names.forest_end])}),
 
-    stage_names.C_WALL:
+    StageNames.C_WALL:
         CVLoDStageData(reg_names.cw_start, ent_names.cw_start, Scenes.CASTLE_WALL_MAIN, 0x00, 0,
                        reg_names.cw_start, Scenes.CASTLE_WALL_MAIN, 0x07,
                        reg_names.cw_exit, ent_names.cw_end, Scenes.CASTLE_WALL_MAIN, 0x05, 5,
-                       2,
+                       StageIDs.C_WALL,
                        # Main
                        {reg_names.cw_start: CVLoDRegionData(locations=[],
                                                             entrances=[ent_names.cw_start,
@@ -200,11 +199,11 @@ CVLOD_STAGE_INFO = {
                                                               entrances=[ent_names.cwl_bottom,
                                                                          ent_names.cwl_top])}),
 
-    stage_names.VILLA:
+    StageNames.VILLA:
         CVLoDStageData(reg_names.villafy_start, ent_names.villafy_start, Scenes.VILLA_FRONT_YARD, 0x00, 0,
                        reg_names.villala_storeroom, Scenes.VILLA_LIVING_AREA, 0x04,
                        reg_names.villac_crypt_i, ent_names.villac_end_r, Scenes.VILLA_CRYPT, 0x02, 4,
-                       3,
+                       StageIDs.VILLA,
                        # Front yard
                        {reg_names.villafy_start: CVLoDRegionData(locations=[loc_names.villafy_outer_gate_l,
                                                                             loc_names.villafy_outer_gate_r,
@@ -349,11 +348,11 @@ CVLOD_STAGE_INFO = {
                                                                              ent_names.villac_end_ca,
                                                                              ent_names.villac_end_co])}),
 
-    stage_names.TUNNEL:
+    StageNames.TUNNEL:
         CVLoDStageData(reg_names.tunnel_start, ent_names.tunnel_start_warp, Scenes.TUNNEL, 0x00, None,
                        reg_names.tunnel_end, Scenes.TUNNEL, 0x04,
                        reg_names.tunnelb_arena, ent_names.tunnelb_end, Scenes.ALGENIE_MEDUSA_ARENA, 0x41, 1,
-                       4,
+                       StageIDs.TUNNEL,
                        # Main
                        {reg_names.tunnel_start: CVLoDRegionData(locations=[loc_names.tunnel_landing,
                                                                            loc_names.tunnel_landing_rc],
@@ -410,11 +409,11 @@ CVLOD_STAGE_INFO = {
                                                                  entrances=[ent_names.tunnelb_return,
                                                                             ent_names.tunnelb_end])}),
 
-    stage_names.WATERWAY:
+    StageNames.WATERWAY:
         CVLoDStageData(reg_names.uw_main, ent_names.uw_start_warp, Scenes.WATERWAY, 0x00, None,
                        reg_names.uw_main, Scenes.WATERWAY, 0x04,
                        reg_names.uwb_arena, ent_names.uwb_end, Scenes.ALGENIE_MEDUSA_ARENA, 0x81, 3,
-                       5,
+                       StageIDs.WATERWAY,
                        # Main
                        {reg_names.uw_main: CVLoDRegionData(locations=[loc_names.uw_near_ent,
                                                                       loc_names.uw_across_ent,
@@ -448,11 +447,11 @@ CVLOD_STAGE_INFO = {
                                                              entrances=[ent_names.uwb_return,
                                                                         ent_names.uwb_end])}),
 
-    stage_names.OUTER:
+    StageNames.OUTER:
         CVLoDStageData(reg_names.towf_face_climb, ent_names.towf_start_warp, Scenes.THE_OUTER_WALL, 0x00, None,
                        reg_names.towse_slaughter_ext_f, Scenes.THE_OUTER_WALL, 0x0F,
                        reg_names.towfr_end, ent_names.towfr_end, Scenes.FAN_MEETING_ROOM, 0xC2, 2,
-                       6,
+                       StageIDs.OUTER,
                        # Face (Climb)
                        {reg_names.towf_face_climb: CVLoDRegionData(locations=[loc_names.towf_start_rear,
                                                                               loc_names.towf_start_front,
@@ -529,11 +528,11 @@ CVLOD_STAGE_INFO = {
                         reg_names.towfr_end: CVLoDRegionData(locations=[],
                                                              entrances=[ent_names.towfr_end])}),
 
-    stage_names.ART:
+    StageNames.ART:
         CVLoDStageData(reg_names.atm_museum, ent_names.atm_start, Scenes.ART_TOWER_MUSEUM, 0x00, 0,
                        reg_names.atm_museum, Scenes.ART_TOWER_MUSEUM, 0x02,
                        reg_names.atc_conservatory, ent_names.atc_end, Scenes.ART_TOWER_CONSERVATORY, 0x01, 1,
-                       7,
+                       StageIDs.ART,
                        # Museum
                        {reg_names.atm_museum: CVLoDRegionData(locations=[loc_names.atm_ww,
                                                                          loc_names.atm_nw_ped,
@@ -580,11 +579,11 @@ CVLOD_STAGE_INFO = {
                                                                     entrances=[ent_names.atc_bottom,
                                                                                ent_names.atc_end])}),
 
-    stage_names.RUINS:
+    StageNames.RUINS:
         CVLoDStageData(reg_names.torm_maze_main, ent_names.torm_start, Scenes.RUINS_DOOR_MAZE, 0x00, 0,
                        reg_names.torc_dark, Scenes.RUINS_DARK_CHAMBERS, 0x02,
                        reg_names.torc_end, ent_names.torc_end, Scenes.RUINS_DARK_CHAMBERS, 0x01, 1,
-                       8,
+                       StageIDs.RUINS,
                        # Door Maze
                        {reg_names.torm_maze_main: CVLoDRegionData(locations=[loc_names.torm_trap_side,
                                                                              loc_names.torm_trap_corner,
@@ -628,11 +627,11 @@ CVLOD_STAGE_INFO = {
                                                                        loc_names.torc_near_exit],
                                                             entrances=[ent_names.torc_end])}),
 
-    stage_names.CENTER:
+    StageNames.CENTER:
         CVLoDStageData(reg_names.ccfr_fan_room, "", Scenes.FAN_MEETING_ROOM, 0x40, 0,
                        reg_names.ccia_nitro_liz, Scenes.CASTLE_CENTER_INVENTIONS, 0x03,
                        reg_names.ccte_elev_top, ent_names.ccte_exit_r, Scenes.CASTLE_CENTER_TOP_ELEV, 0x01, 1,
-                       9,
+                       StageIDs.CENTER,
                        # Fan room
                        {reg_names.ccfr_fan_room: CVLoDRegionData(locations=[],
                                                                  entrances=[ent_names.ccfr_door_r]),
@@ -755,11 +754,11 @@ CVLOD_STAGE_INFO = {
                                                                             ent_names.ccte_exit_r,
                                                                             ent_names.ccte_exit_c])}),
 
-    stage_names.SCIENCE:
+    StageNames.SCIENCE:
         CVLoDStageData(reg_names.toscic_factory, ent_names.toscic_start, Scenes.SCIENCE_CONVEYORS, 0x00, 0,
                        reg_names.toscit_halls_main, Scenes.SCIENCE_LABS, 0x02,
                        reg_names.toscit_end, ent_names.toscit_end, Scenes.SCIENCE_LABS, 0x01, 1,
-                       10,
+                       StageIDs.SCIENCE,
                        # Cube Factory
                        {reg_names.toscic_factory: CVLoDRegionData(locations=[loc_names.toscic_first,
                                                                              loc_names.toscic_second,
@@ -802,11 +801,11 @@ CVLOD_STAGE_INFO = {
                                                               entrances=[ent_names.toscit_from_ctrl_door,
                                                                          ent_names.toscit_end])}),
 
-    stage_names.DUEL:
+    StageNames.DUEL:
         CVLoDStageData(reg_names.dt_start, ent_names.dt_start, Scenes.DUEL_TOWER, 0x00, 0,
                        reg_names.dt_main, Scenes.DUEL_TOWER, 0x02,
                        reg_names.dt_end, ent_names.dt_end, Scenes.DUEL_TOWER, 0x01, 1,
-                       11,
+                       StageIDs.DUEL,
                        {reg_names.dt_start: CVLoDRegionData(locations=[loc_names.event_dt_boss_1],
                                                             entrances=[ent_names.dt_start,
                                                                        ent_names.dt_drop]),
@@ -832,11 +831,11 @@ CVLOD_STAGE_INFO = {
                         reg_names.dt_end: CVLoDRegionData(locations=[],
                                                           entrances=[ent_names.dt_end])}),
 
-    stage_names.EXECUTION:
+    StageNames.EXECUTION:
         CVLoDStageData(reg_names.toe_bottom, ent_names.toe_bottom_start, Scenes.EXECUTION_MAIN, 0x00, 0,
                        reg_names.toe_middle_i, Scenes.EXECUTION_MAIN, 0x02,
                        reg_names.toeu_ultimate, ent_names.toeu_end, Scenes.EXECUTION_SIDE_ROOMS_2, 0x03, 3,
-                       12,
+                       StageIDs.EXECUTION,
                        {reg_names.toe_bottom: CVLoDRegionData(locations=[loc_names.toe_start_l,
                                                                          loc_names.toe_start_r,
                                                                          loc_names.toe_spike_alcove_l,
@@ -897,11 +896,11 @@ CVLOD_STAGE_INFO = {
                                                                  entrances=[ent_names.toeu_start,
                                                                             ent_names.toeu_end])}),
 
-    stage_names.SORCERY:
+    StageNames.SORCERY:
         CVLoDStageData(reg_names.tosor_main, ent_names.tosor_start, Scenes.TOWER_OF_SORCERY, 0x00, 0,
                        reg_names.tosor_main, Scenes.TOWER_OF_SORCERY, 0x02,
                        reg_names.tosor_main, ent_names.tosor_end, Scenes.TOWER_OF_SORCERY, 0x01, 1,
-                       13,
+                       StageIDs.SORCERY,
                        {reg_names.tosor_main: CVLoDRegionData(locations=[loc_names.tosor_electric,
                                                                          loc_names.tosor_lasers,
                                                                          loc_names.tosor_climb_l,
@@ -913,11 +912,11 @@ CVLOD_STAGE_INFO = {
                                                               entrances=[ent_names.tosor_start,
                                                                          ent_names.tosor_end])}),
 
-    stage_names.ROOM:
+    StageNames.ROOM:
         CVLoDStageData(reg_names.roc_int, "", Scenes.ROOM_OF_CLOCKS, 0x00, 0,
                        reg_names.roc_int, Scenes.ROOM_OF_CLOCKS, 0x04,
                        reg_names.roc_int, ent_names.roci_gate, Scenes.ROOM_OF_CLOCKS, 0x02, 2,
-                       14,
+                       StageIDs.ROOM,
                        {reg_names.roc_int: CVLoDRegionData(locations=[loc_names.roc_ent_l,
                                                                       loc_names.roc_ent_r,
                                                                       loc_names.roc_elev_r,
@@ -930,11 +929,11 @@ CVLOD_STAGE_INFO = {
                         reg_names.roc_ext: CVLoDRegionData(locations=[loc_names.event_roc_boss],
                                                            entrances=[ent_names.roce_elev])}),
 
-    stage_names.CLOCK:
+    StageNames.CLOCK:
         CVLoDStageData(reg_names.ctgc_start, "", Scenes.CLOCK_TOWER_GEAR_CLIMB, 0x00, 0,
                        reg_names.ctga_abyss_near, Scenes.CLOCK_TOWER_ABYSS, 0x02,
                        reg_names.ctf_face, ent_names.ctf_end, Scenes.CLOCK_TOWER_FACE, 0x03, 1,
-                       15,
+                       StageIDs.CLOCK,
                        # Gear Climb
                        {reg_names.ctgc_start: CVLoDRegionData(locations=[loc_names.ctgc_gearclimb_battery_slab1,
                                                                          loc_names.ctgc_gearclimb_battery_slab2,
@@ -993,11 +992,11 @@ CVLOD_STAGE_INFO = {
                                                                          loc_names.ctf_walkway_mid],
                                                               entrances=[])}),
 
-    stage_names.KEEP:
+    StageNames.KEEP:
         CVLoDStageData(reg_names.ck_main, "", Scenes.CASTLE_KEEP_EXTERIOR, 0x00, 0,
                        reg_names.ck_main, Scenes.CASTLE_KEEP_EXTERIOR, 0x01,
                        reg_names.ck_main, "", Scenes.CASTLE_KEEP_DRAC_CHAMBER, 0x00, None,
-                       16,
+                       StageIDs.KEEP,
                        {reg_names.ck_main: CVLoDRegionData(locations=[loc_names.ck_renon_sw,
                                                                       loc_names.ck_renon_se,
                                                                       loc_names.ck_renon_nw,
@@ -1017,27 +1016,27 @@ ALL_CVLOD_REGIONS = {**MISC_REGIONS,
                         for reg, reg_info in stage_info.regions.items()}}
 
 STAGE_LAYOUT_PRESETS: dict[int, list[str]] = {
-    StageLayout.option_cornell_only: [stage_names.FOGGY, stage_names.FOREST, stage_names.C_WALL, stage_names.VILLA,
-                                      stage_names.OUTER, stage_names.ART, stage_names.RUINS, stage_names.SCIENCE,
-                                      stage_names.DUEL, stage_names.EXECUTION, stage_names.SORCERY, stage_names.ROOM,
-                                      stage_names.CLOCK, stage_names.KEEP],
-    StageLayout.option_reinhardt_only: [stage_names.FOGGY, stage_names.FOREST, stage_names.C_WALL, stage_names.VILLA,
-                                        stage_names.TUNNEL, stage_names.CENTER, stage_names.DUEL, stage_names.EXECUTION,
-                                        stage_names.ROOM, stage_names.CLOCK, stage_names.KEEP],
-    StageLayout.option_carrie_only: [stage_names.FOGGY, stage_names.FOREST, stage_names.C_WALL, stage_names.VILLA,
-                                     stage_names.WATERWAY, stage_names.CENTER, stage_names.SCIENCE, stage_names.SORCERY,
-                                     stage_names.ROOM, stage_names.CLOCK, stage_names.KEEP],
-    StageLayout.option_henry_only: [stage_names.FOREST, stage_names.C_WALL, stage_names.VILLA, stage_names.TUNNEL,
-                                    stage_names.WATERWAY, stage_names.OUTER],
-    StageLayout.option_reinhardt_carrie: [stage_names.FOGGY, stage_names.FOREST, stage_names.C_WALL, stage_names.VILLA,
-                                          stage_names.TUNNEL, stage_names.WATERWAY, stage_names.CENTER,
-                                          stage_names.DUEL, stage_names.EXECUTION, stage_names.SCIENCE,
-                                          stage_names.SORCERY, stage_names.ROOM, stage_names.CLOCK, stage_names.KEEP],
-    StageLayout.option_all: [stage_names.FOGGY, stage_names.FOREST, stage_names.C_WALL, stage_names.VILLA,
-                             stage_names.TUNNEL, stage_names.WATERWAY, stage_names.OUTER, stage_names.ART,
-                             stage_names.RUINS, stage_names.CENTER, stage_names.DUEL, stage_names.EXECUTION,
-                             stage_names.SCIENCE, stage_names.SORCERY, stage_names.ROOM, stage_names.CLOCK,
-                             stage_names.KEEP]
+    StageLayout.option_cornell_only: [StageNames.FOGGY, StageNames.FOREST, StageNames.C_WALL, StageNames.VILLA,
+                                      StageNames.OUTER, StageNames.ART, StageNames.RUINS, StageNames.SCIENCE,
+                                      StageNames.DUEL, StageNames.EXECUTION, StageNames.SORCERY, StageNames.ROOM,
+                                      StageNames.CLOCK, StageNames.KEEP],
+    StageLayout.option_reinhardt_only: [StageNames.FOGGY, StageNames.FOREST, StageNames.C_WALL, StageNames.VILLA,
+                                        StageNames.TUNNEL, StageNames.CENTER, StageNames.DUEL, StageNames.EXECUTION,
+                                        StageNames.ROOM, StageNames.CLOCK, StageNames.KEEP],
+    StageLayout.option_carrie_only: [StageNames.FOGGY, StageNames.FOREST, StageNames.C_WALL, StageNames.VILLA,
+                                     StageNames.WATERWAY, StageNames.CENTER, StageNames.SCIENCE, StageNames.SORCERY,
+                                     StageNames.ROOM, StageNames.CLOCK, StageNames.KEEP],
+    StageLayout.option_henry_only: [StageNames.FOREST, StageNames.C_WALL, StageNames.VILLA, StageNames.TUNNEL,
+                                    StageNames.WATERWAY, StageNames.OUTER],
+    StageLayout.option_reinhardt_carrie: [StageNames.FOGGY, StageNames.FOREST, StageNames.C_WALL, StageNames.VILLA,
+                                          StageNames.TUNNEL, StageNames.WATERWAY, StageNames.CENTER,
+                                          StageNames.DUEL, StageNames.EXECUTION, StageNames.SCIENCE,
+                                          StageNames.SORCERY, StageNames.ROOM, StageNames.CLOCK, StageNames.KEEP],
+    StageLayout.option_all: [StageNames.FOGGY, StageNames.FOREST, StageNames.C_WALL, StageNames.VILLA,
+                             StageNames.TUNNEL, StageNames.WATERWAY, StageNames.OUTER, StageNames.ART,
+                             StageNames.RUINS, StageNames.CENTER, StageNames.DUEL, StageNames.EXECUTION,
+                             StageNames.SCIENCE, StageNames.SORCERY, StageNames.ROOM, StageNames.CLOCK,
+                             StageNames.KEEP]
 }
 
 VILLA_BRANCH_STAGE_MINIMUMS = {
@@ -1048,176 +1047,176 @@ VILLA_BRANCH_STAGE_MINIMUMS = {
 }
 
 STAGE_NAME_ALIASES = {
-    "foggy lake": stage_names.FOGGY,
-    "foggy": stage_names.FOGGY,
-    "lake": stage_names.FOGGY,
-    "fl": stage_names.FOGGY,
-    "ship": stage_names.FOGGY,
-    "pirate": stage_names.FOGGY,
-    "pirate ship": stage_names.FOGGY,
-    "pirate ship of fools": stage_names.FOGGY,
-    "channel": stage_names.FOGGY,
-    "kalidus channel": stage_names.FOGGY,
-    "galleon": stage_names.FOGGY,
-    "galleon minerva": stage_names.FOGGY,
-    "forest of silence": stage_names.FOREST,
-    "forest": stage_names.FOREST,
-    "silence": stage_names.FOREST,
-    "silent": stage_names.FOREST,
-    "silent forest": stage_names.FOREST,
-    "fos": stage_names.FOREST,
-    "woods": stage_names.FOREST,
-    "ruvas forest": stage_names.FOREST,
-    "misty forest road": stage_names.FOREST,
-    "forest of doom": stage_names.FOREST,
-    "forest of darkness": stage_names.FOREST,
-    "forest of evil spirits": stage_names.FOREST,
-    "forest of eternal night": stage_names.FOREST,
-    "forest of jigramunt": stage_names.FOREST,
-    "castle wall": stage_names.C_WALL,
-    "cw": stage_names.C_WALL,
-    "castle rampart": stage_names.C_WALL,
-    "rampart": stage_names.C_WALL,
-    "villa": stage_names.VILLA,
-    "v": stage_names.VILLA,
-    "annex": stage_names.VILLA,
-    "annex to the evil castle": stage_names.VILLA,
-    "estate": stage_names.VILLA,
-    "oldrey estate": stage_names.VILLA,
-    "garden": stage_names.VILLA,
-    "maze": stage_names.VILLA,
-    "maze garden": stage_names.VILLA,
-    "garden maze": stage_names.VILLA,
-    "garden forgotten by time": stage_names.VILLA,
-    "mansion": stage_names.VILLA,
-    "manor": stage_names.VILLA,
-    "mystery manor": stage_names.VILLA,
-    "dwelling": stage_names.VILLA,
-    "giant's dwelling": stage_names.VILLA,
-    "tunnel": stage_names.TUNNEL,
-    "t": stage_names.TUNNEL,
-    "cave of spiderwomen": stage_names.TUNNEL,
-    "cave": stage_names.TUNNEL,
-    "passage": stage_names.TUNNEL,
-    "underground passage": stage_names.TUNNEL,
-    "mine": stage_names.TUNNEL,
-    "mining tunnel": stage_names.TUNNEL,
-    "underground mining tunnel": stage_names.TUNNEL,
-    "cavern": stage_names.TUNNEL,
-    "caverns": stage_names.TUNNEL,
-    "large cavern": stage_names.TUNNEL,
-    "luminous cavern": stage_names.TUNNEL,
-    "underground caverns": stage_names.TUNNEL,
-    "ground water vein": stage_names.TUNNEL,
-    "underground reservoir": stage_names.TUNNEL,
-    "underground gallery": stage_names.TUNNEL,
-    "reservoir": stage_names.TUNNEL,
-    "subterranean hell": stage_names.TUNNEL,
-    "batcave": stage_names.TUNNEL,
-    "underground waterway": stage_names.WATERWAY,
-    "underground": stage_names.WATERWAY,
-    "waterway": stage_names.WATERWAY,
-    "uw": stage_names.WATERWAY,
-    "aqueduct": stage_names.WATERWAY,
-    "aqueduct of dragons": stage_names.WATERWAY,
-    "mortvia aqueduct": stage_names.WATERWAY,
-    "dark palace of waterfalls": stage_names.WATERWAY,
-    "underground labyrinth": stage_names.WATERWAY,
-    "labyrinth": stage_names.WATERWAY,
-    "the outer wall": stage_names.OUTER,
-    "outer wall": stage_names.OUTER,
-    "outer": stage_names.OUTER,
-    "tow": stage_names.OUTER,
-    "ow": stage_names.OUTER,
-    "sky walkway": stage_names.OUTER,
-    "art tower": stage_names.ART,
-    "tower of art": stage_names.ART,
-    "art": stage_names.ART,
-    "at": stage_names.ART,
-    "ghostly theatre": stage_names.ART,
-    "marble gallery": stage_names.ART,
-    "marble corridor": stage_names.ART,
-    "gallery": stage_names.ART,
-    "dance hall": stage_names.ART,
-    "demon guest house": stage_names.ART,
-    "tower of ruins": stage_names.RUINS,
-    "ruins tower": stage_names.RUINS,
-    "ruins": stage_names.RUINS,
-    "tor": stage_names.RUINS,
-    "sandy grave": stage_names.RUINS,
-    "forgotten city": stage_names.RUINS,
-    "castle center": stage_names.CENTER,
-    "center": stage_names.CENTER,
-    "cc": stage_names.CENTER,
-    "vs behimos": stage_names.CENTER,
-    "vs behemoth": stage_names.CENTER,
-    "colosseum": stage_names.CENTER,
-    "library": stage_names.CENTER,
-    "long library": stage_names.CENTER,
-    "underground warehouse": stage_names.CENTER,
-    "warehouse": stage_names.CENTER,
-    "treasury": stage_names.CENTER,
-    "castle treasury": stage_names.CENTER,
-    "audience room": stage_names.CENTER,
-    "castle corridor": stage_names.CENTER,
-    "study": stage_names.CENTER,
-    "tower of science": stage_names.SCIENCE,
-    "science tower": stage_names.SCIENCE,
-    "science": stage_names.SCIENCE,
-    "tosci": stage_names.SCIENCE,
-    "the munitions factory": stage_names.SCIENCE,
-    "munitions factory": stage_names.SCIENCE,
-    "factory": stage_names.SCIENCE,
-    "anti soul mystery lab": stage_names.SCIENCE,
-    "lab": stage_names.SCIENCE,
-    "duel tower": stage_names.DUEL,
-    "tower of duels": stage_names.DUEL,
-    "duel": stage_names.DUEL,
-    "dt": stage_names.DUEL,
-    "it's time to d-d-d-d duel": stage_names.DUEL,
-    "the arena": stage_names.DUEL,
-    "arena": stage_names.DUEL,
-    "battle arena": stage_names.DUEL,
-    "wipeout zone": stage_names.DUEL,
-    "pit of 4 trials": stage_names.DUEL,
-    "sammer kingdom if it was good": stage_names.DUEL,
-    "tower of execution": stage_names.EXECUTION,
-    "toe": stage_names.EXECUTION,
-    "execution tower": stage_names.EXECUTION,
-    "execution": stage_names.EXECUTION,
-    "tower of sorcery": stage_names.SORCERY,
-    "tosor": stage_names.SORCERY,
-    "sorcery tower": stage_names.SORCERY,
-    "sorcery": stage_names.SORCERY,
-    "spelltower": stage_names.SORCERY,
-    "room of clocks": stage_names.ROOM,
-    "room": stage_names.ROOM,
-    "clocks": stage_names.ROOM,
-    "roc": stage_names.ROOM,
-    "room of illusion": stage_names.ROOM,
-    "vs death": stage_names.ROOM,
-    "vs actrise": stage_names.ROOM,
-    "vs ortega": stage_names.ROOM,
-    "clock tower": stage_names.CLOCK,
-    "tower of clocks": stage_names.CLOCK,
-    "clock": stage_names.CLOCK,
-    "ct": stage_names.CLOCK,
-    "cursed clock tower": stage_names.CLOCK,
-    "machine tower": stage_names.CLOCK,
-    "mechanical tower": stage_names.CLOCK,
-    "eneomaos machine tower": stage_names.CLOCK,
-    "tower of death": stage_names.CLOCK,
-    "castle keep": stage_names.KEEP,
-    "keep": stage_names.KEEP,
-    "ck": stage_names.KEEP,
-    "master's keep": stage_names.KEEP,
-    "top": stage_names.KEEP,
-    "top floor": stage_names.KEEP,
-    "castle top floor": stage_names.KEEP,
-    "final approach": stage_names.KEEP,
-    "the pinnacle": stage_names.KEEP,
-    "pinnacle": stage_names.KEEP,
-    "pagoda of the misty moon": stage_names.KEEP,
+    "foggy lake": StageNames.FOGGY,
+    "foggy": StageNames.FOGGY,
+    "lake": StageNames.FOGGY,
+    "fl": StageNames.FOGGY,
+    "ship": StageNames.FOGGY,
+    "pirate": StageNames.FOGGY,
+    "pirate ship": StageNames.FOGGY,
+    "pirate ship of fools": StageNames.FOGGY,
+    "channel": StageNames.FOGGY,
+    "kalidus channel": StageNames.FOGGY,
+    "galleon": StageNames.FOGGY,
+    "galleon minerva": StageNames.FOGGY,
+    "forest of silence": StageNames.FOREST,
+    "forest": StageNames.FOREST,
+    "silence": StageNames.FOREST,
+    "silent": StageNames.FOREST,
+    "silent forest": StageNames.FOREST,
+    "fos": StageNames.FOREST,
+    "woods": StageNames.FOREST,
+    "ruvas forest": StageNames.FOREST,
+    "misty forest road": StageNames.FOREST,
+    "forest of doom": StageNames.FOREST,
+    "forest of darkness": StageNames.FOREST,
+    "forest of evil spirits": StageNames.FOREST,
+    "forest of eternal night": StageNames.FOREST,
+    "forest of jigramunt": StageNames.FOREST,
+    "castle wall": StageNames.C_WALL,
+    "cw": StageNames.C_WALL,
+    "castle rampart": StageNames.C_WALL,
+    "rampart": StageNames.C_WALL,
+    "villa": StageNames.VILLA,
+    "v": StageNames.VILLA,
+    "annex": StageNames.VILLA,
+    "annex to the evil castle": StageNames.VILLA,
+    "estate": StageNames.VILLA,
+    "oldrey estate": StageNames.VILLA,
+    "garden": StageNames.VILLA,
+    "maze": StageNames.VILLA,
+    "maze garden": StageNames.VILLA,
+    "garden maze": StageNames.VILLA,
+    "garden forgotten by time": StageNames.VILLA,
+    "mansion": StageNames.VILLA,
+    "manor": StageNames.VILLA,
+    "mystery manor": StageNames.VILLA,
+    "dwelling": StageNames.VILLA,
+    "giant's dwelling": StageNames.VILLA,
+    "tunnel": StageNames.TUNNEL,
+    "t": StageNames.TUNNEL,
+    "cave of spiderwomen": StageNames.TUNNEL,
+    "cave": StageNames.TUNNEL,
+    "passage": StageNames.TUNNEL,
+    "underground passage": StageNames.TUNNEL,
+    "mine": StageNames.TUNNEL,
+    "mining tunnel": StageNames.TUNNEL,
+    "underground mining tunnel": StageNames.TUNNEL,
+    "cavern": StageNames.TUNNEL,
+    "caverns": StageNames.TUNNEL,
+    "large cavern": StageNames.TUNNEL,
+    "luminous cavern": StageNames.TUNNEL,
+    "underground caverns": StageNames.TUNNEL,
+    "ground water vein": StageNames.TUNNEL,
+    "underground reservoir": StageNames.TUNNEL,
+    "underground gallery": StageNames.TUNNEL,
+    "reservoir": StageNames.TUNNEL,
+    "subterranean hell": StageNames.TUNNEL,
+    "batcave": StageNames.TUNNEL,
+    "underground waterway": StageNames.WATERWAY,
+    "underground": StageNames.WATERWAY,
+    "waterway": StageNames.WATERWAY,
+    "uw": StageNames.WATERWAY,
+    "aqueduct": StageNames.WATERWAY,
+    "aqueduct of dragons": StageNames.WATERWAY,
+    "mortvia aqueduct": StageNames.WATERWAY,
+    "dark palace of waterfalls": StageNames.WATERWAY,
+    "underground labyrinth": StageNames.WATERWAY,
+    "labyrinth": StageNames.WATERWAY,
+    "the outer wall": StageNames.OUTER,
+    "outer wall": StageNames.OUTER,
+    "outer": StageNames.OUTER,
+    "tow": StageNames.OUTER,
+    "ow": StageNames.OUTER,
+    "sky walkway": StageNames.OUTER,
+    "art tower": StageNames.ART,
+    "tower of art": StageNames.ART,
+    "art": StageNames.ART,
+    "at": StageNames.ART,
+    "ghostly theatre": StageNames.ART,
+    "marble gallery": StageNames.ART,
+    "marble corridor": StageNames.ART,
+    "gallery": StageNames.ART,
+    "dance hall": StageNames.ART,
+    "demon guest house": StageNames.ART,
+    "tower of ruins": StageNames.RUINS,
+    "ruins tower": StageNames.RUINS,
+    "ruins": StageNames.RUINS,
+    "tor": StageNames.RUINS,
+    "sandy grave": StageNames.RUINS,
+    "forgotten city": StageNames.RUINS,
+    "castle center": StageNames.CENTER,
+    "center": StageNames.CENTER,
+    "cc": StageNames.CENTER,
+    "vs behimos": StageNames.CENTER,
+    "vs behemoth": StageNames.CENTER,
+    "colosseum": StageNames.CENTER,
+    "library": StageNames.CENTER,
+    "long library": StageNames.CENTER,
+    "underground warehouse": StageNames.CENTER,
+    "warehouse": StageNames.CENTER,
+    "treasury": StageNames.CENTER,
+    "castle treasury": StageNames.CENTER,
+    "audience room": StageNames.CENTER,
+    "castle corridor": StageNames.CENTER,
+    "study": StageNames.CENTER,
+    "tower of science": StageNames.SCIENCE,
+    "science tower": StageNames.SCIENCE,
+    "science": StageNames.SCIENCE,
+    "tosci": StageNames.SCIENCE,
+    "the munitions factory": StageNames.SCIENCE,
+    "munitions factory": StageNames.SCIENCE,
+    "factory": StageNames.SCIENCE,
+    "anti soul mystery lab": StageNames.SCIENCE,
+    "lab": StageNames.SCIENCE,
+    "duel tower": StageNames.DUEL,
+    "tower of duels": StageNames.DUEL,
+    "duel": StageNames.DUEL,
+    "dt": StageNames.DUEL,
+    "it's time to d-d-d-d duel": StageNames.DUEL,
+    "the arena": StageNames.DUEL,
+    "arena": StageNames.DUEL,
+    "battle arena": StageNames.DUEL,
+    "wipeout zone": StageNames.DUEL,
+    "pit of 4 trials": StageNames.DUEL,
+    "sammer kingdom if it was good": StageNames.DUEL,
+    "tower of execution": StageNames.EXECUTION,
+    "toe": StageNames.EXECUTION,
+    "execution tower": StageNames.EXECUTION,
+    "execution": StageNames.EXECUTION,
+    "tower of sorcery": StageNames.SORCERY,
+    "tosor": StageNames.SORCERY,
+    "sorcery tower": StageNames.SORCERY,
+    "sorcery": StageNames.SORCERY,
+    "spelltower": StageNames.SORCERY,
+    "room of clocks": StageNames.ROOM,
+    "room": StageNames.ROOM,
+    "clocks": StageNames.ROOM,
+    "roc": StageNames.ROOM,
+    "room of illusion": StageNames.ROOM,
+    "vs death": StageNames.ROOM,
+    "vs actrise": StageNames.ROOM,
+    "vs ortega": StageNames.ROOM,
+    "clock tower": StageNames.CLOCK,
+    "tower of clocks": StageNames.CLOCK,
+    "clock": StageNames.CLOCK,
+    "ct": StageNames.CLOCK,
+    "cursed clock tower": StageNames.CLOCK,
+    "machine tower": StageNames.CLOCK,
+    "mechanical tower": StageNames.CLOCK,
+    "eneomaos machine tower": StageNames.CLOCK,
+    "tower of death": StageNames.CLOCK,
+    "castle keep": StageNames.KEEP,
+    "keep": StageNames.KEEP,
+    "ck": StageNames.KEEP,
+    "master's keep": StageNames.KEEP,
+    "top": StageNames.KEEP,
+    "top floor": StageNames.KEEP,
+    "castle top floor": StageNames.KEEP,
+    "final approach": StageNames.KEEP,
+    "the pinnacle": StageNames.KEEP,
+    "pinnacle": StageNames.KEEP,
+    "pagoda of the misty moon": StageNames.KEEP,
 }
 
 
@@ -1262,7 +1261,7 @@ def get_regions_from_all_active_stages(world: "CVLoDWorld") -> list[Region]:
     return stage_regions
 
 
-def get_active_stages(world: "CVLoDWorld", stage_1_blacklist: dict[stage_names, str]) -> list[str]:
+def get_active_stages(world: "CVLoDWorld", stage_1_blacklist: dict[StageNames, str]) -> list[str]:
     """Verifies and returns a list of active stages, based on the slot world's options, in the intended regular order
     and with the default regular exits."""
 
@@ -1302,8 +1301,8 @@ def get_active_stages(world: "CVLoDWorld", stage_1_blacklist: dict[stage_names, 
             break
 
         # VALIDATION CHECK 4: Castle Keep, if it's in the list, can only go at the end.
-        if stage_internal_name == stage_names.KEEP and stage_index != len(user_stage_list) - 1:
-            invalidation_reason = f"{stage_names.KEEP} can only be at the end of the list."
+        if stage_internal_name == StageNames.KEEP and stage_index != len(user_stage_list) - 1:
+            invalidation_reason = f"{StageNames.KEEP} can only be at the end of the list."
             break
 
         # If we passed all validation checks, add the stage internal name to the final custom stage list.
@@ -1327,7 +1326,7 @@ def verify_branches(world: "CVLoDWorld", active_stage_order: list[str]) -> None:
     # Count the number of valid branch stages in the entire stage list, starting from the beginning of it. A valid
     # branch stage is any stage that is not Villa, Castle Center, or Castle Keep.
     total_valid_branch_stages = len([stage for stage in active_stage_order if stage not in
-                                     [stage_names.VILLA, stage_names.CENTER, stage_names.KEEP]])
+                                     [StageNames.VILLA, StageNames.CENTER, StageNames.KEEP]])
 
     valid_villa_branch_stages = 0
     valid_cc_branch_stages = 0
@@ -1335,14 +1334,14 @@ def verify_branches(world: "CVLoDWorld", active_stage_order: list[str]) -> None:
     # If Villa has more than one branch enabled, and Villa is in the stage list, check to see if its chosen branches
     # are valid.
     if world.options.villa_branching_paths != VillaBranchingPaths.option_one and \
-            stage_names.VILLA in active_stage_order:
-        villa_index = active_stage_order.index(stage_names.VILLA)
+            StageNames.VILLA in active_stage_order:
+        villa_index = active_stage_order.index(StageNames.VILLA)
         # Find the number of valid branch stages after Villa.
         # If Stage Shuffle is off, starting from where Villa is, count the stages forward until we find Castle Center,
         # Castle Keep, or the end of the list.
         if not world.options.stage_shuffle:
             for i in range(villa_index + 1, len(active_stage_order)):
-                if active_stage_order[i] in [stage_names.CENTER, stage_names.KEEP]:
+                if active_stage_order[i] in [StageNames.CENTER, StageNames.KEEP]:
                     break
                 valid_villa_branch_stages += 1
         # Otherwise, if Stage Shuffle is on, consider the total number of branch stages as the number of valid Villa
@@ -1353,8 +1352,8 @@ def verify_branches(world: "CVLoDWorld", active_stage_order: list[str]) -> None:
         villa_invalidation_reason = ""
         # If Villa And Cornell Path is chosen, Castle Center must be in the stage list somewhere.
         if world.options.villa_branching_paths == VillaBranchingPaths.option_three_with_cornell_path \
-                and stage_names.CENTER not in active_stage_order:
-            villa_invalidation_reason = f"{stage_names.CENTER} is not in the stage list for the Cornell path to end at."
+                and StageNames.CENTER not in active_stage_order:
+            villa_invalidation_reason = f"{StageNames.CENTER} is not in the stage list for the Cornell path to end at."
         # Otherwise, whether the option is valid depends on if the minimum requirement for valid Villa branching stages
         # is met.
         elif valid_villa_branch_stages < VILLA_BRANCH_STAGE_MINIMUMS[world.options.villa_branching_paths]:
@@ -1369,21 +1368,21 @@ def verify_branches(world: "CVLoDWorld", active_stage_order: list[str]) -> None:
             for option, minimum in VILLA_BRANCH_STAGE_MINIMUMS.items():
                 if valid_villa_branch_stages >= minimum > VILLA_BRANCH_STAGE_MINIMUMS[highest_valid_villa_option] and \
                         (option != VillaBranchingPaths.option_three_with_cornell_path
-                         or stage_names.CENTER in active_stage_order):
+                         or StageNames.CENTER in active_stage_order):
                     highest_valid_villa_option = option
             world.options.villa_branching_paths.value = highest_valid_villa_option
 
     # If Castle Center has more than one branch enabled, and CC is in the stage list, check to see if its chosen
     # branches are valid.
     if world.options.castle_center_branching_paths == CastleCenterBranchingPaths.option_two \
-            and stage_names.CENTER in active_stage_order:
-        cc_index = active_stage_order.index(stage_names.CENTER)
+            and StageNames.CENTER in active_stage_order:
+        cc_index = active_stage_order.index(StageNames.CENTER)
         # Find the number of valid branch stages after Castle Center.
         # If Stage Shuffle is off, starting from where CC is, count the stages forward until we find Villa, Castle Keep,
         # or the end of the list.
         if not world.options.stage_shuffle:
             for i in range(cc_index + 1, len(active_stage_order)):
-                if active_stage_order[i] in [stage_names.VILLA, stage_names.KEEP]:
+                if active_stage_order[i] in [StageNames.VILLA, StageNames.KEEP]:
                     break
                 valid_cc_branch_stages += 1
         # Otherwise, if Stage Shuffle is on, consider the total number of branch stages, minus the total number of
@@ -1403,7 +1402,7 @@ def verify_branches(world: "CVLoDWorld", active_stage_order: list[str]) -> None:
 
 
 def shuffle_stages(world: "CVLoDWorld", unshuffled_stage_order: list[str],
-                   stage_1_blacklist: dict[stage_names: str]) -> list[str]:
+                   stage_1_blacklist: dict[StageNames: str]) -> list[str]:
     """The sequel to the stage shuffle algorithm from the original CV64 apworld, now drastically rewritten to account
     for all the new stage-related options!
 
@@ -1463,35 +1462,35 @@ def shuffle_stages(world: "CVLoDWorld", unshuffled_stage_order: list[str],
         # Assemble a list of possible valid starting stages by checking to see if each stage in the active list is
         # either not in the stage 1 blacklist or is not Castle Keep, and pick a random stage from it.
         starting_stage = world.random.choice([stage for stage in unshuffled_stage_order
-                                              if stage not in stage_1_blacklist and stage != stage_names.KEEP])
+                                              if stage not in stage_1_blacklist and stage != StageNames.KEEP])
         world.options.shuffled_starting_stage.value = CVLOD_STAGE_INFO[starting_stage].id_number
 
     # Copy the world's active stage list to use as our list of stages to shuffle.
     main_stages = unshuffled_stage_order.copy()
 
     # Remove Castle Keep if it was in the active list that we copied. We'll put it on the end manually afterward.
-    if stage_names.KEEP in main_stages:
-        main_stages.remove(stage_names.KEEP)
+    if StageNames.KEEP in main_stages:
+        main_stages.remove(StageNames.KEEP)
 
     # Create the list of stages that are eligible to go in branching stage slots. Specifically, this should exclude
     # Villa if Villa branching paths are on, and/or Castle Center if Castle Center branching paths are on.
-    branch_stages = [stage for stage in main_stages if (stage not in [stage_names.VILLA, stage_names.CENTER]) or
-                     (stage == stage_names.VILLA and world.options.villa_branching_paths ==
+    branch_stages = [stage for stage in main_stages if (stage not in [StageNames.VILLA, StageNames.CENTER]) or
+                     (stage == StageNames.VILLA and world.options.villa_branching_paths ==
                       VillaBranchingPaths.option_one) or
-                     (stage == stage_names.CENTER and world.options.castle_center_branching_paths !=
+                     (stage == StageNames.CENTER and world.options.castle_center_branching_paths !=
                       CastleCenterBranchingPaths.option_two)]
 
     # Determine how many branching stages there should be by looking at what stages are available and what the branching
     # stage options are set to.
     total_branch_stages = 0
-    if stage_names.VILLA in main_stages:
+    if StageNames.VILLA in main_stages:
         if world.options.villa_branching_paths == VillaBranchingPaths.option_two:
             total_branch_stages += 2
         elif world.options.villa_branching_paths == VillaBranchingPaths.option_three:
             total_branch_stages += 3
         elif world.options.villa_branching_paths == VillaBranchingPaths.option_three_with_cornell_path:
             total_branch_stages += 5
-    if stage_names.CENTER in main_stages \
+    if StageNames.CENTER in main_stages \
             and world.options.castle_center_branching_paths == CastleCenterBranchingPaths.option_two:
         total_branch_stages += 4
 
@@ -1517,7 +1516,7 @@ def shuffle_stages(world: "CVLoDWorld", unshuffled_stage_order: list[str],
 
         # If the stage is Villa, add the first 2, 3, or 5 stages currently in the branches list depending on what the
         # Villa branching stages option is, and clear those stages from it.
-        if stage == stage_names.VILLA:
+        if stage == StageNames.VILLA:
             if world.options.villa_branching_paths == VillaBranchingPaths.option_two:
                 new_stage_order += branch_stages[0:2]
                 branch_stages = branch_stages[2:]
@@ -1529,7 +1528,7 @@ def shuffle_stages(world: "CVLoDWorld", unshuffled_stage_order: list[str],
                 branch_stages = branch_stages[5:]
         # If the stage is Castle Center, add the first 4 stages currently in the branches list if the Castle Center
         # branching paths option is 2.
-        elif stage == stage_names.CENTER and \
+        elif stage == StageNames.CENTER and \
                 world.options.castle_center_branching_paths == CastleCenterBranchingPaths.option_two:
             new_stage_order += branch_stages[0:4]
             branch_stages = branch_stages[4:]
@@ -1551,8 +1550,8 @@ def get_stage_exits(options: CVLoDOptions, active_stage_order: list[str]) -> lis
     # See if Villa exists in the stage order list. If it is, search ahead in the list after Villa by a length depending
     # on the Villa Branching Paths option to see what our Villa branching stages are, as well as the main path stage
     # following them.
-    if stage_names.VILLA in active_stage_order:
-        villa_index = active_stage_order.index(stage_names.VILLA)
+    if StageNames.VILLA in active_stage_order:
+        villa_index = active_stage_order.index(StageNames.VILLA)
         if options.villa_branching_paths == VillaBranchingPaths.option_two:
             villa_branch_stages = active_stage_order[villa_index + 1: villa_index + 3] + ["", "", ""]
             after_villa_main_stage = active_stage_order[villa_index + 3]
@@ -1565,9 +1564,9 @@ def get_stage_exits(options: CVLoDOptions, active_stage_order: list[str]) -> lis
 
     # See if Castle Center exists in the stage order list. If it is, search ahead in the list after CC by a length
     # depending on the Castle Center Branching Paths option to see what our CC branching stages are.
-    if stage_names.CENTER in active_stage_order and \
+    if StageNames.CENTER in active_stage_order and \
             options.castle_center_branching_paths == CastleCenterBranchingPaths.option_two:
-        cc_index = active_stage_order.index(stage_names.CENTER)
+        cc_index = active_stage_order.index(StageNames.CENTER)
         cc_branch_stages = active_stage_order[cc_index + 1: cc_index + 5]
         after_cc_main_stage = active_stage_order[cc_index + 5]
 
@@ -1584,7 +1583,7 @@ def get_stage_exits(options: CVLoDOptions, active_stage_order: list[str]) -> lis
         # If the stage is in the first, second, or third slot in the Villa branch stages list, the previous stage will
         # be Villa in every case.
         elif active_stage_order[i] == villa_branch_stages[1] or active_stage_order[i] == villa_branch_stages[2]:
-            current_stage_info["connecting_stages"]["prev"] = (stage_names.VILLA, reg_names.villac_crypt_i)
+            current_stage_info["connecting_stages"]["prev"] = (StageNames.VILLA, reg_names.villac_crypt_i)
         # If the stage is in the fourth or fifth slot in the Villa branch stages list, the previous stage will be the
         # previous stage in the Villa branch stages list.
         elif active_stage_order[i] == villa_branch_stages[3] or active_stage_order[i] == villa_branch_stages[4]:
@@ -1599,7 +1598,7 @@ def get_stage_exits(options: CVLoDOptions, active_stage_order: list[str]) -> lis
         # If the stage is in the third slot in the Castle Center branch stages list, the previous stage will be CC in
         # every case.
         elif active_stage_order[i] == cc_branch_stages[2]:
-            current_stage_info["connecting_stages"]["prev"] = (stage_names.CENTER, reg_names.ccte_elev_top)
+            current_stage_info["connecting_stages"]["prev"] = (StageNames.CENTER, reg_names.ccte_elev_top)
         # If the previous stage is in the list is in the first CC stage after all its branches, the previous stage will
         # be the second CC branching stage.
         elif active_stage_order[i] == after_cc_main_stage:
@@ -1617,7 +1616,7 @@ def get_stage_exits(options: CVLoDOptions, active_stage_order: list[str]) -> lis
             current_stage_info["connecting_stages"]["next"] = ("End", "")
         # If the stage is Villa, the next stages are the next one, two, or three stages in the main list depending on
         # how many Villa branching stages there are.
-        elif active_stage_order[i] == stage_names.VILLA:
+        elif active_stage_order[i] == StageNames.VILLA:
             if not villa_branch_stages[1]:
                 current_stage_info["connecting_stages"]["next"] = \
                     (active_stage_order[i + 1], CVLOD_STAGE_INFO[active_stage_order[i + 1]].start_region)
@@ -1650,10 +1649,10 @@ def get_stage_exits(options: CVLoDOptions, active_stage_order: list[str]) -> lis
         # If the stage is in the fifth slot in the Villa branching stages list, the next stage will be the end of
         # Castle Center.
         elif active_stage_order[i] == villa_branch_stages[4]:
-            current_stage_info["connecting_stages"]["next"] = (stage_names.CENTER, reg_names.ccte_elev_top)
+            current_stage_info["connecting_stages"]["next"] = (StageNames.CENTER, reg_names.ccte_elev_top)
         # If the stage is Castle Center, the next stages are the next one or two stages in the main list depending on
         # if there are or aren't CC branching stages.
-        elif active_stage_order[i] == stage_names.CENTER:
+        elif active_stage_order[i] == StageNames.CENTER:
             if not cc_branch_stages[0]:
                 current_stage_info["connecting_stages"]["next"] = \
                     (active_stage_order[i + 1], CVLOD_STAGE_INFO[active_stage_order[i + 1]].start_region)

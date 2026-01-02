@@ -5,8 +5,8 @@ import struct
 from typing import Collection, TypedDict, NotRequired
 from .data.enums import Scenes, Objects, ObjectExecutionFlags, ActorSpawnFlags, Items, Pickups, PickupFlags, \
     DoorFlags
-from .cvlod_text import cvlod_string_to_bytearray, cvlod_bytes_to_string, CVLOD_STRING_END_CHARACTER, \
-    CVLOD_TEXT_POOL_END_CHARACTER
+from .cvlod_text import cvlod_string_to_bytearray, cvlod_strings_to_pool, cvlod_bytes_to_string, \
+    CVLOD_STRING_END_CHARACTER, CVLOD_TEXT_POOL_END_CHARACTER
 
 N64_RDRAM_START = 0x80000000
 CRC1_START = 0x10
@@ -1394,21 +1394,17 @@ class CVLoDRomPatcher:
 
             # # # TEXT # # #
             # Create the final text list with all entries primed for deletion removed.
-            new_text_list = [text_entry for text_entry in self.scenes[scene_id].scene_text
+            new_text_list = [text_entry["text"] for text_entry in self.scenes[scene_id].scene_text
                              if "delete" not in text_entry]
 
-            # Loop over each text, convert each one to binary data, and insert them back in the map overlay.
-            text_data = bytearray(0)
+            # Calculate the text's new size while it's in Python string form and build the final list of texts to
+            # convert into a text pool that the game recognizes.
             new_text_size = 0
             for scene_text in new_text_list:
-                new_text_size += len(scene_text["text"]) + 1
-                text_data += (cvlod_string_to_bytearray(scene_text["text"], wrap=False, add_end_char=True))
-            # Add the character indicating the end of the entire text pool.
-            text_data += CVLOD_TEXT_POOL_END_CHARACTER
+                new_text_size += len(scene_text) + 1
 
-            # Pad the text data to be 4-aligned.
-            if len(text_data) % 4:
-                text_data += b'\x00\x00'
+            # Convert the final text pool back into a bytearray to be inserted back in the scene overlay.
+            text_data = cvlod_strings_to_pool(new_text_list, wrap=False)
 
             # If the new text data is the same size or smaller than it was before, write it back where it was originally
             # (if we even have a list to begin with).
