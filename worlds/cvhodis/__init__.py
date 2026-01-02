@@ -4,16 +4,16 @@ import settings
 import base64
 import logging
 
-from BaseClasses import Region, Tutorial, ItemClassification, EntranceType
+from BaseClasses import Tutorial, ItemClassification, EntranceType
 from entrance_rando import disconnect_entrance_for_randomization, randomize_entrances
 from .items import CVHoDisItem, FILLER_ITEM_NAMES, ALL_CVHODIS_ITEMS, FURNITURE, get_item_names_to_ids, \
     get_item_counts, get_pickup_type
 from .locations import CVHoDisLocation, get_location_names_to_ids, BASE_ID, get_locations_to_create, \
     get_location_name_groups
 from .options import cvhodis_option_groups, CVHoDisOptions, SubWeaponShuffle, AreaShuffle
-from .regions import get_region_info, get_all_region_names
+from .regions import get_region_info, get_all_region_names, CVHoDisRegion
 from .entrances import SHUFFLEABLE_TRANSITIONS, ERGroups, TARGET_GROUP_RELATIONSHIPS, cvhodis_on_connect, \
-    link_room_transitions, SORTED_TRANSITIONS, SKULL_DOOR_GROUPS, MK_DOOR_GROUPS
+    link_room_transitions, SORTED_TRANSITIONS, SKULL_DOOR_GROUPS, MK_DOOR_GROUPS, CVHoDisEntrance
 from .rules import CVHoDisRules
 from .data import item_names, loc_names
 from worlds.AutoWorld import WebWorld, World
@@ -77,6 +77,7 @@ class CVHoDisWorld(World):
 
     possible_hint_card_items: list[CVHoDisItem]
     transition_pairings: list[tuple]
+    priority_connections: list[tuple[list[int], list[int]]]
 
     # Default values to possibly be updated in generate_early
     furniture_amount_required: int = 0
@@ -89,6 +90,7 @@ class CVHoDisWorld(World):
     def generate_early(self) -> None:
         self.possible_hint_card_items = []
         self.transition_pairings = []
+        self.priority_connections = []
 
         # Generate the player's unique authentication
         self.auth = bytearray(self.random.getrandbits(8) for _ in range(16))
@@ -108,7 +110,7 @@ class CVHoDisWorld(World):
 
     def create_regions(self) -> None:
         # Create every Region object.
-        created_regions = [Region(name, self.player, self.multiworld) for name in get_all_region_names()]
+        created_regions = [CVHoDisRegion(name, self.player, self.multiworld) for name in get_all_region_names()]
 
         # Attach the Regions to the Multiworld.
         self.multiworld.regions.extend(created_regions)
@@ -191,7 +193,8 @@ class CVHoDisWorld(World):
         # Randomize the Entrances and save the result.
         if self.options.area_shuffle:
             result = randomize_entrances(self, coupled=not self.options.decouple_transitions.value,
-                                                           target_group_lookup=TARGET_GROUP_RELATIONSHIPS)
+                                                           target_group_lookup=TARGET_GROUP_RELATIONSHIPS,
+                                         on_connect=cvhodis_on_connect)
             self.transition_pairings = sorted(result.pairings,
                                               key=lambda transition: SORTED_TRANSITIONS.index(transition[0]))
 

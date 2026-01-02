@@ -1,9 +1,39 @@
+from Options import Accessibility
 from .data import ent_names
+from .options import AreaShuffle
 from enum import IntEnum
 from BaseClasses import Entrance
 from entrance_rando import ERPlacementState
 from typing import NamedTuple
 
+class CVHoDisEntrance(Entrance):
+    def can_connect_to(self, other: Entrance, dead_end: bool, er_state: "ERPlacementState") -> bool:
+        """
+        The regular Entrance's method, but with more conditions specific to Harmony of Dissonance to accommodate the
+        Castle Symmetry option on full Accessibility.
+        """
+        if er_state.world.options.castle_symmetry and er_state.world.options.area_shuffle.value == \
+            AreaShuffle.option_separate and er_state.world.options.accessibility == Accessibility.option_full:
+
+            # Always deny connecting the right Room A transition to a dead end or the right Skeleton A door, as this
+            # will create isolated inaccessible regions in the other castle due to right Room B being a dead end.
+            if self.name == ent_names.ria_exit_mca_r and (dead_end or other.name == ent_names.sca_exit_cya):
+                return False
+
+            # Don't connect to the Skeleton A left side unless the Skeleton B right door is reachable, to ensure nothing
+            # is locked out by the Skeleton B one-way rock before the left ceiling transition.
+            if other.name == ent_names.sca_exit_eta and not \
+                    er_state.collection_state.can_reach_entrance(ent_names.sca_exit_eta, er_state.world.player):
+                return False
+
+            # Don't connect to the Shrine B left side unless the Shrine A top transition is reachable, to ensure
+            # nothing is locked out by the Shrine A one-way wall after Living Armor.
+            if other.name == ent_names.sab_exit_etb and not \
+                    er_state.collection_state.can_reach_entrance(ent_names.saa_exit_wwa, er_state.world.player):
+                return False
+
+        # Run the regular Entrance class's method and return its result like normal.
+        return super().can_connect_to(other, dead_end, er_state)
 
 class ERGroups(IntEnum):
     # NOTE: The current stable GER's on_connect is not perfect, so for now, Top and Bottom entrances are considered Left
@@ -81,85 +111,158 @@ class CVHoDisTransitionData(NamedTuple):
                              # transition.
     player_arrive_y_pos: int # The on-screen standing Y position the player should be moved to upon arriving at the
                              # exit transition.
+    other_castle_transition: str # The transition that corresponds to this one in the other castle.
 
 SHUFFLEABLE_TRANSITIONS: dict[str, CVHoDisTransitionData] = {
     # Castle A
-    ent_names.eta_exit_saa:   CVHoDisTransitionData(0x499340, 0x849934C, 0x0410, 0x0000, ERGroups.RIGHT_A, 0x67, 0x67),
-    ent_names.eta_exit_mca:   CVHoDisTransitionData(0x499020, 0x849902C, 0x0210, 0x0000, ERGroups.RIGHT_A, 0x67, 0x67),
-    ent_names.eta_exit_sca:   CVHoDisTransitionData(0x49940C, 0x8499418, 0x0000, 0x0660, ERGroups.BOTTOM_A, 0xA3, 0x8F),
-    ent_names.mca_exit_eta:   CVHoDisTransitionData(0x49ABF4, 0x849AC0C, 0x0000, 0x0000, ERGroups.LEFT_A, 0x67, 0x67),
+    ent_names.eta_exit_saa:   CVHoDisTransitionData(0x499340, 0x849934C, 0x0410, 0x0000, ERGroups.RIGHT_A,
+                                                    0x67, 0x67, ent_names.etb_exit_sab),
+    ent_names.eta_exit_mca:   CVHoDisTransitionData(0x499020, 0x849902C, 0x0210, 0x0000, ERGroups.RIGHT_A,
+                                                    0x67, 0x67, ent_names.etb_exit_mcb),
+    ent_names.eta_exit_sca:   CVHoDisTransitionData(0x49940C, 0x8499418, 0x0000, 0x0660, ERGroups.BOTTOM_A,
+                                                    0xA3, 0x8F, ent_names.etb_exit_scb),
+    ent_names.mca_exit_eta:   CVHoDisTransitionData(0x49ABF4, 0x849AC0C, 0x0000, 0x0000, ERGroups.LEFT_A,
+                                                    0x67, 0x67, ent_names.mcb_exit_etb),
     # NOTE: Technically, the player is on the ground at screen position 0x60 in vertically-scrolling rooms.
     # In practice, however, the game offsets the player in the same way they would be if going to/from a static
     # transition at the center screen position.
-    ent_names.mca_exit_ria_l: CVHoDisTransitionData(0x49B3C0, 0x849B3CC, 0x0000, 0x0130, ERGroups.LEFT_A, 0x67, 0x67),
-    ent_names.mca_exit_ria_r: CVHoDisTransitionData(0x49B3B4, 0x849B3CC, 0x0000, 0x0130, ERGroups.RIGHT_A, 0x67, 0x67),
-    ent_names.mca_exit_wwa:   CVHoDisTransitionData(0x49B330, 0x849B33C, 0x0110, 0x0000, ERGroups.RIGHT_A, 0x67, 0x67),
-    ent_names.mca_exit_tfa:   CVHoDisTransitionData(0x49B2AC, 0x849B2B8, 0x0210, 0x0000, ERGroups.RIGHT_SKULL_A, 0x67, 0x67),
-    ent_names.ria_exit_mca_l: CVHoDisTransitionData(0x49B4BC, 0x849B4C8, 0x0210, 0x0000, ERGroups.RIGHT_A, 0x67, 0x67),
-    ent_names.ria_exit_mca_r: CVHoDisTransitionData(0x49B438, 0x849B450, 0x0000, 0x0030, ERGroups.LEFT_A, 0x67, 0x67),
-    ent_names.wwa_exit_mca:   CVHoDisTransitionData(0x49D028, 0x849D040, 0x0000, 0x0000, ERGroups.LEFT_A, 0x67, 0x67),
-    ent_names.wwa_exit_cya:   CVHoDisTransitionData(0x49D37C, 0x849D388, 0x0110, 0x0000, ERGroups.RIGHT_SKULL_A, 0x67, 0x67),
-    ent_names.wwa_exit_saa:   CVHoDisTransitionData(0x49D3F4, 0x849D400, 0x0110, 0x0000, ERGroups.RIGHT_A, 0x67, 0x67),
-    ent_names.saa_exit_wwa:   CVHoDisTransitionData(0x49D478, 0x849D484, 0x0000, 0x0000, ERGroups.LEFT_A, 0x67, 0x67),
-    ent_names.saa_exit_eta:   CVHoDisTransitionData(0x49D740, 0x849D758, 0x0000, 0x0000, ERGroups.LEFT_A, 0x67, 0x67),
-    ent_names.cya_exit_sca:   CVHoDisTransitionData(0x4AD0D8, 0x84AD0F0, 0x0000, 0x0000, ERGroups.LEFT_A, 0x67, 0x67),
-    ent_names.cya_exit_lca:   CVHoDisTransitionData(0x4AD024, 0x84AD054, 0x0000, 0x0130, ERGroups.RIGHT_A, 0x67, 0x67),
-    ent_names.cya_exit_wwa:   CVHoDisTransitionData(0x4AD458, 0x84AD47C, 0x0000, 0x0000, ERGroups.LEFT_SKULL_A, 0x67, 0x67),
-    ent_names.cya_exit_tfa:   CVHoDisTransitionData(0x4AD464, 0x84AD47C, 0x0200, 0x0000, ERGroups.TOP_A, 0x9F, 0x1F),
-    ent_names.sca_exit_cya:   CVHoDisTransitionData(0x4A0A10, 0x84A0A1C, 0x0000, 0x0030, ERGroups.RIGHT_A, 0x67, 0x67),
-    ent_names.sca_exit_eta:   CVHoDisTransitionData(0x4A10C8, 0x84A10E0, 0x0108, 0x0000, ERGroups.TOP_A, 0x9F, 0x1F),
-    ent_names.lca_exit_cya:   CVHoDisTransitionData(0x4A2CAC, 0x84A2CB8, 0x0000, 0x0000, ERGroups.LEFT_A, 0x67, 0x67),
-    ent_names.lca_exit_ada:   CVHoDisTransitionData(0x4A2EF8, 0x84A2F04, 0x0000, 0x0130, ERGroups.RIGHT_A, 0x67, 0x67),
-    ent_names.swa_exit_cda:   CVHoDisTransitionData(0x4A7500, 0x84A7518, 0x0000, 0x0000, ERGroups.LEFT_A, 0x7F, 0x7F),
-    ent_names.swa_exit_cra:   CVHoDisTransitionData(0x4A79CC, 0x84A79D8, 0x0000, 0x0130, ERGroups.RIGHT_A, 0x67, 0x67),
-    ent_names.swa_exit_ada:   CVHoDisTransitionData(0x4A7BB4, 0x84A7BCC, 0x0008, 0x0000, ERGroups.LEFT_A, 0x67, 0x67),
-    ent_names.cda_exit_swa:   CVHoDisTransitionData(0x4A7488, 0x84A7494, 0x0110, 0x0000, ERGroups.RIGHT_A, 0x7F, 0x7F),
-    ent_names.cda_exit_tfa:   CVHoDisTransitionData(0x4A7248, 0x84A7260, 0x0000, 0x0130, ERGroups.LEFT_MK_A, 0x67, 0x67),
-    ent_names.ada_exit_swa:   CVHoDisTransitionData(0x4A6040, 0x84A604C, 0x0000, 0x0030, ERGroups.RIGHT_A, 0x67, 0x67),
-    ent_names.ada_exit_lca:   CVHoDisTransitionData(0x4A5CEC, 0x84A5D04, 0x0000, 0x0130, ERGroups.LEFT_A, 0x67, 0x67),
-    ent_names.ada_exit_cra:   CVHoDisTransitionData(0x4A627C, 0x84A6288, 0x0110, 0x0000, ERGroups.RIGHT_A, 0x8F, 0x8F),
-    ent_names.cra_exit_ada:   CVHoDisTransitionData(0x4A9CA8, 0x84A9CCC, 0x0000, 0x0260, ERGroups.LEFT_A, 0x8F, 0x8F),
-    ent_names.cra_exit_swa:   CVHoDisTransitionData(0x4A9614, 0x84A9650, 0x0000, 0x0230, ERGroups.LEFT_A, 0x67, 0x67),
-    ent_names.tfa_exit_cda:   CVHoDisTransitionData(0x49F280, 0x849F28C, 0x0110, 0x0130, ERGroups.RIGHT_MK_A, 0x67, 0x67),
-    ent_names.tfa_exit_cya:   CVHoDisTransitionData(0x49F4F8, 0x849F504, 0x0000, 0x0560, ERGroups.BOTTOM_A, 0xA3, 0x8F),
-    ent_names.tfa_exit_mca:   CVHoDisTransitionData(0x49F570, 0x849F588, 0x0000, 0x0130, ERGroups.LEFT_SKULL_A, 0x67, 0x67),
+    ent_names.mca_exit_ria_l: CVHoDisTransitionData(0x49B3C0, 0x849B3CC, 0x0000, 0x0130, ERGroups.LEFT_A,
+                                                    0x67, 0x67, ent_names.mcb_exit_rib_l),
+    ent_names.mca_exit_ria_r: CVHoDisTransitionData(0x49B3B4, 0x849B3CC, 0x0000, 0x0130, ERGroups.RIGHT_A,
+                                                    0x67, 0x67, ent_names.mcb_exit_rib_r),
+    ent_names.mca_exit_wwa:   CVHoDisTransitionData(0x49B330, 0x849B33C, 0x0110, 0x0000, ERGroups.RIGHT_A,
+                                                    0x67, 0x67, ent_names.mcb_exit_wwb),
+    ent_names.mca_exit_tfa:   CVHoDisTransitionData(0x49B2AC, 0x849B2B8, 0x0210, 0x0000, ERGroups.RIGHT_SKULL_A,
+                                                    0x67, 0x67, ent_names.mcb_exit_tfb),
+    ent_names.ria_exit_mca_l: CVHoDisTransitionData(0x49B4BC, 0x849B4C8, 0x0210, 0x0000, ERGroups.RIGHT_A,
+                                                    0x67, 0x67, ent_names.rib_exit_mcb_l),
+    ent_names.ria_exit_mca_r: CVHoDisTransitionData(0x49B438, 0x849B450, 0x0000, 0x0030, ERGroups.LEFT_A,
+                                                    0x67, 0x67, ent_names.rib_exit_mcb_r),
+    ent_names.wwa_exit_mca:   CVHoDisTransitionData(0x49D028, 0x849D040, 0x0000, 0x0000, ERGroups.LEFT_A,
+                                                    0x67, 0x67, ent_names.wwb_exit_mcb),
+    ent_names.wwa_exit_cya:   CVHoDisTransitionData(0x49D37C, 0x849D388, 0x0110, 0x0000, ERGroups.RIGHT_SKULL_A,
+                                                    0x67, 0x67, ent_names.wwb_exit_cyb),
+    ent_names.wwa_exit_saa:   CVHoDisTransitionData(0x49D3F4, 0x849D400, 0x0110, 0x0000, ERGroups.RIGHT_A,
+                                                    0x67, 0x67, ent_names.wwb_exit_sab),
+    ent_names.saa_exit_wwa:   CVHoDisTransitionData(0x49D478, 0x849D484, 0x0000, 0x0000, ERGroups.LEFT_A,
+                                                    0x67, 0x67, ent_names.sab_exit_wwb),
+    ent_names.saa_exit_eta:   CVHoDisTransitionData(0x49D740, 0x849D758, 0x0000, 0x0000, ERGroups.LEFT_A,
+                                                    0x67, 0x67, ent_names.sab_exit_etb),
+    ent_names.cya_exit_sca:   CVHoDisTransitionData(0x4AD0D8, 0x84AD0F0, 0x0000, 0x0000, ERGroups.LEFT_A,
+                                                    0x67, 0x67, ent_names.cyb_exit_scb),
+    ent_names.cya_exit_lca:   CVHoDisTransitionData(0x4AD024, 0x84AD054, 0x0000, 0x0130, ERGroups.RIGHT_A,
+                                                    0x67, 0x67, ent_names.cyb_exit_lcb),
+    ent_names.cya_exit_wwa:   CVHoDisTransitionData(0x4AD458, 0x84AD47C, 0x0000, 0x0000, ERGroups.LEFT_SKULL_A,
+                                                    0x67, 0x67, ent_names.cyb_exit_wwb),
+    ent_names.cya_exit_tfa:   CVHoDisTransitionData(0x4AD464, 0x84AD47C, 0x0200, 0x0000, ERGroups.TOP_A,
+                                                    0x9F, 0x1F, ent_names.cyb_exit_tfb),
+    ent_names.sca_exit_cya:   CVHoDisTransitionData(0x4A0A10, 0x84A0A1C, 0x0000, 0x0030, ERGroups.RIGHT_A,
+                                                    0x67, 0x67, ent_names.scb_exit_cyb),
+    ent_names.sca_exit_eta:   CVHoDisTransitionData(0x4A10C8, 0x84A10E0, 0x0108, 0x0000, ERGroups.TOP_A,
+                                                    0x9F, 0x1F, ent_names.scb_exit_etb),
+    ent_names.lca_exit_cya:   CVHoDisTransitionData(0x4A2CAC, 0x84A2CB8, 0x0000, 0x0000, ERGroups.LEFT_A,
+                                                    0x67, 0x67, ent_names.lcb_exit_cyb),
+    ent_names.lca_exit_ada:   CVHoDisTransitionData(0x4A2EF8, 0x84A2F04, 0x0000, 0x0130, ERGroups.RIGHT_A,
+                                                    0x67, 0x67, ent_names.lcb_exit_adb),
+    ent_names.swa_exit_cda:   CVHoDisTransitionData(0x4A7500, 0x84A7518, 0x0000, 0x0000, ERGroups.LEFT_A,
+                                                    0x7F, 0x7F, ent_names.swb_exit_cdb),
+    ent_names.swa_exit_cra:   CVHoDisTransitionData(0x4A79CC, 0x84A79D8, 0x0000, 0x0130, ERGroups.RIGHT_A,
+                                                    0x67, 0x67, ent_names.swb_exit_crb),
+    ent_names.swa_exit_ada:   CVHoDisTransitionData(0x4A7BB4, 0x84A7BCC, 0x0008, 0x0000, ERGroups.LEFT_A,
+                                                    0x67, 0x67, ent_names.swb_exit_adb),
+    ent_names.cda_exit_swa:   CVHoDisTransitionData(0x4A7488, 0x84A7494, 0x0110, 0x0000, ERGroups.RIGHT_A,
+                                                    0x7F, 0x7F, ent_names.cdb_exit_swb),
+    ent_names.cda_exit_tfa:   CVHoDisTransitionData(0x4A7248, 0x84A7260, 0x0000, 0x0130, ERGroups.LEFT_MK_A,
+                                                    0x67, 0x67, ent_names.cdb_exit_tfb),
+    ent_names.ada_exit_swa:   CVHoDisTransitionData(0x4A6040, 0x84A604C, 0x0000, 0x0030, ERGroups.RIGHT_A,
+                                                    0x67, 0x67, ent_names.adb_exit_swb),
+    ent_names.ada_exit_lca:   CVHoDisTransitionData(0x4A5CEC, 0x84A5D04, 0x0000, 0x0130, ERGroups.LEFT_A,
+                                                    0x67, 0x67, ent_names.adb_exit_lcb),
+    ent_names.ada_exit_cra:   CVHoDisTransitionData(0x4A627C, 0x84A6288, 0x0110, 0x0000, ERGroups.RIGHT_A,
+                                                    0x8F, 0x8F, ent_names.adb_exit_crb),
+    ent_names.cra_exit_ada:   CVHoDisTransitionData(0x4A9CA8, 0x84A9CCC, 0x0000, 0x0260, ERGroups.LEFT_A,
+                                                    0x8F, 0x8F, ent_names.crb_exit_adb),
+    ent_names.cra_exit_swa:   CVHoDisTransitionData(0x4A9614, 0x84A9650, 0x0000, 0x0230, ERGroups.LEFT_A,
+                                                    0x67, 0x67, ent_names.crb_exit_swb),
+    ent_names.tfa_exit_cda:   CVHoDisTransitionData(0x49F280, 0x849F28C, 0x0110, 0x0130, ERGroups.RIGHT_MK_A,
+                                                    0x67, 0x67, ent_names.tfb_exit_cdb),
+    ent_names.tfa_exit_cya:   CVHoDisTransitionData(0x49F4F8, 0x849F504, 0x0000, 0x0560, ERGroups.BOTTOM_A,
+                                                    0xA3, 0x8F, ent_names.tfb_exit_cyb),
+    ent_names.tfa_exit_mca:   CVHoDisTransitionData(0x49F570, 0x849F588, 0x0000, 0x0130, ERGroups.LEFT_SKULL_A,
+                                                    0x67, 0x67, ent_names.tfb_exit_mcb),
     # Castle B
-    ent_names.etb_exit_sab:   CVHoDisTransitionData(0x49A344, 0x849A350, 0x0410, 0x0000, ERGroups.RIGHT_B, 0x67, 0x67),
-    ent_names.etb_exit_mcb:   CVHoDisTransitionData(0x49A028, 0x849A034, 0x0210, 0x0000, ERGroups.RIGHT_B, 0x67, 0x67),
-    ent_names.etb_exit_scb:   CVHoDisTransitionData(0x49A404, 0x849A410, 0x0000, 0x0660, ERGroups.BOTTOM_B, 0xA3, 0x8F),
-    ent_names.mcb_exit_etb:   CVHoDisTransitionData(0x49BE80, 0x849BE98, 0x0000, 0x0000, ERGroups.LEFT_B, 0x67, 0x67),
-    ent_names.mcb_exit_rib_l: CVHoDisTransitionData(0x49C62C, 0x849C638, 0x0000, 0x0130, ERGroups.LEFT_B, 0x67, 0x67),
-    ent_names.mcb_exit_rib_r: CVHoDisTransitionData(0x49C620, 0x849C638, 0x0000, 0x0130, ERGroups.RIGHT_B, 0x67, 0x67),
-    ent_names.mcb_exit_wwb:   CVHoDisTransitionData(0x49C59C, 0x849C5A8, 0x0110, 0x0000, ERGroups.RIGHT_B, 0x67, 0x67),
-    ent_names.mcb_exit_tfb:   CVHoDisTransitionData(0x49C518, 0x849C524, 0x0210, 0x0000, ERGroups.RIGHT_SKULL_B, 0x67, 0x67),
-    ent_names.rib_exit_mcb_l: CVHoDisTransitionData(0x49C748, 0x849C754, 0x0210, 0x0000, ERGroups.RIGHT_B, 0x67, 0x67),
-    ent_names.rib_exit_mcb_r: CVHoDisTransitionData(0x49C6B8, 0x849C6D0, 0x0000, 0x0030, ERGroups.LEFT_B, 0x67, 0x67),
-    ent_names.wwb_exit_mcb:   CVHoDisTransitionData(0x49E0BC, 0x849E0D4, 0x0000, 0x0000, ERGroups.LEFT_B, 0x67, 0x67),
-    ent_names.wwb_exit_cyb:   CVHoDisTransitionData(0x49E400, 0x849E40C, 0x0110, 0x0000, ERGroups.RIGHT_SKULL_B, 0x67, 0x67),
-    ent_names.wwb_exit_sab:   CVHoDisTransitionData(0x49E478, 0x849E484, 0x0110, 0x0000, ERGroups.RIGHT_B, 0x67, 0x67),
-    ent_names.sab_exit_wwb:   CVHoDisTransitionData(0x49E4FC, 0x849E508, 0x0000, 0x0000, ERGroups.LEFT_B, 0x67, 0x67),
-    ent_names.sab_exit_etb:   CVHoDisTransitionData(0x49E7A4, 0x849E7BC, 0x0000, 0x0000, ERGroups.LEFT_B, 0x67, 0x67),
-    ent_names.cyb_exit_scb:   CVHoDisTransitionData(0x4AE9A4, 0x84AE9BC, 0x0000, 0x0000, ERGroups.LEFT_B, 0x67, 0x67),
-    ent_names.cyb_exit_lcb:   CVHoDisTransitionData(0x4AE8F0, 0x84AE920, 0x0000, 0x0130, ERGroups.RIGHT_B, 0x67, 0x67),
-    ent_names.cyb_exit_wwb:   CVHoDisTransitionData(0x4AED20, 0x84AED44, 0x0000, 0x0000, ERGroups.LEFT_SKULL_B, 0x67, 0x67),
-    ent_names.cyb_exit_tfb:   CVHoDisTransitionData(0x4AED2C, 0x84AED44, 0x0200, 0x0000, ERGroups.TOP_B, 0x9F, 0x1F),
-    ent_names.scb_exit_cyb:   CVHoDisTransitionData(0x4A1B10, 0x84A1B1C, 0x0000, 0x0030, ERGroups.RIGHT_B, 0x67, 0x67),
-    ent_names.scb_exit_etb:   CVHoDisTransitionData(0x4A2210, 0x84A2228, 0x0108, 0x0000, ERGroups.TOP_B, 0x9F, 0x1F),
-    ent_names.lcb_exit_cyb:   CVHoDisTransitionData(0x4A45A4, 0x84A45B0, 0x0000, 0x0000, ERGroups.LEFT_B, 0x67, 0x67),
-    ent_names.lcb_exit_adb:   CVHoDisTransitionData(0x4A47F0, 0x84A47FC, 0x0000, 0x0130, ERGroups.RIGHT_B, 0x67, 0x67),
-    ent_names.swb_exit_cdb:   CVHoDisTransitionData(0x4A8740, 0x84A8758, 0x0000, 0x0000, ERGroups.LEFT_B, 0x7F, 0x7F),
-    ent_names.swb_exit_crb:   CVHoDisTransitionData(0x4A8BE4, 0x84A8BF0, 0x0000, 0x0130, ERGroups.RIGHT_B, 0x67, 0x67),
-    ent_names.swb_exit_adb:   CVHoDisTransitionData(0x4A8DF4, 0x84A8E0C, 0x0008, 0x0000, ERGroups.LEFT_B, 0x67, 0x67),
-    ent_names.cdb_exit_swb:   CVHoDisTransitionData(0x4A86C8, 0x84A86D4, 0x0110, 0x0000, ERGroups.RIGHT_B, 0x7F, 0x7F),
-    ent_names.cdb_exit_tfb:   CVHoDisTransitionData(0x4A84A0, 0x84A84B8, 0x0000, 0x0130, ERGroups.LEFT_MK_B, 0x67, 0x67),
-    ent_names.adb_exit_swb:   CVHoDisTransitionData(0x4A6B3C, 0x84A6B48, 0x0000, 0x0030, ERGroups.RIGHT_B, 0x67, 0x67),
-    ent_names.adb_exit_lcb:   CVHoDisTransitionData(0x4A6800, 0x84A6818, 0x0000, 0x0130, ERGroups.LEFT_B, 0x67, 0x67),
-    ent_names.adb_exit_crb:   CVHoDisTransitionData(0x4A6D7C, 0x84A6D88, 0x0110, 0x0000, ERGroups.RIGHT_B, 0x8F, 0x8F),
-    ent_names.crb_exit_adb:   CVHoDisTransitionData(0x4AB6B4, 0x84AB6D8, 0x0000, 0x0260, ERGroups.LEFT_B, 0x8F, 0x8F),
-    ent_names.crb_exit_swb:   CVHoDisTransitionData(0x4AB004, 0x84AB040, 0x0000, 0x0230, ERGroups.LEFT_B, 0x67, 0x67),
-    ent_names.tfb_exit_cdb:   CVHoDisTransitionData(0x49FF90, 0x849FF9C, 0x0110, 0x0130, ERGroups.RIGHT_MK_B, 0x67, 0x67),
-    ent_names.tfb_exit_cyb:   CVHoDisTransitionData(0x4A020C, 0x84A0218, 0x0000, 0x0560, ERGroups.BOTTOM_B, 0xA3, 0x8F),
-    ent_names.tfb_exit_mcb:   CVHoDisTransitionData(0x4A0284, 0x84A029C, 0x0000, 0x0130, ERGroups.LEFT_SKULL_B, 0x67, 0x67)
+    ent_names.etb_exit_sab:   CVHoDisTransitionData(0x49A344, 0x849A350, 0x0410, 0x0000, ERGroups.RIGHT_B,
+                                                    0x67, 0x67, ent_names.eta_exit_saa),
+    ent_names.etb_exit_mcb:   CVHoDisTransitionData(0x49A028, 0x849A034, 0x0210, 0x0000, ERGroups.RIGHT_B,
+                                                    0x67, 0x67, ent_names.eta_exit_mca),
+    ent_names.etb_exit_scb:   CVHoDisTransitionData(0x49A404, 0x849A410, 0x0000, 0x0660, ERGroups.BOTTOM_B,
+                                                    0xA3, 0x8F, ent_names.eta_exit_sca),
+    ent_names.mcb_exit_etb:   CVHoDisTransitionData(0x49BE80, 0x849BE98, 0x0000, 0x0000, ERGroups.LEFT_B,
+                                                    0x67, 0x67, ent_names.mca_exit_eta),
+    ent_names.mcb_exit_rib_l: CVHoDisTransitionData(0x49C62C, 0x849C638, 0x0000, 0x0130, ERGroups.LEFT_B,
+                                                    0x67, 0x67, ent_names.mca_exit_ria_l),
+    ent_names.mcb_exit_rib_r: CVHoDisTransitionData(0x49C620, 0x849C638, 0x0000, 0x0130, ERGroups.RIGHT_B,
+                                                    0x67, 0x67, ent_names.mca_exit_ria_r),
+    ent_names.mcb_exit_wwb:   CVHoDisTransitionData(0x49C59C, 0x849C5A8, 0x0110, 0x0000, ERGroups.RIGHT_B,
+                                                    0x67, 0x67, ent_names.mca_exit_wwa),
+    ent_names.mcb_exit_tfb:   CVHoDisTransitionData(0x49C518, 0x849C524, 0x0210, 0x0000, ERGroups.RIGHT_SKULL_B,
+                                                    0x67, 0x67, ent_names.mca_exit_tfa),
+    ent_names.rib_exit_mcb_l: CVHoDisTransitionData(0x49C748, 0x849C754, 0x0210, 0x0000, ERGroups.RIGHT_B,
+                                                    0x67, 0x67, ent_names.ria_exit_mca_l),
+    ent_names.rib_exit_mcb_r: CVHoDisTransitionData(0x49C6B8, 0x849C6D0, 0x0000, 0x0030, ERGroups.LEFT_B,
+                                                    0x67, 0x67, ent_names.ria_exit_mca_r),
+    ent_names.wwb_exit_mcb:   CVHoDisTransitionData(0x49E0BC, 0x849E0D4, 0x0000, 0x0000, ERGroups.LEFT_B,
+                                                    0x67, 0x67, ent_names.wwa_exit_mca),
+    ent_names.wwb_exit_cyb:   CVHoDisTransitionData(0x49E400, 0x849E40C, 0x0110, 0x0000, ERGroups.RIGHT_SKULL_B,
+                                                    0x67, 0x67, ent_names.wwa_exit_cya),
+    ent_names.wwb_exit_sab:   CVHoDisTransitionData(0x49E478, 0x849E484, 0x0110, 0x0000, ERGroups.RIGHT_B,
+                                                    0x67, 0x67, ent_names.wwa_exit_saa),
+    ent_names.sab_exit_wwb:   CVHoDisTransitionData(0x49E4FC, 0x849E508, 0x0000, 0x0000, ERGroups.LEFT_B,
+                                                    0x67, 0x67, ent_names.saa_exit_wwa),
+    ent_names.sab_exit_etb:   CVHoDisTransitionData(0x49E7A4, 0x849E7BC, 0x0000, 0x0000, ERGroups.LEFT_B,
+                                                    0x67, 0x67, ent_names.saa_exit_eta),
+    ent_names.cyb_exit_scb:   CVHoDisTransitionData(0x4AE9A4, 0x84AE9BC, 0x0000, 0x0000, ERGroups.LEFT_B,
+                                                    0x67, 0x67, ent_names.cya_exit_sca),
+    ent_names.cyb_exit_lcb:   CVHoDisTransitionData(0x4AE8F0, 0x84AE920, 0x0000, 0x0130, ERGroups.RIGHT_B,
+                                                    0x67, 0x67, ent_names.cya_exit_lca),
+    ent_names.cyb_exit_wwb:   CVHoDisTransitionData(0x4AED20, 0x84AED44, 0x0000, 0x0000, ERGroups.LEFT_SKULL_B,
+                                                    0x67, 0x67, ent_names.cya_exit_wwa),
+    ent_names.cyb_exit_tfb:   CVHoDisTransitionData(0x4AED2C, 0x84AED44, 0x0200, 0x0000, ERGroups.TOP_B,
+                                                    0x9F, 0x1F, ent_names.cya_exit_tfa),
+    ent_names.scb_exit_cyb:   CVHoDisTransitionData(0x4A1B10, 0x84A1B1C, 0x0000, 0x0030, ERGroups.RIGHT_B,
+                                                    0x67, 0x67, ent_names.sca_exit_cya),
+    ent_names.scb_exit_etb:   CVHoDisTransitionData(0x4A2210, 0x84A2228, 0x0108, 0x0000, ERGroups.TOP_B,
+                                                    0x9F, 0x1F, ent_names.sca_exit_eta),
+    ent_names.lcb_exit_cyb:   CVHoDisTransitionData(0x4A45A4, 0x84A45B0, 0x0000, 0x0000, ERGroups.LEFT_B,
+                                                    0x67, 0x67, ent_names.lca_exit_cya),
+    ent_names.lcb_exit_adb:   CVHoDisTransitionData(0x4A47F0, 0x84A47FC, 0x0000, 0x0130, ERGroups.RIGHT_B,
+                                                    0x67, 0x67, ent_names.lca_exit_ada),
+    ent_names.swb_exit_cdb:   CVHoDisTransitionData(0x4A8740, 0x84A8758, 0x0000, 0x0000, ERGroups.LEFT_B,
+                                                    0x7F, 0x7F, ent_names.swa_exit_cda),
+    ent_names.swb_exit_crb:   CVHoDisTransitionData(0x4A8BE4, 0x84A8BF0, 0x0000, 0x0130, ERGroups.RIGHT_B,
+                                                    0x67, 0x67, ent_names.swa_exit_cra),
+    ent_names.swb_exit_adb:   CVHoDisTransitionData(0x4A8DF4, 0x84A8E0C, 0x0008, 0x0000, ERGroups.LEFT_B,
+                                                    0x67, 0x67, ent_names.swa_exit_ada),
+    ent_names.cdb_exit_swb:   CVHoDisTransitionData(0x4A86C8, 0x84A86D4, 0x0110, 0x0000, ERGroups.RIGHT_B,
+                                                    0x7F, 0x7F, ent_names.cda_exit_swa),
+    ent_names.cdb_exit_tfb:   CVHoDisTransitionData(0x4A84A0, 0x84A84B8, 0x0000, 0x0130, ERGroups.LEFT_MK_B,
+                                                    0x67, 0x67, ent_names.cda_exit_tfa),
+    ent_names.adb_exit_swb:   CVHoDisTransitionData(0x4A6B3C, 0x84A6B48, 0x0000, 0x0030, ERGroups.RIGHT_B,
+                                                    0x67, 0x67, ent_names.ada_exit_swa),
+    ent_names.adb_exit_lcb:   CVHoDisTransitionData(0x4A6800, 0x84A6818, 0x0000, 0x0130, ERGroups.LEFT_B,
+                                                    0x67, 0x67, ent_names.ada_exit_lca),
+    ent_names.adb_exit_crb:   CVHoDisTransitionData(0x4A6D7C, 0x84A6D88, 0x0110, 0x0000, ERGroups.RIGHT_B,
+                                                    0x8F, 0x8F, ent_names.ada_exit_cra),
+    ent_names.crb_exit_adb:   CVHoDisTransitionData(0x4AB6B4, 0x84AB6D8, 0x0000, 0x0260, ERGroups.LEFT_B,
+                                                    0x8F, 0x8F, ent_names.cra_exit_ada),
+    ent_names.crb_exit_swb:   CVHoDisTransitionData(0x4AB004, 0x84AB040, 0x0000, 0x0230, ERGroups.LEFT_B,
+                                                    0x67, 0x67, ent_names.cra_exit_swa),
+    ent_names.tfb_exit_cdb:   CVHoDisTransitionData(0x49FF90, 0x849FF9C, 0x0110, 0x0130, ERGroups.RIGHT_MK_B,
+                                                    0x67, 0x67, ent_names.tfa_exit_cda),
+    ent_names.tfb_exit_cyb:   CVHoDisTransitionData(0x4A020C, 0x84A0218, 0x0000, 0x0560, ERGroups.BOTTOM_B,
+                                                    0xA3, 0x8F, ent_names.tfa_exit_cya),
+    ent_names.tfb_exit_mcb:   CVHoDisTransitionData(0x4A0284, 0x84A029C, 0x0000, 0x0130, ERGroups.LEFT_SKULL_B,
+                                                    0x67, 0x67, ent_names.tfa_exit_mca)
 }
 
 SORTED_TRANSITIONS = [transition for transition in SHUFFLEABLE_TRANSITIONS]
@@ -251,46 +354,19 @@ def link_room_transitions(transition_pairings: list[tuple]) -> dict[int, bytes]:
     return transition_bytes
 
 def cvhodis_on_connect(er_state: ERPlacementState, placed_exits: list[Entrance],
-                       paired_entrances: list[Entrance]) -> None:
+                       paired_entrances: list[Entrance]) -> bool:
     """Additional GER behavior specific to Castlevania HoD after an Entrance is connected."""
     # TODO: Finish implementing this with some GER-related fixes.
 
-    # placed_exits should not have a length of 1 or 0, but if it does, something probably went wrong.
-    if len(placed_exits) < 2:
-        return
+    # If Castle Symmetry is on and Area Shuffle is set to Separate, connect the same exit in the other castle to the
+    # same corresponding area.
+    if er_state.world.options.area_shuffle.value != AreaShuffle.option_separate or \
+            not er_state.world.options.castle_symmetry:
+        return False
 
-    # Get all the unconnected Entrances.
-    unconnected_ents = [ent for ent in er_state.world.randomized_entrances if ent not in er_state.placements]
+    other_castle_exit = er_state.world.multiworld.get_entrance(SHUFFLEABLE_TRANSITIONS[placed_exits[0].name].other_castle_transition, er_state.world.player)
+    other_castle_target = er_state.entrance_lookup.find_target(SHUFFLEABLE_TRANSITIONS[paired_entrances[0].name].other_castle_transition)
 
-    # If we're connecting a horizontal Entrance to a vertical one or vice versa, then we must connect another horizontal
-    # Entrance of the opposite direction to a vertical Entrance of either direction as soon as one of both becomes
-    # available.
-    placed_ent_groups = [placed_exits[0].randomization_group, placed_exits[1].randomization_group]
-    if placed_ent_groups[0] in VERTICAL_GROUPS and placed_ent_groups[1] in HORIZONTAL_GROUPS or \
-            placed_ent_groups[1] in VERTICAL_GROUPS and placed_ent_groups[0] in HORIZONTAL_GROUPS:
+    er_state.connect(other_castle_exit, other_castle_target)
 
-        # Determine which direction the horizontal entrance is and pick the opposite for that castle.
-        if ERGroups.LEFT_A in placed_ent_groups:
-            horizontal_to_connect = ERGroups.RIGHT_A
-            verticals_to_connect = [ERGroups.TOP_A, ERGroups.BOTTOM_A]
-        elif ERGroups.RIGHT_A in placed_ent_groups:
-            horizontal_to_connect = ERGroups.LEFT_A
-            verticals_to_connect = [ERGroups.TOP_A, ERGroups.BOTTOM_A]
-        elif ERGroups.LEFT_B in placed_ent_groups:
-            horizontal_to_connect = ERGroups.RIGHT_B
-            verticals_to_connect = [ERGroups.TOP_B, ERGroups.BOTTOM_B]
-        else:
-            horizontal_to_connect = ERGroups.LEFT_B
-            verticals_to_connect = [ERGroups.TOP_B, ERGroups.BOTTOM_B]
-
-        # Filter out the unconnected  entrances of our chosen horizontal and vertical groups and choose one at random.
-        chosen_horizontal = er_state.world.random.choice([ent for ent in unconnected_ents
-                                                          if ent.randomization_group == horizontal_to_connect])
-        chosen_vertical = er_state.world.random.choice([ent for ent in unconnected_ents
-                                                        if ent.randomization_group in verticals_to_connect])
-
-        # Choose one of each at random, and connect the two together.
-        chosen_horizontal.connect(chosen_vertical.parent_region)
-        chosen_vertical.connect(chosen_horizontal.parent_region)
-
-    return
+    return True
