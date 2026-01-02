@@ -33,22 +33,22 @@ class StageShuffle(Toggle):
 class ShuffledStartingStage(Choice):
     """Which stage to start at if Stage Shuffle is turned on."""
     display_name = "Shuffled Starting Stage"
-    option_foggy_lake = StageIDs.FOGGY
-    option_forest_of_silence = StageIDs.FOREST
-    option_castle_wall = StageIDs.C_WALL
-    option_villa = StageIDs.VILLA
-    option_the_outer_wall = StageIDs.OUTER
-    option_tunnel = StageIDs.TUNNEL
-    option_underground_waterway = StageIDs.WATERWAY
-    option_castle_center = StageIDs.CENTER
-    option_art_tower = StageIDs.ART
-    option_tower_of_ruins = StageIDs.RUINS
-    option_tower_of_science = StageIDs.SCIENCE
-    option_duel_tower = StageIDs.DUEL
-    option_tower_of_execution = StageIDs.EXECUTION
-    option_tower_of_sorcery = StageIDs.SORCERY
-    option_room_of_clocks = StageIDs.ROOM
-    option_clock_tower = StageIDs.CLOCK
+    option_foggy_lake = StageIDs.FOGGY.value
+    option_forest_of_silence = StageIDs.FOREST.value
+    option_castle_wall = StageIDs.C_WALL.value
+    option_villa = StageIDs.VILLA.value
+    option_the_outer_wall = StageIDs.OUTER.value
+    option_tunnel = StageIDs.TUNNEL.value
+    option_underground_waterway = StageIDs.WATERWAY.value
+    option_castle_center = StageIDs.CENTER.value
+    option_art_tower = StageIDs.ART.value
+    option_tower_of_ruins = StageIDs.RUINS.value
+    option_tower_of_science = StageIDs.SCIENCE.value
+    option_duel_tower = StageIDs.DUEL.value
+    option_tower_of_execution = StageIDs.EXECUTION.value
+    option_tower_of_sorcery = StageIDs.SORCERY.value
+    option_room_of_clocks = StageIDs.ROOM.value
+    option_clock_tower = StageIDs.CLOCK.value
     default = "random"
 
 

@@ -224,7 +224,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32s(0xFFC000, patches.remote_item_giver)
         patcher.write_int32s(0xFFE190, patches.subweapon_surface_checker)
         # Make received DeathLinks blow you to smithereens instead of kill you normally.
-        if slot_patch_info["options"]["death_link"] != CVLoDDeathLink.option_explosive:
+        if slot_patch_info["options"]["death_link"] == CVLoDDeathLink.option_explosive:
             patcher.write_int32s(0xFFC000 + ((len(patches.remote_item_giver) - 5) * 4), patches.deathlink_nitro_edition)
 
         # Make it possible to change the starting area after the intro narration cutscene.
