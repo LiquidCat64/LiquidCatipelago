@@ -43,11 +43,19 @@ remote_item_giver = [
     0x3C0B801D,  # LUI	 T3, 0x801D
     0x916AAA4E,  # LBU	 T2, 0xAA4E (T3)
     0x012A4821,  # ADDU  T1, T1, T2
-    0x11200006,  # BEQZ	 T1,     [forward 0x06]
+    0x1120000C,  # BEQZ	 T1,     [forward 0x0C]
     # If it isn't, decrement it by 1 frame and return.
     0x8D6CAC0C,  # LW    T4, 0xAC0C (T3)
-    0x11400002,  # BEQZ  T2,     [forward 0x02]
+    0x11400008,  # BEQZ  T2,     [forward 0x08]
     0x254AFFFF,  # ADDIU T2, T2, 0xFFFF
+    # If the player is holding C-Left while the delay timer has more than 0x10 frames left in it, set the timer to 0x10.
+    # This will allow the player to turbo through the received item queue if they so desire.
+    0x910D87F7,  # LBU   T5, 0x87F7 (T0)
+    0x31AD0002,  # ANDI  T5, T5, 0x0002
+    0x11A00003,  # BEQZ  T5,     [forward 0x03]
+    0x294E0010,  # SLTI  T6, T2, 0x0010
+    0x51C00001,  # BEQZL T6,     [forward 0x01]
+    0x340A0010,  # ORI   T2, R0, 0x0010
     0xA16AAA4E,  # SB	 T2, 0xAA4E (T3)
     0x03E00008,  # JR    RA
     0x00000000,  # NOP
@@ -597,14 +605,14 @@ load_clearer = [
     0x3C08801D,  # LUI   T0, 0x801D
     0xFD00AA48,  # SD    R0, 0xAA48 (T0)
     0xA104AA31,  # SB    A0, 0xAA31 (T0)
-    0x9109ABA4,  # LBU   T1, 0xABA4 (T0)
+    0x9109AB84,  # LBU   T1, 0xAB84 (T0)
     0x3129007F,  # ANDI  T1, T1, 0x007F
-    0xA109ABA4,  # SB    T1, 0xABA4 (T0)
-    0x950AAB42,  # LHU   T2, 0xAB42 (T0)
+    0xA109AB84,  # SB    T1, 0xAB84 (T0)
+    0x950AAB3A,  # LHU   T2, 0xAB3A (T0)
     0x51400001,  # BEQZL T2,     [forward 0x01]
     0x240A2710,  # ADDIU T2, R0, 0x2710
     0x03E00008,  # JR    RA
-    0xA50AAB42   # SH    T2, 0xAB42 (T0)
+    0xA50AAB3A   # SH    T2, 0xAB3A (T0)
 ]
 
 elevator_flag_checker = [
