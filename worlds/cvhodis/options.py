@@ -80,38 +80,52 @@ class CastleWarpCondition(Choice):
     default = 1
 
 
-class AreaShuffle(Choice):
+class AreaDivisions(Choice):
     """
-    Randomizes where every transition to a different named area leads.
-    Separate: Both castles will have their areas kept separate from each other.
-    Combined: Both castles will have their areas mixed together, creating a singular, massive castle.
+    Where the divisions between areas should be considered for the purposes of the Transition Shuffler and Castle Swapper options.
+    Areas can be split at either doors only or at every single transition to a differently-named place.
     """
-    display_name = "Area Shuffle"
-    option_none = 0
-    option_separate = 1
-    option_combined = 2
+    display_name = "Area Divisions"
+    option_doors_only = 0
+    option_all_transitions = 1
     default = 0
 
 
-class DecoupleTransitions(Toggle):
+class CastleSwapper(Choice):
     """
-    Whether transition entrances should be decoupled from exits if Area Shuffle is enabled. Going back through an area transition will send you somewhere completely different from whence you came.
+    Allows areas or individual transitions between areas to be swapped in the two castles at a 50% random chance.
+    If Transition Shuffler is off, areas or transition destinations will be randomly swapped to their equivalent other castle's and be otherwise unchanged.
+    If Transition Shuffler is NOT off, this option's choices will affect it in the following ways:
+    Off: Castles A and B will be shuffled entirely separately from each other.
+    Areas: Castles A and B will be shuffled entirely separately from each other with A and B areas randomly swapped between them.
+    Transitions: No castle separation at all; any A or B transition can lead to any A or B area.
     """
-    display_name = "Decouple Transitions"
+    display_name = "Castle Swapper"
+    option_off = 0
+    option_areas = 1
+    option_transitions = 2
+    default = 0
+
+
+class TransitionShuffler(Choice):
+    """
+    Shuffles where transitions to different areas of the castles lead to. The exact shuffle behavior is affected by other options.
+    Off: Transitions will not be shuffled, though they CAN lead to the corresponding area in the other castle if Castle Swapper is enabled.
+    Coupled: Returning through a shuffled transition will take you back to where you were before.
+    Decoupled: Returning through a shuffled transition will take you somewhere entirely different. This can be very chaotic.
+    """
+    display_name = "Transition Shuffler"
+    option_off = 0
+    option_coupled = 1
+    option_decoupled = 2
+    default = 0
 
 
 class CastleSymmetry(DefaultOnToggle):
     """
-    Whether randomized transitions should lead to the same corresponding area in both castles, if Area Shuffle is set to Separate.
+    Whether shuffled transitions should lead to the same corresponding area in both castles. This is not applicable if Castle Swapper is set to Transitions.
     """
     display_name = "Castle Symmetry"
-
-
-class AreaSwapper(Toggle):
-    """
-    Swaps areas between the two castles at random. Does not apply if Area Shuffle is set to Combined.
-    """
-    display_name = "Area Swapper"
 
 
 class LinkDoorTypes(Toggle):
@@ -165,8 +179,9 @@ class CVHoDisOptions(PerGameCommonOptions):
     # countdown: Countdown
     # sub_weapon_shuffle: SubWeaponShuffle
     # nerf_griffin_wing: NerfGriffinWing
-    area_shuffle: AreaShuffle
-    decouple_transitions: DecoupleTransitions
+    area_divisions: AreaDivisions
+    castle_swapper: CastleSwapper
+    transition_shuffler: TransitionShuffler
     castle_symmetry: CastleSymmetry
     link_door_types: LinkDoorTypes
     early_lizard: EarlyLizard
@@ -177,15 +192,15 @@ class CVHoDisOptions(PerGameCommonOptions):
 
 
 cvhodis_option_groups = [
-    OptionGroup("goal requirements", [
+    OptionGroup("Goal Requirements", [
         MediumEndingRequired, WorstEndingRequired, BestEndingRequired, FurnitureAmountRequired,
         # MapPercentRequired
     ]),
-    OptionGroup("entrance randomizer", [
-        AreaShuffle, DecoupleTransitions, CastleSymmetry, LinkDoorTypes]),
-    OptionGroup("difficulty", [
+    OptionGroup("Entrance Randomizer", [
+        CastleSwapper, TransitionShuffler, CastleSymmetry, AreaDivisions, LinkDoorTypes]),
+    OptionGroup("Difficulty", [
         EarlyLizard, SpellboundBossLogic, CastleWarpCondition, DeathLink]),
-    OptionGroup("quality of life", [
+    OptionGroup("Quality of Life", [
         DoubleSidedWarps,
     #    Countdown
     ])

@@ -1,6 +1,8 @@
+from enum import IntEnum
 from BaseClasses import Item, ItemClassification
 from .data import item_names
-from .locations import BASE_ID, CVHODIS_CHECKS_INFO
+from .data.enums import PickupTypes
+from .locations import BASE_ID, CVHODIS_LOCATIONS_INFO
 
 from typing import TYPE_CHECKING, NamedTuple
 from collections import Counter
@@ -9,7 +11,6 @@ from .options import CastleWarpCondition
 
 if TYPE_CHECKING:
     from . import CVHoDisWorld
-
 
 class CVHoDisItem(Item):
     game: str = "Castlevania - Harmony of Dissonance"
@@ -25,16 +26,6 @@ class CVHoDisItemData(NamedTuple):
 #                            by default, unless I deliberately override it (as is the case for the Cleansing on the
 #                            Ignore Cleansing option).
 
-PICKUP_TYPE_HEART = 0
-PICKUP_TYPE_GOLD  = 1
-PICKUP_TYPE_SUB   = 2
-PICKUP_TYPE_USE   = 3
-PICKUP_TYPE_WHIP  = 4
-PICKUP_TYPE_EQUIP = 5
-PICKUP_TYPE_BOOK  = 6
-PICKUP_TYPE_RELIC = 7
-PICKUP_TYPE_FURN  = 8
-PICKUP_TYPE_MAX   = 9
 
 USE_ITEMS: dict[str, CVHoDisItemData] = {
     item_names.use_potion:    CVHoDisItemData(0x00),
@@ -67,7 +58,7 @@ USE_ITEMS: dict[str, CVHoDisItemData] = {
     item_names.use_gem_d:     CVHoDisItemData(0x1B, ItemClassification.useful),
 }
 
-WHIPS: dict[str, CVHoDisItemData] = {
+WHIP_ATTACHMENTS: dict[str, CVHoDisItemData] = {
     item_names.whip_crush:  CVHoDisItemData(0x00, ItemClassification.progression | ItemClassification.useful),
     item_names.whip_steel:  CVHoDisItemData(0x01, ItemClassification.useful),
     item_names.whip_plat:   CVHoDisItemData(0x02, ItemClassification.useful),
@@ -210,7 +201,7 @@ EQUIPMENT: dict[str, CVHoDisItemData] = {
     item_names.equip_ring_e:      CVHoDisItemData(0x7F, ItemClassification.useful),
 }
 
-BOOKS: dict[str, CVHoDisItemData] = {
+SPELLBOOKS: dict[str, CVHoDisItemData] = {
     item_names.book_fire:   CVHoDisItemData(0x00, ItemClassification.useful),
     item_names.book_ice:    CVHoDisItemData(0x01, ItemClassification.useful),
     item_names.book_bolt:   CVHoDisItemData(0x02, ItemClassification.useful),
@@ -279,13 +270,13 @@ MAX_UPS: dict[str, CVHoDisItemData] = {
 }
 
 PICKUP_TYPE_MAPPINGS = {
-    PICKUP_TYPE_USE:   USE_ITEMS,
-    PICKUP_TYPE_WHIP:  WHIPS,
-    PICKUP_TYPE_EQUIP: EQUIPMENT,
-    PICKUP_TYPE_BOOK:  BOOKS,
-    PICKUP_TYPE_RELIC: RELICS,
-    PICKUP_TYPE_FURN:  FURNITURE,
-    PICKUP_TYPE_MAX:   MAX_UPS
+    PickupTypes.USE_ITEM: USE_ITEMS,
+    PickupTypes.WHIP_ATTACHMENT: WHIP_ATTACHMENTS,
+    PickupTypes.EQUIPMENT: EQUIPMENT,
+    PickupTypes.SPELLBOOK: SPELLBOOKS,
+    PickupTypes.RELIC: RELICS,
+    PickupTypes.FURNITURE: FURNITURE,
+    PickupTypes.MAX_UP: MAX_UPS
 }
 
 ALL_CVHODIS_ITEMS: dict[str, CVHoDisItemData] = {item: PICKUP_TYPE_MAPPINGS[pickup_type][item] for pickup_type in
@@ -328,7 +319,7 @@ def get_item_counts(world: "CVHoDisWorld") -> dict[ItemClassification, dict[str,
         if loc.address is None:
             continue
 
-        item_to_add = CVHODIS_CHECKS_INFO[loc.name].item
+        item_to_add = CVHODIS_LOCATIONS_INFO[loc.name].item
 
         # If the Item is a piece of furniture and no furniture amount is required for goal completion at all, submit
         # it as Filler instead of Progression Skip Balancing.
@@ -336,7 +327,7 @@ def get_item_counts(world: "CVHoDisWorld") -> dict[ItemClassification, dict[str,
             item_class = ItemClassification.filler
         # If the Item is a spell book, and Spellbound Boss Logic is not disabled, submit it as Progression + Useful
         # instead of just Useful.
-        elif item_to_add in BOOKS and world.options.spellbound_boss_logic:
+        elif item_to_add in SPELLBOOKS and world.options.spellbound_boss_logic:
             item_class = ItemClassification.useful | ItemClassification.progression
         # If the Item is a Vlad Relic and neither the Worst nor Best Ending is required, submit it as just Useful
         # instead of Useful + Progression Skip Balancing.

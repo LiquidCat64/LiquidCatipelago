@@ -10,11 +10,11 @@ eta_exit_sca = "Entrance A Bottom Floor Transition"
 eta_cstone_lr = "Entrance A Lower Crush Wall Right"
 
 # Marble Corridor A names
-mca_exit_eta = "Corridor A Left Door"
-mca_exit_ria_l = "Corridor A Left Shaft Transition"
-mca_exit_ria_r = "Corridor A Right Shaft Transition"
-mca_exit_wwa = "Corridor A Bottom Door"
-mca_exit_tfa = "Corridor A Right Skull Door"
+mca_exit_eta = "Marble A Left Door"
+mca_exit_ria_l = "Marble A Left Shaft Transition"
+mca_exit_ria_r = "Marble A Right Shaft Transition"
+mca_exit_wwa = "Marble A Bottom Door"
+mca_exit_tfa = "Marble A Right Skull Door"
 
 # Room of Illusion A names
 ria_exit_mca_l = "Room A Left Transition"
@@ -92,6 +92,7 @@ ada_down_m = "Aqueduct A Down from Merman Lair"
 # Clock Tower A names
 cra_exit_ada = "Clock A Bottom Door"
 cra_djump_l = "Clock A Double Jump from Bottom"
+cra_down_door = "Clock A Down to Bottom Door"
 cra_button = "Clock A Lower Button Press"
 cra_exit_swa = "Clock A Top Door"
 cra_djump_p = "Clock A Double Jumps from Pendulum Area"
@@ -127,11 +128,11 @@ etb_exit_scb = "Entrance B Bottom Floor Transition"
 etb_cstone_lr = "Entrance B Lower Crush Wall Right"
 
 # Marble Corridor B names
-mcb_exit_etb = "Corridor B Left Door"
-mcb_exit_rib_l = "Corridor B Left Shaft Transition"
-mcb_exit_rib_r = "Corridor B Right Shaft Transition"
-mcb_exit_wwb = "Corridor B Bottom Door"
-mcb_exit_tfb = "Corridor B Right Skull Door"
+mcb_exit_etb = "Marble B Left Door"
+mcb_exit_rib_l = "Marble B Left Shaft Transition"
+mcb_exit_rib_r = "Marble B Right Shaft Transition"
+mcb_exit_wwb = "Marble B Bottom Door"
+mcb_exit_tfb = "Marble B Right Skull Door"
 
 # Room of Illusion B names
 rib_exit_mcb_l = "Room B Left Transition"
@@ -200,6 +201,7 @@ adb_down_m = "Aqueduct B Down from Merman Lair"
 # Clock Tower B names
 crb_exit_adb = "Clock B Bottom Door"
 crb_djump_l = "Clock B Double Jump from Bottom"
+crb_down_door = "Clock B Down to Bottom Door"
 crb_abutton_b = "Clock B Lower Alt-button Press from Bottom"
 crb_exit_swb = "Clock B Top Door"
 crb_abutton_t = "Clock B Lower Alt-button Press from Top"

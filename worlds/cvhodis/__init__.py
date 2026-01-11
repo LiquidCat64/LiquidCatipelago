@@ -10,10 +10,12 @@ from .items import CVHoDisItem, FILLER_ITEM_NAMES, ALL_CVHODIS_ITEMS, FURNITURE,
     get_item_counts, get_pickup_type
 from .locations import CVHoDisLocation, get_location_names_to_ids, BASE_ID, get_locations_to_create, \
     get_location_name_groups
-from .options import cvhodis_option_groups, CVHoDisOptions, SubWeaponShuffle, AreaShuffle
-from .regions import get_region_info, get_all_region_names, CVHoDisRegion
+from .options import cvhodis_option_groups, CVHoDisOptions, SubWeaponShuffle, TransitionShuffler, CastleSwapper, \
+    AreaDivisions
+from .regions import get_all_region_names, CVHoDisRegion, ALL_CVHODIS_REGIONS
 from .entrances import SHUFFLEABLE_TRANSITIONS, ERGroups, TARGET_GROUP_RELATIONSHIPS, cvhodis_on_connect, \
-    link_room_transitions, SORTED_TRANSITIONS, SKULL_DOOR_GROUPS, MK_DOOR_GROUPS, CVHoDisEntrance
+    link_room_transitions, SORTED_TRANSITIONS, SKULL_DOOR_GROUPS, MK_DOOR_GROUPS, CVHoDisEntrance, \
+    invert_castle_transitions, verify_entrances, MAIN_SUB_AREAS, get_er_group
 from .rules import CVHoDisRules
 from .data import item_names, loc_names
 from worlds.AutoWorld import WebWorld, World
@@ -77,7 +79,8 @@ class CVHoDisWorld(World):
 
     possible_hint_card_items: list[CVHoDisItem]
     transition_pairings: list[tuple]
-    priority_connections: list[tuple[list[int], list[int]]]
+    inverted_groups: dict[str, bool]
+    inverted_transitions: dict[str, bool]
 
     # Default values to possibly be updated in generate_early
     furniture_amount_required: int = 0
@@ -90,7 +93,7 @@ class CVHoDisWorld(World):
     def generate_early(self) -> None:
         self.possible_hint_card_items = []
         self.transition_pairings = []
-        self.priority_connections = []
+        self.inverted_transitions, self.inverted_groups = invert_castle_transitions(self)
 
         # Generate the player's unique authentication
         self.auth = bytearray(self.random.getrandbits(8) for _ in range(16))
@@ -115,36 +118,43 @@ class CVHoDisWorld(World):
         # Attach the Regions to the Multiworld.
         self.multiworld.regions.extend(created_regions)
 
+        # Loop over every Region and create and add its Locations and Entrances.
         for reg in created_regions:
 
-            # Add the Entrances to each Region (if it has any).
-            ent_destinations_and_names = get_region_info(reg.name, "entrances")
-            if ent_destinations_and_names is not None:
-                created_entrances = reg.add_exits(ent_destinations_and_names)
+            # Add the Entrances to the Region (if it has any).
+            if ALL_CVHODIS_REGIONS[reg.name]["entrances"]:
+                created_entrances = reg.add_exits(verify_entrances(ALL_CVHODIS_REGIONS[reg.name]["entrances"],
+                                                                   self.inverted_transitions))
 
-                # If Area Shuffle is on, disconnect all the created randomizable entrances in the Region to prepare it
-                # for entrance randomizer.
-                if self.options.area_shuffle:
+                # If Transition Shuffler is on, disconnect all the created randomizable Entrances in the Region to
+                # prepare it for Entrance Randomizer.
+                if self.options.transition_shuffler:
                     for ent in created_entrances:
                         if ent.name in SHUFFLEABLE_TRANSITIONS:
+                            # If we're looking at a non-door transition and Area Divisions is set to Doors Only, do not
+                            # randomize it.
+                            if not SHUFFLEABLE_TRANSITIONS[ent.name].is_door and \
+                                    self.options.area_divisions.value == AreaDivisions.option_doors_only:
+                                continue
                             ent.randomization_type = EntranceType.TWO_WAY
-                            ent.randomization_group = SHUFFLEABLE_TRANSITIONS[ent.name].er_group
-                            # If Area Shuffle is in Combined mode, collapse all Castle B groups into their
-                            # corresponding Castle A groups instead to make them randomized together.
-                            if self.options.area_shuffle == AreaShuffle.option_combined and \
-                                    ent.randomization_group > 8:
-                                ent.randomization_group -= 8
+                            ent.randomization_group = get_er_group(ent.name, self.options, self.inverted_groups)
+                            # If Castle Swapper is in Transitions mode, collapse all Castle B groups
+                            # (all even-numbered ones) into their corresponding Castle A groups instead
+                            # to make both castles randomize together.
+                            if self.options.castle_swapper == CastleSwapper.option_transitions and \
+                                    not ent.randomization_group % 2:
+                                ent.randomization_group -= 1
                             # If Link Door Types is not on, collapse all special door type groups (MK and Skull) into
                             # their corresponding normal door direction type to randomize them together.
                             if not self.options.link_door_types:
                                 if ent.randomization_group in SKULL_DOOR_GROUPS:
-                                    ent.randomization_group -= 1
-                                elif ent.randomization_group in MK_DOOR_GROUPS:
                                     ent.randomization_group -= 2
+                                elif ent.randomization_group in MK_DOOR_GROUPS:
+                                    ent.randomization_group -= 4
                             disconnect_entrance_for_randomization(ent)
 
             # Add the Locations to each Region (if it has any).
-            reg_loc_names = get_region_info(reg.name, "locations")
+            reg_loc_names = ALL_CVHODIS_REGIONS[reg.name]["locations"]
             if reg_loc_names is None:
                 continue
             locations_with_ids, locked_pairs = get_locations_to_create(reg_loc_names, self.options)
@@ -190,13 +200,30 @@ class CVHoDisWorld(World):
         CVHoDisRules(self).set_cvhodis_rules()
 
     def connect_entrances(self) -> None:
-        # Randomize the Entrances and save the result.
-        if self.options.area_shuffle:
-            result = randomize_entrances(self, coupled=not self.options.decouple_transitions.value,
-                                                           target_group_lookup=TARGET_GROUP_RELATIONSHIPS,
+        # If Transition Shuffler is on, randomize the Entrances and save the result's transition entrance pairings.
+        if self.options.transition_shuffler:
+            result = randomize_entrances(self, coupled=not self.options.transition_shuffler.value == \
+                                                           TransitionShuffler.option_decoupled,
+                                         target_group_lookup=TARGET_GROUP_RELATIONSHIPS,
                                          on_connect=cvhodis_on_connect)
             self.transition_pairings = sorted(result.pairings,
                                               key=lambda transition: SORTED_TRANSITIONS.index(transition[0]))
+        # If Transition Shuffler was off but Castle Swapper is on, manually create the slot's list of transition
+        # pairings based on which transition Entrances are inverted and save that.
+        elif self.options.castle_swapper:
+            for transition_name, inverted in self.inverted_transitions.items():
+                ent = self.get_entrance(transition_name)
+                # Skip the transition if it's not a door and Area Divisions is Doors Only.
+                if not SHUFFLEABLE_TRANSITIONS[ent.name].is_door and \
+                        self.options.area_divisions == AreaDivisions.option_doors_only:
+                    continue
+                # If the transition is inverted, pair it with its other castle transition's destination transition.
+                if inverted:
+                    self.transition_pairings += [(ent.name, SHUFFLEABLE_TRANSITIONS[
+                        SHUFFLEABLE_TRANSITIONS[ent.name].other_castle_transition].destination_transition)]
+                # Otherwise, pair it with its own.
+                else:
+                    self.transition_pairings += [(ent.name, SHUFFLEABLE_TRANSITIONS[ent.name].destination_transition)]
 
     def generate_output(self, output_directory: str) -> None:
         # Get out all the Locations that are not Events.
@@ -207,7 +234,7 @@ class CVHoDisWorld(World):
         # Hint Card hints
         offset_data.update(get_hint_card_hints(self, active_locations))
         # Transition data
-        if self.options.area_shuffle:
+        if self.transition_pairings:
             offset_data.update(link_room_transitions(self.transition_pairings))
         # Sub-weapons
         # if self.options.sub_weapon_shuffle:
@@ -236,8 +263,10 @@ class CVHoDisWorld(World):
                 "best_ending_required": self.options.best_ending_required.value,
                 "furniture_amount_required": self.furniture_amount_required,
                 "spellbound_boss_logic": self.options.spellbound_boss_logic.value,
-                "area_shuffle": self.options.area_shuffle.value,
-                "decouple_transitions": self.options.decouple_transitions.value,
+                "area_divisions": self.options.area_divisions.value,
+                "castle_swapper": self.options.castle_swapper.value,
+                "transition_shuffler": self.options.transition_shuffler.value,
+                "castle_symmetry": self.options.castle_symmetry.value,
                 "link_door_types": self.options.link_door_types.value,
                 "castle_warp_condition": self.options.castle_warp_condition.value,
                 "transition_pairings": self.transition_pairings}
@@ -251,19 +280,39 @@ class CVHoDisWorld(World):
             multidata["connect_names"][self.player_name]
 
     def write_spoiler_header(self, spoiler_handle: typing.TextIO) -> None:
-        # If Area Shuffle is enabled, write all randomized transitions to the spoiler.
-        if not self.options.area_shuffle:
+        # If we have transition pairings, meaning transition Shuffler or Area Swapper is enabled, write all randomized
+        # transitions to the spoiler.
+        if not self.transition_pairings:
             return
 
         spoiler = self.multiworld.spoiler
+
+        # If Castle Swapper is enabled, and not set to Transitions while Transition Shuffle is on, write which Areas or
+        # Transitions in the game were swapped to the spoiler.
+        if self.options.castle_swapper and (self.options.castle_swapper.value != CastleSwapper.option_transitions or
+                                            not self.options.transition_shuffler):
+            spoiler_handle.write(
+                f"\n{self.player_name}'s Castle Swapper "
+                f"{'areas' if self.options.castle_swapper.value == CastleSwapper.option_areas else 'transitions'}:\n"
+            )
+            # Loop over each Area and write it.
+            for area_name, inverted in self.inverted_groups.items():
+                # If Area Divisions are set to Doors Only, and the Area has an associated sub-Area that we are counting
+                # as the same Area as it, add it to the full name to write in the spoiler.
+                full_area_name = area_name
+                if self.options.area_divisions.value == AreaDivisions.option_doors_only and area_name in MAIN_SUB_AREAS:
+                    full_area_name += f"/{MAIN_SUB_AREAS[area_name]}"
+
+                spoiler_handle.writelines(f"{full_area_name}: {'Swapped' if inverted else 'Normal'}\n")
+
         for pair in self.transition_pairings:
             # If transitions are coupled, and we already wrote one direction, skip writing the other one.
-            if not self.options.decouple_transitions and (pair[1], "both", self.player) in spoiler.entrances:
+            if self.options.transition_shuffler.value != TransitionShuffler.option_decoupled and \
+                    (pair[1], "both", self.player) in spoiler.entrances:
                 continue
             spoiler.set_entrance(
                 pair[0],
                 pair[1],
-                "both" if not self.options.decouple_transitions else "",
+                "both" if self.options.transition_shuffler.value != TransitionShuffler.option_decoupled else "",
                 self.player
             )
-

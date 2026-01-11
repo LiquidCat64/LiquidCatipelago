@@ -1,13 +1,13 @@
 from BaseClasses import ItemClassification, Location
 from .options import Countdown
-from .locations import CVHODIS_CHECKS_INFO, ALT_PICKUP_OFFSETS, GUARDIAN_GRINDER_LOCATIONS
-from .items import ALL_CVHODIS_ITEMS, PICKUP_TYPE_BOOK, PICKUP_TYPE_RELIC, PICKUP_TYPE_FURN, PICKUP_TYPE_USE, \
-    PICKUP_TYPE_WHIP, PICKUP_TYPE_EQUIP
+from .locations import CVHODIS_LOCATIONS_INFO, ALT_PICKUP_OFFSETS, GUARDIAN_GRINDER_LOCATIONS
+from .items import ALL_CVHODIS_ITEMS
 from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_DESCRIPTION, DESCRIPTION_DISPLAY_LINES
 from .rom import AP_HINT_TEXT_START, START_INVENTORY_USE_START, START_INVENTORY_EQUIP_START, \
     START_INVENTORY_BOOK_START, START_INVENTORY_RELICS_START, START_INVENTORY_FURN_START, START_INVENTORY_WHIPS_START, \
     START_INVENTORY_MAX_START
 from .data import item_names
+from .data.enums import PickupTypes
 
 from typing import TYPE_CHECKING, Iterable, TypedDict, NamedTuple
 
@@ -36,12 +36,12 @@ class CVHoDisInventoryData(NamedTuple):
 # inventory starts, its size in bytes, what text ID the item name strings start at, whether receiving an item for it
 # calls a small or large textbox, and whether it's a bitfield or array of counts.
 CVHODIS_INVENTORIES = {
-    PICKUP_TYPE_USE:   CVHoDisInventoryData(0x187A0, START_INVENTORY_USE_START,     28, 0x22, False, False),
-    PICKUP_TYPE_WHIP:  CVHoDisInventoryData(0x187BC, START_INVENTORY_WHIPS_START,    2, 0x1C, True,  True),
-    PICKUP_TYPE_EQUIP: CVHoDisInventoryData(0x187BE, START_INVENTORY_EQUIP_START,  128, 0x47, False, False),
-    PICKUP_TYPE_RELIC: CVHoDisInventoryData(0x1883F, START_INVENTORY_RELICS_START,   2, 0xAA, True,  True),
-    PICKUP_TYPE_BOOK:  CVHoDisInventoryData(0x1883E, START_INVENTORY_BOOK_START,     1, 0xA5, True,  True),
-    PICKUP_TYPE_FURN:  CVHoDisInventoryData(0x18843, START_INVENTORY_FURN_START,     4, 0xD8, False, True),
+    PickupTypes.USE_ITEM:         CVHoDisInventoryData(0x187A0, START_INVENTORY_USE_START,     28, 0x22, False, False),
+    PickupTypes.WHIP_ATTACHMENT:  CVHoDisInventoryData(0x187BC, START_INVENTORY_WHIPS_START,    2, 0x1C, True,  True),
+    PickupTypes.EQUIPMENT:        CVHoDisInventoryData(0x187BE, START_INVENTORY_EQUIP_START,  128, 0x47, False, False),
+    PickupTypes.RELIC:            CVHoDisInventoryData(0x1883F, START_INVENTORY_RELICS_START,   2, 0xAA, True,  True),
+    PickupTypes.SPELLBOOK:        CVHoDisInventoryData(0x1883E, START_INVENTORY_BOOK_START,     1, 0xA5, True,  True),
+    PickupTypes.FURNITURE:        CVHoDisInventoryData(0x18843, START_INVENTORY_FURN_START,     4, 0xD8, False, True),
 }
 
 other_player_subtype_bytes = {
@@ -118,19 +118,19 @@ def get_location_data(world: "CVHoDisWorld", active_locations: Iterable[Location
             # Decide which AP Item to use to represent the other game item.
             if loc.item.classification & ItemClassification.progression and \
                     loc.item.classification & ItemClassification.useful:
-                type_byte = PICKUP_TYPE_RELIC
+                type_byte = PickupTypes.RELIC
                 index_byte = RELIC_AP_PROG_USEFUL_INDEX  # Progression + Useful
             elif loc.item.classification & ItemClassification.progression:
-                type_byte = PICKUP_TYPE_BOOK
+                type_byte = PickupTypes.SPELLBOOK
                 index_byte = BOOK_AP_PROGRESSION_INDEX  # Progression
             elif loc.item.classification & ItemClassification.useful:
-                type_byte = PICKUP_TYPE_FURN
+                type_byte = PickupTypes.FURNITURE
                 index_byte = FURN_AP_USEFUL_INDEX  # Useful
             elif loc.item.classification & ItemClassification.trap:
-                type_byte = PICKUP_TYPE_FURN
+                type_byte = PickupTypes.FURNITURE
                 index_byte = FURN_AP_TRAP_INDEX  # Trap
             else:
-                type_byte = PICKUP_TYPE_FURN
+                type_byte = PickupTypes.FURNITURE
                 index_byte = FURN_AP_FILLER_INDEX  # Filler
 
             # Check if the Item's game is in the other game item appearances' dict, and if so, if the Item is under that
@@ -144,8 +144,8 @@ def get_location_data(world: "CVHoDisWorld", active_locations: Iterable[Location
                     appearance_byte = other_game_item_appearances[other_game_name][loc.item.name]["appearance"]
 
         # Create the correct bytes object for the Item on that Location.
-        location_bytes[CVHODIS_CHECKS_INFO[loc.name].offset + 0x5] = bytes([type_byte])
-        location_bytes[CVHODIS_CHECKS_INFO[loc.name].offset + 0xA] = bytes([index_byte])
+        location_bytes[CVHODIS_LOCATIONS_INFO[loc.name].offset + 0x5] = bytes([type_byte])
+        location_bytes[CVHODIS_LOCATIONS_INFO[loc.name].offset + 0xA] = bytes([index_byte])
 
         # If the Location has an alternate pickup actor that must also be modified, add the Item bytes by them as well.
         if loc.name in ALT_PICKUP_OFFSETS:
@@ -282,7 +282,7 @@ def get_start_inventory_data(world: "CVHoDisWorld") -> dict[int, bytes]:
                 extra_life = MAX_STAT_VALUE
 
         # If the Item is a spell book, set the starting equipped spell book value to that book's index + 1.
-        if type_byte == PICKUP_TYPE_BOOK:
+        if type_byte == PickupTypes.SPELLBOOK:
             starting_spellbook = index_byte + 1
 
     # Map the start inventory arrays to their ROM offsets.

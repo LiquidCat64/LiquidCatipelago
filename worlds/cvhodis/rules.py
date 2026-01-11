@@ -3,7 +3,7 @@ from typing import Dict, TYPE_CHECKING
 from BaseClasses import CollectionState
 from worlds.generic.Rules import CollectionRule
 from .data import item_names, loc_names,  ent_names
-from .items import FURNITURE, BOOKS
+from .items import FURNITURE, SPELLBOOKS
 from .options import SpellboundBossLogic, CastleWarpCondition
 
 if TYPE_CHECKING:
@@ -288,18 +288,18 @@ class CVHoDisRules:
     def can_beat_medium_bosses(self, state: CollectionState) -> bool:
         """1 spell book if Spellbound Boss Logic is Normal, 2 if Easy, or none if Disabled."""
         if self.spellbound_bosses == SpellboundBossLogic.option_normal:
-            return state.has_from_list_unique([book for book in BOOKS], self.player, 1)
+            return state.has_from_list_unique([book for book in SPELLBOOKS], self.player, 1)
         elif self.spellbound_bosses == SpellboundBossLogic.option_easy:
-            return state.has_from_list_unique([book for book in BOOKS], self.player, 2)
+            return state.has_from_list_unique([book for book in SPELLBOOKS], self.player, 2)
         else:
             return True
 
     def can_beat_hard_bosses(self, state: CollectionState) -> bool:
         """2 spell books if Spellbound Boss Logic is Normal, 3 if Easy, or none if Disabled."""
         if self.spellbound_bosses == SpellboundBossLogic.option_normal:
-            return state.has_from_list_unique([book for book in BOOKS], self.player, 2)
+            return state.has_from_list_unique([book for book in SPELLBOOKS], self.player, 2)
         elif self.spellbound_bosses == SpellboundBossLogic.option_easy:
-            return state.has_from_list_unique([book for book in BOOKS], self.player, 3)
+            return state.has_from_list_unique([book for book in SPELLBOOKS], self.player, 3)
         else:
             return True
 

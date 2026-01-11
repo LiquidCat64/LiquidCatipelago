@@ -1,0 +1,413 @@
+from enum import IntEnum, IntFlag, StrEnum
+
+
+class Players(IntEnum):
+    JUSTE = 0
+    SIMON = 1
+    MAXIM = 2
+
+class Costumes(IntEnum):
+    NORMAL = 0
+    ALTERNATE = 1
+
+class Areas(IntEnum):
+    ENTRANCE_A = 0
+    ENTRANCE_B = 1
+    MARBLE_A = 2
+    MARBLE_B = 3
+    SHRINE_A = 4
+    SHRINE_B = 5
+    TOP_A = 6
+    TOP_B = 7
+    SKELETON_A = 8
+    SKELETON_B = 9
+    LUMINOUS_A = 10
+    LUMINOUS_B = 11
+    AQUEDUCT_A = 12
+    AQUEDUCT_B = 13
+    CHAPEL_A = 14
+    CHAPEL_B = 15
+    CLOCK_A = 16
+    CLOCK_B = 17
+    TREASURY_A = 18
+    TREASURY_B = 19
+
+class AreaNames(StrEnum):
+    ENTRANCE = "Entrance"
+    MARBLE = "Marble Corridor"
+    ROOM = "Room of Illusion"
+    WAILING = "The Wailing Way"
+    SHRINE = "Shrine of the Apostates"
+    TREASURY = "Castle Treasury"
+    SKELETON = "Skeleton Cave"
+    LUMINOUS = "Luminous Cavern"
+    WALKWAY = "Sky Walkway"
+    CHAPEL = "Chapel of Dissonance"
+    AQUEDUCT = "Aqueduct of Dragons"
+    CLOCK = "Clock Tower"
+    TOP = "Castle Top Floor"
+
+class AreaNamesSplit(StrEnum):
+    ENTRANCE_A = "Entrance A"
+    ENTRANCE_B = "Entrance B"
+    MARBLE_A = "Marble Corridor/Room of Illusion A"
+    MARBLE_B = "Marble Corridor/Room of Illusion B"
+    SHRINE_A = "Shrine of the Apostates/The Wailing Way A"
+    SHRINE_B = "Shrine of the Apostates/The Wailing Way B"
+    TOP_A = "Castle Top Floor A"
+    TOP_B = "Castle Top Floor B"
+    SKELETON_A = "Skeleton Cave A"
+    SKELETON_B = "Skeleton Cave B"
+    LUMINOUS_A = "Luminous Cavern A"
+    LUMINOUS_B = "Luminous Cavern B"
+    AQUEDUCT_A = "Aqueduct of Dragons A"
+    AQUEDUCT_B = "Aqueduct of Dragons A"
+    CHAPEL_A = "Sky Walkway/Chapel of Dissonance A"
+    CHAPEL_B = "Sky Walkway/Chapel of Dissonance B"
+    CLOCK_A = "Clock Tower A"
+    CLOCK_B = "Clock Tower B"
+    TREASURY_A = "Castle Treasury A"
+    TREASURY_B = "Castle Treasury B"
+
+class TransitionNames(StrEnum):
+    ET_MC = "Entrance <=> Marble Corridor"
+    ET_SA = "Entrance <=> Shrine of the Apostates"
+    ET_SC = "Entrance <=> Skeleton Cave"
+    MC_RI_L = "Marble Corridor <=> Room of Illusion (Left)"
+    MC_RI_R = "Marble Corridor <=> Room of Illusion (Right)"
+    MC_WW = "Marble Corridor <=> The Wailing Way"
+    MC_TF = "Marble Corridor <=> Castle Top Floor"
+    WW_CY = "The Wailing Way <=> Castle Treasury"
+    WW_SA = "The Wailing Way <=> Shrine of the Apostates"
+    CY_TF = "Castle Treasury <=> Castle Top Floor"
+    CY_SC = "Castle Treasury <=> Skeleton Cave"
+    CY_LC = "Castle Treasury <=> Luminous Cavern"
+    LC_AD = "Luminous Cavern <=> Aqueduct of Dragons"
+    SW_CD = "Sky Walkway <=> Chapel of Dissonance"
+    SW_CR = "Sky Walkway <=> Clock Tower"
+    SW_AD = "Sky Walkway <=> Aqueduct of Dragons"
+    CD_TF = "Chapel of Dissonance <=> Castle Top Floor"
+    AD_CR = "Aqueduct of Dragons <=> Clock Tower"
+
+class ActorTypes(IntEnum):
+    ENEMY = 0
+    SPECIAL_OBJECT = 1
+    CANDLE = 2
+    PICKUP = 3
+
+class Enemies(IntEnum):
+    BAT = 0x0
+    TINY_SLIME = 0x1
+    SLIME = 0x2
+    MEDUSA_HEAD = 0x3
+    ZOMBIE = 0x4
+    SKELETON = 0x5
+    FLEA_MAN = 0x6
+    BONE_SOLDIER = 0x7
+    ARMOR_KNIGHT = 0x8
+    GIANT_BAT = 0x9
+    GHOST = 0xA
+    BONE_PILLAR = 0xB
+    LARGE_GHOST = 0xC
+    WHITE_DRAGON = 0xD
+    ROCK_ARMOR = 0xE
+    WHITE_DRAGON_LV2 = 0xF
+    LIZARD_MAN = 0x10
+    LIVING_ARMOR = 0x11
+    ECTOPLASM = 0x12
+    SKELETON_BLAZE = 0x13
+    BIG_SKELETON = 0x14
+    FLYING_BONE = 0x15
+    PEEPING_EYE = 0x16
+    SKELETON_FLAIL = 0x17
+    SKELETON_SPEAR = 0x18
+    RED_SKELETON = 0x19
+    SKELETON_RIB = 0x1A
+    BONE_THROWER = 0x1B
+    SKELETON_APE = 0x1C
+    GATE_GUARDER = 0x1D
+    GOLEM = 0x1E
+    SKULL_KNIGHT = 0x1F
+    TINY_DEVIL = 0x20
+    SCARECROW = 0x21
+    SKELETON_SPIDER = 0x22
+    MAN_EATER = 0x23
+    AXE_ARMOR = 0x24
+    WITCH = 0x25
+    SIREN = 0x26
+    BOMBER_ARMOR = 0x27
+    MINOTAUR = 0x28
+    BALLOON = 0x29
+    BIG_BALLOON = 0x2A
+    BONE_ARCHER = 0x2B
+    RULER_SWORD = 0x2C
+    DISC_ARMOR = 0x2D
+    DEVIL = 0x2E
+    MERMAN = 0x2F
+    FISHMAN = 0x30
+    ARABAKI = 0x31
+    RULER_SWORD_LV2 = 0x32
+    FEATHER_DEMON = 0x33
+    GUARDIAN_ARMOR = 0x34
+    BOOMERANG_ARMOR = 0x35
+    GIANT_MERMAN = 0x36
+    MAX_SLIMER = 0x37
+    FLEA_MAN_ARMOR = 0x38
+    GOLD_MEDUSA = 0x39
+    MIMIC = 0x3A
+    WHITE_DRAGON_LV3 = 0x3B
+    SKELETON_MIRROR = 0x3C
+    O = 0x3D
+    HARPY = 0x3E
+    AXE_ARMOR_LV2 = 0x3F
+    SPECTER = 0x40
+    BRONZE_GUARDER = 0x41
+    PEEPING_BIG = 0x42
+    LEGION_SAINT = 0x43
+    SHADOW = 0x44
+    MELTY_ZOMBIE = 0x45
+    BONE_LIQUID = 0x46
+    RULER_SWORD_LV3 = 0x47
+    POISON_LIZARD = 0x48
+    PAZUZU = 0x49
+    SPRIGGAN = 0x4A
+    GORGON = 0x4B
+    BLAZE_MASTER = 0x4C
+    ARTHRO_SKELETON = 0x4D
+    RARE_GHOST = 0x4E
+    SKELETON_GLASS = 0x4F
+    VICTORY_ARMOR = 0x50
+    HAMMER_HAMMER = 0x51
+    DISC_ARMOR_LV2 = 0x52
+    MINOTAUR_LV2 = 0x53
+    LEGION_CORPSE = 0x54
+    TALOS = 0x55
+    DEATH_1 = 0x56
+    DEATH_2 = 0x57
+    PIXIE = 0x58
+    SYLPH = 0x59
+    MASTER_LIZARD = 0x5A
+    OWL = 0x5B
+    CLEAR_BONE = 0x5C
+    JP_BONE_PILLAR = 0x5D
+    SIMON_WRAITH = 0x5E
+    PIKE_MASTER = 0x5F
+    CYCLOPS = 0x60
+    MAXIM = 0x61
+    DRACULA_WRAITH_1 = 0x62
+    DRACULA_WRAITH_2 = 0x63
+    FLEA_MAN_CEILING = 0x64
+    TINY_DEVIL_CEILING = 0x65
+    ENEMY_SPAWNER_TIMER_1 = 0x66
+    ENEMY_SPAWNER_TIMER_2 = 0x67
+    UNUSED_1 = 0x68
+    UNUSED_2 = 0x69
+    ENEMY_SPAWNER = 0x6A
+    IMPALED_GEAR_SKELETON = 0x6B
+    CANDLE = 0x6C
+    PAZUZU_WALL = 0x6D
+    SKELETON_MIRROR_IN_MIRROR = 0x6E
+    REVENGE_ARMOR_TALOS = 0x6F
+    SLIME_PIPE = 0x70
+    SKELETON_GLASS_IN_GLASS = 0x71
+    UNUSED_3 = 0x72
+    UNUSED_4 = 0x73
+    UNUSED_5 = 0x74
+    UNUSED_6 = 0x75
+    UNUSED_7 = 0x76
+    TALOS_INTRO = 0x77
+    PEEPING_EYE_CURTAIN = 0x78
+    REVENGE_ARMOR = 0x79
+    RED_SKELETON_DRIPPING = 0x7A
+    SLIME_MAN = 0x7B  # Unused
+    GLITCH_BAT = 0x7C
+    # Yes, every enemy in the game really is duplicated for Maxim Mode!
+    MAXIM_MODE_BAT = 0x0 + 0x7D
+    MAXIM_MODE_TINY_SLIME = 0x1 + 0x7D
+    MAXIM_MODE_SLIME = 0x2 + 0x7D
+    MAXIM_MODE_MEDUSA_HEAD = 0x3 + 0x7D
+    MAXIM_MODE_ZOMBIE = 0x4 + 0x7D
+    MAXIM_MODE_SKELETON = 0x5 + 0x7D
+    MAXIM_MODE_FLEA_MAN = 0x6 + 0x7D
+    MAXIM_MODE_BONE_SOLDIER = 0x7 + 0x7D
+    MAXIM_MODE_ARMOR_KNIGHT = 0x8 + 0x7D
+    MAXIM_MODE_GIANT_BAT = 0x9 + 0x7D
+    MAXIM_MODE_GHOST = 0xA + 0x7D
+    MAXIM_MODE_BONE_PILLAR = 0xB + 0x7D
+    MAXIM_MODE_LARGE_GHOST = 0xC + 0x7D
+    MAXIM_MODE_WHITE_DRAGON = 0xD + 0x7D
+    MAXIM_MODE_ROCK_ARMOR = 0xE + 0x7D
+    MAXIM_MODE_WHITE_DRAGON_LV2 = 0xF + 0x7D
+    MAXIM_MODE_LIZARD_MAN = 0x10 + 0x7D
+    MAXIM_MODE_LIVING_ARMOR = 0x11 + 0x7D
+    MAXIM_MODE_ECTOPLASM = 0x12 + 0x7D
+    MAXIM_MODE_SKELETON_BLAZE = 0x13 + 0x7D
+    MAXIM_MODE_BIG_SKELETON = 0x14 + 0x7D
+    MAXIM_MODE_FLYING_BONE = 0x15 + 0x7D
+    MAXIM_MODE_PEEPING_EYE = 0x16 + 0x7D
+    MAXIM_MODE_SKELETON_FLAIL = 0x17 + 0x7D
+    MAXIM_MODE_SKELETON_SPEAR = 0x18 + 0x7D
+    MAXIM_MODE_RED_SKELETON = 0x19 + 0x7D
+    MAXIM_MODE_SKELETON_RIB = 0x1A + 0x7D
+    MAXIM_MODE_BONE_THROWER = 0x1B + 0x7D
+    MAXIM_MODE_SKELETON_APE = 0x1C + 0x7D
+    MAXIM_MODE_GATE_GUARDER = 0x1D + 0x7D
+    MAXIM_MODE_GOLEM = 0x1E + 0x7D
+    MAXIM_MODE_SKULL_KNIGHT = 0x1F + 0x7D
+    MAXIM_MODE_TINY_DEVIL = 0x20 + 0x7D
+    MAXIM_MODE_SCARECROW = 0x21 + 0x7D
+    MAXIM_MODE_SKELETON_SPIDER = 0x22 + 0x7D
+    MAXIM_MODE_MAN_EATER = 0x23 + 0x7D
+    MAXIM_MODE_AXE_ARMOR = 0x24 + 0x7D
+    MAXIM_MODE_WITCH = 0x25 + 0x7D
+    MAXIM_MODE_SIREN = 0x26 + 0x7D
+    MAXIM_MODE_BOMBER_ARMOR = 0x27 + 0x7D
+    MAXIM_MODE_MINOTAUR = 0x28 + 0x7D
+    MAXIM_MODE_BALLOON = 0x29 + 0x7D
+    MAXIM_MODE_BIG_BALLOON = 0x2A + 0x7D
+    MAXIM_MODE_BONE_ARCHER = 0x2B + 0x7D
+    MAXIM_MODE_RULER_SWORD = 0x2C + 0x7D
+    MAXIM_MODE_DISC_ARMOR = 0x2D + 0x7D
+    MAXIM_MODE_DEVIL = 0x2E + 0x7D
+    MAXIM_MODE_MERMAN = 0x2F + 0x7D
+    MAXIM_MODE_FISHMAN = 0x30 + 0x7D
+    MAXIM_MODE_ARABAKI = 0x31 + 0x7D
+    MAXIM_MODE_RULER_SWORD_LV2 = 0x32 + 0x7D
+    MAXIM_MODE_FEATHER_DEMON = 0x33 + 0x7D
+    MAXIM_MODE_GUARDIAN_ARMOR = 0x34 + 0x7D
+    MAXIM_MODE_BOOMERANG_ARMOR = 0x35 + 0x7D
+    MAXIM_MODE_GIANT_MERMAN = 0x36 + 0x7D
+    MAXIM_MODE_MAX_SLIMER = 0x37 + 0x7D
+    MAXIM_MODE_FLEA_MAN_ARMOR = 0x38 + 0x7D
+    MAXIM_MODE_GOLD_MEDUSA = 0x39 + 0x7D
+    MAXIM_MODE_MIMIC = 0x3A + 0x7D
+    MAXIM_MODE_WHITE_DRAGON_LV3 = 0x3B + 0x7D
+    MAXIM_MODE_SKELETON_MIRROR = 0x3C + 0x7D
+    MAXIM_MODE_O = 0x3D + 0x7D
+    MAXIM_MODE_HARPY = 0x3E + 0x7D
+    MAXIM_MODE_AXE_ARMOR_LV2 = 0x3F + 0x7D
+    MAXIM_MODE_SPECTER = 0x40 + 0x7D
+    MAXIM_MODE_BRONZE_GUARDER = 0x41 + 0x7D
+    MAXIM_MODE_PEEPING_BIG = 0x42 + 0x7D
+    MAXIM_MODE_LEGION_SAINT = 0x43 + 0x7D
+    MAXIM_MODE_SHADOW = 0x44 + 0x7D
+    MAXIM_MODE_MELTY_ZOMBIE = 0x45 + 0x7D
+    MAXIM_MODE_BONE_LIQUID = 0x46 + 0x7D
+    MAXIM_MODE_RULER_SWORD_LV3 = 0x47 + 0x7D
+    MAXIM_MODE_POISON_LIZARD = 0x48 + 0x7D
+    MAXIM_MODE_PAZUZU = 0x49 + 0x7D
+    MAXIM_MODE_SPRIGGAN = 0x4A + 0x7D
+    MAXIM_MODE_GORGON = 0x4B + 0x7D
+    MAXIM_MODE_BLAZE_MASTER = 0x4C + 0x7D
+    MAXIM_MODE_ARTHRO_SKELETON = 0x4D + 0x7D
+    MAXIM_MODE_RARE_GHOST = 0x4E + 0x7D
+    MAXIM_MODE_SKELETON_GLASS = 0x4F + 0x7D
+    MAXIM_MODE_VICTORY_ARMOR = 0x50 + 0x7D
+    MAXIM_MODE_HAMMER_HAMMER = 0x51 + 0x7D
+    MAXIM_MODE_DISC_ARMOR_LV2 = 0x52 + 0x7D
+    MAXIM_MODE_MINOTAUR_LV2 = 0x53 + 0x7D
+    MAXIM_MODE_LEGION_CORPSE = 0x54 + 0x7D
+    MAXIM_MODE_TALOS = 0x55 + 0x7D
+    MAXIM_MODE_DEATH_1 = 0x56 + 0x7D
+    MAXIM_MODE_DEATH_2 = 0x57 + 0x7D
+    MAXIM_MODE_PIXIE = 0x58 + 0x7D
+    MAXIM_MODE_SYLPH = 0x59 + 0x7D
+    MAXIM_MODE_MASTER_LIZARD = 0x5A + 0x7D
+    MAXIM_MODE_OWL = 0x5B + 0x7D
+    MAXIM_MODE_CLEAR_BONE = 0x5C + 0x7D
+    MAXIM_MODE_JP_BONE_PILLAR = 0x5D + 0x7D
+    MAXIM_MODE_SIMON_WRAITH = 0x5E + 0x7D
+    MAXIM_MODE_PIKE_MASTER = 0x5F + 0x7D
+    MAXIM_MODE_CYCLOPS = 0x60 + 0x7D
+    MAXIM_MODE_MAXIM = 0x61 + 0x7D
+    MAXIM_MODE_DRACULA_WRAITH_1 = 0x62 + 0x7D
+    MAXIM_MODE_DRACULA_WRAITH_2 = 0x63 + 0x7D
+    MAXIM_MODE_FLEA_MAN_CEILING = 0x64 + 0x7D
+    MAXIM_MODE_TINY_DEVIL_CEILING = 0x65 + 0x7D
+    MAXIM_MODE_ENEMY_SPAWNER_TIMER_1 = 0x66 + 0x7D
+    MAXIM_MODE_ENEMY_SPAWNER_TIMER_2 = 0x67 + 0x7D
+    MAXIM_MODE_UNUSED_1 = 0x68 + 0x7D
+    MAXIM_MODE_UNUSED_2 = 0x69 + 0x7D
+    MAXIM_MODE_ENEMY_SPAWNER = 0x6A + 0x7D
+    MAXIM_MODE_IMPALED_GEAR_SKELETON = 0x6B + 0x7D
+    MAXIM_MODE_CANDLE = 0x6C + 0x7D
+    MAXIM_MODE_PAZUZU_WALL = 0x6D + 0x7D
+    MAXIM_MODE_SKELETON_MIRROR_IN_MIRROR = 0x6E + 0x7D
+    MAXIM_MODE_REVENGE_ARMOR_TALOS = 0x6F + 0x7D
+    MAXIM_MODE_SLIME_PIPE = 0x70 + 0x7D
+    MAXIM_MODE_SKELETON_GLASS_IN_GLASS = 0x71 + 0x7D
+    MAXIM_MODE_UNUSED_3 = 0x72 + 0x7D
+    MAXIM_MODE_UNUSED_4 = 0x73 + 0x7D
+    MAXIM_MODE_UNUSED_5 = 0x74 + 0x7D
+    MAXIM_MODE_UNUSED_6 = 0x75 + 0x7D
+    MAXIM_MODE_UNUSED_7 = 0x76 + 0x7D
+    MAXIM_MODE_TALOS_INTRO = 0x77 + 0x7D
+    MAXIM_MODE_PEEPING_EYE_CURTAIN = 0x78 + 0x7D
+    MAXIM_MODE_REVENGE_ARMOR = 0x79 + 0x7D
+    MAXIM_MODE_RED_SKELETON_DRIPPING = 0x7A + 0x7D
+    MAXIM_MODE_SLIME_MAN = 0x7B + 0x7D  # Unused
+    MAXIM_MODE_GLITCH_BAT = 0x7C + 0x7D
+
+class PickupTypes(IntEnum):
+    HEART = 0
+    GOLD = 1
+    SUB_WEAPON = 2
+    USE_ITEM = 3
+    WHIP_ATTACHMENT = 4
+    EQUIPMENT = 5
+    SPELLBOOK = 6
+    RELIC = 7
+    FURNITURE = 8
+    MAX_UP = 9
+
+class SpecialObjects(IntEnum):
+    SAVE_ICOSAHEDRON = 0x0
+    ROUND_GATE_HALF = 0x1
+    KEYHOLE_GATE = 0x2
+    CRUSHING_STONE_BLOCK = 0x3
+    EVENT_FLAG_SETTER = 0x4
+    DOOR = 0x5
+    BOSS_DOOR = 0x6
+    DARKNESS = 0x7
+    PUSH_CRATES = 0x8
+    BUTTON = 0x9
+    SHRINE_A_BUTTON_GATE = 0xA
+    FLOODGATE = 0xB
+    LUMINOUS_B_CRATE_PUZZLE = 0xC
+    STONE_BUTTON_GATE = 0xD
+    LUMINOUS_B_POURING_BLOOD = 0xE
+    LUMINOUS_B_ELEVATOR = 0xF
+    CRUSHING_STONE_WALL = 0x10
+    PLATFORM_GEARS = 0x11
+    PENDULUM_PLATFORMS = 0x12
+    BRONZE_GUARDER_HAMMER = 0x13
+    IRON_BUTTON_GATE = 0x14
+    CRANKSHAFT = 0x15
+    HITTABLE_GEAR = 0x16
+    GUARDIAN_ARMOR_GEAR = 0x17
+    BACKGROUND_COG = 0x18
+    BACKGROUND_PENDULUM = 0x19
+    MERCHANT = 0x1A
+    CHAPEL_B_LIGHTNING = 0x1B
+    BOSS_RUSH_MGR = 0x1C
+    STEEL_BALL_RUN = 0x1D
+    ENTRANCE_COLLAPSABLE_RAMP = 0x1E
+    ELEVATOR = 0x1F
+    SWINGING_SCYTHE = 0x20
+    CROCOMIRE_SKULL = 0x21
+    ROLLING_SKULL = 0x22
+    COLLAPSABLE_ROCK = 0x23
+    WATER = 0x24
+    SPIKES = 0x25
+    CUTSCENE_TRIGGER = 0x26
+    DRAWBRIDGE = 0x27
+    LYDIE = 0x28
+    TOP_FLOOR_BUTTON_GATE = 0x29
+    FURNITURE_ROOM_MGR = 0x2A
+    GUILLOTINE = 0x2B
+    CRUSH_BOOTS_CEILING = 0x2C
+    TREASURY_FLOOR_GATE_HALF = 0x2D
+    GATE_GUARDER_BOULDER = 0x2E
+    ENDING_CASTLE = 0x2F
+    TOP_A_HAND_STATUE = 0x30
+    FINAL_BOSS_SEQUENCE_MGR = 0x31

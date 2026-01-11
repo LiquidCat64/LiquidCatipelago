@@ -24,7 +24,7 @@ class CVHoDisLocationData(NamedTuple):
               # that's normally there in the vanilla game.
 
 
-CVHODIS_CHECKS_INFO: dict[str, CVHoDisLocationData] = {
+CVHODIS_LOCATIONS_INFO: dict[str, CVHoDisLocationData] = {
     # Various areas
     loc_names.portals_rt: CVHoDisLocationData(0x2F, 0x49BE14, item_names.equip_l_charm),
     loc_names.portals_lw: CVHoDisLocationData(0x88, 0x69E118, item_names.equip_glove_s),
@@ -370,15 +370,15 @@ GUARDIAN_GRINDER_LOCATIONS: dict[str, int] = {
 }
 
 def get_location_names_to_ids() -> dict[str, int]:
-    return {name: CVHODIS_CHECKS_INFO[name].code+BASE_ID for name in CVHODIS_CHECKS_INFO}
+    return {name: CVHODIS_LOCATIONS_INFO[name].code+BASE_ID for name in CVHODIS_LOCATIONS_INFO}
 
 
 def get_location_name_groups() -> dict[str, dict[str]]:
     loc_name_groups: dict[str, set[str]] = dict()
 
-    for loc_name in CVHODIS_CHECKS_INFO:
+    for loc_name in CVHODIS_LOCATIONS_INFO:
         # If we are looking at an event Location, don't include it.
-        if isinstance(CVHODIS_CHECKS_INFO[loc_name].code, str):
+        if isinstance(CVHODIS_LOCATIONS_INFO[loc_name].code, str):
             continue
 
         # The part of the Location name's string before the colon is its area name.
@@ -395,6 +395,9 @@ def get_location_name_groups() -> dict[str, dict[str]]:
 
 def get_locations_to_create(locations: list[str], options: CVHoDisOptions) -> \
         tuple[dict[str, int | None], dict[str, str]]:
+    """Verifies which Locations in a given list should be created. A dict will be returned with verified Location names
+    mapped to their IDs, ready to be created with Region.add_locations, as well as a dict of Locations that should have
+    corresponding locked Items placed on them."""
     locations_with_ids = {}
     locked_pairs = {}
 
@@ -422,9 +425,9 @@ def get_locations_to_create(locations: list[str], options: CVHoDisOptions) -> \
 
         # Check to see if the Location is in the Checks Info dict.
         # If it is, then handle it like a regular check Location.
-        if loc in CVHODIS_CHECKS_INFO:
+        if loc in CVHODIS_LOCATIONS_INFO:
             # Grab its code from the Checks Info and add the base ID to it.
-            loc_code = CVHODIS_CHECKS_INFO[loc].code + BASE_ID
+            loc_code = CVHODIS_LOCATIONS_INFO[loc].code + BASE_ID
         # Check to see if the Location is in the Events Mapping dict.
         # If it is, then handle it like an event Location.
         elif loc in CVHODIS_EVENT_MAPPING:
@@ -433,7 +436,7 @@ def get_locations_to_create(locations: list[str], options: CVHoDisOptions) -> \
             locked_pairs[loc] = CVHODIS_EVENT_MAPPING[loc]
         else:
             # If we make it here, meaning the Location is undefined in both dicts, throw an error and skip creating it.
-            logging.error(f"The Location \"{loc}\" is not in either CVHODIS_CHECKS_INFO or CVHODIS_EVENT_MAPPING. "
+            logging.error(f"The Location \"{loc}\" is not in either CVHODIS_LOCATIONS_INFO or CVHODIS_EVENT_MAPPING. "
                           f"Please add it to one or the other to create it properly.")
             continue
 

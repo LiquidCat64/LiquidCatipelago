@@ -10,8 +10,8 @@ import hashlib
 import os
 
 from .data import patches, loc_names
-from .locations import CVHODIS_CHECKS_INFO, GUARDIAN_GRINDER_LOCATIONS
-from .items import PICKUP_TYPE_MAX
+from .data.enums import PickupTypes
+from .locations import CVHODIS_LOCATIONS_INFO, GUARDIAN_GRINDER_LOCATIONS
 from .options import CastleWarpCondition
 from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_DESCRIPTION, DESCRIPTION_DISPLAY_LINES
 from settings import get_settings
@@ -193,16 +193,16 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Fix the MK's Bracelet check cutscene softlocking you if it gives you something that isn't MK's Bracelet.
         # Change the pointer to the actor data in the Sky Walkway A post-Shadow Maxim meeting room.
         rom_data.write_bytes(SWA7_ALT_ROOM_INFO_START + 0x18,
-                             int.to_bytes((CVHODIS_CHECKS_INFO[loc_names.swa7].offset - 0xC) | GBA_ROM_START, 4, "little"))
+                             int.to_bytes((CVHODIS_LOCATIONS_INFO[loc_names.swa7].offset - 0xC) | GBA_ROM_START, 4, "little"))
         # Copy the actor data over to the new location and insert a new actor for a pre-placed MK's Bracelet pickup.
-        rom_data.write_bytes(CVHODIS_CHECKS_INFO[loc_names.swa7].offset - 0xC,
+        rom_data.write_bytes(CVHODIS_LOCATIONS_INFO[loc_names.swa7].offset - 0xC,
                              list(rom_data.read_bytes(MK_ACTORS_START, 0xC)) +
                              [0x38, 0x00,  # X position
                               0x90, 0x00,  # Y position
                               0xC1,  # Unique ID/Type
                               0x05,  # Subtype
                               0x00, 0x00,  # Not used
-                              CVHODIS_CHECKS_INFO[loc_names.swa7].code, 0x00,  # Pickup flag
+                              CVHODIS_LOCATIONS_INFO[loc_names.swa7].code, 0x00,  # Pickup flag
                               0x2C, 0x00]  # Item index
                              + list(rom_data.read_bytes(MK_ACTORS_START + 0xC, 0xC)))
         # NOP the calls to the spawn pickup function so that the cutscene spawns nothing.
@@ -214,45 +214,45 @@ class CVHoDisPatchExtensions(APPatchExtension):
         rom_data.write_bytes(0x2DE24, [0x00, 0x00])
 
         # Change the flag value of the Treasury B portal staircase bottom to be unique from its cousin in Treasury A.
-        rom_data.write_byte(CVHODIS_CHECKS_INFO[loc_names.cyb8].offset + 0x08, CVHODIS_CHECKS_INFO[loc_names.cyb8].code)
+        rom_data.write_byte(CVHODIS_LOCATIONS_INFO[loc_names.cyb8].offset + 0x08, CVHODIS_LOCATIONS_INFO[loc_names.cyb8].code)
 
         # Put the upper Entrance, lower Treasury, and Luminous (all A) warp rooms on their own actor lists instead of
         # them all pointing to the exact same one, and make the pickup actor's flag in each one unique.
         warp_a_basic_actors = rom_data.read_bytes(WARP_A_ACTORS_START, 0x30)
 
         rom_data.write_bytes(ETA18_ROOM_INFO_START + 0x18,
-                             int.to_bytes((CVHODIS_CHECKS_INFO[loc_names.eta18].offset - 0x18) | GBA_ROM_START,
+                             int.to_bytes((CVHODIS_LOCATIONS_INFO[loc_names.eta18].offset - 0x18) | GBA_ROM_START,
                                           4, "little"))
-        rom_data.write_bytes(CVHODIS_CHECKS_INFO[loc_names.eta18].offset - 0x18, warp_a_basic_actors)
-        rom_data.write_byte(CVHODIS_CHECKS_INFO[loc_names.eta18].offset + 0x08, CVHODIS_CHECKS_INFO[loc_names.eta18].code)
+        rom_data.write_bytes(CVHODIS_LOCATIONS_INFO[loc_names.eta18].offset - 0x18, warp_a_basic_actors)
+        rom_data.write_byte(CVHODIS_LOCATIONS_INFO[loc_names.eta18].offset + 0x08, CVHODIS_LOCATIONS_INFO[loc_names.eta18].code)
         rom_data.write_bytes(CYA4_ROOM_INFO_START + 0x18,
-                             int.to_bytes((CVHODIS_CHECKS_INFO[loc_names.cya4].offset - 0x18) | GBA_ROM_START,
+                             int.to_bytes((CVHODIS_LOCATIONS_INFO[loc_names.cya4].offset - 0x18) | GBA_ROM_START,
                                           4, "little"))
-        rom_data.write_bytes(CVHODIS_CHECKS_INFO[loc_names.cya4].offset - 0x18, warp_a_basic_actors)
-        rom_data.write_byte(CVHODIS_CHECKS_INFO[loc_names.cya4].offset + 0x08, CVHODIS_CHECKS_INFO[loc_names.cya4].code)
+        rom_data.write_bytes(CVHODIS_LOCATIONS_INFO[loc_names.cya4].offset - 0x18, warp_a_basic_actors)
+        rom_data.write_byte(CVHODIS_LOCATIONS_INFO[loc_names.cya4].offset + 0x08, CVHODIS_LOCATIONS_INFO[loc_names.cya4].code)
         rom_data.write_bytes(LCA11_ROOM_INFO_START + 0x18,
-                             int.to_bytes((CVHODIS_CHECKS_INFO[loc_names.lca11].offset - 0x18) | GBA_ROM_START,
+                             int.to_bytes((CVHODIS_LOCATIONS_INFO[loc_names.lca11].offset - 0x18) | GBA_ROM_START,
                                           4, "little"))
-        rom_data.write_bytes(CVHODIS_CHECKS_INFO[loc_names.lca11].offset - 0x18, warp_a_basic_actors)
-        rom_data.write_byte(CVHODIS_CHECKS_INFO[loc_names.lca11].offset + 0x08, CVHODIS_CHECKS_INFO[loc_names.lca11].code)
+        rom_data.write_bytes(CVHODIS_LOCATIONS_INFO[loc_names.lca11].offset - 0x18, warp_a_basic_actors)
+        rom_data.write_byte(CVHODIS_LOCATIONS_INFO[loc_names.lca11].offset + 0x08, CVHODIS_LOCATIONS_INFO[loc_names.lca11].code)
         # Change the X position of the "right" upper Treasury A item and make its flag unique.
-        rom_data.write_byte(CVHODIS_CHECKS_INFO[loc_names.cya20a].offset, 0xB0)
-        rom_data.write_byte(CVHODIS_CHECKS_INFO[loc_names.cya20a].offset + 0x08, CVHODIS_CHECKS_INFO[loc_names.cya20a].code)
+        rom_data.write_byte(CVHODIS_LOCATIONS_INFO[loc_names.cya20a].offset, 0xB0)
+        rom_data.write_byte(CVHODIS_LOCATIONS_INFO[loc_names.cya20a].offset + 0x08, CVHODIS_LOCATIONS_INFO[loc_names.cya20a].code)
         # Make the flag of the before Panzuzu warp room pickup unique.
-        rom_data.write_byte(CVHODIS_CHECKS_INFO[loc_names.tfa15].offset + 0x08, CVHODIS_CHECKS_INFO[loc_names.tfa15].code)
+        rom_data.write_byte(CVHODIS_LOCATIONS_INFO[loc_names.tfa15].offset + 0x08, CVHODIS_LOCATIONS_INFO[loc_names.tfa15].code)
 
         # Put the portal rooms between Luminous B and Walkway A on their own actor list and make the pickup flag on the
         # item in these rooms unique from the other pair's.
         portal_actors = rom_data.read_bytes(PORTAL_ACTORS_START, 0x24)
         rom_data.write_bytes(LCA23_ROOM_INFO_START + 0x18,
-                             int.to_bytes((CVHODIS_CHECKS_INFO[loc_names.portals_lw].offset - 0xC) | GBA_ROM_START,
+                             int.to_bytes((CVHODIS_LOCATIONS_INFO[loc_names.portals_lw].offset - 0xC) | GBA_ROM_START,
                                           4, "little"))
         rom_data.write_bytes(SWA19_ROOM_INFO_START + 0x18,
-                             int.to_bytes((CVHODIS_CHECKS_INFO[loc_names.portals_lw].offset - 0xC) | GBA_ROM_START,
+                             int.to_bytes((CVHODIS_LOCATIONS_INFO[loc_names.portals_lw].offset - 0xC) | GBA_ROM_START,
                                           4, "little"))
-        rom_data.write_bytes(CVHODIS_CHECKS_INFO[loc_names.portals_lw].offset - 0xC, portal_actors)
-        rom_data.write_byte(CVHODIS_CHECKS_INFO[loc_names.portals_lw].offset + 0x08,
-                            CVHODIS_CHECKS_INFO[loc_names.portals_lw].code)
+        rom_data.write_bytes(CVHODIS_LOCATIONS_INFO[loc_names.portals_lw].offset - 0xC, portal_actors)
+        rom_data.write_byte(CVHODIS_LOCATIONS_INFO[loc_names.portals_lw].offset + 0x08,
+                            CVHODIS_LOCATIONS_INFO[loc_names.portals_lw].code)
 
         # Add the GFX for the AP Items.
         for offset, data in patches.extra_item_sprites.items():
@@ -461,7 +461,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
         rom_data = RomData(rom)
 
         for guardian_loc in GUARDIAN_GRINDER_LOCATIONS:
-            if rom_data.read_byte(GUARDIAN_GRINDER_LOCATIONS[guardian_loc]) == PICKUP_TYPE_MAX:
+            if rom_data.read_byte(GUARDIAN_GRINDER_LOCATIONS[guardian_loc]) == PickupTypes.MAX_UP:
                 # Change the mov instruction to put the Max Up's pickup index in the r2 register instead of r3, where
                 # the "Spawn Max Up" function expects it to be.
                 rom_data.write_byte(GUARDIAN_GRINDER_LOCATIONS[guardian_loc] + 3, 0x22)

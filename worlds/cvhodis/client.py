@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING, Set, NamedTuple
 from .locations import BASE_ID, get_location_names_to_ids
-from .items import ALL_CVHODIS_ITEMS, PICKUP_TYPE_USE, PICKUP_TYPE_WHIP, PICKUP_TYPE_EQUIP, PICKUP_TYPE_BOOK, \
-    PICKUP_TYPE_RELIC, PICKUP_TYPE_FURN, PICKUP_TYPE_MAX
-from .locations import CVHODIS_CHECKS_INFO
-from .cvhodis_text import cvhodis_string_to_bytearray
+# from .items import ALL_CVHODIS_ITEMS
+# from .locations import CVHODIS_LOCATIONS_INFO
+# from .cvhodis_text import cvhodis_string_to_bytearray
 from .rom import ARCHIPELAGO_IDENTIFIER_START, ARCHIPELAGO_IDENTIFIER, AUTH_NUMBER_START, QUEUED_TEXT_STRING_START
 from .data import item_names, loc_names
+from .data.enums import PickupTypes
 from .aesthetics import CVHODIS_INVENTORIES, MAX_STAT_VALUE, MAX_UP_INCREMENT_VALUE
 
 from BaseClasses import ItemClassification
@@ -217,7 +217,7 @@ class CastlevaniaHoDisClient(BizHawkClient):
                                                                CVHODIS_INVENTORIES[inv].length,
                                                                "EWRAM") for inv in CVHODIS_INVENTORIES] + [
                                                               (RELICS_EQUIPPED_BITFIELD_START,
-                                                               CVHODIS_INVENTORIES[PICKUP_TYPE_RELIC].length, "EWRAM"),
+                                                               CVHODIS_INVENTORIES[PickupTypes.RELIC].length, "EWRAM"),
                                                               (GAME_STATE_ADDRESS, 1, "EWRAM"),
                                                               (FLAGS_BITFIELD_START, 76, "EWRAM"),
                                                               (NUM_RECEIVED_ITEMS_ADDRESS, 2, "EWRAM"),
@@ -231,7 +231,8 @@ class CastlevaniaHoDisClient(BizHawkClient):
                                                               (CURRENT_HEARTS_ADDRESS, 2, "EWRAM"),
                                                               (CURRENT_BOOK_ADDRESS, 1, "EWRAM"),
                                                               (FURN_PLACED_BITFIELD_START,
-                                                               CVHODIS_INVENTORIES[PICKUP_TYPE_FURN].length, "EWRAM")])
+                                                               CVHODIS_INVENTORIES[PickupTypes.FURNITURE].length,
+                                                               "EWRAM")])
 
             curr_invs = {INV_NUMBERS[i]: bytearray(read_state[i]) for i in range(len(INV_NUMBERS))}
 
@@ -461,7 +462,7 @@ class CastlevaniaHoDisClient(BizHawkClient):
                             inv_array[pickup_index // 8] | (0x01 << (pickup_index % 8)), 1, "little"), "EWRAM")]
                         # If the Item being received is a Relic, turn on that Relic for the player in addition to
                         # putting it in their inventory.
-                        if pickup_type == PICKUP_TYPE_RELIC:
+                        if pickup_type == PickupTypes.RELIC:
                             relic_equip_addr = RELICS_EQUIPPED_BITFIELD_START + (pickup_index // 8)
                             inv_guards += [(relic_equip_addr, int.to_bytes(
                                 enabled_relics[pickup_index // 8], 1, "little"), "EWRAM")]
@@ -470,7 +471,7 @@ class CastlevaniaHoDisClient(BizHawkClient):
                                 "little"),"EWRAM")]
                         # If the Item being received is a Spell Book and no Spell Book is currently equipped (implying
                         # it is the first one received), equip that Spell Book automatically without turning it on.
-                        elif pickup_type == PICKUP_TYPE_BOOK and not curr_book:
+                        elif pickup_type == PickupTypes.SPELLBOOK and not curr_book:
                             inv_writes += [(CURRENT_BOOK_ADDRESS, int.to_bytes(pickup_index + 1, 1, "little"),"EWRAM")]
                 # If the Item's pickup type was not in the inventory data dict, meaning it is a Max Up, handle that
                 # behavior here.
