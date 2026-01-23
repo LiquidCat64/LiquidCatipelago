@@ -14,6 +14,7 @@ from .data.enums import PickupTypes
 from .locations import CVHODIS_LOCATIONS_INFO, GUARDIAN_GRINDER_LOCATIONS
 from .options import CastleWarpCondition
 from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_DESCRIPTION, DESCRIPTION_DISPLAY_LINES
+from .patcher import CVHoDisRomPatcher, GBA_ROM_START
 from settings import get_settings
 
 if TYPE_CHECKING:
@@ -24,7 +25,6 @@ CVHODIS_AC_US_HASH = "35db4a2bacdec253672db68e73a41005"  # Castlevania Advance C
 
 USER_PATCHES_FOLDER_NAME = "cvhodis_user_patches"
 
-GBA_ROM_START = 0x8000000
 MK_ACTORS_START = 0x4A7F40
 WARP_A_ACTORS_START = 0x499C8C
 PORTAL_ACTORS_START = 0x49BE08
@@ -151,6 +151,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
     @staticmethod
     def apply_patches(caller: APProcedurePatch, rom: bytes, options_file: str) -> bytes:
         """Applies every patch to mod the game into its rando state."""
+        patcher = CVHoDisRomPatcher(bytearray(rom))
 
         rom_data = RomData(rom)
         options = json.loads(caller.get_file(options_file).decode("utf-8"))
