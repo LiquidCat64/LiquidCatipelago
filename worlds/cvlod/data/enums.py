@@ -619,6 +619,7 @@ class Objects(IntEnum):
 
 # IDs for the compressed files pointed to by the game's "Nisitenma-Ichigo" table.
 class NIFiles(IntEnum):
+    OVERLAY_RANDO_WARP_MENU = 1
     ASSET_DEBUG_FONT = 2
     MAP_FOREST_OF_SILENCE = 3
     MAP_CASTLE_WALL_TOWERS = 4

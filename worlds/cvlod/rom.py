@@ -8,7 +8,7 @@ from typing import List, Dict, Union, Iterable, TYPE_CHECKING
 
 import hashlib
 import os
-# import pkgutil
+import pkgutil
 
 from .data import patches, loc_names
 from .data.enums import Scenes, NIFiles, Objects, ObjectExecutionFlags, ActorSpawnFlags, Items, Pickups, PickupFlags, \
@@ -475,6 +475,41 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_byte(0x8881B, slot_patch_info["options"]["window_color_g"])
         patcher.write_byte(0x8881E, slot_patch_info["options"]["window_color_b"])
         patcher.write_byte(0x8881F, slot_patch_info["options"]["window_color_a"])
+
+        # Patch in the new overlay for the warp menu, the C source code for which can be found in the
+        # extendedStageSelect files in the src folder.
+        # Insert the new file over the debug font file, which is normally unused.
+        patcher.decompressed_files[NIFiles.ASSET_DEBUG_FONT] = \
+            bytearray(pkgutil.get_data(__name__, "data/warp_menu_overlay.bin"))
+        # Make the normally-unused Game State 2 spawn object 0x20FD upon entering it, which will handle the custom warp
+        # menu and all its associated code.
+        patcher.write_int32(0xADCB0, 0x070020FD)
+        # Set the entrypoint address for the object's code to 0x0F000000 (as it'll be mapped via the TLB).
+        patcher.write_int32(0xAE634, 0x0F000000)
+        # Create the "file info" struct associated to object 0xFD at RAM address 0x800BCC20
+        # (only replaces file 2, which is the unused debug font assets file in the vanilla ROM).
+        patcher.write_int32(0xAFA80, 0x800BCC20)
+        patcher.write_int32s(0xBD820, [0x40000002, 0x00001000])
+        # Generate the warp menu's text pool of destination names for this slot and insert it in the overlay.
+        warp_texts = [" " for _ in CVLOD_STAGE_INFO]
+        warp_texts[0] = slot_patch_info["warps"][0]
+        for warp_index in range(1, len(slot_patch_info["warps"])):
+            warp_texts[warp_index] = (f"◊{str(warp_index * slot_patch_info['options']['special1s_per_warp']).zfill(2)} "
+                                      f"{slot_patch_info['warps'][warp_index]}")
+        patcher.write_bytes(0x1338, cvlod_strings_to_pool(warp_texts, wrap=False), NIFiles.ASSET_DEBUG_FONT)
+        # Write the warp scene IDs.
+        patcher.write_int32(0x12B0, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_scene_id,
+                            NIFiles.ASSET_DEBUG_FONT)
+        patcher.write_int32s(0x12B4, [CVLOD_STAGE_INFO[warp].mid_scene_id for warp in slot_patch_info['warps'][1:]],
+                             NIFiles.ASSET_DEBUG_FONT)
+        # Write the warp spawn entrance IDs.
+        patcher.write_int32(0x12F4, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_spawn_id,
+                            NIFiles.ASSET_DEBUG_FONT)
+        patcher.write_int32s(0x12F8, [CVLOD_STAGE_INFO[warp].mid_spawn_id for warp in slot_patch_info['warps'][1:]],
+                             NIFiles.ASSET_DEBUG_FONT)
+        # Write the Special1s per warp and the total number of warps in the code.
+        patcher.write_int16(0x1CA, slot_patch_info['options']['special1s_per_warp'], NIFiles.ASSET_DEBUG_FONT)
+        patcher.write_int16(0x1CE, len(slot_patch_info['warps']), NIFiles.ASSET_DEBUG_FONT)
 
 
         # # # # # # # # # # #
@@ -1006,6 +1041,10 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int16(0xD3B0A, 0xFFEA)
             patcher.write_byte(0xD3B13, 0x12)
             patcher.write_int16(0xD3B16, 0xFFE7)
+        # Make the loading zone set event flag 0x314 upon spawning. This will unlock the Villa End convenience warp
+        # in the rando's custom warp menu.
+        patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["proxy"][20]["spawn_flags"] |= ActorSpawnFlags.SET_FLAG_ON_SPAWN
+        patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["proxy"][20]["flag_id"] = 0x314
 
         # If Vincent doesn't have an Item with the word "key" in its name, change his dialogue for when he gives you
         # the Item.
@@ -2087,6 +2126,12 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Put said elevator on the map-specific checks so our custom one will actually work.
         patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].write_ovl_byte(0x72F, 0x01)
 
+        # Make the top elevator White Jewel set event flag 0x315 upon spawning. This will unlock the Castle Center End
+        # convenience warp in the rando's custom warp menu.
+        patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].actor_lists["proxy"][26]["spawn_flags"] \
+            |= ActorSpawnFlags.SET_FLAG_ON_SPAWN
+        patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].actor_lists["proxy"][26]["flag_id"] = 0x315
+
         # Prevent taking Nitro or Mandragora through their shelf text.
         patcher.write_int32(0x1F0, 0x240C0000, NIFiles.OVERLAY_TAKE_NITRO_TEXTBOX)  # ADDIU T4, R0, 0x0000
         patcher.write_int32(0x22C, 0x240F0000, NIFiles.OVERLAY_TAKE_MANDRAGORA_TEXTBOX)  # ADDIU T7, R0, 0x0000
@@ -2483,6 +2528,12 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Otherwise, if it's Wait 16 Days, simply make the trigger universal and do nothing further to it.
         else:
             patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][2]["spawn_flags"] = 0
+
+        # Make the loading zone to Dracula's chamber set event flag 0x316 upon spawning. This will unlock the Castle
+        # Keep End convenience warp in the rando's custom warp menu.
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["proxy"][54]["spawn_flags"] \
+            |= ActorSpawnFlags.SET_FLAG_ON_SPAWN
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["proxy"][54]["flag_id"] = 0x316
 
         # Make the escape sequence Malus cutscene triggers universal to everyone.
         patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][3]["spawn_flags"] = 0
