@@ -177,8 +177,8 @@ class BossesRequired(Range):
     """How many bosses need to be defeated to enter Dracula's chamber when Dracula's Condition is set to Bosses.
     This will automatically adjust if there are fewer available bosses than the chosen number."""
     range_start = 1
-    range_end = 24
-    default = 22
+    range_end = 25
+    default = 23
     display_name = "Bosses Required"
 
 

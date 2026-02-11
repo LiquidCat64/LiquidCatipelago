@@ -28,7 +28,7 @@ from .client import CastlevaniaLoDClient
 class CVLoDSettings(settings.Group):
     class RomFile(settings.UserFilePath):
         """File name of the CVLoD US rom"""
-        copy_to = "Castlevania acy of Darkness (USA).z64"
+        copy_to = "Castlevania - Legacy of Darkness (USA).z64"
         description = "CVLoD (USA) ROM File"
         md5s = [CVLOD_US_HASH]
 

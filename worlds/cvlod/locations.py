@@ -599,6 +599,7 @@ CVLOD_EVENT_MAPPING: dict[str, str] = {
     loc_names.event_villa_boss_3: item_names.event_trophy,
     loc_names.event_villa_boss_4: item_names.event_trophy,
     loc_names.event_villa_boss_5: item_names.event_trophy,
+    loc_names.event_villa_boss_6: item_names.event_trophy,
     loc_names.event_tunnel_boss: item_names.event_trophy,
     loc_names.event_uw_boss_1: item_names.event_trophy,
     loc_names.event_uw_boss_2: item_names.event_trophy,
@@ -736,8 +737,9 @@ REIN_CARRIE_VILLA_LOCATIONS: list[str] = [
     loc_names.villam_fplatform,
     loc_names.villam_rplatform_f,
     loc_names.villam_serv_path_sr,
-    loc_names.event_villa_boss_4,
-    loc_names.event_villa_boss_5
+    loc_names.event_villa_boss_3,
+    loc_names.event_villa_boss_5,
+    loc_names.event_villa_boss_6
 ]
 
 # All Locations specific to Cornell's version of the Villa. These should not be created if the Villa State is Reinhardt
@@ -752,7 +754,7 @@ CORNELL_VILLA_LOCATIONS: list[str] = [
     loc_names.villam_hole_de,
     loc_names.villam_rplatform_r,
     loc_names.villam_serv_path_sl,
-    loc_names.event_villa_boss_3
+    loc_names.event_villa_boss_4
 ]
 
 # All freestanding Location IDs that can be problematic if a higher-spawning Item pickup is placed on them.

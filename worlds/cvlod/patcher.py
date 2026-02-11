@@ -1488,11 +1488,11 @@ class CVLoDRomPatcher:
             self.write_int24(self.ni_table_start + ((i - 1) * 8) + 5, new_overlay_start + len(self.compressed_files[i]))
 
         # Recalculate the CRC numbers.
-        #self.recalculate_crc()
+        self.recalculate_crc()
 
         # NOP out the CRC BNEs.
-        self.write_int32(0x66C, 0x00000000)
-        self.write_int32(0x678, 0x00000000)
+        #self.write_int32(0x66C, 0x00000000)
+        #self.write_int32(0x678, 0x00000000)
 
         # Return the final output ROM.
         return bytes(self.rom)
