@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 from .cvlod_text import cvlod_text_wrap, cvlod_string_to_bytearray, LEN_LIMIT_MULTIWORLD_TEXT
+from .data.misc_names import GAME_NAME
 from .rom import ARCHIPELAGO_CLIENT_COMPAT_VER, ARCHIPELAGO_IDENTIFIER_START
 from .data.enums import Scenes, Players, Items, StageNames
 
@@ -37,7 +38,7 @@ DEATHLINK_AREA_NAMES = [StageNames.FOGGY, StageNames.FOREST, StageNames.C_WALL, 
                         "Level: You Cheated"]
 
 class CastlevaniaLoDClient(BizHawkClient):
-    game = "Castlevania - Legacy of Darkness"
+    game = GAME_NAME
     system = "N64"
     patch_suffix = ".apcvlod"
     self_induced_death: bool

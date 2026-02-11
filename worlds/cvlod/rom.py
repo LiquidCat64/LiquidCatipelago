@@ -13,6 +13,7 @@ import pkgutil
 from .data import patches, loc_names
 from .data.enums import Scenes, NIFiles, Objects, ObjectExecutionFlags, ActorSpawnFlags, Items, Pickups, PickupFlags, \
     DoorFlags, StageNames
+from .data.misc_names import GAME_NAME
 from .items import HIGHER_SPAWNING_ITEMS
 from .locations import CVLOD_LOCATIONS_INFO, THREE_HIT_BREAKABLES_INFO, HIGHER_SPAWNING_PROBLEM_LOCATIONS, \
     NEW_VISIBLE_ITEM_COORDS
@@ -83,7 +84,7 @@ CC_CORNELL_INTRO_ACTOR_LISTS = {Scenes.CASTLE_CENTER_BASEMENT: "room 1",
 
 
 class CVLoDPatchExtensions(APPatchExtension):
-    game = "Castlevania - Legacy of Darkness"
+    game = GAME_NAME
 
     @staticmethod
     def patch_rom(caller: APProcedurePatch, input_rom: bytes, slot_patch_file) -> bytes:
@@ -275,8 +276,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32(0x86FE4, 0x080FF254)  # J   0x803FC950
         patcher.write_int32s(0xFFC950, patches.warp_menu_opener)
         # Make the "init boss bar" function set our custom "prevent warping" byte.
-        patcher.write_int32(0x90B54, 0x080FF26C)  # J   0x803FC9B0
-        patcher.write_int32s(0xFFC9B0, [0x3C08801D,   # LUI  T0, 0x801D
+        patcher.write_int32(0x90B54, 0x080FF270)  # J   0x803FC9C0
+        patcher.write_int32s(0xFFC9C0, [0x3C08801D,   # LUI  T0, 0x801D
                                         0x34090001,   # ORI  T1, R0, 0x0001
                                         0x03E00008,   # JR   RA
                                         0xA109AA4B])  # SB   T1, 0xAA4B (T0)
@@ -365,13 +366,14 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32s(0xFFCF10, patches.pickup_shine_height_switcher)
 
         # Everything related to dropping the previous sub-weapon
-        # TODO: Actually implement Drop Previous Sub Weapon
-        # if options.drop_previous_sub_weapon.value:
-        # patcher.write_int32(0xBFD034, 0x080FF3FF)  # J 0x803FCFFC
-        # patcher.write_int32(0xBFC18C, 0x080FF3F2)  # J 0x803FCFC8
-        # patcher.write_int32s(0xFFCFC4, patches.prev_subweapon_spawn_checker)
-        # patcher.write_int32s(0xFFCFFC, patches.prev_subweapon_fall_checker)
-        # patcher.write_int32s(0xFFD060, patches.prev_subweapon_dropper)
+        if slot_patch_info["options"]["drop_previous_sub_weapon"]:
+            patcher.write_int32s(0xFFD240, patches.prev_subweapon_spawn_checker)
+            # NOP the instructions that store the new sub weapon level upon receiving a sub weapon. We will handle this
+            # in the custom sub weapon drop code.
+            patcher.write_int32s(0x90660, [0x00000000, 0x00000000])
+            # Insert the sub weapon drop hack.
+            patcher.write_int32(0x90670, 0x080FF491)  # JAL 0x803FD244
+            patcher.write_bytes(0xFFD300, pkgutil.get_data(__name__, "data/prev_subweapon_dropper.ovl"))
 
         # Enable the Game Over's "Continue" menu starting the cursor on whichever checkpoint is most recent
         patcher.write_int32s(0x82120, [0x0C0FF2B4,  # JAL 0x803FCAD0
@@ -480,7 +482,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # extendedStageSelect files in the src folder.
         # Insert the new file over the debug font file, which is normally unused.
         patcher.decompressed_files[NIFiles.ASSET_DEBUG_FONT] = \
-            bytearray(pkgutil.get_data(__name__, "data/warp_menu_overlay.bin"))
+            bytearray(pkgutil.get_data(__name__, "data/warp_menu.ovl"))
         # Make the normally-unused Game State 2 spawn object 0x20FD upon entering it, which will handle the custom warp
         # menu and all its associated code.
         patcher.write_int32(0xADCB0, 0x070020FD)
@@ -496,16 +498,16 @@ class CVLoDPatchExtensions(APPatchExtension):
         for warp_index in range(1, len(slot_patch_info["warps"])):
             warp_texts[warp_index] = (f"◊{str(warp_index * slot_patch_info['options']['special1s_per_warp']).zfill(2)} "
                                       f"{slot_patch_info['warps'][warp_index]}")
-        patcher.write_bytes(0x1338, cvlod_strings_to_pool(warp_texts, wrap=False), NIFiles.ASSET_DEBUG_FONT)
+        patcher.write_bytes(0x1318, cvlod_strings_to_pool(warp_texts, wrap=False), NIFiles.ASSET_DEBUG_FONT)
         # Write the warp scene IDs.
-        patcher.write_int32(0x12B0, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_scene_id,
+        patcher.write_int32(0x1290, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_scene_id,
                             NIFiles.ASSET_DEBUG_FONT)
-        patcher.write_int32s(0x12B4, [CVLOD_STAGE_INFO[warp].mid_scene_id for warp in slot_patch_info['warps'][1:]],
+        patcher.write_int32s(0x1294, [CVLOD_STAGE_INFO[warp].mid_scene_id for warp in slot_patch_info['warps'][1:]],
                              NIFiles.ASSET_DEBUG_FONT)
         # Write the warp spawn entrance IDs.
-        patcher.write_int32(0x12F4, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_spawn_id,
+        patcher.write_int32(0x12D4, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_spawn_id,
                             NIFiles.ASSET_DEBUG_FONT)
-        patcher.write_int32s(0x12F8, [CVLOD_STAGE_INFO[warp].mid_spawn_id for warp in slot_patch_info['warps'][1:]],
+        patcher.write_int32s(0x12D8, [CVLOD_STAGE_INFO[warp].mid_spawn_id for warp in slot_patch_info['warps'][1:]],
                              NIFiles.ASSET_DEBUG_FONT)
         # Write the Special1s per warp and the total number of warps in the code.
         patcher.write_int16(0x1CA, slot_patch_info['options']['special1s_per_warp'], NIFiles.ASSET_DEBUG_FONT)
@@ -635,6 +637,11 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["var_a"] = \
             CVLOD_LOCATIONS_INFO[loc_names.forest_child_ledge].flag_id
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"][122]["var_c"] = Pickups.ONE_HUNDRED_GOLD
+
+        # Prevent the Werewolf miniboss from setting the flags associated with the descending bridge switch and its
+        # associated gate if we kill it as Henry. Likely meant to be an anti-softlock measure in case Henry takes the
+        # Forest shortcut and completely skips the kid for whatever reason.
+        patcher.write_int32(0x3AE8, 0x34180000, NIFiles.OVERLAY_WEREWOLF)  # ORI T8, R0, 0x0000
 
         # Make King Skeleton 2 open the gate when defeated if the final gate switch was flipped rather than just if we
         # are Henry.
@@ -1083,7 +1090,7 @@ class CVLoDPatchExtensions(APPatchExtension):
 
 
         # Depending on whom the maze kid is, change some more things appropriately.
-        if slot_patch_info["options"]["villa_maze_kid"] != VillaMazeKid.option_malus:
+        if slot_patch_info["options"]["villa_maze_kid"] == VillaMazeKid.option_malus:
             # Rewrite all of Mary's dialogue to reflect Malus being the kid in the maze.
             patcher.scenes[Scenes.VILLA_LIVING_AREA].scene_text[31]["text"] = (
                 cvlod_text_wrap("⬘1/Mary:\n"
@@ -1800,7 +1807,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][49]["delete"] = True
         patcher.scenes[Scenes.THE_OUTER_WALL].actor_lists["proxy"][50]["delete"] = True
 
-        # If the empty breakables are on, write all data associated with them.
+        # If the Empty Breakables are on, write all data associated with them.
         if slot_patch_info["options"]["empty_breakables"]:
             # Assign every empty 1HB a unique 1HB ID.
             # For our purposes, we will be using the Outer Wall's Easy/Hard-specific 1HB data.
@@ -2030,6 +2037,24 @@ class CVLoDPatchExtensions(APPatchExtension):
                 patcher.scenes[Scenes.CASTLE_CENTER_LIZARD_LAB].scene_text[18]["text"] = \
                         patcher.scenes[Scenes.CASTLE_CENTER_LIZARD_LAB].scene_text[18]["text"][:412]
 
+        # Add an extra spawn entrance to the basement scene in the torture chamber room, in front of the fire place.
+        # This will be where the stage warp will drop us off at.
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].spawn_spots += [
+            CVLoDSpawnEntranceEntry(room_id=0, player_x_pos=-120, player_y_pos=3, player_z_pos=-707,
+                                    player_rotation=-16384, camera_x_pos=-163, camera_y_pos=24, camera_z_pos=-711,
+                                    focus_x_pos=-120, focus_y_pos=18, focus_z_pos=-702)
+        ]
+        # Add an extra White Jewel to go with this new spawn entrance. We will make its number one of the
+        # character-specific jewels that we removed (Jewel #5, a Henry Forest one, in this case).
+        patcher.write_int16s((SAVE_JEWEL_TABLE_START + (5 * 8)) + 2,
+                             [SCENE_STAGE_NAME_INDEXES[Scenes.CASTLE_CENTER_BASEMENT],
+                              Scenes.CASTLE_CENTER_BASEMENT, 6])
+        patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"] += [
+            CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=-135.0, y_pos=3.0, z_pos=-708.0,
+                                  execution_flags=0, object_id=Objects.INTERACTABLE, flag_id=0, var_a=0x5, var_b=0,
+                                  var_c=Pickups.WHITE_JEWEL, var_d=0, extra_condition_ptr=0)
+        ]
+
         # Change some shelf decoration Nitros and Mandragoras into actual items.
         # Mandragora shelf right
         patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 0"][14]["x_pos"] = -4.0
@@ -2156,8 +2181,10 @@ class CVLoDPatchExtensions(APPatchExtension):
             "soul battles Dracula then may\n"
             "have an easier time...🅰0/")
 
-        # Prevent vampires from despawning if we have Nitro, so they'll never not spawn and crash the Villa cutscenes.
+        # Prevent Vampires and Cerberuses from despawning if we have Nitro, so they'll never not spawn and crash the
+        # Villa cutscenes or render the Villa front gates unopenable.
         patcher.write_int32(0x128, 0x24020001, NIFiles.OVERLAY_VAMPIRE_SPAWNER)  # ADDIU V0, R0, 0x0001
+        patcher.write_int32(0x104, 0x24020001, NIFiles.OVERLAY_CERBERUS)  # ADDIU V0, R0, 0x0001
 
         # Prevent throwing Nitro in the Hazardous Materials Disposals.
         patcher.write_int32(0x1E4, 0x24020001, NIFiles.OVERLAY_NITRO_DISPOSAL_TEXTBOX)  # ADDIU V0, R0, 0x0001
@@ -2376,6 +2403,37 @@ class CVLoDPatchExtensions(APPatchExtension):
                     patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(0x70C0 + (4 * 2) + 2,
                                                                             PickupFlags.GRAVITY|PickupFlags.INVISIBLE)
 
+        # If the Empty Breakables are on, place freestanding items set up to spawn when breaking each of the cyan
+        # diamonds that normally drop nothing.
+        if slot_patch_info["options"]["empty_breakables"]:
+            patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"] += [
+                CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos=-227.0,
+                                      y_pos=200.0, z_pos=158.0, execution_flags=0, object_id=Objects.INTERACTABLE,
+                                      flag_id=0x1AF, var_a=CVLOD_LOCATIONS_INFO[loc_names.tosor_icemen_l].flag_id,
+                                      var_b=0, var_c=Pickups.RED_JEWEL_S, var_d=0, extra_condition_ptr=0),
+                CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos=-227.0,
+                                      y_pos=200.0, z_pos=173.0, execution_flags=0, object_id=Objects.INTERACTABLE,
+                                      flag_id=0x1B0, var_a=CVLOD_LOCATIONS_INFO[loc_names.tosor_icemen_r].flag_id,
+                                      var_b=0, var_c=Pickups.RED_JEWEL_L, var_d=0, extra_condition_ptr=0),
+                CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos=1083.0,
+                                      y_pos=360.0, z_pos=25.0, execution_flags=0, object_id=Objects.INTERACTABLE,
+                                      flag_id=0x1B1, var_a=CVLOD_LOCATIONS_INFO[loc_names.tosor_side_isle].flag_id,
+                                      var_b=0, var_c=Pickups.FIVE_HUNDRED_GOLD, var_d=0, extra_condition_ptr=0),
+                CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos=878.0,
+                                      y_pos=480.0, z_pos=10.0, execution_flags=0, object_id=Objects.INTERACTABLE,
+                                      flag_id=0x1B2, var_a=CVLOD_LOCATIONS_INFO[loc_names.tosor_mag_bridge].flag_id,
+                                      var_b=0, var_c=Pickups.THREE_HUNDRED_GOLD, var_d=0, extra_condition_ptr=0),
+                CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos=738.0,
+                                      y_pos=530.0, z_pos=-591.0, execution_flags=0, object_id=Objects.INTERACTABLE,
+                                      flag_id=0x1B3, var_a=CVLOD_LOCATIONS_INFO[loc_names.tosor_lasers_s].flag_id,
+                                      var_b=0, var_c=Pickups.ONE_HUNDRED_GOLD, var_d=0, extra_condition_ptr=0),
+                CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos=308.0,
+                                      y_pos=630.0, z_pos=-73.0, execution_flags=0, object_id=Objects.INTERACTABLE,
+                                      flag_id=0x1B4, var_a=CVLOD_LOCATIONS_INFO[loc_names.tosor_climb_m].flag_id,
+                                      var_b=0, var_c=Pickups.RED_JEWEL_L, var_d=0, extra_condition_ptr=0),
+            ]
+
+
         # Make Carrie's White Jewels universal to everyone and remove Cornell's.
         patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][128]["delete"] = True
         patcher.scenes[Scenes.TOWER_OF_SORCERY].actor_lists["proxy"][129]["delete"] = True
@@ -2529,11 +2587,13 @@ class CVLoDPatchExtensions(APPatchExtension):
         else:
             patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][2]["spawn_flags"] = 0
 
-        # Make the loading zone to Dracula's chamber set event flag 0x316 upon spawning. This will unlock the Castle
-        # Keep End convenience warp in the rando's custom warp menu.
+        # Make the loading zone to Dracula's chamber set event flag 0x316 upon spawning and put it on the "not in a
+        # cutscene" check. This will unlock the Castle Keep End convenience warp in the rando's custom warp menu
+        # (as long as it's NOT the Cornell intro cutscene).
         patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["proxy"][54]["spawn_flags"] \
-            |= ActorSpawnFlags.SET_FLAG_ON_SPAWN
+            |= ActorSpawnFlags.SET_FLAG_ON_SPAWN | ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
         patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["proxy"][54]["flag_id"] = 0x316
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["proxy"][54]["extra_condition_ptr"] = 0x803FCDBC
 
         # Make the escape sequence Malus cutscene triggers universal to everyone.
         patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][3]["spawn_flags"] = 0
@@ -3323,14 +3383,14 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int16s(0x450, starting_flags, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
 
         # Everything relating to loading the other game items text.
-        patcher.write_int32s(0x108550, [0x080FF88F,   # J     0x803FE23C
+        patcher.write_int32s(0x108550, [0x080FF88B,   # J     0x803FE22C
                                         0x00000000])  # NOP
         patcher.write_int32(0x87DC4, 0x0C0FF89E)  # JAL 0x803FE278
         patcher.write_int32(0x87E60, 0x0C0FF8A8)  # JAL 0x803FE2A0
         patcher.write_int32(0x87E70, 0x0C0FF8B9)  # JAL	0x803FE2E4
         patcher.write_int32s(0x87E8C, [0x0C0FF8CB,   # JAL 0x803FE32C
                                        0x3C014000])  # LUI AT, 0x4000
-        patcher.write_int32s(0xFFE23C, patches.multiworld_item_name_loader)
+        patcher.write_int32s(0xFFE22C, patches.multiworld_item_name_loader)
         patcher.write_bytes(0x1F1CC, [0x00 for _ in range(264)])
         patcher.write_bytes(0x1F2DC, [0x00 for _ in range(264)])
 
@@ -3378,63 +3438,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         # patcher.write_int32s(0xBFDFC4, patches.character_changer)
 
         # patcher.write_int32s(0xBFDD20, patches.special_descriptions_redirector)
-
-        # Change the Stage Select menu options
-        # patcher.write_int32s(0xADF64, patches.warp_menu_rewrite)
-        # patcher.write_int32s(0x10E0C8, patches.warp_pointer_table)
-        # for i in range(len(active_warp_list)):
-        #    if i == 0:
-        # patcher.write_byte(warp_map_offsets[i], get_stage_info(active_warp_list[i], "start map id"))
-        # patcher.write_byte(warp_map_offsets[i] + 4, get_stage_info(active_warp_list[i], "start spawn id"))
-        #    else:
-        # patcher.write_byte(warp_map_offsets[i], get_stage_info(active_warp_list[i], "mid map id"))
-        # patcher.write_byte(warp_map_offsets[i] + 4, get_stage_info(active_warp_list[i], "mid spawn id"))
-
-        # Play the "teleportation" sound effect when teleporting
-        # patcher.write_int32s(0xAE088, [0x08004FAB,  # J 0x80013EAC
-        #                           0x2404019E])  # ADDIU A0, R0, 0x019E
-
-        # Change the Stage Select menu's text to reflect its new purpose
-        # patcher.write_bytes(0xEFAD0, cvlod_string_to_bytearray(f"Where to...?\t{active_warp_list[0]}\t"
-        #                                              f"`{w1} {active_warp_list[1]}\t"
-        #                                              f"`{w2} {active_warp_list[2]}\t"
-        #                                              f"`{w3} {active_warp_list[3]}\t"
-        #                                              f"`{w4} {active_warp_list[4]}\t"
-        #                                              f"`{w5} {active_warp_list[5]}\t"
-        #                                              f"`{w6} {active_warp_list[6]}\t"
-        #                                              f"`{w7} {active_warp_list[7]}"))
-
-        # Lizard-man save proofing
-        # patcher.write_int32(0xA99AC, 0x080FF0B8)  # J 0x803FC2E0
-        # patcher.write_int32s(0xBFC2E0, patches.boss_save_stopper)
-
-        # Fix a vanilla issue wherein saving in a character-exclusive stage as the other character would incorrectly
-        # display the name of that character's equivalent stage on the save file instead of the one they're actually in.
-        # patcher.write_byte(0xC9FE3, 0xD4)
-        # patcher.write_byte(0xCA055, 0x08)
-        # patcher.write_byte(0xCA066, 0x40)
-        # patcher.write_int32(0xCA068, 0x860C17D0)  # LH T4, 0x17D0 (S0)
-        # patcher.write_byte(0xCA06D, 0x08)
-        # patcher.write_byte(0x104A31, 0x01)
-        # patcher.write_byte(0x104A39, 0x01)
-        # patcher.write_byte(0x104A89, 0x01)
-        # patcher.write_byte(0x104A91, 0x01)
-        # patcher.write_byte(0x104A99, 0x01)
-        # patcher.write_byte(0x104AA1, 0x01)
-
-        # for stage in active_stage_exits:
-        #    for offset in get_stage_info(stage, "save number offsets"):
-        # patcher.write_byte(offset, active_stage_exits[stage]["position"])
-
-        # Sub-weapon check function hook
-        # patcher.write_int32(0xBF32C, 0x00000000)  # NOP
-        # patcher.write_int32(0xBF330, 0x080FF05E)  # J	0x803FC178
-        # patcher.write_int32s(0xBFC178, patches.give_subweapon_stopper)
-
-        # Warp menu Special1 restriction
-        # patcher.write_int32(0xADD68, 0x0C04AB12)  # JAL 0x8012AC48
-        # patcher.write_int32s(0xADE28, patches.stage_select_overwrite)
-        # patcher.write_byte(0xADE47, s1s_per_warp)
 
         # Write the randomized (or disabled) music ID list and its associated code
         # if options.background_music.value:
@@ -3497,7 +3500,7 @@ class CVLoDProcedurePatch(APProcedurePatch):
     patch_file_ending: str = ".apcvlod"
     result_file_ending: str = ".z64"
 
-    game = "Castlevania - Legacy of Darkness"
+    game = GAME_NAME
 
     procedure = [
         ("patch_rom", ["slot_patch_info.json"])

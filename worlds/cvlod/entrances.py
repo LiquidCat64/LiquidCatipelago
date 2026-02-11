@@ -178,7 +178,8 @@ CVLOD_ENTRANCE_INFO = {
     # Fan room
     ent_names.ccfr_door_r: CVLoDEntranceData(StageNames.CENTER, reg_names.ccb_basement),
     # Basement
-    ent_names.ccb_tc_door: CVLoDEntranceData(StageNames.CENTER, reg_names.ccb_torture_chamber),
+    ent_names.ccb_tc_to_door: CVLoDEntranceData(StageNames.CENTER, reg_names.ccb_torture_chamber),
+    ent_names.ccb_tc_from_door: CVLoDEntranceData(StageNames.CENTER, reg_names.ccb_basement),
     ent_names.ccb_wall: CVLoDEntranceData(StageNames.CENTER, reg_names.ccb_behemoth_crack),
     ent_names.ccb_stairs: CVLoDEntranceData(StageNames.CENTER, reg_names.ccbe_bottom_elevator),
     # Bottom Elevator Room

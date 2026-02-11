@@ -141,7 +141,7 @@ CVLOD_STAGE_INFO = {
 
     StageNames.C_WALL:
         CVLoDStageData(reg_names.cw_start, ent_names.cw_start, Scenes.CASTLE_WALL_MAIN, 0x00, 0,
-                       reg_names.cw_start, Scenes.CASTLE_WALL_MAIN, 0x07,
+                       reg_names.cw_start, Scenes.CASTLE_WALL_MAIN, 0x08,
                        reg_names.cw_exit, ent_names.cw_end, Scenes.CASTLE_WALL_MAIN, 0x05, 5,
                        StageIDs.C_WALL,
                        # Main
@@ -629,7 +629,7 @@ CVLOD_STAGE_INFO = {
 
     StageNames.CENTER:
         CVLoDStageData(reg_names.ccfr_fan_room, "", Scenes.FAN_MEETING_ROOM, 0x40, 0,
-                       reg_names.ccia_nitro_liz, Scenes.CASTLE_CENTER_INVENTIONS, 0x03,
+                       reg_names.ccb_torture_chamber, Scenes.CASTLE_CENTER_BASEMENT, 0x06,
                        reg_names.ccte_elev_top, ent_names.ccte_exit_r, Scenes.CASTLE_CENTER_TOP_ELEV, 0x01, 1,
                        StageIDs.CENTER,
                        # Fan room
@@ -653,7 +653,7 @@ CVLOD_STAGE_INFO = {
                                                                            loc_names.ccb_behemoth_crate3,
                                                                            loc_names.ccb_behemoth_crate4,
                                                                            loc_names.ccb_behemoth_crate5],
-                                                                entrances=[ent_names.ccb_tc_door,
+                                                                entrances=[ent_names.ccb_tc_to_door,
                                                                            ent_names.ccb_wall,
                                                                            ent_names.ccb_stairs]),
 
@@ -668,7 +668,7 @@ CVLOD_STAGE_INFO = {
                                                                                   loc_names.ccb_mandrag_shelf_r,
                                                                                   loc_names.ccb_torture_rack,
                                                                                   loc_names.ccb_torture_rafters],
-                                                                       entrances=[]),
+                                                                       entrances=[ent_names.ccb_tc_from_door]),
 
                         # Bottom Elevator Room
                         reg_names.ccbe_bottom_elevator: CVLoDRegionData(locations=[loc_names.ccbe_near_machine,
@@ -901,10 +901,16 @@ CVLOD_STAGE_INFO = {
                        reg_names.tosor_main, Scenes.TOWER_OF_SORCERY, 0x02,
                        reg_names.tosor_main, ent_names.tosor_end, Scenes.TOWER_OF_SORCERY, 0x01, 1,
                        StageIDs.SORCERY,
-                       {reg_names.tosor_main: CVLoDRegionData(locations=[loc_names.tosor_electric,
-                                                                         loc_names.tosor_lasers,
+                       {reg_names.tosor_main: CVLoDRegionData(locations=[loc_names.tosor_icemen_l,
+                                                                         loc_names.tosor_icemen_r,
+                                                                         loc_names.tosor_archi,
+                                                                         loc_names.tosor_side_isle,
+                                                                         loc_names.tosor_mag_bridge,
+                                                                         loc_names.tosor_lasers_m,
+                                                                         loc_names.tosor_lasers_s,
                                                                          loc_names.tosor_climb_l,
                                                                          loc_names.tosor_climb_r,
+                                                                         loc_names.tosor_climb_m,
                                                                          loc_names.tosor_ibridge,
                                                                          loc_names.tosor_super_1,
                                                                          loc_names.tosor_super_2,

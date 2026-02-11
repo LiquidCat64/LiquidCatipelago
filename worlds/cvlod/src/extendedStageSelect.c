@@ -122,10 +122,6 @@ void extendedStageSelect_init(extendedStageSelect* self) {
 
     /////////////// Map Names ///////////////
     for (i = 0, j = self->first_string_ID + i; i < OPTION_MAX; i++, j++) {
-        if (j >= self->num_maps) {
-            j = 0;
-        }
-	
         // Y pos varies by 20.0f, starting from 90.0f
         (*textboxObject_setParams_CustomFormattedString)(self->mapNamesTextboxes[i], GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, (*text_getMessageFromPool)(stage_names_pool, j)), 0, -130.0f, 90.f - (20.0f * i), 16, 1);
     }

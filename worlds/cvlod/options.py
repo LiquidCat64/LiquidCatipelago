@@ -177,8 +177,8 @@ class BossesRequired(Range):
     """How many bosses need to be defeated to enter Dracula's chamber when Dracula's Condition is set to Bosses.
     This will automatically adjust if there are fewer available bosses than the chosen number."""
     range_start = 1
-    range_end = 16
-    default = 14
+    range_end = 24
+    default = 22
     display_name = "Bosses Required"
 
 
@@ -244,7 +244,7 @@ class VillaState(Choice):
 
 class VillaMazeKid(Choice):
     """Which kid is found and rescued from the maze, regardless of the Villa state."""
-    display_name = "Villa Bedroom Vampire"
+    display_name = "Villa Maze Kid"
     option_malus = 0
     option_henry = 1
     default = 0
@@ -355,8 +355,8 @@ class InvisibleItems(Choice):
     default = 0
 
 
-class DropPreviousSubWeapon(Toggle):
-    """When receiving a sub-weapon, the one you had before will drop behind you, so it can be taken back if desired."""
+class DropPreviousSubWeapon(DefaultOnToggle):
+    """When receiving a sub-weapon, the one you had before will drop behind you, so it can be taken back if desired. The dropped sub-weapon will retain its level as well."""
     display_name = "Drop Previous Sub-weapon"
 
 
@@ -561,7 +561,7 @@ class CVLoDOptions(PerGameCommonOptions):
     nerf_healing_items: NerfHealingItems
     loading_zone_heals: LoadingZoneHeals
     invisible_items: InvisibleItems
-    # drop_previous_sub_weapon: DropPreviousSubWeapon
+    drop_previous_sub_weapon: DropPreviousSubWeapon
     permanent_powerups: PermanentPowerUps
     # ice_trap_percentage: IceTrapPercentage
     # ice_trap_appearance: IceTrapAppearance

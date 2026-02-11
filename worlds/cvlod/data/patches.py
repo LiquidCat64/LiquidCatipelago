@@ -89,7 +89,30 @@ remote_item_giver = [
     0x00000000,  # NOP
     # Multiworld item byte occupied?
     0x9164AA4D,  # LBU	 A0, 0xAA4D (T3)
-    0x10800013,  # BEQZ	 A0,     [forward 0x13]
+    0x10800025,  # BEQZ	 A0,     [forward 0x25]
+    0x00000000,  # NOP
+    # If we're receiving a subweapon (see: ID is between 0x0D-0x10), check if the player is above an abyss or instant
+    # death floor type. If they are, don't give the subweapon on that frame so the player's old subweapon can drop to
+    # a safe spot.
+    0x2408000D,  # ADDIU T0, R0, 0x000D
+    0x11040006,  # BEQ   T0, A0, [forward 0x06]
+    0x2409000E,  # ADDIU T1, R0, 0x000E
+    0x11240004,  # BEQ   T1, A0, [forward 0x04]
+    0x2408000F,  # ADDIU T0, R0, 0x000F
+    0x11040002,  # BEQ   T0, A0, [forward 0x02]
+    0x24090010,  # ADDIU T1, R0, 0x0010
+    0x1524000A,  # BNE   T1, A0, [forward 0x0A]
+    # Check the floor type beneath the player for 00 (no floor), 07 (floor that kills by being in a distance above it),
+    # or 0A (floor that kills by being on it).
+    0x3C0A800F,  # LUI   T2, 0x800F
+    0x914A393D,  # LBU   T2, 0x393D (T2)
+    0x11400005,  # BEQZ  T2,     [forward 0x05]
+    0x24080007,  # ADDIU T0, R0, 0x0007
+    0x110A0003,  # BEQ   T0, T2, [forward 0x03]
+    0x2409000A,  # ADDIU T1, R0, 0x000A
+    0x152A0003,  # BNE   T1, T2, [forward 0x03]
+    0x00000000,  # NOP
+    0x03E00008,  # JR    RA
     0x00000000,  # NOP
     # If the textbox state is not 0, again, call the item textbox without setting the timer, clearing the buffer, nor
     # increment the multiworld item index. Don't copy the incoming multiworld item text buffer either.
@@ -113,7 +136,7 @@ remote_item_giver = [
     0x25290001,  # ADDIU T1, T1, 0x0001
     0x1000FFFB,  # B             [backward 0x05]
     0x25080004,  # ADDIU T0, T0, 0x0004
-    0x08021C1C,  # J     0x80087070 TODO: Detect the surface below the player for sub-weapon dropping.
+    0x08021C1C,  # J     0x80087070
     0x00000000,  # NOP
     # DeathLink-specific checks
     # Received any DeathLinks?
@@ -183,21 +206,26 @@ warp_menu_opener = [
     0x3C08800F,  # LUI   T0, 0x800F
     0x9508FBA0,  # LHU   T0, 0xFBA0 (T0)
     0x24093010,  # ADDIU T1, R0, 0x3010
-    0x15090010,  # BNE   T0, T1, [forward 0x10]
+    0x15090013,  # BNE   T0, T1, [forward 0x13]
     # Check our custom "can warp" byte for a non-zero value. If zero, don't warp.
     0x3C08801D,  # LUI   T0, 0x801D
     0x9109AA4B,  # LBU   T1, 0xAA4B (T0)
-    0x1520000D,  # BNEZ  T1,     [forward 0x0D]
+    0x15200010,  # BNEZ  T1,     [forward 0x10]
     # Check if a "Dracula 1 intro cutscene" flag is set. If it is, don't warp as we're likely in the escape sequence.
     0x9109AA8F,  # LBU   T1, 0xAA4B (T0)
     0x312A0018,  # ANDI  T2, T1, 0x0018
-    0x1540000A,  # BNEZ  T2,     [forward 0x0A]
+    0x1540000D,  # BNEZ  T2,     [forward 0x0D]
     0x00000000,  # NOP
     # Push T9 and A2 to the stack (since we'll be needing those once we return) and jump to the "Change Game State"
     # function with 2 as the A0 argument (the unused Game State 2 is where the warp menu will be handled).
     0x27BDFFF8,  # ADDIU SP, SP, -0x08
     0xAFB90000,  # SW    T9, 0x0000 (SP)
     0xAFA60004,  # SW    A2, 0x0004 (SP)
+    # Kill the Gameplay Menu Manager pointer and set the delay timer to ensure the remote item giver hack doesn't try
+    # reading garbage data from the aftermentioned pointer when coming out of the warp menu. Then change the game state.
+    0xAD00AC0C,  # SW    R0, 0xAC0C (T0)
+    0x3419003E,  # ORI   T9, R0, 0x003E
+    0xA119278E,  # SB    T9, 0x278E (T0)
     0x0C00014F,  # JAL   0x8000053C
     0x24040002,  # ADDIU A0, R0, 0x0002
     # Pop T9 and A2's numbers back into their registers and return without storing the pause value.
@@ -790,246 +818,48 @@ chandelier_item_flags_setter = [
 ]
 
 prev_subweapon_spawn_checker = [
-    # When picking up a sub-weapon this will check to see if it's different from the one the player already had (if they
-    # did have one) and jump to prev_subweapon_dropper, which will spawn a subweapon actor of what they had before
-    # directly behind them.
-    0x322F3031,  # Previous sub-weapon bytes
-    0x10A00009,  # BEQZ  A1,     [forward 0x09]
-    0x00000000,  # NOP
-    0x10AD0007,  # BEQ   A1, T5, [forward 0x07]
-    0x3C088040,  # LUI   T0, 0x8040
-    0x01054021,  # ADDU  T0, T0, A1
-    0x0C0FF418,  # JAL   0x803FD060
-    0x9104CFC3,  # LBU   A0, 0xCFC3 (T0)
-    0x2484FF9C,  # ADDIU A0, A0, 0xFF9C
-    0x3C088039,  # LUI   T0, 0x8039
-    0xAD049BD4,  # SW    A0, 0x9BD4 (T0)
-    0x0804F0BF,  # J     0x8013C2FC
-    0x24020001   # ADDIU V0, R0, 0x0001
-]
+    # When picking up a subweapon, this will check to see if it's different from the one the player already had (if
+    # they did have one) and jump to the prev_subweapon_dropper hack, which will spawn a subweapon actor of what they
+    # had before directly behind them as well as save the player's old subweapon level to it. Also increases the
+    # weapon level by multiples if picking up a subweapon with a level higher than 0 saved to it.
 
-prev_subweapon_fall_checker = [
-    # Checks to see if a pointer to a previous sub-weapon drop actor spawned by prev_subweapon_dropper is in 80389BD4
-    # and calls the function in prev_subweapon_dropper to lower the weapon closer to the ground on the next frame if a
-    # pointer exists and its actor ID is 0x0027. Once it hits the ground or despawns, the connection to the actor will
-    # be severed by 0-ing out the pointer.
-    0x3C088039,  # LUI   T0, 0x8039
-    0x8D049BD4,  # LW    A0, 0x9BD4 (T0)
-    0x10800008,  # BEQZ  A0,     [forward 0x08]
+    0x100D0E0F,  # Previous sub-weapon pickup IDs.
+    # Check if the player's old subweapon ID is 0 or the same as the new one. If the former is true, skip the weapon
+    # drop routine entirely. If the latter is true, branch to where we will increment the weapon level.
+    0x1180000E,  # BEQZ  T4,     [forward 0x0E]
     0x00000000,  # NOP
-    0x84890000,  # LH    T1, 0x0000 (A0)
-    0x240A0027,  # ADDIU T2, R0, 0x0027
-    0x152A0004,  # BNE   T1, T2, [forward 0x04]
-    0x00000000,  # NOP
-    0x0C0FF452,  # JAL   0x803FD148
-    0x00000000,  # NOP
-    0x50400001,  # BEQZL V0,     [forward 0x01]
-    0xAD009BD4,  # SW    R0, 0x9BD4 (T0)
-    0x080FF40F   # J     0x803FD03C
-]
-
-prev_subweapon_dropper = [
-    # Spawns a pickup actor of the sub-weapon the player had before picking up a new one behind them at their current
-    # position like in other CVs. This will enable them to pick it back up again if they still want it.
-    # Courtesy of Moisés; see derp.c in the src folder for the C source code.
-    0x27BDFFC8,
-    0xAFBF001C,
-    0xAFA40038,
-    0xAFB00018,
-    0x0C0006B4,
-    0x2404016C,
-    0x00402025,
-    0x0C000660,
-    0x24050027,
-    0x1040002B,
-    0x00408025,
-    0x3C048035,
-    0x848409DE,
-    0x00042023,
-    0x0C0230D4,
-    0x3084FFFF,
-    0x44822000,
-    0x3C018040,
-    0xC428D370,
-    0x468021A0,
-    0x3C048035,
-    0x848409DE,
-    0x00042023,
-    0x46083282,
-    0x3084FFFF,
-    0x0C01FFAC,
-    0xE7AA0024,
-    0x44828000,
-    0x3C018040,
-    0xC424D374,
-    0x468084A0,
-    0x27A40024,
-    0x00802825,
-    0x3C064100,
-    0x46049182,
-    0x0C004562,
-    0xE7A6002C,
-    0x3C058035,
-    0x24A509D0,
-    0x26040064,
-    0x0C004530,
-    0x27A60024,
-    0x3C018035,
-    0xC42809D4,
-    0x3C0140A0,
-    0x44815000,
-    0x00000000,
-    0x460A4400,
-    0xE6100068,
-    0xC6120068,
-    0xE6120034,
-    0x8FAE0038,
-    0xA60E0038,
-    0x8FBF001C,
-    0x8FB00018,
-    0x27BD0038,
-    0x03E00008,
-    0x00000000,
-    0x3C068040,
-    0x24C6D368,
-    0x90CE0000,
-    0x27BDFFE8,
-    0xAFBF0014,
-    0x15C00027,
-    0x00802825,
-    0x240400DB,
-    0x0C0006B4,
-    0xAFA50018,
-    0x44802000,
-    0x3C038040,
-    0x2463D364,
-    0x3C068040,
-    0x24C6D368,
-    0x8FA50018,
-    0x1040000A,
-    0xE4640000,
-    0x8C4F0024,
-    0x3C013F80,
-    0x44814000,
-    0xC5E60044,
-    0xC4700000,
-    0x3C018040,
-    0x46083280,
-    0x460A8480,
-    0xE432D364,
-    0x94A20038,
-    0x2401000F,
-    0x24180001,
-    0x10410006,
-    0x24010010,
-    0x10410004,
-    0x2401002F,
-    0x10410002,
-    0x24010030,
-    0x14410005,
-    0x3C014040,
-    0x44813000,
-    0xC4640000,
-    0x46062200,
-    0xE4680000,
-    0xA0D80000,
-    0x10000023,
-    0x24020001,
-    0x3C038040,
-    0x2463D364,
-    0xC4600000,
-    0xC4A20068,
-    0x3C038039,
-    0x24639BD0,
-    0x4600103E,
-    0x00001025,
-    0x45000006,
-    0x00000000,
-    0x44808000,
-    0xE4A00068,
-    0xA0C00000,
-    0x10000014,
-    0xE4700000,
-    0x3C038039,
-    0x24639BD0,
-    0x3C018019,
-    0xC42AC870,
-    0xC4600000,
-    0x460A003C,
-    0x00000000,
-    0x45000006,
-    0x3C018019,
-    0xC432C878,
-    0x46120100,
-    0xE4640000,
-    0xC4600000,
-    0xC4A20068,
-    0x46001181,
-    0x24020001,
-    0xE4A60068,
-    0xC4A80068,
-    0xE4A80034,
-    0x8FBF0014,
-    0x27BD0018,
-    0x03E00008,
-    0x00000000,
-    0x00000000,
-    0x00000000,
-    0x00000000,
-    0x0000001B,
-    0x060048E0,
-    0x40000000,
-    0x06AEFFD3,
-    0x06004B30,
-    0x40000000,
-    0x00000000,
-    0x06004CB8,
-    0x0000031A,
-    0x002C0000,
-    0x060059B8,
-    0x40000248,
-    0xFFB50186,
-    0x06005B68,
-    0xC00001DF,
-    0x00000000,
-    0x06005C88,
-    0x80000149,
-    0x00000000,
-    0x06005DC0,
-    0xC0000248,
-    0xFFB5FE7B,
-    0x06005F70,
-    0xC00001E0,
-    0x00000000,
-    0x06006090,
-    0x8000014A,
-    0x00000000,
-    0x06007D28,
-    0x4000010E,
-    0xFFF100A5,
-    0x06007F60,
-    0xC0000275,
-    0x00000000,
-    0x06008208,
-    0x800002B2,
-    0x00000000,
-    0x060083B0,
-    0xC000010D,
-    0xFFF2FF5C,
-    0x060085E8,
-    0xC0000275,
-    0x00000000,
-    0x06008890,
-    0x800002B2,
-    0x00000000,
-    0x3D4CCCCD,
-    0x3FC00000,
-    0x00000000,
-    0x00000000,
-    0x00000000,
-    0x00000000,
-    0xB8000100,
-    0xB8000100,
+    0x11850008,  # BEQ   T4, A1, [forward 0x08]
+    # Set the subweapon level to 0 and drop the old subweapon with said old level saved to it.
+    0x3C0A8040,  # LUI   T2, 0x8040
+    0x014C5021,  # ADDU  T2, T2, T4
+    0x9144D23F,  # LBU   A0, 0xD23F (T2)
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9505AE26,  # LHU   A1, 0xAE26 (T0)
+    0x0C0FF4C0,  # JAL   0x803FD300
+    0xA500AE26,  # SH    R0, 0xAE26 (T0)
+    0x10000005,  # B             [forward 0x05]
+    # If picking up an instance of the same weapon, increase the weapon level by 1.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9509AE26,  # LHU   T1, 0xAE26 (T0)
+    0x25290001,  # ADDIU T1, T1, 0x0001
+    0xA509AE26,  # SH    T1, 0xAE26 (T0)
+    # Increase the player's subweapon level by the amount we grabbed from the new subweapon pickup and then clear that
+    # value for the next Item we receive. This will happen regardless of whether we dropped a subweapon or not.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9509AE26,  # LHU   T1, 0xAE26 (T0)
+    0x910AAA20,  # LBU   T2, 0xAA20 (T0)
+    0x012A4821,  # ADDU  T1, T1, T2
+    # Cap the weapon level at 02.
+    0x292B0003,  # SLTI  T3, T1, 0x0003
+    0x51600001,  # BEQZL T3,     [forward 0x01]
+    0x34090002,  # ORI   T1, R0, 0x0002
+    0xA509AE26,  # SH    T1, 0xAE26 (T0)
+    0xA500AA20,  # SH    R0, 0xAA20 (T0)
+    # Play the subweapon pickup sound since we hooked into that function call.
+    0x0C0059BE,  # JAL   0x800166F8
+    0x240401F5,  # ADDIU A0, R0, 0x01F5
+    # Return to the "give subweapon" routine.
+    0x08023E9E,  # J     0x8008FA78
 ]
 
 subweapon_surface_checker = [
@@ -1928,6 +1758,8 @@ multiworld_item_name_loader = [
     # in the item textbox what the item is and who it's for. The flag index it calculates determines from what part of
     # the ROM to load the item name from. If the item being picked up is a white jewel or a contract, it will always
     # load from a part of the ROM that has nothing in it to ensure their set "flag" values don't yield unintended names.
+    # If picking up a subweapon, this will also grab the custom "subweapon levels to increase" value from said weapon
+    # and store it somewhere easy to read later.
 
     # As we're picking up a pickup, before running the prepare item textbox function, copy from the ROM the off-world
     # Item string corresponding to that pickup.
@@ -1941,6 +1773,10 @@ multiworld_item_name_loader = [
     # Run the "rom copy" function with all necessary arguments.
     0x0C00690B,  # JAL   0x8001A42C
     0x34060100,  # ORI   A2, R0, 0x0100
+    # Grab and store the subweapon level we stored on the pickup.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x92090053,  # LBU   T1, 0x0053 (S0)
+    0xA109AA20,  # SB    T1, 0xAA20 (T0)
     0x96030038,  # LHU   V1, 0x0038 (S0)
     # Return to and continue the pickup routine like normal.
     0x3C048019,  # LUI   A0, 0x8019
@@ -1948,6 +1784,7 @@ multiworld_item_name_loader = [
     0x01E37821,  # ADDU  T7, T7, V1
     0x08061F2A,  # J     0x80187CA8
     0x000F7880,  # SLL   T7, T7, 2
+    0x00000000,
     0x00000000,
     # Redirect the text to the multiworld message buffer if a message exists in it. Skip this if we're looking at a
     # White Jewel, as White Jewel identifiers occupy the same value as event flag IDs on other pickups.

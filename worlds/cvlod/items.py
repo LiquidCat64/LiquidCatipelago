@@ -2,6 +2,7 @@ import logging
 
 from BaseClasses import Item, ItemClassification
 from .data import item_names
+from .data.misc_names import GAME_NAME
 from .locations import CVLOD_LOCATIONS_INFO
 from .options import DraculasCondition, SpareKeys
 from .data.enums import Items, Pickups
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class CVLoDItem(Item):
-    game: str = "Castlevania - Legacy of Darkness"
+    game: str = GAME_NAME
 
 
 class CVLoDItemData(NamedTuple):

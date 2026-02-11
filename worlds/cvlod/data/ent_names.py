@@ -156,7 +156,8 @@ torc_end = "Tower of Ruins end passage"
 # Fan room
 ccfr_door_r = "Castle Center fan room: Door into basement"
 # Basement
-ccb_tc_door = "Castle Center basement: Torture Chamber door"
+ccb_tc_to_door = "Castle Center basement: To Torture Chamber door"
+ccb_tc_from_door = "Castle Center basement: From Torture Chamber door"
 ccb_wall = "Castle Center basement: Lower cracked wall"
 ccb_renon = "Castle Center basement: The contract"
 ccb_stairs = "Castle Center basement: Triplets' room staircase"

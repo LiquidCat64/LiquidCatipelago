@@ -6,6 +6,7 @@ import logging
 import json
 
 from BaseClasses import Region, Tutorial, ItemClassification
+from .data.misc_names import GAME_NAME
 from .items import CVLoDItem, ALL_CVLOD_ITEMS, POSSIBLE_EXTRA_FILLER, get_item_names_to_ids, get_item_pool
 from .locations import CVLoDLocation, get_locations_to_create, get_location_name_groups, get_location_names_to_ids
 from .entrances import verify_entrances, get_warp_entrances
@@ -27,7 +28,7 @@ from .client import CastlevaniaLoDClient
 class CVLoDSettings(settings.Group):
     class RomFile(settings.UserFilePath):
         """File name of the CVLoD US rom"""
-        copy_to = "Castlevania - Legacy of Darkness (USA).z64"
+        copy_to = "Castlevania acy of Darkness (USA).z64"
         description = "CVLoD (USA) ROM File"
         md5s = [CVLOD_US_HASH]
 
@@ -39,8 +40,8 @@ class CVLoDWeb(WebWorld):
 
     tutorials = [Tutorial(
         "Multiworld Setup Guide",
-        "A guide to setting up the Archipleago Castlevania 64 randomizer on your computer and connecting it to a "
-        "multiworld.",
+        "A guide to setting up the Archipleago Castlevania: Legacy of Darkness randomizer on your computer and "
+        "connecting it to a multiworld.",
         "English",
         "setup_en.md",
         "setup/en",
@@ -53,9 +54,9 @@ class CVLoDWorld(World):
     Castlevania: Legacy of Darkness is an expanded "director's cut" edition of Castlevania 64, featuring new characters,
     new and heavily altered stages, new bosses, and more. In addition to Reinhardt and Carrie from the prior game, you
     can now play as Cornell, a man-beast who sets out on a quest to rescue his sister, and Henry, a gun-toting knight
-    tasked by the church to rescue kidnapped children.
+    tasked by the church to rescue six kidnapped children.
     """
-    game = "Castlevania - Legacy of Darkness"
+    game = GAME_NAME
     item_name_groups = {
         "Bomb": {item_names.quest_nitro, item_names.quest_mandragora},
         "Ingredient": {item_names.quest_nitro, item_names.quest_mandragora},
@@ -250,6 +251,7 @@ class CVLoDWorld(World):
                                 "invisible_items": self.options.invisible_items.value,
                                 "nerf_healing_items": self.options.nerf_healing_items.value,
                                 "loading_zone_heals": self.options.loading_zone_heals.value,
+                                "drop_previous_sub_weapon": self.options.drop_previous_sub_weapon.value,
                                 "permanent_powerups": self.options.permanent_powerups.value,
                                 "disable_time_restrictions": self.options.disable_time_restrictions.value,
                                 "skip_gondolas": self.options.skip_gondolas.value,

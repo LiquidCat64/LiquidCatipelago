@@ -1,6 +1,7 @@
 from BaseClasses import ItemClassification, Location, Item
 from .data import item_names, reg_names, ent_names
 from .data.enums import NIFiles, Pickups, StageNames
+from .data.misc_names import GAME_NAME
 from .options import CVLoDOptions, BackgroundMusic, Countdown, IceTrapAppearance, InvisibleItems, \
     CastleCenterBranchingPaths, VillaBranchingPaths
 from .stages import CVLOD_STAGE_INFO
@@ -400,7 +401,7 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
         # would tell the Countdown to decrease even if it shouldn't.
         if loc not in NPC_LOCATIONS:
             # If the Item is a LoD Item, pick the Pickup ID of the Item its assuming (regardless of whether it's local).
-            if loc.item.game == "Castlevania - Legacy of Darkness":
+            if loc.item.game == GAME_NAME:
                 # If the Item has an entry in the mappings of Items with different Pickup ID appearances in use, use the
                 # pickup ID there.
                 if loc.item.name in OTHER_APPEARANCE_PICKUPS:

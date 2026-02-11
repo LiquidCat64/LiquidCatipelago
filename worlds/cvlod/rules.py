@@ -3,7 +3,7 @@ from typing import Dict, TYPE_CHECKING
 from BaseClasses import CollectionState
 from worlds.generic.Rules import CollectionRule
 from .options import DraculasCondition, CastleWallState, VillaState
-from .data import item_names, loc_names, ent_names
+from .data import item_names, loc_names, ent_names, reg_names
 
 if TYPE_CHECKING:
     from . import CVLoDWorld
@@ -73,7 +73,8 @@ class CVLoDRules:
             ent_names.atm_to_door_2: self.at_can_open_door_2,
             ent_names.atm_from_door_2: self.at_can_open_door_2,
             # Castle Center
-            ent_names.ccb_tc_door: self.cc_can_open_chamber_door,
+            ent_names.ccb_tc_to_door: self.cc_can_open_chamber_door,
+            ent_names.ccb_tc_from_door: self.cc_can_open_chamber_door,
             ent_names.ccll_upper_wall_in: self.cc_can_explode_upper_wall,
             ent_names.ccll_upper_wall_out: self.cc_can_explode_upper_wall,
             ent_names.ccbe_elevator: self.cc_can_activate_elevator,
@@ -90,6 +91,7 @@ class CVLoDRules:
             ent_names.ctga_door_d: self.ct_can_open_door_d,
             ent_names.ctf_door_d: self.ct_can_open_door_d,
             ent_names.ctf_door_e: self.ct_can_open_door_e,
+            ent_names.ctf_end: self.ct_can_open_door_e,
         }
 
     def fl_can_open_deck_door(self, state: CollectionState) -> bool:
@@ -248,6 +250,10 @@ class CVLoDRules:
     def set_cvlod_rules(self) -> None:
         # Set each Entrance's rule if it should have one.
         for ent in self.world.get_entrances():
+            # If it's a warp menu Entrance, set it to require the slot's Special1s Per Warp times its warp number.
+            if ent.parent_region.name == reg_names.menu and ent.name.startswith("Warp "):
+                ent.access_rule = lambda state, warp_num=int(ent.name[5:]): \
+                    state.has(item_names.special1, self.player, self.s1s_per_warp * warp_num)
             if ent.name in self.entrance_rules:
                 ent.access_rule = self.entrance_rules[ent.name]
 

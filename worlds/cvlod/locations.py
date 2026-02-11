@@ -2,6 +2,7 @@ import logging
 
 from BaseClasses import Location
 from .data import loc_names, item_names
+from .data.misc_names import GAME_NAME
 from .options import CVLoDOptions, SubWeaponShuffle, DraculasCondition, RenonFightCondition, VincentFightCondition, \
     VillaState, CastleWallState
 
@@ -9,7 +10,7 @@ from typing import NamedTuple
 
 
 class CVLoDLocation(Location):
-    game: str = "Castlevania - Legacy of Darkness"
+    game: str = GAME_NAME
 
 
 class CVLoDLocationData(NamedTuple):
@@ -505,14 +506,20 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.toscit_ctrl_interface_rr: CVLoDLocationData(0x1F8, 12, item_names.use_card_s),
 
     # Tower of Sorcery
-    loc_names.tosor_electric: CVLoDLocationData(0x1A9, 13, item_names.jewel_rs),
-    loc_names.tosor_lasers:   CVLoDLocationData(0x1AA, 13, item_names.sub_axe),
-    loc_names.tosor_climb_l:  CVLoDLocationData(0x1AB, 13, item_names.jewel_rs),
-    loc_names.tosor_climb_r:  CVLoDLocationData(0x1AC, 13, item_names.gold_300),
-    loc_names.tosor_ibridge:  CVLoDLocationData(0x1AD, 13, item_names.powerup),
-    loc_names.tosor_super_1:  CVLoDLocationData(0x310, 13, item_names.gold_500),
-    loc_names.tosor_super_2:  CVLoDLocationData(0x311, 13, item_names.gold_500),
-    loc_names.tosor_super_3:  CVLoDLocationData(0x312, 13, item_names.use_kit),
+    loc_names.tosor_icemen_l:   CVLoDLocationData(0x318, 13, item_names.jewel_rs),
+    loc_names.tosor_icemen_r:   CVLoDLocationData(0x319, 13, item_names.jewel_rl),
+    loc_names.tosor_archi:      CVLoDLocationData(0x1A9, 13, item_names.jewel_rs),
+    loc_names.tosor_side_isle:  CVLoDLocationData(0x31A, 13, item_names.gold_500),
+    loc_names.tosor_mag_bridge: CVLoDLocationData(0x31B, 13, item_names.gold_300),
+    loc_names.tosor_lasers_m:   CVLoDLocationData(0x1AA, 13, item_names.sub_axe),
+    loc_names.tosor_lasers_s:   CVLoDLocationData(0x31C, 13, item_names.gold_100),
+    loc_names.tosor_climb_l:    CVLoDLocationData(0x1AB, 13, item_names.jewel_rs),
+    loc_names.tosor_climb_r:    CVLoDLocationData(0x1AC, 13, item_names.gold_300),
+    loc_names.tosor_climb_m:    CVLoDLocationData(0x31D, 13, item_names.jewel_rl),
+    loc_names.tosor_ibridge:    CVLoDLocationData(0x1AD, 13, item_names.powerup),
+    loc_names.tosor_super_1:    CVLoDLocationData(0x310, 13, item_names.gold_500),
+    loc_names.tosor_super_2:    CVLoDLocationData(0x311, 13, item_names.gold_500),
+    loc_names.tosor_super_3:    CVLoDLocationData(0x312, 13, item_names.use_kit),
 
     # Room of Clocks
     loc_names.roc_ent_l:  CVLoDLocationData(0x19C, 14, item_names.jewel_rl),
@@ -522,7 +529,6 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.roc_cont_r: CVLoDLocationData(0x19F, 14, item_names.jewel_rs),
     loc_names.roc_cont_l: CVLoDLocationData(0x1A1, 14, item_names.sub_holy),
     loc_names.roc_exit:   CVLoDLocationData(0x1A0, 14, item_names.sub_knife),
-    # loc_names.roc_boss:   {"event": item_names.trophy, "add conds": ["boss"]},
 
     # Clock Tower
     loc_names.ctgc_gearclimb_battery_slab1: CVLoDLocationData(0x2E4, 15, item_names.gold_500,),
