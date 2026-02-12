@@ -272,6 +272,11 @@ class CVLoDPatchExtensions(APPatchExtension):
         # play the fan ambience noises, so they should be more likely to play.
         patcher.write_int16(0xF744E, 0x731C)
 
+        # Hack to make the Foggy Lake and Villa intro cutscenes play at the start of their levels no matter what map
+        # came before them.
+        patcher.write_int32(0xB43D0, 0x803FDD60)
+        patcher.write_int32s(0xFFDD60, patches.stage_intro_cs_player)
+
         # Warp menu-opening code
         patcher.write_int32(0x86FE4, 0x080FF254)  # J   0x803FC950
         patcher.write_int32s(0xFFC950, patches.warp_menu_opener)
@@ -2165,10 +2170,10 @@ class CVLoDPatchExtensions(APPatchExtension):
             "Huh!? Someone super glued\n"
             "all these Magical Nitro bottles\n"
             "to the shelf!🅰0/\n"
-            "Better find some elsewhere;\n"
-            "without a certain coyote's\n"
-            "toon DNA, trying to force-\n"
-            "remove one could prove fatal!🅰0/")
+            "Better find some elsewhere,\n"
+            "lest you suffer the fate of an\n"
+            "insane lunatic coyote in trying\n"
+            "to force-remove one...🅰0/")
         # Custom message for when trying to activate the "Take Mandragora?" text box, explaining why we can't take them.
         patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].scene_text[13]["text"] = (
             "These Mandragora bottles\n"
@@ -3426,11 +3431,6 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_byte(ARCHIPELAGO_IDENTIFIER_START + 0xE, 0x01)
 
         return patcher.get_output_rom()
-
-        # Hack to make the Forest, CW and Villa intro cutscenes play at the start of their levels no matter what map
-        # came before them
-        # #patcher.write_int32(0x97244, 0x803FDD60)
-        # #patcher.write_int32s(0xBFDD60, patches.forest_cw_villa_intro_cs_player)
 
         # Enable swapping characters when loading into a map by holding L.
         # patcher.write_int32(0x97294, 0x803FDFC4)

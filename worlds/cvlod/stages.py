@@ -1482,6 +1482,9 @@ def shuffle_stages(world: "CVLoDWorld", unshuffled_stage_order: list[str],
     if StageNames.KEEP in main_stages:
         main_stages.remove(StageNames.KEEP)
 
+    # Remove the Shuffled Starting Stage from the active list. We will always be placing this one at the start.
+    main_stages.remove(starting_stage)
+
     # Create the list of stages that are eligible to go in branching stage slots. Specifically, this should exclude
     # Villa if Villa branching paths are on, and/or Castle Center if Castle Center branching paths are on.
     branch_stages = [stage for stage in main_stages if (stage not in [StageNames.VILLA, StageNames.CENTER]) or
@@ -1520,7 +1523,7 @@ def shuffle_stages(world: "CVLoDWorld", unshuffled_stage_order: list[str],
 
     # Construct the new stage order list.
     # Loop over each entry in the main list and add them to the new stage order list.
-    new_stage_order = []
+    new_stage_order = [starting_stage]
     for stage in main_stages:
         new_stage_order.append(stage)
 

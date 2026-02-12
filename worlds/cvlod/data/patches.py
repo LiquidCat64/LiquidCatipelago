@@ -39,6 +39,10 @@ remote_item_giver = [
     # In a fade transition?
     0x910A8354,  # LBU	 T2, 0x8354 (T0)
     0x012A4821,  # ADDU	 T1, T1, T2
+    # One of the pointers to the player object not 00000000?
+    0x8D0AAC1C,  # LW	 T2, 0xAC1C (T0)
+    0x51400001,  # BEQZL T2,     [forward 0x01]
+    0x25290001,  # ADDIU T1, T1, 0x0001
     # Timer till next item at 00?
     0x3C0B801D,  # LUI	 T3, 0x801D
     0x916AAA4E,  # LBU	 T2, 0xAA4E (T3)
@@ -347,6 +351,7 @@ npc_item_rework = [
     0x00044880,  # SLL   T1, A0, 2
     0x01094021,  # ADDIU T0, T0, T1
     0x950AC6E8,  # LHU   T2, 0xC6E8 (T0)
+    0x9519C6EA,  # LHU   T9, 0xC6EA (T0)
     0x314B00FF,  # ANDI  T3, T2, 0x00FF
     0x3C0C801D,  # LUI   T4, 0x801D
     0xA18BAA4C,  # SB    T3, 0xAA4C (T4)
@@ -363,9 +368,8 @@ npc_item_rework = [
     0xA1F8ABA0,  # SB    T8, 0xABA0 (T7)
     # Copy from the ROM the off-world Item string corresponding to that NPC Item.
     0x3C0B00FA,  # LUI   T3, 0x00FA
-    0x9509C6EA,  # LHU   T1, 0xC6EA (T0)
     # Shift the flag ID up by 8 and add it to 0xFA0000 to get the start address for this NPC Item's string.
-    0x00094A00,  # SLL   T1, T1, 8
+    0x00194A00,  # SLL   T1, T9, 8
     0x01692021,  # ADDU  A0, T3, T1
     0x3C058001,  # LUI   A1, 0x8001
     0x34A5E5CC,  # ORI   A1, A1, 0xE5CC
@@ -1284,38 +1288,40 @@ special_sound_notifs = [
     0x24020001   # ADDIU V0, R0, 0x0001
 ]
 
-forest_cw_villa_intro_cs_player = [
-    # Plays the Forest, Castle Wall, or Villa intro cutscene after transitioning to a different map if the map being
-    # transitioned to is the start of their levels respectively. Gets around the fact that they have to be set on the
-    # previous loading zone for them to play normally.
-    0x3C088039,  # LUI   T0, 0x8039
-    0x8D099EE0,  # LW    T1, 0x9EE0 (T0)
-    0x1120000B,  # BEQZ  T1  T1, [forward 0x0B]
-    0x240B0000,  # ADDIU T3, R0, 0x0000
-    0x3C0A0002,  # LUI   T2, 0x0002
-    0x112A0008,  # BEQ   T1, T2, [forward 0x08]
-    0x240B0007,  # ADDIU T3, R0, 0x0007
-    0x254A0007,  # ADDIU T2, T2, 0x0007
-    0x112A0005,  # BEQ   T1, T2, [forward 0x05]
+stage_intro_cs_player = [
+    # Plays the Foggy Lake or Villa intro cutscene after transitioning to a different map if the map being transitioned
+    # to is the start of their levels respectively. Gets around the fact that they have to be set on the previous
+    # loading zone for them to play normally.
+
+    # If we're going to Foggy Lake's start, and the custom flag we're using to see if we've seen it (0x2F6) isn't set,
+    # prime the Foggy Lake ferryman cutscene to play and set the flag.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x8D09AE78,  # LW    T1, 0xAE78 (T0)
+    0x3C0A0010,  # LUI   T2, 0x0010
+    0x152A0008,  # BNE   T1, T2, [forward 0x08]
+    0x910BAABE,  # LBU   T3, 0xAABE (T0)
+    0x316C0004,  # ANDI  T4, T3, 0x0004
+    0x15800004,  # BNEZ  T4,     [forward 0x04]
+    0x356B0004,  # ORI   T3, T3, 0x0004
+    0xA10BAABE,  # SB    T3, 0xAABE (T0)
+    0x340D0010,  # ORI   T5, R0, 0x0010
+    0xA50DAE8E,  # SH    T5, 0xAE8E (T0)
+    0x08006A31,  # J     0x8001A8C4
+    # If we're going to Villa's start, the Villa intro cutscene flag isn't set (flag 0x55), and the "Dog Wave 3 beaten"
+    # flag (0x58) isn't set, prime the Villa intro cutscene to play and set the flag.
     0x3C0A0003,  # LUI   T2, 0x0003
-    0x112A0003,  # BEQ   T1, T2, [forward 0x03]
-    0x240B0003,  # ADDIU T3, R0, 0x0003
-    0x08005FAA,  # J     0x80017EA8
-    0x00000000,  # NOP
-    0x010B6021,  # ADDU  T4, T0, T3
-    0x918D9C08,  # LBU   T5, 0x9C08 (T4)
-    0x31AF0001,  # ANDI  T7, T5, 0x0001
-    0x15E00009,  # BNEZ  T7,     [forward 0x09]
-    0x240E0009,  # ADDIU T6, R0, 0x0009
-    0x3C180003,  # LUI   T8, 0x0003
-    0x57090001,  # BNEL  T8, T1, [forward 0x01]
-    0x240E0004,  # ADDIU T6, R0, 0x0004
-    0x15200003,  # BNEZ  T1,     [forward 0x03]
-    0x240F0001,  # ADDIU T7, R0, 0x0001
-    0xA18F9C08,  # SB    T7, 0x9C08 (T4)
-    0x240E003C,  # ADDIU T6, R0, 0x003C
-    0xA10E9EFF,  # SB    T6, 0x9EFF (T0)
-    0x08005FAA   # J     0x80017EA8
+    0x152A000A,  # BNE   T1, T2, [forward 0x0A]
+    0x910BAA6B,  # LBU   T3, 0xAA6B (T0)
+    0x316C0080,  # ANDI  T4, T3, 0x0080
+    0x15800007,  # BNEZ  T4,     [forward 0x07]
+    0x910BAA6A,  # LBU   T3, 0xAA6A (T0)
+    0x316C0004,  # ANDI  T4, T3, 0x0004
+    0x15800004,  # BNEZ  T4,     [forward 0x04]
+    0x356B0004,  # ORI   T3, T3, 0x0004
+    0xA10BAA6A,  # SB    T3, 0xAA6A (T0)
+    0x340D0009,  # ORI   T5, R0, 0x0009
+    0xA50DAE8E,  # SH    T5, 0xAE8E (T0)
+    0x08006A31   # J     0x8001A8C4
 ]
 
 alt_setup_flag_setter = [

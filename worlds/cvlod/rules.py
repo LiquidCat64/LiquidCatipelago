@@ -117,7 +117,9 @@ class CVLoDRules:
         return state.has_all([item_names.event_cw_left, item_names.event_cw_right, item_names.quest_winch], self.player)
 
     def villa_can_get_on_fountain(self, state: CollectionState) -> bool:
-        """Oldrey's Diary if the fountain puzzle is on, or always True."""
+        """Oldrey's Diary if the Villa State is not Reinhardt/Carrie, or always True."""
+        if self.villa_state == VillaState.option_reinhardt_carrie:
+            return True
         return state.has(item_names.quest_diary, self.player)
 
     def villa_can_get_fountain_shine(self, state: CollectionState) -> bool:

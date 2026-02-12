@@ -4,7 +4,7 @@ from BaseClasses import Item, ItemClassification
 from .data import item_names
 from .data.misc_names import GAME_NAME
 from .locations import CVLOD_LOCATIONS_INFO
-from .options import DraculasCondition, SpareKeys
+from .options import DraculasCondition, SpareKeys, CastleWallState, VillaState
 from .data.enums import Items, Pickups
 
 from typing import TYPE_CHECKING, NamedTuple
@@ -178,6 +178,20 @@ def get_item_pool(world: "CVLoDWorld") -> list[CVLoDItem]:
         #    item_to_add = get_location_info(loc.name, "hard item")
         #else:
         item_name = CVLOD_LOCATIONS_INFO[loc.name].normal_item
+
+        # If the Item is a Winch Lever, and the Castle Wall State is Reinhardt/Carrie's, add a PowerUp instead because
+        # the Winch Lever is useless.
+        if item_name == item_names.quest_winch and \
+                world.options.castle_wall_state == CastleWallState.option_reinhardt_carrie:
+            item_name = item_names.powerup
+
+        # If the Item is Oldrey's Diary, and the Villa State is Reinhardt/Carrie's, add a Purifying instead because
+        # Oldrey's Diary is useless.
+        if item_name == item_names.quest_diary and world.options.villa_state == VillaState.option_reinhardt_carrie:
+            item_name = item_names.use_purifying
+        # Similar for the Rose Brooch but adding a Red Jewel (L) instead.
+        if item_name == item_names.quest_brooch and world.options.villa_state == VillaState.option_reinhardt_carrie:
+            item_name = item_names.jewel_rl
 
         # If the Item we're adding is a PowerUp and Permanent PowerUps are on, add a random extra filler instead.
         # The PermaUps will be added after the initial item pool is created.

@@ -62,7 +62,6 @@ cw_rrampart = "Castle Wall: Central rampart near right tower"
 cw_lrampart = "Castle Wall: Central rampart near left tower"
 cw_dragon_sw = "Castle Wall: White Dragons switch door"
 cw_drac_sw = "Castle Wall: Dracula cutscene switch door"
-cw_pillar = "Castle Wall: Central rampart broken pillar"
 cw_shelf = "Castle Wall: Sandbag shelf"
 cw_ground_left = "Castle Wall: Ground gatehouse - Left"
 
@@ -86,6 +85,7 @@ cw_drac_slab5 = "Castle Wall: Dracula cutscene switch slab - Item 5"
 
 # Castle Wall sub-weapons
 cw_ground_right = "Castle Wall: Ground gatehouse - Right"
+cw_pillar = "Castle Wall: Central rampart broken pillar"
 cw_shelf_torch = "Castle Wall: Sandbag shelf floor"
 
 

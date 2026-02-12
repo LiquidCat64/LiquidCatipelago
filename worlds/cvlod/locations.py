@@ -96,7 +96,7 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.cw_save_slab5:     CVLoDLocationData(0x2BC, 2, item_names.jewel_rl,),
     loc_names.cw_rrampart:       CVLoDLocationData(0x46,  2, item_names.gold_300),
     loc_names.cw_lrampart:       CVLoDLocationData(0x47,  2, item_names.use_card_m),
-    loc_names.cw_pillar:         CVLoDLocationData(0x44,  2, item_names.powerup),
+    loc_names.cw_pillar:         CVLoDLocationData(0x44,  2, item_names.sub_holy),
     loc_names.cw_shelf:          CVLoDLocationData(0x42,  2, item_names.quest_winch),
     loc_names.cw_shelf_torch:    CVLoDLocationData(0x4C,  2, item_names.sub_cross),
     loc_names.cw_ground_left:    CVLoDLocationData(0x48,  2, item_names.use_purifying),
@@ -423,7 +423,7 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.ccia_nitrohall_torch:          CVLoDLocationData(0x134, 18, item_names.use_chicken),
     loc_names.ccia_nitro_shelf_i:            CVLoDLocationData(0x30F, 18, item_names.quest_nitro),
     loc_names.ccll_cwhall_wall:              CVLoDLocationData(0x128, 18, item_names.use_beef),
-    loc_names.ccl_bookcase:                  CVLoDLocationData(0x13E, 18, item_names.use_card_s),
+    loc_names.ccl_bookcase:                  CVLoDLocationData(0x12E, 18, item_names.use_card_s),
 
     # Duel Tower
     loc_names.dt_pre_sweeper_l:  CVLoDLocationData(0x249, 10, item_names.jewel_rs),
