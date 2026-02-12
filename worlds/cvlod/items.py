@@ -234,7 +234,7 @@ def get_item_pool(world: "CVLoDWorld") -> list[CVLoDItem]:
         replace_filler([world.create_item(item_names.permaup), world.create_item(item_names.permaup)])
 
     # Check if the total filler is less than the number of Specials we are adding. If it is, then we will need to adjust
-    # the Special totals.
+    # the Special totals. The PANIC adjuster, if you will!
     total_specials = world.options.total_special1s.value + world.options.total_special2s.value
     total_filler = len(tier_1_filler) + len(tier_2_filler)
     if total_specials > total_filler:
@@ -253,6 +253,10 @@ def get_item_pool(world: "CVLoDWorld") -> list[CVLoDItem]:
         # Adjust the Special count option values proper.
         world.options.total_special1s.value = new_s1s
         world.options.total_special2s.value = new_s2s
+
+        # Adjust the world's required Special2s to be the specified percentage of the new number.
+        world.required_s2s = int(world.options.percent_special2s_required.value / 100 *
+                                 world.options.total_special2s.value)
 
         # If this caused there to be not enough Special1s to unlock every warp, adjust Special1s Per Warp down as well.
         if world.options.special1s_per_warp.value * (len(world.active_warp_list) - 1) > world.options.total_special1s:
