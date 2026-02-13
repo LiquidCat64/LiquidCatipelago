@@ -119,8 +119,8 @@ POSSIBLE_EXTRA_FILLER = [item_names.jewel_rs, item_names.jewel_rl,
 
 # These Item pickups spawn 3.2 units higher than the other pickups and therefore must be lowered by that amount for
 # a few Locations wherein they can spawn barely out of reach.
-HIGHER_SPAWNING_ITEMS = [Items.CROSS, Items.AXE, Items.WINCH_LEVER, Items.CREST_HALF_A, Items.CREST_HALF_B,
-                         Items.ROSE_BROOCH]
+HIGHER_SPAWNING_ITEMS = [Pickups.CROSS, Pickups.AXE, Pickups.WINCH_LEVER, Pickups.CREST_HALF_A, Pickups.CREST_HALF_B,
+                         Pickups.ROSE_BROOCH]
 
 # Pickups that, in this randomizer, are actually using the appearance of a different pickup. Unique pickups that have
 # an identical appearance to another pickup (like some keys) are being used to have more possible appearances for

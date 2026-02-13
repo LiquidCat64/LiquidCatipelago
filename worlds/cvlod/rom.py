@@ -3030,7 +3030,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                             actor["var_b"] &= PickupFlags.NEVER_EXPIRE
                             # If we're placing a higher-spawning Item on this Location, and the Location is one where
                             # higher-spawning Items can be problematic, lower it down by 3.2 units.
-                            if (actor["var_c"] >> 8) & 0x7F in HIGHER_SPAWNING_ITEMS \
+                            if ((actor["var_c"] >> 8) + 1) & 0x7F in HIGHER_SPAWNING_ITEMS \
                                     and actor["var_a"] in HIGHER_SPAWNING_PROBLEM_LOCATIONS:
                                 actor["y_pos"] -= 3.2
                             # If Invisible Items is not set to Vanilla, change the Item's visibility flag to whatever
@@ -3353,6 +3353,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int32(0x1E70, 0x340B0002, NIFiles.OVERLAY_WHITE_DRAGONS)  # ORI   T3, R0, 0x0002
             patcher.write_int32(0x49AC, 0x34090002, NIFiles.OVERLAY_WHITE_DRAGONS)  # ORI   T1, R0, 0x0002
             patcher.write_int32(0x3118, 0x34190002, NIFiles.OVERLAY_CERBERUS)  # ORI   T9, R0, 0x0002
+            patcher.write_int32(0x2F60, 0x340E0002, NIFiles.OVERLAY_STONE_DOG)  # ORI  T6, R0, 0x0002
             patcher.write_byte(0x18EF, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_WERE_TIGER)
             patcher.write_byte(0xC8FB, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_DRACULA)
             patcher.write_byte(0x584F, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_TRUE_DRACULA)
