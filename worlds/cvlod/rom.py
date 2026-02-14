@@ -503,20 +503,20 @@ class CVLoDPatchExtensions(APPatchExtension):
         for warp_index in range(1, len(slot_patch_info["warps"])):
             warp_texts[warp_index] = (f"◊{str(warp_index * slot_patch_info['options']['special1s_per_warp']).zfill(2)} "
                                       f"{slot_patch_info['warps'][warp_index]}")
-        patcher.write_bytes(0x1318, cvlod_strings_to_pool(warp_texts, wrap=False), NIFiles.ASSET_DEBUG_FONT)
+        patcher.write_bytes(0x1328, cvlod_strings_to_pool(warp_texts, wrap=False), NIFiles.ASSET_DEBUG_FONT)
         # Write the warp scene IDs.
-        patcher.write_int32(0x1290, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_scene_id,
+        patcher.write_int32(0x12A0, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_scene_id,
                             NIFiles.ASSET_DEBUG_FONT)
-        patcher.write_int32s(0x1294, [CVLOD_STAGE_INFO[warp].mid_scene_id for warp in slot_patch_info['warps'][1:]],
+        patcher.write_int32s(0x12A4, [CVLOD_STAGE_INFO[warp].mid_scene_id for warp in slot_patch_info['warps'][1:]],
                              NIFiles.ASSET_DEBUG_FONT)
         # Write the warp spawn entrance IDs.
-        patcher.write_int32(0x12D4, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_spawn_id,
+        patcher.write_int32(0x12E4, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_spawn_id,
                             NIFiles.ASSET_DEBUG_FONT)
-        patcher.write_int32s(0x12D8, [CVLOD_STAGE_INFO[warp].mid_spawn_id for warp in slot_patch_info['warps'][1:]],
+        patcher.write_int32s(0x12E8, [CVLOD_STAGE_INFO[warp].mid_spawn_id for warp in slot_patch_info['warps'][1:]],
                              NIFiles.ASSET_DEBUG_FONT)
         # Write the Special1s per warp and the total number of warps in the code.
-        patcher.write_int16(0x1CA, slot_patch_info['options']['special1s_per_warp'], NIFiles.ASSET_DEBUG_FONT)
-        patcher.write_int16(0x1CE, len(slot_patch_info['warps']), NIFiles.ASSET_DEBUG_FONT)
+        patcher.write_int16(0x1CA, len(slot_patch_info['warps']), NIFiles.ASSET_DEBUG_FONT)
+        patcher.write_int16(0x1CE, slot_patch_info['options']['special1s_per_warp'], NIFiles.ASSET_DEBUG_FONT)
 
 
         # # # # # # # # # # #
@@ -1085,7 +1085,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             if not loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][1]:
                 mary_item_text = (f"give you this {mary_item_color}"
                                   f"{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0]}"
-                                  f"{mary_item_text}")
+                                  f"{mary_item_color}")
             # Otherwise, have her say she will send it to [player].
             else:
                 mary_item_text = (f"send this {mary_item_color}"
@@ -1952,6 +1952,9 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 7"][13]["spawn_flags"] ^= \
             ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
         patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 7"][13]["flag_id"] = 0
+        patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 10"][17]["spawn_flags"] ^= \
+            ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
+        patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 10"][17]["flag_id"] = 0
         patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 13"][11]["spawn_flags"] ^= \
             ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
         patcher.scenes[Scenes.RUINS_DOOR_MAZE].actor_lists["room 13"][11]["flag_id"] = 0

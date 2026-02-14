@@ -497,7 +497,7 @@ def verify_entrances(options: CVLoDOptions, entrances: list[str],
         # If it's a Cornell Villa Entrance and the Villa State is Reinhardt/Carrie's, or if it's a Reinhardt/Carrie
         # Entrance in the Villa state is Cornell's, don't add it.
         if (ent in CORNELL_VILLA_ENTRANCES and options.villa_state == VillaState.option_reinhardt_carrie) or \
-                (ent in REIN_CARRIE_VILLA_ENTRANCES and options.villa_state == VillaState.option_cornell):
+                (ent in REIN_CARRIE_VILLA_ENTRANCES and options.villa_state != VillaState.option_reinhardt_carrie):
             continue
 
         # If the Entrance is a connection to a different stage, and we already established it's a stage Entrance, get

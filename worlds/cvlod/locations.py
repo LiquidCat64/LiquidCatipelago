@@ -762,7 +762,8 @@ CORNELL_VILLA_LOCATIONS: list[str] = [
 HIGHER_SPAWNING_PROBLEM_LOCATIONS: list[int] = [
     CVLOD_LOCATIONS_INFO[loc_names.torm_g3_statue].flag_id,
     CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_h].flag_id,
-    CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_i].flag_id
+    CVLOD_LOCATIONS_INFO[loc_names.ccia_nitro_shelf_i].flag_id,
+    CVLOD_LOCATIONS_INFO[loc_names.ccia_maids_vase].flag_id
 ]
 
 # New XYZ scene coordinates for some select invisible-turned-visible Locations in order to make them less "inside"
