@@ -338,6 +338,11 @@ class NerfHealingItems(Toggle):
     display_name = "Nerf Healing Items"
 
 
+class DetransformAtWill(Toggle):
+    """Allows Cornell to transform back to human from wolf at any time by pressing L again."""
+    display_name = "Detransform At Will"
+
+
 class LoadingZoneHeals(DefaultOnToggle):
     """Whether end-of-level loading zones restore health and cure status aliments or not.
     Recommended off for those looking for more of a survival horror experience!"""
@@ -475,6 +480,11 @@ class MapLighting(Choice):
     default = 0
 
 
+class RestoreCornellFallVoice(Toggle):
+    """Changes Cornell's voice clip when falling to be an unused one meant specifically for him instead of the same one as Reinhardt's and Henry's."""
+    display_name = "Restore Cornell Fall Voice"
+
+
 class WindowColorR(Range):
     """The red (RR) value for the background color of the text windows during gameplay."""
     display_name = "Window Color R"
@@ -560,6 +570,7 @@ class CVLoDOptions(PerGameCommonOptions):
     increase_item_limit: IncreaseItemLimit
     nerf_healing_items: NerfHealingItems
     loading_zone_heals: LoadingZoneHeals
+    detransform_at_will: DetransformAtWill
     invisible_items: InvisibleItems
     drop_previous_sub_weapon: DropPreviousSubWeapon
     permanent_powerups: PermanentPowerUps
@@ -579,24 +590,19 @@ class CVLoDOptions(PerGameCommonOptions):
     window_color_g: WindowColorG
     window_color_b: WindowColorB
     window_color_a: WindowColorA
+    restore_cornell_fall_voice: RestoreCornellFallVoice
     death_link: CVLoDDeathLink
 
 
 cvlod_option_groups = [
-    OptionGroup("castle wall state", [
-        WindowColorR, WindowColorG, WindowColorB, WindowColorA, BackgroundMusic, MapLighting
-    ], start_collapsed=True),
-    OptionGroup("villa state", [
-        WindowColorR, WindowColorG, WindowColorB, WindowColorA, BackgroundMusic, MapLighting
-    ], start_collapsed=True),
     OptionGroup("gameplay tweaks", [
         HardItemPool, ShopPrices, MinimumGoldPrice, MaximumGoldPrice, PostBehemothBoss, RoomOfClocksBoss,
         RenonFightCondition, VincentFightCondition, CastleKeepEndingSequence, IncreaseItemLimit, NerfHealingItems,
-        LoadingZoneHeals, InvisibleItems, DropPreviousSubWeapon, PermanentPowerUps, IceTrapPercentage,
-        IceTrapAppearance, DisableTimeRestrictions, SkipGondolas, SkipWaterwayBlocks, Countdown, BigToss, PantherDash,
-        IncreaseShimmySpeed, FallGuard, CVLoDDeathLink
+        LoadingZoneHeals, DetransformAtWill, InvisibleItems, DropPreviousSubWeapon, PermanentPowerUps,
+        IceTrapPercentage, IceTrapAppearance, DisableTimeRestrictions, SkipGondolas, SkipWaterwayBlocks, Countdown,
+        BigToss, PantherDash, IncreaseShimmySpeed, FallGuard, CVLoDDeathLink
     ]),
     OptionGroup("cosmetics", [
-        WindowColorR, WindowColorG, WindowColorB, WindowColorA, BackgroundMusic, MapLighting
+        WindowColorR, WindowColorG, WindowColorB, WindowColorA, BackgroundMusic, MapLighting, RestoreCornellFallVoice
     ])
 ]

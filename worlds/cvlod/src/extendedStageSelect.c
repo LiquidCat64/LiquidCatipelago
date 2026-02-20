@@ -129,7 +129,14 @@ void extendedStageSelect_init(extendedStageSelect* self) {
     (*textboxObject_setColorPalette)(self->mapNamesTextboxes[self->option], TEXT_COLOR_RED);
 
     /////////////// Character names ///////////////
-    (*textboxObject_setParams_ASCIIFormattedString)(self->characterNamesTextbox, GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, characterNames[self->character]), 0, 10.0f, -90.f, 16, 1);
+    // Set the character name to Wolf Cornell if the character animation set is Wolf Cornell's, or the current character otherwise.
+    if (SaveStruct_gameplay.character_animation_set == TYPE_WOLF_CORNELL) {
+        (*textboxObject_setParams_ASCIIFormattedString)(self->characterNamesTextbox, GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, characterNames[TYPE_WOLF_CORNELL]), 0, 10.0f, -90.f, 16, 1);
+        (*textboxObject_setColorPalette)(self->characterNamesTextbox, TEXT_COLOR_BROWN);
+    }
+    else {
+        (*textboxObject_setParams_ASCIIFormattedString)(self->characterNamesTextbox, GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, characterNames[self->character]), 0, 10.0f, -90.f, 16, 1);
+    }
 
     /////////////// Yes / No (Alternate costume) ///////////////
     (*textboxObject_setParams_ASCIIFormattedString)(self->YesNoTextbox, GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, YesNoSelection[self->alternate_costume]), 0, 115.0f, -70.f, 16, 1);
@@ -282,16 +289,22 @@ void extendedStageSelect_loop(extendedStageSelect* self) {
 
     // Character selection
     if (controllers[0].buttons_pressed & BTN_Z) {
-        if (self->character == HENRY) {
-            self->character = REINHARDT;
+        // If we are Wolf Cornell (the character animation set ID is 4), play Wolf Cornell's hurt sound and don't do anything. Switching is disallowed while he's active.
+        if (SaveStruct_gameplay.character_animation_set == TYPE_WOLF_CORNELL) {
+            (*playSound)(0x40C); 
         }
         else {
-            self->character++;
+            if (self->character == HENRY) {
+                self->character = REINHARDT;
+            }
+            else {
+                self->character++;
+            }
+            // Update the character name string to show the selected character name
+            (*textboxObject_setASCIIText)(self->characterNamesTextbox, GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, characterNames[self->character]));
+	    // Play a voice clip associated with the new character
+            (*playSound)(character_sound_ids[self->character]); 
         }
-        // Update the character name string to show the selected character name
-        (*textboxObject_setASCIIText)(self->characterNamesTextbox, GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, characterNames[self->character]));
-	// Play a voice clip associated with the new character
-        (*playSound)(character_sound_ids[self->character]); 
     }
 
     // Alternate costume selection

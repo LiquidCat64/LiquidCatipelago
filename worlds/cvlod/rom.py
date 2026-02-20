@@ -461,22 +461,6 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32(0xE3114, 0x0C0FF0DE),  # JAL   0x803FC378
         patcher.write_int32s(0xFFC378, patches.chandelier_item_flags_setter)
 
-        # New flag values to put in each 3HB vanilla flag's spot
-        patcher.write_int16(0x7816F6, 0x02B8)  # CW upper rampart save nub
-        patcher.write_int16(0x78171A, 0x02BD)  # CW Dracula switch slab
-        patcher.write_int16(0x787F66, 0x0302)  # Villa foyer chandelier
-        patcher.write_int16(0x79F19E, 0x0307)  # Tunnel twin arrows rock
-        patcher.write_int16(0x79F1B6, 0x030C)  # Tunnel lonesome bucket pit rock
-        patcher.write_int16(0x7A41B6, 0x030F)  # UW poison parkour ledge
-        patcher.write_int16(0x7A41DA, 0x0315)  # UW skeleton crusher ledge
-        patcher.write_int16(0x7A8AF6, 0x0318)  # CC Behemoth crate
-        patcher.write_int16(0x7AD836, 0x031D)  # CC elevator pedestal
-        patcher.write_int16(0x7B0592, 0x0320)  # CC lizard locker slab
-        patcher.write_int16(0x7D0DDE, 0x0324)  # CT gear climb battery slab
-        patcher.write_int16(0x7D0DC6, 0x032A)  # CT gear climb top corner slab
-        patcher.write_int16(0x829A16, 0x032D)  # CT giant chasm farside climb
-        patcher.write_int16(0x82CC8A, 0x0330)  # CT beneath final slide
-
         # Write the specified window colors
         patcher.write_byte(0x8881A, slot_patch_info["options"]["window_color_r"])
         patcher.write_byte(0x8881B, slot_patch_info["options"]["window_color_g"])
@@ -503,20 +487,20 @@ class CVLoDPatchExtensions(APPatchExtension):
         for warp_index in range(1, len(slot_patch_info["warps"])):
             warp_texts[warp_index] = (f"◊{str(warp_index * slot_patch_info['options']['special1s_per_warp']).zfill(2)} "
                                       f"{slot_patch_info['warps'][warp_index]}")
-        patcher.write_bytes(0x1328, cvlod_strings_to_pool(warp_texts, wrap=False), NIFiles.ASSET_DEBUG_FONT)
+        patcher.write_bytes(0x13E8, cvlod_strings_to_pool(warp_texts, wrap=False), NIFiles.ASSET_DEBUG_FONT)
         # Write the warp scene IDs.
-        patcher.write_int32(0x12A0, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_scene_id,
+        patcher.write_int32(0x1360, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_scene_id,
                             NIFiles.ASSET_DEBUG_FONT)
-        patcher.write_int32s(0x12A4, [CVLOD_STAGE_INFO[warp].mid_scene_id for warp in slot_patch_info['warps'][1:]],
+        patcher.write_int32s(0x1364, [CVLOD_STAGE_INFO[warp].mid_scene_id for warp in slot_patch_info['warps'][1:]],
                              NIFiles.ASSET_DEBUG_FONT)
         # Write the warp spawn entrance IDs.
-        patcher.write_int32(0x12E4, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_spawn_id,
+        patcher.write_int32(0x13A4, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_spawn_id,
                             NIFiles.ASSET_DEBUG_FONT)
-        patcher.write_int32s(0x12E8, [CVLOD_STAGE_INFO[warp].mid_spawn_id for warp in slot_patch_info['warps'][1:]],
+        patcher.write_int32s(0x13A8, [CVLOD_STAGE_INFO[warp].mid_spawn_id for warp in slot_patch_info['warps'][1:]],
                              NIFiles.ASSET_DEBUG_FONT)
         # Write the Special1s per warp and the total number of warps in the code.
-        patcher.write_int16(0x1CA, len(slot_patch_info['warps']), NIFiles.ASSET_DEBUG_FONT)
-        patcher.write_int16(0x1CE, slot_patch_info['options']['special1s_per_warp'], NIFiles.ASSET_DEBUG_FONT)
+        patcher.write_int16(0x1C6, len(slot_patch_info['warps']), NIFiles.ASSET_DEBUG_FONT)
+        patcher.write_int16(0x1CA, slot_patch_info['options']['special1s_per_warp'], NIFiles.ASSET_DEBUG_FONT)
 
 
         # # # # # # # # # # #
@@ -1019,6 +1003,14 @@ class CVLoDPatchExtensions(APPatchExtension):
                                                             0xA109AA6F],  # SB    T1, 0xAA6F (T0)
                              NIFiles.OVERLAY_MARY)
 
+        # Add two texts to the crypt scene for the next stage(s) accessed via the coffin and for if we can't open the
+        # exit door.
+        patcher.scenes[Scenes.VILLA_CRYPT].scene_text += [
+            CVLoDSceneTextEntry(text="The entrance door is sealed\n"
+                                     "shut! You'll need to bring it\n"
+                                     "both Crest Halves to see the\n"
+                                     "light of day.🅰0/"),
+            CVLoDSceneTextEntry(text="INSERT COFFIN TEXT🅰0/")]
         # Make the hardcoded Villa coffin lid Henry checks never pass.
         patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_byte(0x1DB, 0x04)
         patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_byte(0x7DB, 0x04)
@@ -1422,11 +1414,6 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][126]["delete"] = True
 
             # Lock the crypt door from the inside if the player doesn't have the two crests on-hand and/or inserted.
-            patcher.scenes[Scenes.VILLA_CRYPT].scene_text.append(
-                CVLoDSceneTextEntry(text="The entrance door is sealed\n"
-                                         "shut! You'll need to bring it\n"
-                                         "both Crest Halves to see the\n"
-                                         "light of day...🅰0/"))
             crypt_crests_check_location = len(patcher.scenes[Scenes.VILLA_CRYPT].overlay)
             patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_int32s(crypt_crests_check_location,
                                                                 patches.crypt_crests_checker)
@@ -1545,11 +1532,6 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][142]["spawn_flags"] = 0
 
             # Lock the crypt door from the inside if the player doesn't have the two crests on-hand and/or inserted.
-            patcher.scenes[Scenes.VILLA_CRYPT].scene_text.append(
-                CVLoDSceneTextEntry(text="The entrance door is sealed\n"
-                                         "shut! You'll need to bring it\n"
-                                         "both Crest Halves to see the\n"
-                                         "light of day.🅰0/"))
             crypt_crests_check_location = len(patcher.scenes[Scenes.VILLA_CRYPT].overlay)
             patcher.scenes[Scenes.VILLA_CRYPT].write_ovl_int32s(crypt_crests_check_location,
                                                                 patches.crypt_crests_checker)
@@ -2359,6 +2341,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.EXECUTION_MAIN].one_hit_breakables[10]["flag_id"] = \
             CVLOD_LOCATIONS_INFO[loc_names.toe_first_pillar].flag_id
         patcher.scenes[Scenes.EXECUTION_MAIN].one_hit_breakables[11]["flag_id"] = \
+            CVLOD_LOCATIONS_INFO[loc_names.toe_last_pillar].flag_id
+        patcher.scenes[Scenes.EXECUTION_MAIN].one_hit_breakables[23]["flag_id"] = \
             CVLOD_LOCATIONS_INFO[loc_names.toe_last_pillar].flag_id
 
         # Make Reinhardt's White Jewels universal to everyone and remove Cornell's.
@@ -3235,6 +3219,16 @@ class CVLoDPatchExtensions(APPatchExtension):
                         stage["connecting_stages"]["next alt 2"][0]].start_scene_id)
                     patcher.write_byte(0xD3B47, CVLOD_STAGE_INFO[
                         stage["connecting_stages"]["next alt 2"][0]].start_spawn_id)
+                    # Write the text explaining what the coffin's possible destinations are.
+                    patcher.scenes[Scenes.VILLA_CRYPT].scene_text[2]["text"] = \
+                        ("Someone inscribed\n"
+                         "      a message here...🅰0/\f"
+                         "12am-8am (0:00-7:59):\n"
+                         f"    {stage['connecting_stages']['next'][0]}\n"
+                         "8am-4pm (8:00-15:59):\n"
+                         f"    {stage['connecting_stages']['next alt 1'][0]}🅰0/\n"
+                         "4pm-12am (16:00-23:59):\n"
+                         f"    {stage['connecting_stages']['next alt 2'][0]}🅰0/")
                 # If Next Alt 2 does not exist for Villa but Next Alt 1 does, meaning there are two branching paths,
                 # have the coffin zone send the player there when it would send them to Waterway (daytime) and to the
                 # Next Alt 1 stage for Waterway (nighttime).
@@ -3245,6 +3239,29 @@ class CVLoDPatchExtensions(APPatchExtension):
                         stage["connecting_stages"]["next alt 1"][0]].start_scene_id)
                     patcher.write_byte(0xD3ACB, CVLOD_STAGE_INFO[
                         stage["connecting_stages"]["next alt 1"][0]].start_spawn_id)
+                    # Write the text explaining what the coffin's possible destinations are.
+                    patcher.scenes[Scenes.VILLA_CRYPT].scene_text[2]["text"] = \
+                        ("Someone inscribed\n"
+                         "      a message here...🅰0/\f"
+                         "Daytime (6:00-17:59):\n"
+                         f"    {stage['connecting_stages']['next'][0]}\n"
+                         "Nighttime (18:00-5:59):\n"
+                         f"    {stage['connecting_stages']['next alt 1'][0]}🅰0/\n")
+
+                # Otherwise, if only one path forward exists, only write the coffin text explaining that next location.
+                else:
+                    patcher.scenes[Scenes.VILLA_CRYPT].scene_text[2]["text"] = \
+                        ("Someone inscribed\n"
+                         "      a message here...🅰0/\f"
+                         f"{stage['connecting_stages']['next'][0]}🅰0/\n")
+
+                # Add the new coffin text spot associated with the next stage(s) text.
+                patcher.scenes[Scenes.VILLA_CRYPT].actor_lists["init"] += [
+                    CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=-4.0, y_pos=10.0, z_pos=210.0,
+                                          execution_flags=0,
+                                          object_id=Objects.INTERACTABLE, flag_id=0, var_a=30, var_b=20,
+                                          var_c=0x33, var_d=0, extra_condition_ptr=0)
+                ]
 
             # If Castle Center is the current stage, make adjustments to Carrie's end loading zone in the top elevator
             # room based on the Castle Center Branching Paths option.
@@ -3255,10 +3272,31 @@ class CVLoDPatchExtensions(APPatchExtension):
                         stage["connecting_stages"]["next alt 1"][0]].start_scene_id
                     patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].loading_zones[2]["spawn_id"] = CVLOD_STAGE_INFO[
                         stage["connecting_stages"]["next alt 1"][0]].start_spawn_id
+                    # Write the back elevator text explaining that next locations.
+                    patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].scene_text[0]["text"] = \
+                        ("There's a sheet of\n"
+                         "      paper taped back here...🅰0/\f"
+                         "Ahead (Blue):\n"
+                         f"    {stage['connecting_stages']['next'][0]}\n"
+                         "Behind (Yellow):\n"
+                         f"    {stage['connecting_stages']['next alt 1'][0]}🅰0/")
                 # Otherwise, have Carrie's zone send the player to the primary next stage.
                 else:
                     patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].loading_zones[2]["scene_id"] = next_scene
                     patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].loading_zones[2]["spawn_id"] = next_spawn
+                    # Write the back elevator text explaining that next location.
+                    patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].scene_text[0]["text"] = \
+                        ("There's a sheet of\n"
+                         "      paper taped back here...🅰0/\f"
+                         f"{stage['connecting_stages']['next'][0]}🅰0/\n")
+
+                # Add the new elevator text spot associated with the next stage(s) text.
+                patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].actor_lists["init"] += [
+                    CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=0.0, y_pos=20.0, z_pos=-15.0,
+                                          execution_flags=0,
+                                          object_id=Objects.INTERACTABLE, flag_id=0, var_a=15, var_b=5,
+                                          var_c=0x31, var_d=0, extra_condition_ptr=0)
+                ]
 
 
         # If Disable Time Restrictions is set to All, make all events that expect a certain time able to happen anytime.
@@ -3312,6 +3350,17 @@ class CVLoDPatchExtensions(APPatchExtension):
         if slot_patch_info["options"]["increase_shimmy_speed"]:
             patcher.write_int32(0x2FA64, 0x0C0FFA88)   # JAL  0x803FEA20
             patcher.write_int32s(0xFFEA20, patches.shimmy_speed_modifier)
+
+        # If Detransform At Will is on, patch Cornell's overlay to allow transforming from wolf to human by pressing L.
+        if slot_patch_info["options"]["detransform_at_will"]:
+            patcher.write_int32s(0x75A830, patches.cornell_detransformer)
+            patcher.write_int32(0x75A88C, 0x1420FFE9)   # BNEZ  AT, [backward 0x17]
+
+        # If Restore Cornell Fall Voice is on, change Cornell and Wolf Cornell's falling voice sound IDs to be the one
+        # for his unused falling voice.
+        if slot_patch_info["options"]["restore_cornell_fall_voice"]:
+            patcher.write_int16(0xB4C60, 0x31D)
+            patcher.write_int16(0xB4C64, 0x31D)
 
         # Permanent PowerUp stuff
         if slot_patch_info["options"]["permanent_powerups"]:

@@ -1565,6 +1565,25 @@ shimmy_speed_modifier = [
     0xA54BE174,  # SH    T3, 0xE174 (T2)
 ]
 
+cornell_detransformer = [
+    # Enables Wolf Cornell to transform back to human by pressing L while skipping the "greater than 10 jewels" check.
+    0x10000006,  # B             [forward 0x06]
+    # Repurposed human Cornell check that we will branch to if the jewel check fails. If we are NOT Wolf Cornell, bar
+    # transforming. If we are, branch to the next part of the code that would run if the jewel check passes.
+    0x3C03801D,  # LUI   V1, 0x801D
+    0x846AAB36,  # LH    T2, 0xAB36 (V1)
+    0x24010004,  # ADDIU AT, R0, 0x0004
+    0x11410013,  # BEQ   T2, AT, [forward 0x13]
+    0x00000000,  # NOP
+    0x10000048,  # B             [forward 0x48]
+    0x8C6BAC28,  # LW    T3, 0xAC28 (V1)
+    0x3C02800F,  # LUI   V0, 0x800F
+    0x244235F0,  # ADDIU V0, V0, 0x35F0
+    0x8D6C0000,  # LW    T4, 0x0000 (T3)
+    0x000C69C0,  # SLL   T5, T4, 7
+    0x05A00042,  # BLTZ  T5,     [forward 0x42]
+]
+
 gondola_spider_cutscene_checker = [
     # Checks for flag 0xAD (the Spider Women cutscene flag) before activating the Tunnel gondolas, restoring their
     # original behavior from CV64.
