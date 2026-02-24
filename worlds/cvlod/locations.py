@@ -96,7 +96,7 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.cw_save_slab5:     CVLoDLocationData(0x2BC, 2, item_names.jewel_rl,),
     loc_names.cw_rrampart:       CVLoDLocationData(0x46,  2, item_names.gold_300),
     loc_names.cw_lrampart:       CVLoDLocationData(0x47,  2, item_names.use_card_m),
-    loc_names.cw_pillar:         CVLoDLocationData(0x44,  2, item_names.sub_holy),
+    loc_names.cw_pillar:         CVLoDLocationData(0x45,  2, item_names.sub_holy),
     loc_names.cw_shelf:          CVLoDLocationData(0x42,  2, item_names.quest_winch),
     loc_names.cw_shelf_torch:    CVLoDLocationData(0x4C,  2, item_names.sub_cross),
     loc_names.cw_ground_left:    CVLoDLocationData(0x48,  2, item_names.use_purifying),
@@ -709,6 +709,12 @@ EMPTY_LOCATIONS = {
     loc_names.towf_retract_elevator_r,
     loc_names.towh_boulders_elevator_l,
     loc_names.towh_boulders_elevator_r,
+    loc_names.tosor_icemen_l,
+    loc_names.tosor_icemen_r,
+    loc_names.tosor_side_isle,
+    loc_names.tosor_mag_bridge,
+    loc_names.tosor_lasers_s,
+    loc_names.tosor_climb_m
 }
 
 # All Locations that only Carrie is capable of reaching. These should NOT be created if Carrie Logic is off.

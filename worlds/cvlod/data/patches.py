@@ -205,6 +205,14 @@ deathlink_nitro_edition = [
 warp_menu_opener = [
     # Enables warping by pausing while holding Z + R. Un-sets the Henry escort begins flag if you warp during it.
 
+    # If Gameplay Manager Flag 00002000 is set, don't warp or pause the game at all. This flag was added in the JPN
+    # and PAL versions to disallow pausing when Child Henry dies (which would crash the game).
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x8D09ABC8,  # LW    T1, 0xABC8 (T0)
+    0x312A2000,  # ANDI  T2, T1, 0x2000
+    0x11400002,  # BEQZ  T2,     [forward 0x02]
+    0x00000000,  # NOP
+    0x080218FB,  # J     0x800863EC
     # Check if the player is holding Z and R when the game wants to pause. If they aren't, pause like normal.
     # If they are, run some additional checks to see if the warp menu can be opened at the moment.
     0x3C08800F,  # LUI   T0, 0x800F

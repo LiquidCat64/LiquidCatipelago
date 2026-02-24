@@ -167,8 +167,6 @@ class ActorSpawnFlags(IntFlag):
     CORNELL =                     0x2000
     HENRY =                       0x4000
     END_OF_LIST =                 0x8000
-    NO_CHARACTERS =               0xFFFF ^ REINHARDT ^ CARRIE ^ CORNELL ^ HENRY
-    NO_DIFFICULTIES =             0xFFFF ^ EASY ^ NORMAL ^ HARD
     REINHARDT_AND_CARRIE =        REINHARDT | CARRIE
     ALL_CHARACTERS =              REINHARDT | CARRIE | CORNELL | HENRY
     ALL_DIFFICULTIES =            EASY | NORMAL | HARD
@@ -178,8 +176,7 @@ class PickupFlags(IntFlag):
     NO_SHINE =     0x0400
     INVISIBLE =    0x0800
     GRAVITY =      0x4000
-    NEVER_EXPIRE = 0xFFFF ^ EXPIRE
-    VISIBLE =      0xFFFF ^ INVISIBLE ^ NO_SHINE
+    HIDDEN = NO_SHINE | INVISIBLE
 
 class DoorFlags(IntFlag):
     LOCK_ALWAYS =              0x0001  # Can be unlocked if it has a disregard flag set on it and its event flag is set.
@@ -193,7 +190,6 @@ class DoorFlags(IntFlag):
     DISREGARD_IF_FLAG_UNSET =  0x2000  # Only used on Foggy Lake's cargo door, which normally locks after opening it.
     UNLOCK_AND_SET_FLAG =      0x4000
     UNLOCK_AND_UNSET_FLAG =    0x8000  # Completely unused normally.
-    NO_TIME_RESTRICTIONS =     0xFFFF ^ LOCK_DURING_DAYTIME ^ LOCK_DURING_NIGHTTIME
     LOCKED_BY_KEY =            ITEM_COST_IF_FLAG_UNSET | DISREGARD_IF_FLAG_SET | UNLOCK_AND_SET_FLAG
 
 class Scenes(IntEnum):

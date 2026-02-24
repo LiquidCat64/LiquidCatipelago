@@ -20,10 +20,10 @@ from .locations import CVLOD_LOCATIONS_INFO, THREE_HIT_BREAKABLES_INFO, HIGHER_S
 from .patcher import CVLoDRomPatcher, CVLoDSceneTextEntry, CVLoDNormalActorEntry, CVLoDSpawnEntranceEntry, \
     SCENE_OVERLAY_RDRAM_START
 from .stages import CVLOD_STAGE_INFO
-from .cvlod_text import cvlod_string_to_bytearray, cvlod_strings_to_pool, cvlod_text_wrap, cvlod_bytes_to_string, \
+from .cvlod_text import cvlod_string_to_bytearray, cvlod_strings_to_pool, cvlod_text_wrap, \
     LEN_LIMIT_MAP_TEXT, LEN_LIMIT_MULTIWORLD_TEXT
 # from .aesthetics import renon_item_dialogue
-from .options import StageLayout, VincentFightCondition, RenonFightCondition, PostBehemothBoss, RoomOfClocksBoss, \
+from .options import VincentFightCondition, RenonFightCondition, PostBehemothBoss, RoomOfClocksBoss, \
     DuelTowerFinalBoss, CastleKeepEndingSequence, DraculasCondition, InvisibleItems, PantherDash, VillaBranchingPaths, \
     CastleCenterBranchingPaths, CastleWallState, VillaState, VillaMazeKid, DisableTimeRestrictions, CVLoDDeathLink
 from settings import get_settings
@@ -34,8 +34,8 @@ if TYPE_CHECKING:
 CVLOD_US_HASH = "25258460f98f567497b24844abe3a05b"
 
 ARCHIPELAGO_IDENTIFIER_START = 0xFFBFD0
-ARCHIPELAGO_PATCH_COMPAT_VER = 1
-ARCHIPELAGO_CLIENT_COMPAT_VER = "ARCHIPELAG02"
+ARCHIPELAGO_PATCH_COMPAT_VER = 2
+ARCHIPELAGO_CLIENT_COMPAT_VER = "ARCHIPELAG03"
 AUTH_NUMBER_START = 0xFFFF10
 QUEUED_TEXT_STRING_START = 0x7CEB00
 MULTIWORLD_TEXTBOX_POINTERS_START = 0x671C10
@@ -73,8 +73,8 @@ SPECIAL_1HBS = [Objects.FOGGY_LAKE_ABOVE_DECKS_BARREL, Objects.FOGGY_LAKE_BELOW_
 
 FOUNTAIN_LETTERS_TO_NUMBERS = {"O": 1, "M": 2, "H": 3, "V": 4}
 
-VILLA_MAZE_CORNELL_ENEMY_INDEXES = [66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 82,
-                                    83, 84, 85, 86, 87, 88, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101]
+VILLA_MAZE_CORNELL_ENEMY_INDEXES = [75, 76, 80, 82, 83, 84, 85, 86, 87, 88, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101]
+VILLA_MAZE_HENRY_ESCORT_ENEMY_INDEXES = [66, 67, 68, 69, 70, 71, 72, 73, 74, 77, 78, 79]
 
 CC_CORNELL_INTRO_ACTOR_LISTS = {Scenes.CASTLE_CENTER_BASEMENT: "room 1",
                                 Scenes.CASTLE_CENTER_BOTTOM_ELEV: "init",
@@ -281,8 +281,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32(0x86FE4, 0x080FF254)  # J   0x803FC950
         patcher.write_int32s(0xFFC950, patches.warp_menu_opener)
         # Make the "init boss bar" function set our custom "prevent warping" byte.
-        patcher.write_int32(0x90B54, 0x080FF270)  # J   0x803FC9C0
-        patcher.write_int32s(0xFFC9C0, [0x3C08801D,   # LUI  T0, 0x801D
+        patcher.write_int32(0x90B54, 0x080FF278)  # J   0x803FC9E0
+        patcher.write_int32s(0xFFC9E0, [0x3C08801D,   # LUI  T0, 0x801D
                                         0x34090001,   # ORI  T1, R0, 0x0001
                                         0x03E00008,   # JR   RA
                                         0xA109AA4B])  # SB   T1, 0xAA4B (T0)
@@ -705,8 +705,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][157]["delete"] = True
         # Remove the Cornell-specific pickups and breakables and make Reinhardt/Carrie's equivalent ones universal.
         patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][28]["spawn_flags"] = 0
-        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][29]["spawn_flags"] = 0
-        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][30]["delete"] = True
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][29]["delete"] = True
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][30]["spawn_flags"] = 0
         patcher.scenes[Scenes.CASTLE_WALL_MAIN].actor_lists["proxy"][31]["delete"] = True
         patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][158]["spawn_flags"] = 0
         patcher.scenes[Scenes.CASTLE_WALL_TOWERS].actor_lists["proxy"][159]["spawn_flags"] = 0
@@ -923,6 +923,9 @@ class CVLoDPatchExtensions(APPatchExtension):
             0xC00, 0x0C0B0000 | ((stone_dog_cutscene_check_start + (SCENE_OVERLAY_RDRAM_START & 0xFFFFFF)) // 4))
         patcher.scenes[Scenes.VILLA_MAZE].write_ovl_int32s(stone_dog_cutscene_check_start,
                                                            patches.stone_dog_cutscene_checker)
+        # Move the Gardener actor over VEEEEEERY slightly to ensure we can't enter his spawn radius from the servant
+        # entrance door (and possibly softlock ourselves if the Hard Mode fight with him can trigger).
+        patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][64]["z_pos"] = -32.0
 
         # Give Child Henry his Cornell behaviors for everyone.
         patcher.write_int32(0x1B8, 0x24020002, NIFiles.OVERLAY_CHILD_HENRY)  # ORI  V0, R0, 0x0002
@@ -991,6 +994,9 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][65]["spawn_flags"] ^= ActorSpawnFlags.SPAWN_IF_FLAG_SET
         patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][65]["flag_id"] = 0
         patcher.write_int32(0x2CC4, 0x00000000, NIFiles.OVERLAY_CHILD_HENRY)
+        # Make Child Henry set Gameplay Manager Flag 0x2000 when he's killed to prevent opening the pause menu during
+        # the fade-out entirely.
+        patcher.write_int16(0x1F9E, 0x6080, NIFiles.OVERLAY_CHILD_HENRY)
 
         # Make Mary say her congratulatory dialogue if spoken to for the first time only AFTER rescuing the maze kid
         # by setting the "spoke to Mary once" flag when the game gives the reward for doing the quest.
@@ -1161,6 +1167,10 @@ class CVLoDPatchExtensions(APPatchExtension):
                 ActorSpawnFlags.REINHARDT_AND_CARRIE
             patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][65]["delete"] = True
 
+            # None of the Henry escort enemies are present.
+            for enemy_index in VILLA_MAZE_HENRY_ESCORT_ENEMY_INDEXES:
+                patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][enemy_index]["delete"] = True
+
             # The servant path escape gates are their Reinhardt/Carrie versions that specify Malus escaped through them,
             # and the maze end door is the Reinhardt/Carrie one that the Malus rescued cutscene specifically opens.
             patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][144]["spawn_flags"] = 0
@@ -1210,6 +1220,11 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.VILLA_MAZE].actor_lists["init"][10]["spawn_flags"] = 0
             patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][61]["delete"] = True
             patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][65]["spawn_flags"] ^= ActorSpawnFlags.CORNELL
+
+            # All the Henry escort enemies are present.
+            for enemy_index in VILLA_MAZE_HENRY_ESCORT_ENEMY_INDEXES:
+                patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][enemy_index]["spawn_flags"] &= \
+                    ~ActorSpawnFlags.ALL_CHARACTERS
 
             # The servant path escape gates are their Cornell versions that specify Henry escaped through them, and the
             # maze end door is the Cornell one that the Henry rescued cutscene specifically opens AND includes a
@@ -1389,7 +1404,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             # All the Cornell enemies are present in the maze.
             for enemy_index in VILLA_MAZE_CORNELL_ENEMY_INDEXES:
                 patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][enemy_index]["spawn_flags"] &= \
-                    ActorSpawnFlags.NO_CHARACTERS
+                    ~ActorSpawnFlags.ALL_CHARACTERS
             # The Iron Thorn Fence gate is locked by Thorn Key.
             patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][146]["delete"] = True
             patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][147]["delete"] = True
@@ -1507,7 +1522,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             # All the Cornell enemies are present in the maze.
             for enemy_index in VILLA_MAZE_CORNELL_ENEMY_INDEXES:
                 patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][enemy_index]["spawn_flags"] &= \
-                    ActorSpawnFlags.NO_CHARACTERS
+                    ~ActorSpawnFlags.ALL_CHARACTERS
             # The Iron Thorn Fence gate is locked by Thorn Key.
             patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][146]["delete"] = True
             patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][147]["delete"] = True
@@ -1985,7 +2000,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                 if actor["spawn_flags"] & ActorSpawnFlags.CORNELL and not \
                         (actor["spawn_flags"] & ActorSpawnFlags.REINHARDT |
                          actor["spawn_flags"] & ActorSpawnFlags.CARRIE):
-                    actor["spawn_flags"] &= ActorSpawnFlags.NO_CHARACTERS
+                    actor["spawn_flags"] &= ~ActorSpawnFlags.ALL_CHARACTERS
                     actor["spawn_flags"] |= ActorSpawnFlags.EXTRA_CHECK_FUNC_ENABLED
                     actor["extra_condition_ptr"] = 0x803FCDA0
                 # Is it exclusive to Reinhardt or Carrie and NOT Cornell? Or maybe it's a freestanding Interactable
@@ -2002,7 +2017,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                     # it if it's only one character or the other.
                     if actor["spawn_flags"] & ActorSpawnFlags.REINHARDT_AND_CARRIE == \
                             ActorSpawnFlags.REINHARDT_AND_CARRIE:
-                        actor["spawn_flags"] &= ActorSpawnFlags.NO_CHARACTERS
+                        actor["spawn_flags"] &= ~ActorSpawnFlags.ALL_CHARACTERS
 
         # Set the Cerberuses in the basement to trigger for Cornell in addition to Reinhardt. The Motorskellies here
         # are already set up to spawn for Carrie and, interestingly enough, Henry, so we shall mirror that for Cornell.
@@ -2133,7 +2148,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].actor_lists["proxy"][2]["var_c"] = 1
             for actor in patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].actor_lists["proxy"]:
                 if actor["spawn_flags"] & ActorSpawnFlags.REINHARDT_AND_CARRIE:
-                    actor["spawn_flags"] &= ActorSpawnFlags.NO_CHARACTERS
+                    actor["spawn_flags"] &= ~ActorSpawnFlags.ALL_CHARACTERS
 
         # Prevent the CC elevator from working from the top if the elevator switch is not activated.
         patcher.write_int32(0xD7A74, 0x080FF0B0)  # J 0x803FC2C0
@@ -3014,7 +3029,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                         if actor["var_a"] in loc_values:
                             actor["var_c"] = loc_values[actor["var_a"]][0]
                             # Un-set the Expire bitflag in its pickup flags in Var B.
-                            actor["var_b"] &= PickupFlags.NEVER_EXPIRE
+                            actor["var_b"] &= ~PickupFlags.EXPIRE
                             # If we're placing a higher-spawning Item on this Location, and the Location is one where
                             # higher-spawning Items can be problematic, lower it down by 3.2 units.
                             if ((actor["var_c"] >> 8) + 1) & 0x7F in HIGHER_SPAWNING_ITEMS \
@@ -3024,7 +3039,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                             # we decided for it in its Item info.
                             if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
                                 if loc_values[actor["var_a"]][1]:
-                                    actor["var_b"] &= PickupFlags.VISIBLE
+                                    actor["var_b"] &= ~PickupFlags.HIDDEN
                                     # If the pickup location we just made visible has an entry in the new visible item
                                     # coordinates lookup, adjust its XYZ coordinates to be more visible
                                     # (by which we mean "less inside an object")
@@ -3049,12 +3064,12 @@ class CVLoDPatchExtensions(APPatchExtension):
                             scene.one_hit_breakables[actor["var_c"]]["pickup_id"] = \
                                 loc_values[scene.one_hit_breakables[actor["var_c"]]["flag_id"]][0]
                             # Un-set the Expire bit in its pickup flags.
-                            scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.NEVER_EXPIRE
+                            scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] &= ~PickupFlags.EXPIRE
                             # If Invisible Items is not set to Vanilla, change the Item's visibility flag to whatever
                             # we decided for it in its Item info.
                             if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
                                 if loc_values[scene.one_hit_breakables[actor["var_c"]]["flag_id"]][1]:
-                                    scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.VISIBLE
+                                    scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] &= ~PickupFlags.HIDDEN
                                 else:
                                     scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] |= PickupFlags.INVISIBLE
                         # If it's not a Location with a pickup to change, Permanent Powerups are on, and the pickup is
@@ -3069,13 +3084,13 @@ class CVLoDPatchExtensions(APPatchExtension):
                             scene.one_hit_special_breakables[actor["var_c"]]["pickup_id"] = \
                                 loc_values[scene.one_hit_special_breakables[actor["var_c"]]["flag_id"]][0]
                             # Un-set the Expire bit in its pickup flags.
-                            scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] &= PickupFlags.NEVER_EXPIRE
+                            scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] &= ~PickupFlags.EXPIRE
                             # If Invisible Items is not set to Vanilla, change the Item's visibility flag to whatever
                             # we decided for it in its Item info.
                             if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
                                 if loc_values[scene.one_hit_special_breakables[actor["var_c"]]["flag_id"]][1]:
                                     scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] \
-                                        &= PickupFlags.VISIBLE
+                                        &= ~PickupFlags.INVISIBLE
                                 else:
                                     scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] \
                                         |= PickupFlags.INVISIBLE
@@ -3301,10 +3316,10 @@ class CVLoDPatchExtensions(APPatchExtension):
 
         # If Disable Time Restrictions is set to All, make all events that expect a certain time able to happen anytime.
         if slot_patch_info["options"]["disable_time_restrictions"] == DisableTimeRestrictions.option_all:
-            # Loop over every door data in the game and clear the time restriction flags from all of them.
+            # Loop over every door data in the game and clear the time-of-day restriction flags from all of them.
             for scene in patcher.scenes:
                 for door in scene.doors:
-                    door["door_flags"] &= DoorFlags.NO_TIME_RESTRICTIONS
+                    door["door_flags"] &= ~DoorFlags.LOCK_DURING_DAYTIME ^ DoorFlags.LOCK_DURING_NIGHTTIME
 
             # If we have the Reinhardt/Carrie Villa, put the fountain pillar on its Henry behavior for everyone
             # (always raised no matter what).
@@ -3320,10 +3335,10 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.scenes[Scenes.VILLA_FOYER].write_ovl_int32(0x3B4, 0x34030006)  # ORI T6, V1, 0x0006
             patcher.scenes[Scenes.VILLA_FOYER].write_ovl_int32(0x660, 0x340E0006)  # ORI T6, R0, 0x0006
             patcher.write_int32(0xC4, 0x34030006, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
-        # Otherwise, if set to Art Tower Only, only remove the time restrictions on the Art Tower doors.
+        # Otherwise, if set to Art Tower Only, only remove the time-of-day restrictions on the Art Tower doors.
         elif slot_patch_info["options"]["disable_time_restrictions"] == DisableTimeRestrictions.option_art_tower_only:
             for door in patcher.scenes[Scenes.ART_TOWER_MUSEUM].doors:
-                door["door_flags"] &= DoorFlags.NO_TIME_RESTRICTIONS
+                door["door_flags"] &= ~DoorFlags.LOCK_DURING_DAYTIME ^ DoorFlags.LOCK_DURING_NIGHTTIME
 
         # If Loading Zone Heals are off, loop over every loading zone data and clear its "heal player" value.
         if not slot_patch_info["options"]["loading_zone_heals"]:
