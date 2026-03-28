@@ -142,6 +142,15 @@ class DoubleSidedWarps(DefaultOnToggle):
     display_name = "Double-Sided Warps"
 
 
+class HintCardHints(Toggle):
+    """
+    Whether the Hint Cards' menu descriptions should contain hints as to the whereabouts of important progression items.
+    Odd-numbered cards will contain hints for your own items in other players' worlds, whereas even-numbered cards will tell you where in your world you can find someone else's item.
+    In both cases, the area mentioned will be a location group the item's location is in, chosen at random if there's multiple. If the location of your item in someone else's world does not have a location group defined for it, only the player who has it will be specified.
+    """
+    display_name = "Hint Card Hints"
+
+
 class Countdown(Choice):
     """
     Displays, below and near the right side of the MP bar, the number of un-found progression/useful-marked items or the total check locations remaining in the area you are currently in.
@@ -187,6 +196,7 @@ class CVHoDisOptions(PerGameCommonOptions):
     early_lizard: EarlyLizard
     spellbound_boss_logic: SpellboundBossLogic
     castle_warp_condition: CastleWarpCondition
+    hint_card_hints: HintCardHints
     death_link: DeathLink
     double_sided_warps: DoubleSidedWarps
 
@@ -199,7 +209,7 @@ cvhodis_option_groups = [
     OptionGroup("Entrance Randomizer", [
         CastleSwapper, TransitionShuffler, CastleSymmetry, AreaDivisions, LinkDoorTypes]),
     OptionGroup("Difficulty", [
-        EarlyLizard, SpellboundBossLogic, CastleWarpCondition, DeathLink]),
+        EarlyLizard, SpellboundBossLogic, CastleWarpCondition, HintCardHints, DeathLink]),
     OptionGroup("Quality of Life", [
         DoubleSidedWarps,
     #    Countdown

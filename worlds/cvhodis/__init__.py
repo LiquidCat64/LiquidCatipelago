@@ -3,12 +3,13 @@ import typing
 import settings
 import base64
 import logging
+import json
 
 from BaseClasses import Tutorial, ItemClassification, EntranceType
 from entrance_rando import disconnect_entrance_for_randomization, randomize_entrances
-from .items import CVHoDisItem, FILLER_ITEM_NAMES, ALL_CVHODIS_ITEMS, FURNITURE, get_item_names_to_ids, \
-    get_item_counts, get_pickup_type
-from .locations import CVHoDisLocation, get_location_names_to_ids, BASE_ID, get_locations_to_create, \
+from .items import CVHoDisItem, POSSIBLE_EXTRA_FILLER, ALL_CVHODIS_ITEMS, FURNITURE, get_item_names_to_ids, \
+    get_item_pool, get_pickup_type
+from .locations import CVHoDisLocation, get_location_names_to_ids, get_locations_to_create, \
     get_location_name_groups
 from .options import cvhodis_option_groups, CVHoDisOptions, SubWeaponShuffle, TransitionShuffler, CastleSwapper, \
     AreaDivisions
@@ -18,17 +19,19 @@ from .entrances import SHUFFLEABLE_TRANSITIONS, ERGroups, TARGET_GROUP_RELATIONS
     invert_castle_transitions, verify_entrances, MAIN_SUB_AREAS, get_er_group
 from .rules import CVHoDisRules
 from .data import item_names, loc_names
+from .data.misc_names import GAME_NAME
 from worlds.AutoWorld import WebWorld, World
 
-from .aesthetics import shuffle_sub_weapons, get_location_data, get_countdown_flags, get_start_inventory_data, \
+from .aesthetics import shuffle_sub_weapons, get_location_write_values, get_countdown_flags, get_start_inventory_data, \
     get_hint_card_hints
-from .rom import RomData, patch_rom, get_base_rom_path, CVHoDisProcedurePatch, CVHODIS_CT_US_HASH, CVHODIS_AC_US_HASH
+from .rom import get_base_rom_path, CVHoDisProcedurePatch, CVHODIS_CT_US_HASH, CVHODIS_AC_US_HASH, \
+    ARCHIPELAGO_PATCH_COMPAT_VER
 from .client import CastlevaniaHoDisClient
 
 
 class CVHoDisSettings(settings.Group):
     class RomFile(settings.UserFilePath):
-        """File name of the Castlevania HoD US rom"""
+        """File name of the Castlevania HoDis US rom"""
         copy_to = "Castlevania - Harmony of Dissonance (USA).gba"
         description = "Castlevania HoD (US) ROM File"
         md5s = [CVHODIS_CT_US_HASH, CVHODIS_AC_US_HASH]
@@ -61,7 +64,7 @@ class CVHoDisWorld(World):
     clear that Maxim is not his normal self... Wield powerful sub-weapon spell fusions as Juste as you hunt for
     Dracula's remains and unravel the conspiracy between two parallel castles.
     """
-    game = "Castlevania - Harmony of Dissonance"
+    game = GAME_NAME
     topology_present = True
     item_name_groups = {
         "Furniture": {name for name in FURNITURE},
@@ -172,7 +175,7 @@ class CVHoDisWorld(World):
             classification = ALL_CVHODIS_ITEMS[name].default_classification
 
         if name in ALL_CVHODIS_ITEMS:
-            code = ALL_CVHODIS_ITEMS[name].pickup_index + (get_pickup_type(name) << 8) + BASE_ID
+            code = ALL_CVHODIS_ITEMS[name].pickup_index + (get_pickup_type(name) << 8)
         else:
             code = None
 
@@ -181,11 +184,8 @@ class CVHoDisWorld(World):
         return created_item
 
     def create_items(self) -> None:
-        item_counts = get_item_counts(self)
-
         # Set up the Items correctly.
-        own_itempool = [self.create_item(item, classification) for classification in item_counts for item
-                        in item_counts[classification] for _ in range(item_counts[classification][item])]
+        own_itempool = get_item_pool(self)
 
         # Save the created progression Items that are not furniture for the later possibility of being the subject of a
         # Hint Card hint.
@@ -229,13 +229,6 @@ class CVHoDisWorld(World):
         # Get out all the Locations that are not Events.
         active_locations = [loc for loc in self.multiworld.get_locations(self.player) if loc.address is not None]
 
-        # Location data
-        offset_data = get_location_data(self, active_locations)
-        # Hint Card hints
-        offset_data.update(get_hint_card_hints(self, active_locations))
-        # Transition data
-        if self.transition_pairings:
-            offset_data.update(link_room_transitions(self.transition_pairings))
         # Sub-weapons
         # if self.options.sub_weapon_shuffle:
         #     offset_data.update(shuffle_sub_weapons(self))
@@ -245,16 +238,28 @@ class CVHoDisWorld(World):
         # Countdown
         # if self.options.countdown:
         #     offset_data.update(get_countdown_flags(self, active_locations))
-        # Start Inventory
-        offset_data.update(get_start_inventory_data(self))
 
+        # Prepare the slot info to write to a JSON inside the AP patch file.
+        slot_patch_info = {"options":
+                               {"castle_warp_condition": self.options.castle_warp_condition.value,
+                                "double_sided_warps": self.options.double_sided_warps.value,
+                                "death_link": self.options.death_link.value},
+                           "start inventory": get_start_inventory_data(self.multiworld.precollected_items[self.player]),
+                           # "initial countdowns": get_countdown_numbers(self.options, active_locations),
+                           "location values": get_location_write_values(self, active_locations),
+                           # "location text": get_location_text(self, active_locations),
+                           "card text": get_hint_card_hints(self, active_locations),
+                           "transition values": self.transition_pairings,
+                           "patch compatibility": ARCHIPELAGO_PATCH_COMPAT_VER,
+                           "auth": base64.b64encode(self.auth).decode()}
+
+
+        # Create and write the patch file.
         patch = CVHoDisProcedurePatch(player=self.player, player_name=self.player_name)
-        patch_rom(self, patch, offset_data)
+        patch.write_file("slot_patch_info.json", json.dumps(slot_patch_info).encode('utf-8'))
 
-        rom_path = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}"
-                                f"{patch.patch_file_ending}")
-
-        patch.write(rom_path)
+        patch.write(os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}"
+                                                   f"{patch.patch_file_ending}"))
 
     def fill_slot_data(self) -> dict:
         return {"death_link": self.options.death_link.value,
@@ -272,7 +277,7 @@ class CVHoDisWorld(World):
                 "transition_pairings": self.transition_pairings}
 
     def get_filler_item_name(self) -> str:
-        return self.random.choice(FILLER_ITEM_NAMES)
+        return self.random.choice(POSSIBLE_EXTRA_FILLER)
 
     def modify_multidata(self, multidata: typing.Dict[str, typing.Any]):
         # Put the player's unique authentication in connect_names.

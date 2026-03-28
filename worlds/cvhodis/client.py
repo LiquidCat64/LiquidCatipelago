@@ -1,11 +1,12 @@
 from typing import TYPE_CHECKING, Set, NamedTuple
-from .locations import BASE_ID, get_location_names_to_ids
+from .locations import get_location_names_to_ids
 # from .items import ALL_CVHODIS_ITEMS
 # from .locations import CVHODIS_LOCATIONS_INFO
 # from .cvhodis_text import cvhodis_string_to_bytearray
-from .rom import ARCHIPELAGO_IDENTIFIER_START, ARCHIPELAGO_IDENTIFIER, AUTH_NUMBER_START, QUEUED_TEXT_STRING_START
+from .rom import ARCHIPELAGO_IDENTIFIER_START, ARCHIPELAGO_CLIENT_COMPAT_VER, AUTH_NUMBER_START, QUEUED_TEXT_STRING_START
 from .data import item_names, loc_names
 from .data.enums import PickupTypes
+from .data.misc_names import GAME_NAME
 from .aesthetics import CVHODIS_INVENTORIES, MAX_STAT_VALUE, MAX_UP_INCREMENT_VALUE
 
 from BaseClasses import ItemClassification
@@ -108,7 +109,7 @@ DEATHLINK_AREA_NAMES = ["Sealed Room", "Catacomb", "Abyss Staircase", "Audience 
 
 
 class CastlevaniaHoDisClient(BizHawkClient):
-    game = "Castlevania - Harmony of Dissonance"
+    game = GAME_NAME
     system = "GBA"
     patch_suffix = ".apcvhodis"
     sent_initial_packets: bool
@@ -138,7 +139,7 @@ class CastlevaniaHoDisClient(BizHawkClient):
                 logger.info("ERROR: You appear to be running an unpatched version of Castlevania: Harmony of "
                             "Dissonance. You need to generate a patch file and use it to create a patched ROM.")
                 return False
-            if game_names[1].decode("ascii") != ARCHIPELAGO_IDENTIFIER:
+            if game_names[1].decode("ascii") != ARCHIPELAGO_CLIENT_COMPAT_VER:
                 logger.info("ERROR: The patch file used to create this ROM is not compatible with "
                             "this client. Double check your client version against the version being "
                             "used by the generator.")
@@ -364,7 +365,7 @@ class CastlevaniaHoDisClient(BizHawkClient):
             #    sent_text = cvhodis_string_to_bytearray(f"「{item_name}」 sent to 「{player_name}」◊", "big middle", 0)
 
                 # Set the correct sound to play depending on the Item's classification.
-            #    if ctx.slot_info[ctx.locations_info[loc].player].game == "Castlevania - Harmony of Dissonance":
+            #    if ctx.slot_info[ctx.locations_info[loc].player].game == GAME_NAME:
             #        mssg_sfx_id = SOUND_ID_MAIDEN_BREAKING
             #        sent_text = cvhodis_string_to_bytearray(f"「Iron Maidens」 broken for 「{player_name}」◊",
             #                                                "big middle", 0)
@@ -560,6 +561,7 @@ class CastlevaniaHoDisClient(BizHawkClient):
                 for bit_index in range(0x20):
                     and_value = 0x01 << bit_index
 
+                    # If the current bit we're looking at is not set, continue on to the next loop.
                     if not word & and_value:
                         continue
 
@@ -567,9 +569,9 @@ class CastlevaniaHoDisClient(BizHawkClient):
                     # that.
                     flag_id = (word_index << 5) + bit_index
 
-                    location_id = flag_id + BASE_ID
-                    if location_id in ctx.server_locations:
-                        locs_to_send.add(location_id)
+                    # If the flag that we detected as set is an active Location ID, record it.
+                    if flag_id in ctx.server_locations:
+                        locs_to_send.add(flag_id)
 
             # Send Locations if there are any to send.
             if locs_to_send != self.local_checked_locations:

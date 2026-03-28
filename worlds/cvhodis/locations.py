@@ -1,16 +1,15 @@
 import logging
 
 from BaseClasses import Location
+from .data.misc_names import GAME_NAME
 from .data import loc_names, item_names
 from .options import CVHoDisOptions, CastleWarpCondition
 
 from typing import NamedTuple
 
-BASE_ID = 0xD15500000
-
 
 class CVHoDisLocation(Location):
-    game: str = "Castlevania - Harmony of Dissonance"
+    game: str = GAME_NAME
 
 
 class CVHoDisLocationData(NamedTuple):
@@ -370,17 +369,13 @@ GUARDIAN_GRINDER_LOCATIONS: dict[str, int] = {
 }
 
 def get_location_names_to_ids() -> dict[str, int]:
-    return {name: CVHODIS_LOCATIONS_INFO[name].code+BASE_ID for name in CVHODIS_LOCATIONS_INFO}
+    return {name: CVHODIS_LOCATIONS_INFO[name].code for name in CVHODIS_LOCATIONS_INFO}
 
 
-def get_location_name_groups() -> dict[str, dict[str]]:
+def get_location_name_groups() -> dict[str, set[str]]:
     loc_name_groups: dict[str, set[str]] = dict()
 
     for loc_name in CVHODIS_LOCATIONS_INFO:
-        # If we are looking at an event Location, don't include it.
-        if isinstance(CVHODIS_LOCATIONS_INFO[loc_name].code, str):
-            continue
-
         # The part of the Location name's string before the colon is its area name.
         area_name = loc_name.split(":")[0]
 
@@ -423,11 +418,11 @@ def get_locations_to_create(locations: list[str], options: CVHoDisOptions) -> \
         if loc == loc_names.event_death and options.castle_warp_condition != CastleWarpCondition.option_death:
             continue
 
-        # Check to see if the Location is in the Checks Info dict.
+        # Check to see if the Location is in the Locations Info dict.
         # If it is, then handle it like a regular check Location.
         if loc in CVHODIS_LOCATIONS_INFO:
-            # Grab its code from the Checks Info and add the base ID to it.
-            loc_code = CVHODIS_LOCATIONS_INFO[loc].code + BASE_ID
+            # Grab its code from the Locations Info and add the base ID to it.
+            loc_code = CVHODIS_LOCATIONS_INFO[loc].code
         # Check to see if the Location is in the Events Mapping dict.
         # If it is, then handle it like an event Location.
         elif loc in CVHODIS_EVENT_MAPPING:

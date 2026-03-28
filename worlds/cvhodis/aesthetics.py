@@ -1,13 +1,12 @@
-from BaseClasses import ItemClassification, Location
-from .options import Countdown
-from .locations import CVHODIS_LOCATIONS_INFO, ALT_PICKUP_OFFSETS, GUARDIAN_GRINDER_LOCATIONS
-from .items import ALL_CVHODIS_ITEMS
-from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_DESCRIPTION, DESCRIPTION_DISPLAY_LINES
-from .rom import AP_HINT_TEXT_START, START_INVENTORY_USE_START, START_INVENTORY_EQUIP_START, \
-    START_INVENTORY_BOOK_START, START_INVENTORY_RELICS_START, START_INVENTORY_FURN_START, START_INVENTORY_WHIPS_START, \
-    START_INVENTORY_MAX_START
+from BaseClasses import ItemClassification, Location, Item
+#from .options import Countdown
+#from .locations import CVHODIS_LOCATIONS_INFO, ALT_PICKUP_OFFSETS, GUARDIAN_GRINDER_LOCATIONS
+#from .items import ALL_CVHODIS_ITEMS
+#from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_DESCRIPTION, DESCRIPTION_DISPLAY_LINES
+from .rom import AP_HINT_TEXT_START
 from .data import item_names
 from .data.enums import PickupTypes
+#from .data.misc_names import GAME_NAME
 
 from typing import TYPE_CHECKING, Iterable, TypedDict, NamedTuple
 
@@ -25,23 +24,23 @@ MAX_ITEMS_VALUE = 99
 MAX_UP_INCREMENT_VALUE = 5
 
 class CVHoDisInventoryData(NamedTuple):
-    main_start_addr: int
-    start_inventory_start_addr: int
-    length: int
-    text_id_start: int
-    is_large_textbox: bool
-    is_bitfield: bool
+    main_start_addr: int  # Where the inventory begins in the game's memory.
+    length: int  # Size of the inventory in bytes
+    text_id_start: int  # The first text ID associated with the names of the items in the inventory.
+    is_large_textbox: bool  # Whether collecting an item in this category stops the gameplay and displays a large
+                            # textbox in the middle of the screen. Otherwise, the small blue corner textbox is used.
+    is_bitfield: bool  # Whether the inventory is a bitfield. If not, it's an array of counts.
 
 # Each pickup type mapped to the following information on its dedicated inventory: Where it starts, where its start
 # inventory starts, its size in bytes, what text ID the item name strings start at, whether receiving an item for it
 # calls a small or large textbox, and whether it's a bitfield or array of counts.
 CVHODIS_INVENTORIES = {
-    PickupTypes.USE_ITEM:         CVHoDisInventoryData(0x187A0, START_INVENTORY_USE_START,     28, 0x22, False, False),
-    PickupTypes.WHIP_ATTACHMENT:  CVHoDisInventoryData(0x187BC, START_INVENTORY_WHIPS_START,    2, 0x1C, True,  True),
-    PickupTypes.EQUIPMENT:        CVHoDisInventoryData(0x187BE, START_INVENTORY_EQUIP_START,  128, 0x47, False, False),
-    PickupTypes.RELIC:            CVHoDisInventoryData(0x1883F, START_INVENTORY_RELICS_START,   2, 0xAA, True,  True),
-    PickupTypes.SPELLBOOK:        CVHoDisInventoryData(0x1883E, START_INVENTORY_BOOK_START,     1, 0xA5, True,  True),
-    PickupTypes.FURNITURE:        CVHoDisInventoryData(0x18843, START_INVENTORY_FURN_START,     4, 0xD8, False, True),
+    PickupTypes.USE_ITEM.value:        CVHoDisInventoryData(0x187A0, 28,  0x22, False, False),
+    PickupTypes.WHIP_ATTACHMENT.value: CVHoDisInventoryData(0x187BC, 2,   0x1C, True,  True),
+    PickupTypes.EQUIPMENT.value:       CVHoDisInventoryData(0x187BE, 128, 0x47, False, False),
+    PickupTypes.RELIC.value:           CVHoDisInventoryData(0x1883F, 2,   0xAA, True,  True),
+    PickupTypes.SPELLBOOK.value:       CVHoDisInventoryData(0x1883E, 1,   0xA5, True,  True),
+    PickupTypes.FURNITURE.value:       CVHoDisInventoryData(0x18843, 4,   0xD8, False, True),
 }
 
 other_player_subtype_bytes = {
@@ -91,17 +90,17 @@ def get_countdown_flags(world: "CVHoDisWorld", active_locations: Iterable[Locati
     pass
 
 
-def get_location_data(world: "CVHoDisWorld", active_locations: Iterable[Location]) -> dict[int, bytes]:
+def get_location_write_values(world: "CVHoDisWorld", active_locations: Iterable[Location]) -> {int: (int, bool)}:
     """Gets ALL the Item data to go into the ROM. Items consist of four bytes; the first two represent the object ID
     for the "category" of item that it belongs to, the third is the sub-value for which item within that "category" it
     is, and the fourth controls the appearance it takes."""
 
-    location_bytes = {}
+    location_values = {}
 
     for loc in active_locations:
-        # Figure out the item ID bytes to put in each Location's offset here.
+        # Figure out the item ID bytes to put in each Location here.
         # If it's a HoD Item, always write the Item's primary type byte.
-        # if loc.item.game == "Castlevania - Harmony of Dissonance":
+        # if loc.item.game == GAME_NAME:
         if loc.item.player == world.player:
             type_byte = (loc.item.code >> 8) & 0xFF
 
@@ -143,23 +142,13 @@ def get_location_data(world: "CVHoDisWorld", active_locations: Iterable[Location
                     index_byte = other_player_subtype_bytes[type_byte]
                     appearance_byte = other_game_item_appearances[other_game_name][loc.item.name]["appearance"]
 
-        # Create the correct bytes object for the Item on that Location.
-        location_bytes[CVHODIS_LOCATIONS_INFO[loc.name].offset + 0x5] = bytes([type_byte])
-        location_bytes[CVHODIS_LOCATIONS_INFO[loc.name].offset + 0xA] = bytes([index_byte])
+        # Create the final item info tuple and map it to the Location address.
+        location_values[loc.address] = (type_byte, index_byte)
 
-        # If the Location has an alternate pickup actor that must also be modified, add the Item bytes by them as well.
-        if loc.name in ALT_PICKUP_OFFSETS:
-            location_bytes[ALT_PICKUP_OFFSETS[loc.name] + 0x5] = bytes([type_byte])
-            location_bytes[ALT_PICKUP_OFFSETS[loc.name] + 0xA] = bytes([index_byte])
+    # Return the final dict of Location values.
+    return location_values
 
-        # If the Location is one of the Guardian Armor drops, add the Item bytes by those respective offsets as well.
-        if loc.name in GUARDIAN_GRINDER_LOCATIONS:
-            location_bytes[GUARDIAN_GRINDER_LOCATIONS[loc.name]] = bytes([type_byte])
-            location_bytes[GUARDIAN_GRINDER_LOCATIONS[loc.name] + 0x2] = bytes([index_byte])
-
-    return location_bytes
-
-def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Location]) -> dict[int, bytes]:
+def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Location]) -> list[str]:
     """Creates multiworld-specific hint text to go over the in-game descriptions of the six Hint Cards. There are two
     types of hints; one for the whereabouts of the player's own progression items, and the other for progression items
     for other slots that landed in the player's world. Odd-numbered cards will be the former while even-numbered cards
@@ -169,6 +158,10 @@ def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Locati
     in, which should tell players roughly where to search for it without completely being a free client hint. If the
     Location is in no Location name groups, then it will only mention the name of the slot that has the Item."""
 
+    # If Hint Card Hints are not on, return an empty list. Don't bother creating any card text.
+    if not world.options.hint_card_hints:
+        return []
+
     # Get out all the world's selectable Progression Items
     selectable_prog_items = world.possible_hint_card_items.copy()
 
@@ -177,7 +170,7 @@ def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Locati
                             not (loc.item.classification & ItemClassification.skip_balancing and
                                  not loc.item.classification & ItemClassification.useful)]
 
-    converted_strings = {}
+    card_strings = []
 
     for card_number in range(1, 7):
         # If the card number is odd, generate a hint for one of this world's Items.
@@ -205,8 +198,8 @@ def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Locati
             else:
                 chosen_loc_group_name = world.random.choice(selectable_loc_groups)
 
-            # Create the hint text.
-            card_hint = f"{own_hint_item.name} is in {other_player_name}{chosen_loc_group_name}.\t"
+            # Create the hint text and add it to the end of the card strings list.
+            card_strings.append(f"{own_hint_item.name} is in {other_player_name}{chosen_loc_group_name}.\t")
 
         # Otherwise, meaning the card number is even, generate a hint for a progression item of a different world.
         else:
@@ -214,7 +207,7 @@ def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Locati
             # this world end up with less than three progression items in it anyway!? There's 200+ Locations, for crying
             # out loud!), make the card hint a message telling the player how barren their world is.
             if not selectable_prog_locs:
-                card_hint = "This world is very devoid of progression..."
+                card_strings.append("This world is very devoid of progression...")
             # Otherwise, select a Location and continue on as normal.
             else:
                 own_hint_loc = selectable_prog_locs.pop(world.random.randrange(len(selectable_prog_locs)))
@@ -232,70 +225,62 @@ def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Locati
                 own_loc_group = [loc_group for loc_group in world.location_name_groups if own_hint_loc.name in
                                 world.location_name_groups[loc_group] and loc_group != "Everywhere"][0]
 
-                # Create the hint text.
-                card_hint = f"{own_loc_group} contains {other_player_name}{own_hint_loc.item.name}.\t"
+                # Create the hint text and add it to the end of the card strings list.
+                card_strings.append(f"{own_loc_group} contains {other_player_name}{own_hint_loc.item.name}.\t")
 
         # Convert the hint to HoD's text format and map it to its ROM address.
-        converted_strings[AP_HINT_TEXT_START + ((card_number - 1) * 0x100)] = bytes(cvhodis_string_to_bytearray(
-            card_hint, len_limit=LEN_LIMIT_DESCRIPTION, max_lines=DESCRIPTION_DISPLAY_LINES, textbox_advance=False))
+        #converted_strings[AP_HINT_TEXT_START + ((card_number - 1) * 0x100)] = bytes(cvhodis_string_to_bytearray(
+        #    card_hint, len_limit=LEN_LIMIT_DESCRIPTION, max_lines=DESCRIPTION_DISPLAY_LINES, textbox_advance=False))
 
-    return converted_strings
+    return card_strings
 
 
-def get_start_inventory_data(world: "CVHoDisWorld") -> dict[int, bytes]:
-    """Calculate and return the starting inventory arrays. Different items go into different arrays, so they all have
+def get_start_inventory_data(precollected_items: list[Item]) -> dict[str, dict[int, str] | int]:
+    """Calculate and return the starting inventory values. Not every Item goes into a menu inventory, so they all have
     to be handled accordingly."""
-    start_inventory_data = {}
+    start_inventory_data = {"inv arrays": {inv_id: bytearray(CVHODIS_INVENTORIES[inv_id].length)
+                                           for inv_id in CVHODIS_INVENTORIES},
+                            "spellbook": 0,
+                            "extra life": 0,
+                            "extra magic": 0,  # MP is not currently supported, but it's here just in case!
+                            "extra hearts": 0}
 
-    inventory_arrays = {
-        inv_id: bytearray(CVHODIS_INVENTORIES[inv_id].length) for inv_id in CVHODIS_INVENTORIES
-    }
-    extra_life = 0
-    extra_hearts = 0
-    starting_spellbook = 0
-
-    for item in world.multiworld.precollected_items[world.player]:
+    # Loop over every Item in our pre-collected Items list.
+    for item in precollected_items:
 
         type_byte = (item.code >> 8) & 0xFF
         index_byte = item.code & 0xFF
 
         # If the Item's type byte is a known type of item with an inventory array, handle it here.
-        if type_byte in inventory_arrays:
+        if type_byte in start_inventory_data["inv arrays"]:
             # If the inventory array is a bitfield, set the bit for that Item in that inventory array.
             if CVHODIS_INVENTORIES[type_byte].is_bitfield:
-                inventory_arrays[type_byte][index_byte // 8] |= 1 << (index_byte % 8)
-            # Othrwise, meaning it's an array of counts, increment the count at that index if said count is not already
+                start_inventory_data["inv arrays"][type_byte][index_byte // 8] |= 1 << (index_byte % 8)
+            # Otherwise, meaning it's an array of counts, increment the count at that index if said count is not already
             # the max inventory count.
             else:
-                if inventory_arrays[type_byte][index_byte] < MAX_ITEMS_VALUE:
-                    inventory_arrays[type_byte][index_byte] += 1
+                if start_inventory_data["inv arrays"][type_byte][index_byte] < MAX_ITEMS_VALUE:
+                    start_inventory_data["inv arrays"][type_byte][index_byte] += 1
         # If it doesn't have an inventory array, then it must be a Max Up. In which case, handle it accordingly here.
         elif item.name == item_names.max_life:
-            if extra_life + 5 < MAX_STAT_VALUE:
-                extra_life += MAX_UP_INCREMENT_VALUE
+            if start_inventory_data["extra life"] + MAX_UP_INCREMENT_VALUE < MAX_STAT_VALUE:
+                start_inventory_data["extra life"] += MAX_UP_INCREMENT_VALUE
             else:
-                extra_life = MAX_STAT_VALUE
+                start_inventory_data["extra life"] = MAX_STAT_VALUE
         else:
-            if extra_hearts + 5 < MAX_STAT_VALUE:
-                extra_hearts += MAX_UP_INCREMENT_VALUE
+            if start_inventory_data["extra hearts"] + MAX_UP_INCREMENT_VALUE < MAX_STAT_VALUE:
+                start_inventory_data["extra hearts"] += MAX_UP_INCREMENT_VALUE
             else:
-                extra_life = MAX_STAT_VALUE
+                start_inventory_data["extra hearts"] = MAX_STAT_VALUE
 
-        # If the Item is a spell book, set the starting equipped spell book value to that book's index + 1.
+        # If the Item is a spellbook, set the starting equipped spellbook value to that book's index + 1.
         if type_byte == PickupTypes.SPELLBOOK:
-            starting_spellbook = index_byte + 1
+            start_inventory_data["spellbook"] = index_byte + 1
 
-    # Map the start inventory arrays to their ROM offsets.
-    for inv_id, inv_array in inventory_arrays.items():
-        start_inventory_data[CVHODIS_INVENTORIES[inv_id].start_inventory_start_addr] = bytes(inv_array)
-
-    # Map the extra starting stats to their offsets as well.
-    start_inventory_data[START_INVENTORY_MAX_START] = int.to_bytes(extra_life, 2, "little")
-    # MP is not currently supported, but it's here just in case.
-    start_inventory_data[START_INVENTORY_MAX_START + 2] = int.to_bytes(0x0000, 2, "little")
-    start_inventory_data[START_INVENTORY_MAX_START + 4] = int.to_bytes(extra_hearts, 2, "little")
-
-    # Map the starting spell book value to where it should be as well.
-    start_inventory_data[START_INVENTORY_BOOK_START + 1] = int.to_bytes(starting_spellbook, 1, "little")
+    # Decode every inventory bytearray into a string so it will be JSON serializable.
+    start_array_strings = {}
+    for array_num, inv_array in start_inventory_data["inv arrays"].items():
+        start_array_strings[array_num] = inv_array.decode("utf-8")
+    start_inventory_data["inv arrays"] = start_array_strings
 
     return start_inventory_data

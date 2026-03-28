@@ -2,7 +2,8 @@ from enum import IntEnum
 from BaseClasses import Item, ItemClassification
 from .data import item_names
 from .data.enums import PickupTypes
-from .locations import BASE_ID, CVHODIS_LOCATIONS_INFO
+from .data.misc_names import GAME_NAME
+from .locations import CVHODIS_LOCATIONS_INFO
 
 from typing import TYPE_CHECKING, NamedTuple
 from collections import Counter
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
     from . import CVHoDisWorld
 
 class CVHoDisItem(Item):
-    game: str = "Castlevania - Harmony of Dissonance"
+    game: str = GAME_NAME
 
 
 class CVHoDisItemData(NamedTuple):
@@ -212,56 +213,57 @@ SPELLBOOKS: dict[str, CVHoDisItemData] = {
 RELICS: dict[str, CVHoDisItemData] = {
     item_names.relic_tail:    CVHoDisItemData(0x00, ItemClassification.progression | ItemClassification.useful),
     item_names.relic_feather: CVHoDisItemData(0x01, ItemClassification.progression | ItemClassification.useful),
-    item_names.relic_wing:    CVHoDisItemData(0x02, ItemClassification.progression | ItemClassification.useful),
+    item_names.relic_wing:    CVHoDisItemData(0x02, ItemClassification.progression_skip_balancing |
+                                              ItemClassification.useful),
     item_names.relic_orb:     CVHoDisItemData(0x03, ItemClassification.useful),
     item_names.relic_journal: CVHoDisItemData(0x04, ItemClassification.useful),
     item_names.relic_tome:    CVHoDisItemData(0x05, ItemClassification.useful),
     item_names.relic_v_eye:   CVHoDisItemData(0x06, ItemClassification.progression_skip_balancing |
-                                         ItemClassification.useful),
+                                              ItemClassification.useful),
     item_names.relic_v_heart: CVHoDisItemData(0x07, ItemClassification.progression_skip_balancing |
-                                         ItemClassification.useful),
+                                              ItemClassification.useful),
     item_names.relic_v_rib:   CVHoDisItemData(0x08, ItemClassification.progression_skip_balancing |
-                                         ItemClassification.useful),
+                                              ItemClassification.useful),
     item_names.relic_v_nail:  CVHoDisItemData(0x09, ItemClassification.progression_skip_balancing |
-                                         ItemClassification.useful),
+                                              ItemClassification.useful),
     item_names.relic_v_fang:  CVHoDisItemData(0x0A, ItemClassification.progression_skip_balancing |
-                                         ItemClassification.useful),
+                                              ItemClassification.useful),
     item_names.relic_v_ring:  CVHoDisItemData(0x0B, ItemClassification.progression_skip_balancing |
-                                         ItemClassification.useful),
+                                              ItemClassification.useful),
 }
 
 FURNITURE: dict[str, CVHoDisItemData] = {
-    item_names.furn_chan:      CVHoDisItemData(0x00, ItemClassification.progression_skip_balancing),
-    item_names.furn_clock:     CVHoDisItemData(0x01, ItemClassification.progression_skip_balancing),
-    item_names.furn_shelf:     CVHoDisItemData(0x02, ItemClassification.progression_skip_balancing),
-    item_names.furn_radio:     CVHoDisItemData(0x03, ItemClassification.progression_skip_balancing),
-    item_names.furn_dishes:    CVHoDisItemData(0x04, ItemClassification.progression_skip_balancing),
-    item_names.furn_table_a:   CVHoDisItemData(0x05, ItemClassification.progression_skip_balancing),
-    item_names.furn_chair:     CVHoDisItemData(0x06, ItemClassification.progression_skip_balancing),
-    item_names.furn_chair_r:   CVHoDisItemData(0x07, ItemClassification.progression_skip_balancing),
-    item_names.furn_curtain:   CVHoDisItemData(0x08, ItemClassification.progression_skip_balancing),
-    item_names.furn_urn_a:     CVHoDisItemData(0x09, ItemClassification.progression_skip_balancing),
-    item_names.furn_urn_w:     CVHoDisItemData(0x0A, ItemClassification.progression_skip_balancing),
-    item_names.furn_vase:      CVHoDisItemData(0x0B, ItemClassification.progression_skip_balancing),
-    item_names.furn_table_s:   CVHoDisItemData(0x0C, ItemClassification.progression_skip_balancing),
-    item_names.furn_teacup:    CVHoDisItemData(0x0D, ItemClassification.progression_skip_balancing),
-    item_names.furn_teapot:    CVHoDisItemData(0x0E, ItemClassification.progression_skip_balancing),
-    item_names.furn_glass:     CVHoDisItemData(0x0F, ItemClassification.progression_skip_balancing),
-    item_names.furn_statue_h:  CVHoDisItemData(0x10, ItemClassification.progression_skip_balancing),
-    item_names.furn_statue_sm: CVHoDisItemData(0x11, ItemClassification.progression_skip_balancing),
-    item_names.furn_statue_sa: CVHoDisItemData(0x12, ItemClassification.progression_skip_balancing),
-    item_names.furn_raccoon:   CVHoDisItemData(0x13, ItemClassification.progression_skip_balancing),
-    item_names.furn_cat:       CVHoDisItemData(0x14, ItemClassification.progression_skip_balancing),
-    item_names.furn_phono:     CVHoDisItemData(0x15, ItemClassification.progression_skip_balancing),
-    item_names.furn_stag:      CVHoDisItemData(0x16, ItemClassification.progression_skip_balancing),
-    item_names.furn_candle_h:  CVHoDisItemData(0x17, ItemClassification.progression_skip_balancing),
-    item_names.furn_candle_s:  CVHoDisItemData(0x18, ItemClassification.progression_skip_balancing),
-    item_names.furn_trinket_s: CVHoDisItemData(0x19, ItemClassification.progression_skip_balancing),
-    item_names.furn_trinket_g: CVHoDisItemData(0x1A, ItemClassification.progression_skip_balancing),
-    item_names.furn_mirror:    CVHoDisItemData(0x1B, ItemClassification.progression_skip_balancing),
-    item_names.furn_drawing:   CVHoDisItemData(0x1C, ItemClassification.progression_skip_balancing),
-    item_names.furn_bed:       CVHoDisItemData(0x1D, ItemClassification.progression_skip_balancing),
-    item_names.furn_closet:    CVHoDisItemData(0x1E, ItemClassification.progression_skip_balancing),
+    item_names.furn_chan:      CVHoDisItemData(0x00, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_clock:     CVHoDisItemData(0x01, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_shelf:     CVHoDisItemData(0x02, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_radio:     CVHoDisItemData(0x03, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_dishes:    CVHoDisItemData(0x04, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_table_a:   CVHoDisItemData(0x05, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_chair:     CVHoDisItemData(0x06, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_chair_r:   CVHoDisItemData(0x07, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_curtain:   CVHoDisItemData(0x08, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_urn_a:     CVHoDisItemData(0x09, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_urn_w:     CVHoDisItemData(0x0A, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_vase:      CVHoDisItemData(0x0B, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_table_s:   CVHoDisItemData(0x0C, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_teacup:    CVHoDisItemData(0x0D, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_teapot:    CVHoDisItemData(0x0E, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_glass:     CVHoDisItemData(0x0F, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_statue_h:  CVHoDisItemData(0x10, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_statue_sm: CVHoDisItemData(0x11, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_statue_sa: CVHoDisItemData(0x12, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_raccoon:   CVHoDisItemData(0x13, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_cat:       CVHoDisItemData(0x14, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_phono:     CVHoDisItemData(0x15, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_stag:      CVHoDisItemData(0x16, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_candle_h:  CVHoDisItemData(0x17, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_candle_s:  CVHoDisItemData(0x18, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_trinket_s: CVHoDisItemData(0x19, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_trinket_g: CVHoDisItemData(0x1A, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_mirror:    CVHoDisItemData(0x1B, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_drawing:   CVHoDisItemData(0x1C, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_bed:       CVHoDisItemData(0x1D, ItemClassification.progression_deprioritized_skip_balancing),
+    item_names.furn_closet:    CVHoDisItemData(0x1E, ItemClassification.progression_deprioritized_skip_balancing),
 }
 
 MAX_UPS: dict[str, CVHoDisItemData] = {
@@ -282,8 +284,8 @@ PICKUP_TYPE_MAPPINGS = {
 ALL_CVHODIS_ITEMS: dict[str, CVHoDisItemData] = {item: PICKUP_TYPE_MAPPINGS[pickup_type][item] for pickup_type in
                                                  PICKUP_TYPE_MAPPINGS for item in PICKUP_TYPE_MAPPINGS[pickup_type]}
 
-FILLER_ITEM_NAMES = [item_names.use_potion, item_names.use_potion_h, item_names.use_prism, item_names.use_a_venom,
-                     item_names.use_uncurse, item_names.use_drumstick, item_names.use_turkey]
+POSSIBLE_EXTRA_FILLER = [item_names.use_potion, item_names.use_potion_h, item_names.use_prism, item_names.use_a_venom,
+                         item_names.use_uncurse, item_names.use_drumstick, item_names.use_turkey]
 
 
 def get_pickup_type(item_name: str) -> int | None:
@@ -296,54 +298,47 @@ def get_pickup_type(item_name: str) -> int | None:
     return None
 
 def get_item_names_to_ids() -> dict[str, int]:
-    return {item: PICKUP_TYPE_MAPPINGS[pickup_type][item].pickup_index + (pickup_type << 8) + BASE_ID
+    return {item: PICKUP_TYPE_MAPPINGS[pickup_type][item].pickup_index + (pickup_type << 8)
             for pickup_type in PICKUP_TYPE_MAPPINGS for item in PICKUP_TYPE_MAPPINGS[pickup_type]}
 
 
-def get_item_counts(world: "CVHoDisWorld") -> dict[ItemClassification, dict[str, int]]:
+def get_item_pool(world: "CVHoDisWorld") -> list[CVHoDisItem]:
+    """Builds the player's entire Item pool based on a number of factors, including what Locations are created, chosen
+    Options, etc."""
 
     active_locations = world.multiworld.get_unfilled_locations(world.player)
 
-    item_counts: dict[ItemClassification, Counter[str, int]] = {
-        ItemClassification.progression: Counter(),
-        ItemClassification.progression_skip_balancing: Counter(),
-        ItemClassification.useful | ItemClassification.progression: Counter(),
-        ItemClassification.useful | ItemClassification.progression_skip_balancing: Counter(),
-        ItemClassification.useful: Counter(),
-        ItemClassification.filler: Counter(),
-    }
-    total_items = 0
+    all_items = []
 
-    # Get from each Location its vanilla Item and add it to the default Item counts.
+    # Get from each Location its vanilla Item and add it to the item lists.
     for loc in active_locations:
         if loc.address is None:
             continue
 
-        item_to_add = CVHODIS_LOCATIONS_INFO[loc.name].item
+        item_name = CVHODIS_LOCATIONS_INFO[loc.name].item
+        item_class = ALL_CVHODIS_ITEMS[item_name].default_classification
 
         # If the Item is a piece of furniture and no furniture amount is required for goal completion at all, submit
         # it as Filler instead of Progression Skip Balancing.
-        if item_to_add in FURNITURE and not world.furniture_amount_required:
+        if item_name in FURNITURE and not world.furniture_amount_required:
             item_class = ItemClassification.filler
         # If the Item is a spell book, and Spellbound Boss Logic is not disabled, submit it as Progression + Useful
         # instead of just Useful.
-        elif item_to_add in SPELLBOOKS and world.options.spellbound_boss_logic:
+        elif item_name in SPELLBOOKS and world.options.spellbound_boss_logic:
             item_class = ItemClassification.useful | ItemClassification.progression
         # If the Item is a Vlad Relic and neither the Worst nor Best Ending is required, submit it as just Useful
         # instead of Useful + Progression Skip Balancing.
-        elif "Vlad" in item_to_add and not world.options.worst_ending_required and not \
+        elif "Vlad" in item_name and not world.options.worst_ending_required and not \
                 world.options.best_ending_required:
             item_class = ItemClassification.useful
         # If the Item is JB's Bracelet and the Castle Warp Condition is not Bracelet, submit it as Progression Skip
         # Balancing instead of just Progression.
-        elif item_to_add == item_names.equip_bracelet_jb and \
+        elif item_name == item_names.equip_bracelet_jb and \
                 world.options.castle_warp_condition != CastleWarpCondition.option_bracelet:
             item_class = ItemClassification.progression_skip_balancing
-        # Otherwise, submit the Item as its specified default classification.
-        else:
-            item_class = ALL_CVHODIS_ITEMS[item_to_add].default_classification
 
-        item_counts[item_class][item_to_add] += 1
-        total_items += 1
+        # Create the Item object.
+        all_items.append(world.create_item(item_name, item_class))
 
-    return item_counts
+    # Return the final complete list of created Item objects.
+    return all_items
