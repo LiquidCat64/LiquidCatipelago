@@ -20,8 +20,7 @@ from .locations import CVLOD_LOCATIONS_INFO, THREE_HIT_BREAKABLES_INFO, HIGHER_S
 from .patcher import CVLoDRomPatcher, CVLoDSceneTextEntry, CVLoDNormalActorEntry, CVLoDSpawnEntranceEntry, \
     SCENE_OVERLAY_RDRAM_START
 from .stages import CVLOD_STAGE_INFO
-from .cvlod_text import cvlod_string_to_bytearray, cvlod_strings_to_pool, cvlod_text_wrap, \
-    LEN_LIMIT_MAP_TEXT, LEN_LIMIT_MULTIWORLD_TEXT
+from .cvlod_text import cvlod_string_to_bytearray, cvlod_strings_to_pool, cvlod_text_wrap, LEN_LIMIT_MULTIWORLD_TEXT
 # from .aesthetics import renon_item_dialogue
 from .options import VincentFightCondition, RenonFightCondition, PostBehemothBoss, RoomOfClocksBoss, \
     DuelTowerFinalBoss, CastleKeepEndingSequence, DraculasCondition, InvisibleItems, PantherDash, VillaBranchingPaths, \
@@ -396,6 +395,20 @@ class CVLoDPatchExtensions(APPatchExtension):
                                         0x24040001])  # ADDIU A0, R0, 0x0001
         patcher.write_int32s(0xFFCB40, patches.load_clearer)
 
+        # Extend the text palette table.
+        patcher.write_int16s(0xFFD600, patches.extended_text_palettes)
+        # Make the textbox set color function refer to the extended table when given a palette ID of 0xB or higher.
+        patcher.write_int32(0x809EC, 0x0C0FF540)  # JAL 0x803FD500
+        patcher.write_int32(0x81410, 0x0C0FF540)  # JAL 0x803FD500
+        patcher.write_int32s(0xFFD500, patches.text_line_palette_extender)
+        # Remove the hardcoded check for a palette with an ID higher than 0xB when using the textbox set color function.
+        patcher.write_int32(0x84B4C, 0x34010001)  # ORI	AT, R0, 0x0001
+        # Allow the "start colored text" character (0xA200) to change the alternate text palettes to any text color
+        # available in the game, not just yellow.
+        patcher.write_int32(0x81BB0, 0x080FF550)  # J   0x803FD540
+        patcher.write_int32s(0xFFD540, patches.text_color_extended_changer)
+
+
         # NPC items rework
         patcher.write_int32s(0xFFC6E8, patches.npc_item_rework)
         # Change all the NPC item gives to run through the new routine, and write all their item values.
@@ -452,13 +465,16 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Disable the 3HBs checking and setting flags when breaking them and enable their individual items checking and
         # setting flags instead.
         patcher.write_int16(0xE3488, 0x1000)
-        patcher.write_int32(0xE3800, 0x24050000)  # ADDIU	A1, R0, 0x0000
+        patcher.write_int32(0xE3800, 0x24050000)  # ADDIU  A1, R0, 0x0000
         patcher.write_byte(0xE39EB, 0x00)
-        patcher.write_int32(0xE3A58, 0x0C0FF0D4),  # JAL   0x803FC350
+        patcher.write_int32(0xE3A58, 0x0C0FF0D4), # JAL    0x803FC350
         patcher.write_int32s(0xFFC350, patches.three_hit_item_flags_setter)
         # Villa foyer chandelier-specific functions (yeah, KCEK really made special handling just for this one)
+        patcher.write_int32(0xE2A9C, 0x34020000)  # ORI	   V0, R0, 0x0000
+        patcher.write_int32(0xE2C10, 0x34020000)  # ORI	   V0, R0, 0x0000
+        patcher.write_int32(0xE2C60, 0x34020000)  # ORI	   V0, R0, 0x0000
         patcher.write_int32(0xE2F4C, 0x00000000)  # NOP
-        patcher.write_int32(0xE3114, 0x0C0FF0DE),  # JAL   0x803FC378
+        patcher.write_int32(0xE3114, 0x0C0FF0DE), # JAL    0x803FC378
         patcher.write_int32s(0xFFC378, patches.chandelier_item_flags_setter)
 
         # Write the specified window colors
@@ -962,33 +978,35 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.VILLA_MAZE].doors[16]["door_flags"] |= DoorFlags.EXTRA_CHECK_FUNC_ENABLED
         patcher.scenes[Scenes.VILLA_MAZE].doors[16]["extra_condition_ptr"] = 0x802E4B9C
 
-        # Lock the Cornell maze front/rear dividing doors with the Rose Garden Key and update their text.
-        # Keep the doors un-openable on the rear side.
+        # Lock the Cornell maze front/rear dividing doors with the Rose Garden Key, remove their "locked from back side"
+        # checks, and update their text if the Villa State is Hybrid.
+        if slot_patch_info["options"]["villa_state"] == VillaState.option_hybrid:
+            patcher.scenes[Scenes.VILLA_FOYER].scene_text[10]["text"] = ("A door marked:\n"
+                                                                         " \"Rose Door\"\n"
+                                                                         "\"One key unlocks us all.\"\n"
+                                                                         "It is locked...🅰0/")
+            patcher.scenes[Scenes.VILLA_FOYER].scene_text[11]["text"] = ("A click sounds from all\n"
+                                                                         "Rose Garden Key doors.🅰0/")
+            patcher.scenes[Scenes.VILLA_MAZE].doors[23]["door_flags"] |= DoorFlags.ITEM_COST_IF_FLAG_UNSET
+            patcher.scenes[Scenes.VILLA_MAZE].doors[23]["door_flags"] ^= DoorFlags.LOCK_FROM_BACK_SIDE
+            patcher.scenes[Scenes.VILLA_MAZE].doors[23]["item_id"] = Items.ROSE_GARDEN_KEY
+            patcher.scenes[Scenes.VILLA_MAZE].doors[23]["flag_id"] = 0x293
+            patcher.scenes[Scenes.VILLA_MAZE].doors[23]["flag_locked_text_id"] = 24
+            patcher.scenes[Scenes.VILLA_MAZE].doors[23]["unlocked_text_id"] = 25
+            patcher.scenes[Scenes.VILLA_MAZE].doors[24]["door_flags"] |= DoorFlags.ITEM_COST_IF_FLAG_UNSET
+            patcher.scenes[Scenes.VILLA_MAZE].doors[24]["item_id"] = Items.ROSE_GARDEN_KEY
+            patcher.scenes[Scenes.VILLA_MAZE].doors[24]["flag_id"] = 0x293
+            patcher.scenes[Scenes.VILLA_MAZE].doors[24]["flag_locked_text_id"] = 24
+            patcher.scenes[Scenes.VILLA_MAZE].doors[24]["unlocked_text_id"] = 25
+        # Append these text entries regardless, for better organization.
         patcher.scenes[Scenes.VILLA_MAZE].scene_text.append(
             CVLoDSceneTextEntry(text="A sign saying:\n"
                                      " \"Rose Door\"\n"
-                                     "\"Unlock from the front side.\"\n"
-                                     "\"One key unlocks us all.\"🅰0/\n"
+                                     "\"One key unlocks us all.\"\n"
                                      "It is locked...🅰0/"))
         patcher.scenes[Scenes.VILLA_MAZE].scene_text.append(
             CVLoDSceneTextEntry(text="A click sounds from all\n"
                                      "Rose Garden Key doors.🅰0/"))
-        patcher.scenes[Scenes.VILLA_FOYER].scene_text[10]["text"] = ("A door marked:\n"
-                                                                     " \"Rose Door\"\n"
-                                                                     "\"One key unlocks us all.\"\n"
-                                                                     "It is locked...🅰0/")
-        patcher.scenes[Scenes.VILLA_FOYER].scene_text[11]["text"] = ("A click sounds from all\n"
-                                                                     "Rose Garden Key doors.🅰0/")
-        patcher.scenes[Scenes.VILLA_MAZE].doors[23]["door_flags"] |= DoorFlags.ITEM_COST_IF_FLAG_UNSET
-        patcher.scenes[Scenes.VILLA_MAZE].doors[23]["item_id"] = Items.ROSE_GARDEN_KEY
-        patcher.scenes[Scenes.VILLA_MAZE].doors[23]["flag_id"] = 0x293
-        patcher.scenes[Scenes.VILLA_MAZE].doors[23]["flag_locked_text_id"] = 24
-        patcher.scenes[Scenes.VILLA_MAZE].doors[23]["unlocked_text_id"] = 25
-        patcher.scenes[Scenes.VILLA_MAZE].doors[24]["door_flags"] |= DoorFlags.ITEM_COST_IF_FLAG_UNSET
-        patcher.scenes[Scenes.VILLA_MAZE].doors[24]["item_id"] = Items.ROSE_GARDEN_KEY
-        patcher.scenes[Scenes.VILLA_MAZE].doors[24]["flag_id"] = 0x293
-        patcher.scenes[Scenes.VILLA_MAZE].doors[24]["flag_locked_text_id"] = 24
-        patcher.scenes[Scenes.VILLA_MAZE].doors[24]["unlocked_text_id"] = 25
 
         # Remove the checks for the "unlocked Garden Key gate" and "spoke to Mary once" flags to have child Henry spawn.
         patcher.scenes[Scenes.VILLA_MAZE].actor_lists["proxy"][65]["spawn_flags"] ^= ActorSpawnFlags.SPAWN_IF_FLAG_SET
@@ -1074,21 +1092,15 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Generate Mary's Item text here, if her Location is created.
         mary_item_text = ""
         if CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id in loc_text:
-            # If Mary has a progression Item, wrap the Item name string up in the "color text" character to color it.
-            mary_item_color = ""
-            if loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][2]:
-                mary_item_color = "✨"
-
             # If it's a local Item she has, have her say she will give it to you.
             if not loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][1]:
-                mary_item_text = (f"give you this {mary_item_color}"
-                                  f"{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0]}"
-                                  f"{mary_item_color}")
+                mary_item_text = (f"give you this "
+                                  f"✨{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][2]+1}/"
+                                  f"{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0]}✨0/")
             # Otherwise, have her say she will send it to [player].
             else:
-                mary_item_text = (f"send this {mary_item_color}"
-                                  f"{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0]}"
-                                  f"{mary_item_color} to "
+                mary_item_text = (f"send this ✨{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][2]}/"
+                                  f"{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0]}✨0/ to "
                                   f"{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][1]}")
 
 
@@ -2583,9 +2595,12 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Prevent the Vincent fight cutscene from setting the Bad Ending flag. We will be handling that our own way...
         patcher.write_int32(0x10A4F4, 0x00000000)
         # If the Vincent Fight Condition is Always, make the Vincent fight intro cutscene trigger universal to everyone
-        # and remove the "16 days passed?" check in its cutscene trigger settings.
+        # and remove the "16 days passed?" check in its cutscene trigger settings (because this check also includes the
+        # check to see if we're in the escape sequence, we'll need to put a spawn check for that on the actor as well).
         if slot_patch_info["options"]["vincent_fight_condition"] == VincentFightCondition.option_always:
-            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][2]["spawn_flags"] = 0
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][2]["spawn_flags"] = \
+                ActorSpawnFlags.SPAWN_IF_FLAG_CLEARED
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].actor_lists["init"][2]["flag_id"] = 0x17D  # Escape flag
             patcher.write_int16(0x1181A4,  0x0000)
         # If the Vincent Fight Condition is Never, remove the cutscene trigger entirely.
         elif slot_patch_info["options"]["vincent_fight_condition"] == VincentFightCondition.option_never:
@@ -3473,11 +3488,9 @@ class CVLoDPatchExtensions(APPatchExtension):
             if not text[1]:
                 continue
 
-            # Build the final string, properly wrapped and all.
-            multiworld_text = cvlod_text_wrap(f"{text[0]}\nfor {text[1]}", textbox_len_limit=LEN_LIMIT_MULTIWORLD_TEXT)
-            # If the Item is Progression, wrap the whole string up in the "color text" character to indicate such.
-            if text[2]:
-                multiworld_text = "✨" + multiworld_text + "✨"
+            # Build the final string, properly wrapped and all, and with the Item name the color it should be.
+            multiworld_text = cvlod_text_wrap(f"✨{text[2]}/{text[0]}✨0/\nfor {text[1]}",
+                                              textbox_len_limit=LEN_LIMIT_MULTIWORLD_TEXT)
             # Count the number of newlines. This will be written into our text buffer header.
             num_lines = multiworld_text.count("\n") + 1
 

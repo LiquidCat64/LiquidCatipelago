@@ -1,8 +1,10 @@
 from typing import TYPE_CHECKING
+
+from .aesthetics import get_item_text_color
 from .cvlod_text import cvlod_text_wrap, cvlod_string_to_bytearray, LEN_LIMIT_MULTIWORLD_TEXT
 from .data.misc_names import GAME_NAME
 from .rom import ARCHIPELAGO_CLIENT_COMPAT_VER, ARCHIPELAGO_IDENTIFIER_START
-from .data.enums import Scenes, Players, Items, StageNames
+from .data.enums import Scenes, Players, Items, StageNames, TextColors
 
 from BaseClasses import ItemClassification
 from NetUtils import ClientStatus
@@ -106,10 +108,10 @@ class CastlevaniaLoDClient(BizHawkClient):
             else:
                 cause = f"{args['data']['source']} killed you without a word!"
 
-            # Highlight the player that killed us in the game's yellow text.
+            # Highlight the player that killed us in magenta text.
             if args['data']['source'] in cause:
                 words = cause.split(args['data']['source'], 1)
-                cause = words[0] + "✨" + args['data']['source'] + "✨" + words[1]
+                cause = words[0] + f"✨{TextColors.MAGENTA}/" + args['data']['source'] + "✨0/" + words[1]
 
             self.death_causes.append(cause)
 
@@ -246,14 +248,12 @@ class CastlevaniaLoDClient(BizHawkClient):
             elif num_received_items < len(ctx.items_received) and not self.currently_dead:
                 next_item = ctx.items_received[num_received_items]
                 # If the Item was sent by a different player, generate a custom string saying who the Item was from.
+                # The Item name should be colored according to its classification.
                 if next_item.player != ctx.slot:
-                    received_text = cvlod_text_wrap(f"{ctx.item_names.lookup_in_slot(next_item.item)}\n"
+                    received_text = cvlod_text_wrap(f"✨{get_item_text_color(next_item.flags)}/"
+                                                    f"{ctx.item_names.lookup_in_slot(next_item.item)}✨0/\n"
                                                     f"from {ctx.player_names[next_item.player]}",
                                                     textbox_len_limit=LEN_LIMIT_MULTIWORLD_TEXT)
-                    # If the Item is Progression, wrap the whole string up in the "color text" character to indicate
-                    # such.
-                    if next_item.flags & ItemClassification.progression:
-                        received_text = "✨" + received_text + "✨"
                     # Count the number of newlines. This will be written into our text buffer header.
                     num_lines = received_text.count("\n") + 1
                 # Otherwise, if it was sent by the same player, we'll inject a blank string with a zero line count so

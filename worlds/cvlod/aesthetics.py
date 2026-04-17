@@ -1,6 +1,6 @@
 from BaseClasses import ItemClassification, Location, Item
 from .data import item_names, reg_names, ent_names
-from .data.enums import NIFiles, Pickups, StageNames
+from .data.enums import NIFiles, Pickups, StageNames, TextColors
 from .data.misc_names import GAME_NAME
 from .options import CVLoDOptions, BackgroundMusic, Countdown, IceTrapAppearance, InvisibleItems, \
     CastleCenterBranchingPaths, VillaBranchingPaths
@@ -35,25 +35,6 @@ CV64_EXCLUSIVE_ITEMS: dict[str, int] = {
 
 FOUNTAIN_LETTERS_TO_BYTES = {"O": b"\x01", "M": b"\x02", "H": b"\x03", "V": b"\x04"}
 CHARNEL_COFFIN_ACTORS_START = 0x777C94
-
-# TODO: Find and lower all the problematic freestanding sub-weapon spots.
-rom_axe_cross_lower_values = {
-    # 0x30: [0x83A60A, 0x71],  # Villa hallway
-    # 0x27: [0x83A617, 0x26],
-    # 0x2C: [0x83A624, 0x6E],
-
-    # 0x16C: [0x850FE6, 0x07],  # Villa maze
-
-    # 0x10A: [0x8C44D3, 0x08],  # CC factory floor
-    # 0x109: [0x8C44E1, 0x08],
-
-    # 0x74: [0x8DF77C, 0x07],  # CC invention area
-    # 0x60: [0x90FD37, 0x43],
-    # 0x55: [0xBFCC2B, 0x43],
-    # 0x65: [0x90FBA1, 0x51],
-    # 0x64: [0x90FBAD, 0x50],
-    # 0x61: [0x90FE56, 0x43]
-}
 
 rom_looping_music_fade_ins = {
     0x10: None,
@@ -466,8 +447,8 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
     return location_values
 
 
-def get_location_text(world: "CVLoDWorld", active_locations: Iterable[Location]) -> dict[int, tuple[str, str, bool]]:
-    """Gets the patch data for all in-game text specific to every created Location, including the Item's name, the Item's player's name, and whether it's progression.
+def get_location_text(world: "CVLoDWorld", active_locations: Iterable[Location]) -> dict[int, tuple[str, str, int]]:
+    """Gets the patch data for all in-game text specific to every created Location, including the Item's name, the Item's player's name, and a value for what color the name should be in-game.
     The data will be returned mapped to their respective Location IDs."""
     location_text = {}
 
@@ -493,8 +474,11 @@ def get_location_text(world: "CVLoDWorld", active_locations: Iterable[Location])
             if len(player_name) > 16:
                 player_name = player_name[0:16]
 
+        # Determine what color the Item's text should be.
+        item_text_color = get_item_text_color(loc.item.classification)
+
         # The location text data format should be (item name string, player name string, progression boolean)
-        location_text[loc.address] = (item_name, player_name, loc.advancement)
+        location_text[loc.address] = (item_name, player_name, item_text_color)
 
     # Return the final dict of Location text.
     return location_text
@@ -647,3 +631,22 @@ def get_start_inventory_data(player: int, options: CVLoDOptions, precollected_it
 
     # Return the final start inventory data.
     return start_inventory_data
+
+
+def get_item_text_color(classification: int) -> int:
+    """Given an item classification, returns an in-game color index value that is associated with that classification + 1 for the purposes of coloring item names in-game."""
+    # Progression + Useful
+    if ItemClassification.progression & classification and ItemClassification.useful & classification:
+        return TextColors.YELLOW + 1
+    # Progression
+    elif ItemClassification.progression & classification:
+        return TextColors.PLUM + 1
+    # Useful
+    elif ItemClassification.useful & classification:
+        return TextColors.SLATE_BLUE + 1
+    # Trap
+    elif ItemClassification.trap & classification:
+        return TextColors.SALMON + 1
+    # Filler
+    else:
+        return TextColors.CYAN + 1

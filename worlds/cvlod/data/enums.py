@@ -11,6 +11,26 @@ class Costumes(IntEnum):
     NORMAL = 0
     ALTERNATE = 1
 
+class TextColors(IntEnum):
+    WHITE = 0
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+    LIGHT_YELLOW = 4
+    LIGHT_BROWN = 5
+    MID_BROWN = 6
+    DARK_BROWN = 7
+    WHITE_NO_OUTLINE = 8
+    RED_NO_OUTLINE = 9
+    WHITE_DUPE = 10
+    # Start of the randomizer's extended text colors.
+    YELLOW = 11
+    CYAN = 12
+    PLUM = 13
+    SLATE_BLUE = 14
+    SALMON = 15
+    MAGENTA = 16
+
 class StageIDs(IntEnum):
     FOGGY = 0
     FOREST = 1
@@ -172,11 +192,12 @@ class ActorSpawnFlags(IntFlag):
     ALL_DIFFICULTIES =            EASY | NORMAL | HARD
 
 class PickupFlags(IntFlag):
-    EXPIRE =       0x0001
-    NO_SHINE =     0x0400
-    INVISIBLE =    0x0800
-    GRAVITY =      0x4000
-    HIDDEN = NO_SHINE | INVISIBLE
+    EXPIRE =       0x0001  # Auto-despawns it after enough seconds have passed.
+    NO_SHINE =     0x0400  # Removes the pink shine effect that appears randomly every few seconds.
+    INVISIBLE =    0x0800  # Makes it completely invisible.
+    GRAVITY =      0x4000  # Makes it fall to the ground upon spawning rather than stay suspended midair.
+    HIDDEN = NO_SHINE | INVISIBLE  # Setting the No Shine flag alongside the Invisible flag doesn't seem to be
+                                   # necessary, but it's what the game normally does, so...
 
 class DoorFlags(IntFlag):
     LOCK_ALWAYS =              0x0001  # Can be unlocked if it has a disregard flag set on it and its event flag is set.
@@ -186,6 +207,10 @@ class DoorFlags(IntFlag):
     LOCK_FROM_BACK_SIDE =      0x0080
     ITEM_COST_IF_FLAG_UNSET =  0x0100
     EXTRA_CHECK_FUNC_ENABLED = 0x0200  # NOTE: The extra check is NOT disregarded if the disregard flags are satisfied.
+                                       # The extra check must manually call the function that checks the standard
+                                       # conditions if we want those working alongside the extra check. This is why,
+                                       # say, the maze doors' "Child Henry nearby?" checks work during the escort even
+                                       # if they are unlocked during said escort.
     DISREGARD_IF_FLAG_SET =    0x1000
     DISREGARD_IF_FLAG_UNSET =  0x2000  # Only used on Foggy Lake's cargo door, which normally locks after opening it.
     UNLOCK_AND_SET_FLAG =      0x4000

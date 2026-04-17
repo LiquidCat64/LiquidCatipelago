@@ -19,15 +19,16 @@ CVLOD_TEXT_POOL_END_CHARACTER = b"\xB5\x00"
 
 CVLOD_COMMAND_CHARS = {"↗": 0xA0,  # Jump ahead to a corresponding 0xA1 character in the text pool. Arg = Which one.
                        "↘": 0xA1,  # Spot to jump to from a corresponding 0xA0 character. Arg = Which one.
-                       "✨":  0xA2,  # Toggle yellow text.
-                       "🅰": 0xA3,  # Make the player press A to advance past here. Arg = Instead auto-advance after
-                                    # that number of frames if not 0.
+                       "✨":  0xA2,  # Toggle alternate color text. Arg = Which color (ONLY in the randomizer; in
+                                     # vanilla, only the default white text has a usable alt color, and it's yellow).
+                       "🅰": 0xA3,  # Make the player press A to advance past here. Arg = Number of frames to
+                                   # auto-advance after if not 0 (disallows pressing A if so).
                        "⬘": 0xA7,  # Pin a string on the current text line, typically a speaking character's name.
                                    # Arg = Pin if 0, unpin if 1.
                        "▶": 0xAA,  # Start set of selectable options text. Arg = Default option ID.
                        "◆": 0xAB,  # Start of selectable option. Arg = option ID.
                        "◀": 0xAC,  # End set of selectable options text.
-                       "👉": 0xAD,  # Start player character-exclusive text. Arg = character ID.
+                       "👉": 0xAD,  # Start player character-exclusive text. Arg = character ID (0 = Reinhardt, etc.).
                        "👈": 0xAE,  # End player character-exclusive text.
                        "⏸": 0xAF,  # Pause text and insert newline. Arg = How many frames to wait on.
                        "\f": 0xB2,  # Clear the text currently in the textbox (without closing it).
@@ -36,7 +37,7 @@ CVLOD_COMMAND_CHARS = {"↗": 0xA0,  # Jump ahead to a corresponding 0xA1 charac
                        " ": 0xB7}  # Insert space.
 CVLOD_COMMAND_CHARS_INV = {value: key for key, value in CVLOD_COMMAND_CHARS.items()}
 
-ARG_CHARS = {"↗", "↘", "🅰", "⏸", "⬘", "▶", "◆", "👉"}
+ARG_CHARS = {"↗", "↘", "✨", "🅰", "⏸", "⬘", "▶", "◆", "👉"}
 ARG_END_CHAR = "/"
 
 NON_ASCII_MAPPINGS = {"◊": 0x5F, "「": 0x60, "」": 0x61, "。": 0x62, "•": 0x63, "—": 0x64, "▷": 0x65, "₀": 0x66,

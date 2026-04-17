@@ -21,6 +21,22 @@ remote_item_giver = [
     # functions accordingly to either reward items or kill the player.
 
     # Primary checks
+    # One of the pointers to the player object not 00000000?
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x3C0B801D,  # LUI	 T3, 0x801D
+    0x8D0AAC1C,  # LW	 T2, 0xAC1C (T0)
+    0x15400003,  # BNEZ  T2,     [forward 0x03]
+    0x00000000,  # NOP
+    0x03E00008,  # JR    RA
+    0x00000000,  # NOP
+    # Is the player in State 0x0B (picking up/going through door)? If they are, return and set the delay timer to 0x3C
+    # (60 frames, or 2 seconds) to be extra safe.
+    0x914A0009,  # LBU   T2, 0x0009 (T2)
+    0x3408000B,  # ORI   T0, R0, 0x000B
+    0x150A0003,  # BNE   T0, T2, [forward 0x03]
+    0x3548003C,  # ORI   T0, T2, 0x003C
+    0x03E00008,  # JR    RA
+    0xA168AA4E,  # SB    T0, 0xAA4E (T3)
     # In a demo?
     0x3C08801D,  # LUI   T0, 0x801D
     0x9109AA4A,  # LBU   T1, 0xAA4A (T0)
@@ -39,12 +55,7 @@ remote_item_giver = [
     # In a fade transition?
     0x910A8354,  # LBU	 T2, 0x8354 (T0)
     0x012A4821,  # ADDU	 T1, T1, T2
-    # One of the pointers to the player object not 00000000?
-    0x8D0AAC1C,  # LW	 T2, 0xAC1C (T0)
-    0x51400001,  # BEQZL T2,     [forward 0x01]
-    0x25290001,  # ADDIU T1, T1, 0x0001
     # Timer till next item at 00?
-    0x3C0B801D,  # LUI	 T3, 0x801D
     0x916AAA4E,  # LBU	 T2, 0xAA4E (T3)
     0x012A4821,  # ADDU  T1, T1, T2
     0x1120000C,  # BEQZ	 T1,     [forward 0x0C]
@@ -236,7 +247,7 @@ warp_menu_opener = [
     # Kill the Gameplay Menu Manager pointer and set the delay timer to ensure the remote item giver hack doesn't try
     # reading garbage data from the aftermentioned pointer when coming out of the warp menu. Then change the game state.
     0xAD00AC0C,  # SW    R0, 0xAC0C (T0)
-    0x3419003E,  # ORI   T9, R0, 0x003E
+    0x3419003C,  # ORI   T9, R0, 0x003C
     0xA119278E,  # SB    T9, 0x278E (T0)
     0x0C00014F,  # JAL   0x8000053C
     0x24040002,  # ADDIU A0, R0, 0x0002
@@ -694,7 +705,7 @@ special2_giver_lizard_edition = [
     0x3C09801D,  # LUI   T1, 0x801D
     # Set flag 0x2F7 (normally unused) so we know the lizards were properly exterminated.
     0x9128AABE,  # LBU   T0, 0xAABE (T1)
-    0x34080001,  # ORI   T0, R0, 0x0001
+    0x35080001,  # ORI   T0, T0, 0x0001
     0xA128AABE,  # SB    T0, 0xAABE (T1)
     # Give a Special2 and un-set the "can't warp" byte.
     0x24080005,  # ADDIU T0, R0, 0x0005
@@ -702,19 +713,6 @@ special2_giver_lizard_edition = [
     0xA128AA4C,  # SB    T0, 0xAA4C (T1)
     0x03E00008,  # JR    RA
     0x00000000,  # NOP
-]
-
-boss_save_stopper = [
-    # Prevents usage of a White Jewel if in a boss fight. Important for the lizard-man trio in Waterway as escaping
-    # their fight by saving/reloading can render a Special2 permanently missable.
-    0x24080001,  # ADDIU T0, R0, 0x0001
-    0x15030005,  # BNE   T0, V1, [forward 0x05]
-    0x3C088035,  # LUI   T0, 0x8035
-    0x9108F7D8,  # LBU   T0, 0xF7D8 (T0)
-    0x24090020,  # ADDIU T1, R0, 0x0020
-    0x51090001,  # BEQL  T0, T1, [forward 0x01]
-    0x24020000,  # ADDIU V0, R0, 0x0000
-    0x03E00008   # JR    RA
 ]
 
 music_modifier = [
@@ -988,7 +986,7 @@ countdown_number_manager = [
     0x12121209,
     0x00000013,
     0x1010130F,
-    0x1009110E,
+    0x1013110E,
     0x130D0B0B,
     0x0B0C0C08,
     0x0807070A,
@@ -1340,8 +1338,8 @@ alt_setup_flag_setter = [
     # fan meeting room being able to exist as separate scenes in separate stages. Also handles other rando-specific
     # things that should be handled upon scene transition, like setting the remote receive delay timer.
 
-    # Un-set the "can't warp" byte and set our remote receive delay timer to 30 frames (1 second).
-    0x340F003E,  # ORI   T7, R0, 0x003E
+    # Un-set the "can't warp" byte and set our remote receive delay timer to 60 frames (2 seconds).
+    0x340F003C,  # ORI   T7, R0, 0x003C
     0xA04F278E,  # SB    T7, 0x278E (V0)
     0xA040278B,  # SB    R0, 0x278B (V0)
     # If the "began Malus chase" flag is set and the "finished Malus chase" flag is not, un-set the former so the chase
@@ -1796,6 +1794,10 @@ multiworld_item_name_loader = [
 
     # As we're picking up a pickup, before running the prepare item textbox function, copy from the ROM the off-world
     # Item string corresponding to that pickup.
+    # Don't do this if we're picking up a White Jewel, tho, because the flag ID value means something entirely
+    # different for them and we never care about loading a custom string for them.
+    0x96090038,  # LHU   T1, 0x0038 (S0)
+    0x1120000B,  # BEQZ  T1,     [forward 0x0B]
     0x3C0800FA,  # LUI   T0, 0x00FA
     0x9609005A,  # LHU   T1, 0x005A (S0)
     # Shift the flag ID up by 8 and add it to 0xFA0000 to get the start address for this pickup's string.
@@ -1810,15 +1812,13 @@ multiworld_item_name_loader = [
     0x3C08801D,  # LUI   T0, 0x801D
     0x92090053,  # LBU   T1, 0x0053 (S0)
     0xA109AA20,  # SB    T1, 0xAA20 (T0)
-    0x96030038,  # LHU   V1, 0x0038 (S0)
     # Return to and continue the pickup routine like normal.
+    0x96030038,  # LHU   V1, 0x0038 (S0)
     0x3C048019,  # LUI   A0, 0x8019
     0x00037880,  # SLL   T7, T7, V1
     0x01E37821,  # ADDU  T7, T7, V1
     0x08061F2A,  # J     0x80187CA8
     0x000F7880,  # SLL   T7, T7, 2
-    0x00000000,
-    0x00000000,
     # Redirect the text to the multiworld message buffer if a message exists in it. Skip this if we're looking at a
     # White Jewel, as White Jewel identifiers occupy the same value as event flag IDs on other pickups.
     0x10A00007,  # BEQZ  A1,     [forward 0x07]
@@ -2151,4 +2151,98 @@ dracula_ultimate_non_cornell_checker = [
     0xA50DAE8E,  # SH    T5, 0xAE8E (T0)
     0x03E00008,  # JR    RA
     0x00000000   # NOP
+]
+
+text_line_palette_extender = [
+    # When changing a text line's palette, this will change the base address of the game's regular text palette table
+    # to that of our extended text palette table if the palette ID is a number higher than the number of entries in
+    # the regular table, allowing additional text palettes to be added to the game easily.
+    0x3C08800B,  # LUI   T0, 0x800B
+    0x35087610,  # ORI   T0, T0, 0x7610
+    0x25090160,  # ADDIU T1, T0, 0x0160
+    0x0089502A,  # SLT   T2, A0, T1
+    0x15400004,  # BNEZ  T2,     [forward 0x04]
+    0x00885823,  # SUBU  T3, A0, T0
+    0x3C0C803F,  # LUI   T4, 0x803F
+    0x358CD4A0,  # ORI   T4, T4, 0xD4A0
+    0x018B2021,  # ADDU  A0, T4, T3
+    0x080264F0   # J     0x800993C0
+]
+
+text_color_extended_changer = [
+    # Allows changing the text color with the 0xA200 command character to any available text color in the game, not
+    # just yellow. This is done by overwriting colors 8-F of every text palette with a palette ID given in the command
+    # character's arg byte. Only ONE alternate palette can be displayed onto the screen this way, so it should be used
+    # carefully!
+
+    # Check if the arg byte is 0. If it is, set it to 0xC (our custom index for the yellow text in this rando plus 1)
+    # to preserve the vanilla behavior of a arg byte of 00. Otherwise, the palette index we will use will be the arg
+    # byte minus 1.
+    0x34C80000,  # ORI   T0, A2, 0x0000
+    0x50C00001,  # BEQZL A2,     [forward 0x01]
+    0x3408000C,  # ORI   T0, R0, 0x000C
+    0x2508FFFF,  # ADDIU T0, T0, 0xFFFF
+    # Prepare the base addresses for both the vanilla text palette table and our extended one.
+    # For the extended one, we will initially start backwards the vanilla table's byte size to simplify the next step.
+    0x3C0A800B,  # LUI   T2, 0x800B
+    0x354A7610,  # ORI   T2, T2, 0x7610
+    0x3C0B803F,  # LUI   T3, 0x803F
+    0x356BD4A0,  # ORI   T3, T3, 0xD4A0
+    # Grab colors 0-7 from the palette our index corresponds to.
+    # If the palette ID is 0xB or higher, grab from the extended table. Otherwise, grab from the vanilla one.
+    0x290C000B,  # SLTI  T4, T0, 0x000B
+    0x354D0000,  # ORI   T5, T2, 0x0000
+    0x51800001,  # BEQZ  T4,     [forward 0x01]
+    0x356D0000,  # ORI   T5, T3, 0x0000
+    0x00087140,  # SLL   T6, T0, 5
+    0x01CD7021,  # ADDU  T6, T6, T5
+    0xDDCF0000,  # LD    T7, 0x0000 (T6)
+    0xDDD80008,  # LD    T8, 0x0008 (T6)
+    # Write the colors we grabbed into colors 8-F in EVERY palette in the vanilla table except the last one, palette A.
+    # This palette lacks colors 8-F, having pointers there for something else there instead. The colors that ARE there
+    # in 0-7 are identical to palette 0's, so we likely won't use this one ever anyway.
+    0x34090000,  # ORI   T1, R0, 0x0000
+    0x340C000A,  # ORI   T4, R0, 0x000A
+    0x112C0006,  # BEQ   T1, T4, [forward 0x06]
+    0x0009C940,  # SLL   T9, T1, 5
+    0x032AC821,  # ADDU  T9, T9, T2
+    0xFF2F0010,  # SD    T7, 0x0010 (T9)
+    0xFF380018,  # SD    T8, 0x0018 (T9)
+    0x1000FFFA,  # B             [backward 0x06]
+    0x25290001,  # ADDIU T1, T1, 0x0001
+    # Write the colors grabbed into colors 8-F in EVERY palette in the extended table.
+    # We will use its actual base address for this.
+    0x256B0160,  # ADDIU T3, T3, 0x0160
+    0x34090000,  # ORI   T1, R0, 0x0000
+    0x340C0006,  # ORI   T4, R0, 0x0006  <- Set this to however many palettes are in the below extended palette table.
+    0x112C0006,  # BEQ   T1, T4, [forward 0x06]
+    0x0009C940,  # SLL   T9, T1, 5
+    0x032BC821,  # ADDU  T9, T9, T3
+    0xFF2F0010,  # SD    T7, 0x0010 (T9)
+    0xFF380018,  # SD    T8, 0x0018 (T9)
+    0x1000FFFA,  # B             [backward 0x06]
+    0x25290001,  # ADDIU T1, T1, 0x0001
+    # Jump to where the 0xA200 character's routine would jump to once it ends.
+    0x08020654   # J     0x80081950
+]
+
+extended_text_palettes = [
+    # Yellow (Prog+Useful)
+    0x0000, 0x5281, 0x9485, 0xA507, 0xFFC9, 0x39C1, 0x0000, 0x0000,
+    0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+    # Cyan (Filler)
+    0x0000, 0x020F, 0x12D5, 0x1CE7, 0x0739, 0x090B, 0x0000, 0x0000,
+    0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+    # Plum (Progression)
+    0x0000, 0x4199, 0x62A5, 0x8BF3, 0xACBB, 0x2911, 0x0000, 0x0000,
+    0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+    # Slateblue (Useful)
+    0x0000, 0x29D7, 0x4297, 0x53B5, 0x6C39, 0x190F, 0x0000, 0x0000,
+    0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+    # Salmon (Trap)
+    0x0000, 0x518D, 0x8A53, 0xAB15, 0xF3DB, 0x3909, 0x0000, 0x0000,
+    0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+    # Magenta (player names)
+    0x0000, 0x4813, 0x8823, 0xA82B, 0xE039, 0x2009, 0x0000, 0x0000,
+    0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
 ]
