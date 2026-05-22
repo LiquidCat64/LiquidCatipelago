@@ -118,6 +118,11 @@ class TotalRandomWarps(Range):
     default = 7
 
 
+class CastleKeepWarpPossible(Toggle):
+    """Whether the Castle Keep warp is allowed to be chosen when using randomly-chosen warps."""
+    display_name = "Castle Keep Warp Possible"
+
+
 class WarpLayout(FreeText):
     """Allows specifying a custom set of warps to be used, rather than it being a specific number of random ones.
     Type the names of each stage that you want to have a warp, separated by a semicolon. The starting stage does not need to be included.
@@ -215,6 +220,13 @@ class LizardLockerItems(Toggle):
     """Adds the 6 items inside Castle Center 2F's Lizard-man generators to the pool.
     Picking up all of these can be a very tedious luck-based process, so they are off by default."""
     display_name = "Lizard Locker Items"
+
+
+class BehemothDrops(Toggle):
+    """Adds 7 items dropped by Behemoth's various body parts to the pool.
+    They will all drop regardless of whether you destroy them with Holy Water or not.
+    This can make clearing Castle Center fully a bit more worthwhile."""
+    display_name = "Behemoth Drops"
 
 
 class Shopsanity(Toggle):
@@ -540,6 +552,7 @@ class CVLoDOptions(PerGameCommonOptions):
     warp_layout: WarpLayout
     warp_order: WarpOrder
     total_random_warps: TotalRandomWarps
+    castle_keep_warp_possible: CastleKeepWarpPossible
     special1s_per_warp: Special1sPerWarp
     total_special1s: TotalSpecial1s
     castle_wall_state: CastleWallState
@@ -557,6 +570,7 @@ class CVLoDOptions(PerGameCommonOptions):
     multi_hit_breakables: MultiHitBreakables
     empty_breakables: EmptyBreakables
     lizard_locker_items: LizardLockerItems
+    behemoth_drops: BehemothDrops
     # shopsanity: Shopsanity
     # shop_prices: ShopPrices
     # minimum_gold_price: MinimumGoldPrice

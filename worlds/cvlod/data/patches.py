@@ -1,17 +1,20 @@
-custom_code_loader = [
-    # On boot, when the company logos show up, this will trigger and load most of the custom ASM data
-    # from ROM offsets 0xFFC000-0xFFFFFF and into the 803FC000-803FFFFF range in RAM.
-    0x3C088040,  # LUI   T0, 0x8040
-    0x9108C000,  # LBU   T0, 0xC000 (T0)
-    0x15000007,  # BNEZ  T0,     [forward 0x07]
+custom_segment_loader = [
+    # On boot, after all threads and handlers initialize and before entering the main game loop, this will trigger and
+    # load the custom overlay segment from ROM offsets 0xFFC000-0xFFFFFF into the 0x803FC000-0x803FFFFF range in RDRAM.
+
+    # Call the "createGameState" function first to set up the game state manager and boot into the controller pak setup
+    # state, as that call is what we've hooked this into.
+    0x0C000118,  # JAL   0x80000460
+    0x00000000,  # NOP
+    # Load the custom segment and then return to enter the main game loop.
     0x3C0400FF,  # LUI   A0, 0x00FF
-    0x3484C000,  # ORI	A0, A0, 0xC000
+    0x3484C000,  # ORI   A0, A0, 0xC000
     0x3C058040,  # LUI   A1, 0x8040
     0x24A5C000,  # ADDIU A1, A1, 0xC000
+    0x0C00690B,  # JAL   0x8001A42C
     0x24064000,  # ADDIU A2, R0, 0x4000
-    0x0800690B,  # J     0x8001A42C
     0x00000000,  # NOP
-    0x03E00008,  # JR    RA
+    0x08005F1A,  # J     0x80017C68
     0x00000000,  # NOP
 ]
 
@@ -56,6 +59,9 @@ remote_item_giver = [
     0x910A8354,  # LBU	 T2, 0x8354 (T0)
     0x012A4821,  # ADDU	 T1, T1, T2
     # Timer till next item at 00?
+    # Skip this check if we are being given an NPC item, so we will get it as soon as we regain control.
+    0x916AAA4C,  # LBU	 T2, 0xAA4C (T3)
+    0x15400002,  # BNEZ  T2,     [forward 0x02]
     0x916AAA4E,  # LBU	 T2, 0xAA4E (T3)
     0x012A4821,  # ADDU  T1, T1, T2
     0x1120000C,  # BEQZ	 T1,     [forward 0x0C]
@@ -369,22 +375,11 @@ npc_item_rework = [
     0x3C088040,  # LUI   T0, 0x8040
     0x00044880,  # SLL   T1, A0, 2
     0x01094021,  # ADDIU T0, T0, T1
-    0x950AC6E8,  # LHU   T2, 0xC6E8 (T0)
-    0x9519C6EA,  # LHU   T9, 0xC6EA (T0)
+    0x950AC720,  # LHU   T2, 0xC720 (T0)
+    0x9519C722,  # LHU   T9, 0xC722 (T0)
     0x314B00FF,  # ANDI  T3, T2, 0x00FF
     0x3C0C801D,  # LUI   T4, 0x801D
     0xA18BAA4C,  # SB    T3, 0xAA4C (T4)
-    # Decrement the Countdown if applicable.
-    0x314D8000,  # ANDI  T5, T2, 0x8000
-    0x11A00008,  # BEQZ  T5,     [forward 0x08]
-    0x918AAE79,  # LBU   T2, 0xAE79 (T4)
-    0x3C088040,  # LUI   T0, 0x8040
-    0x010A5821,  # ADDU  T3, T0, T2
-    0x916EC4D0,  # LBU   T6, 0xC4D0 (T3)
-    0x018E7821,  # ADDU  T7, T4, T6
-    0x91F8ABA0,  # LBU   T8, 0xABA0 (T7)
-    0x2718FFFF,  # ADDIU T8, T8, 0xFFFF
-    0xA1F8ABA0,  # SB    T8, 0xABA0 (T7)
     # Copy from the ROM the off-world Item string corresponding to that NPC Item.
     0x3C0B00FA,  # LUI   T3, 0x00FA
     # Shift the flag ID up by 8 and add it to 0xFA0000 to get the start address for this NPC Item's string.
@@ -493,6 +488,47 @@ mandragora_with_nitro_setter = [
     0x3C0A8000,  # LUI   T2, 0x8000
     0x354A48C4,  # ORI   T2, T2, 0x48C4
     0x01400008,  # JR    T2
+    0x00000000,  # NOP
+]
+
+cc_bottom_elev_boss_checker = [
+    # Checks if Behemoth and either Rosa or Camilla have been beaten. If one or the other is not satisfied, the player
+    # will be barred from using the elevator switch with a custom message.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9109AA7E,  # LBU   T1, 0xAA7E (T0)
+    0x31290008,  # ANDI  T1, T1, 0x0008
+    0x240A0000,  # ADDIU T2, R0, 0x0000
+    0x11200007,  # BEQZ  T1,     [forward 0x07]
+    0x24040006,  # ADDIU A0, R0, 0x0006
+    0x9109AA7D,  # LBU   T1, 0xAA7D (T0)
+    0x31290014,  # ANDI  T1, T1, 0x0014
+    0x11200003,  # BEQZ  T1,     [forward 0x03]
+    0x00000000,  # NOP
+    0x24040001,  # ADDIU A0, R0, 0x0001
+    0x240A0001,  # ADDIU T2, R0, 0x0001
+    0x03200008,  # JR    T9
+    0xAE0A0034,  # SW    T2, 0x0034 (S0)
+]
+
+behemoth_drop_modifier = [
+    # When the Behemoth drops an item, after checking to see if the spawned pickup data pointer is not invalid, this
+    # will modify it to be its new randomizer item instead.
+    0x0441000C,  # BGEZ  V0,    [forward 0x0C]
+    0x3C080F00,  # LUI   T0, 0x0F00  <- To be replaced with the actual dynamic location of the replacement table.
+    0x35080000,  # ORI   T0, T0, 0x0000
+    # Read the item ID from the pickup data and subtract by 1 to know where in our Behemoth pickup table to index to.
+    0x94490018,  # LHU   T1, 0x0018 (V0)
+    0x2529FFFF,  # ADDIU T1, T1, 0xFFFF
+    0x000948C0,  # SLL   T1, T1, 3
+    0x01094021,  # ADDU  T0, T0, T1
+    # Switch the pickup's real randomizer pickup ID, event flag ID, and additional flags into its data.
+    0x950A0000,  # LHU   T2, 0x0000 (T0)
+    0x950B0002,  # LHU   T3, 0x0002 (T0)
+    0x950C0004,  # LHU   T4, 0x0003 (T0)
+    0xA44A0018,  # SH    T2, 0x0018 (V0)
+    0xA44B0014,  # SH    T3, 0x0014 (V0)
+    0xA44C0016,  # SH    T4, 0x0016 (V0)
+    0x03E00008,  # JR    RA
     0x00000000,  # NOP
 ]
 
@@ -741,13 +777,17 @@ item_customizer = [
     # Allows changing an item's appearance settings independent of what it actually is by changing things in the item
     # actor's data as it's being created for some other custom functions to then utilize.
     0x000F4202,  # SRL   T0, T7, 8
-    0x31090080,  # ANDI  T1, T0, 0x0080
-    0x01094023,  # SUBU  T0, T0, T1
     0xA0C80044,  # SB    T0, 0x0044 (A2)
-    0xA0C90045,  # SB    T1, 0x0045 (A2)
     0x31EF00FF,  # ANDI  T7, T7, 0x00FF
+    0xA4CF0038,  # SH    T7, 0x0038 (A2)
+    # Do the logic for indexing to the pickup's entry in the interactuables settings table now so we can do additional
+    # checks with it after returning.
+    0x3C0B8019,  # LUI   T3, 0x8019
+    0x000F5080,  # SLL   T2, T7, 2
+    0x014F5021,  # ADDU  T2, T2, T7
+    0x000A5080,  # SLL   T2, T2, 2
     0x03E00008,  # JR    RA
-    0xA4CF0038   # SH    T7, 0x0038 (A2)
+    0x016A5821,  # ADDU  T3, T3, T2
 ]
 
 pickup_model_switcher = [
@@ -796,6 +836,62 @@ pickup_shine_height_switcher = [
     0x0100C825,  # OR    T9, T0, R0
     0x03E00008,  # JR    RA
     0x24050015,  # ADDIU A1, R0, 0x0015
+]
+
+pickup_other_spawned_flag_checker = [
+    # After confirming a spawning pickup's flag is not set, this will loop over EVERY currently-spawned actor and check
+    # if there are any other pickups with that same flag set on them loaded right now. If there are, then the pickup
+    # spawn will be aborted. This should be good for dropsanities and ensuring multiple instances of the same check
+    # cannot be active at once.
+
+    # If the pickup's event flag was already determined to be set before, skip this entire thing and go straight to the
+    # jump to the "delete" code.
+    0x1460001F,  # BNEZ  V1,     [forward 0x1F]
+    # Get the start and end of the array of spawned object headers.
+    0x3C08800C,  # LUI   T0, 0x800C
+    0x8D091534,  # LW    T1, 0x1534 (T0)
+    0x8D081530,  # LW    T0, 0x1530 (T0)
+    0x340A0000,  # ORI   T2, R0, 0x0000
+    0x340B0027,  # ORI   T3, R0, 0x0027
+    0x3C0E8019,  # LUI   T6, R0, 0x8019
+    # Start looping over each spawned actor entry.
+    # If we've reached the end of the array, break out of the loop.
+    0x11090014,  # BEQ   T0, T1, [forward 0x14]
+    0x950C0000,  # LHU   T4, 0x0000 (T0)
+    # If the actor we're looking at is the pickup we're trying to spawn, disregard it.
+    0x11060010,  # BEQ   T0, A2, [forward 0x10]
+    0x8D0D0058,  # LW    T5, 0x0058 (T0)
+    # If we're looking at an actor that's not an interactable, disregard it.
+    0x158B000E,  # BNE   T4, T3, [forward 0x0E]
+    0x8D0F0070,  # LW    T7, 0x0070 (T0)
+    0x91EF0019,  # LBU   T7, 0x0019 (T7)
+    # ID of the other pickup actor is 0x31 or greater? Disregard it, as it's a text spot.
+    0x29F80031,  # SLTI  T8, T7, 0x0031
+    0x1300000A,  # BEQZ  T8,     [forward 0x0A]
+    # Check the interactable's entry in the interactable settings table. If it's a text spot, or if it has our custom
+    # "disregard flag checks" value set on its entry, disregard it.
+    0x25EFFFFF,  # ADDIU T7, T7, 0xFFFF
+    0x000FC080,  # SLL   T8, T7, 2
+    0x030FC021,  # ADDU  T8, T8, T7
+    0x0018C080,  # SLL   T8, T8, 2
+    0x030EC821,  # ADDU  T9, T8, T6
+    0x932F678A,  # LBU   T7, 0x678A (T9)
+    0x15E00003,  # BNEZ  T7,     [forward 0x03]
+    0x00000000,  # NOP
+    # Check if the pickup we're looking at has the same flag as the one we're trying to spawn.
+    # If it does, set our register indicating such.
+    0x51A50001,  # BEQL  T5, A1, [forward 0x01]
+    0x340A0001,  # ORI   T2, R0, 0x0001
+    # Return to the start of the loop adding +0x74 to the base address to put us at the start of the next actor.
+    0x1000FFEC,  # B             [backward 0x16]
+    0x25080074,  # ADDIU T0, T0, 0x0074
+    # Did we find a pickup with the same flag? If yes, jump to the spawn code that despawns the actor upon deciding it
+    # should not spawn. Otherwise, jump to the spawn code that finishes spawning it.
+    0x15400003,  # BNEZ  T2,     [forward 0x03]
+    0x00000000,  # NOP
+    0x08061BD2,  # J     0x80186F48
+    0x00000000,  # NOP
+    0x08061BC9,  # J     0x80186F24
 ]
 
 three_hit_item_flags_setter = [
@@ -904,231 +1000,10 @@ subweapon_surface_checker = [
     0x03E00008   # JR    RA
 ]
 
-countdown_number_displayer = [
-    # Displays a number below the HUD health of however many items are left to find in whichever stage the player is in.
-    # Which number in the save file to display depends on which stage map the player is currently on. It can track
-    # either items marked progression only or all locations in the stage.
-    # Courtesy of Moisés; see print_text_ovl.c in the src folder for the C source code.
-    0x27BDFFE8,
-    0xAFBF0014,
-    0x0C000958,
-    0x24040007,
-    0x0C020BF8,
-    0x00402025,
-    0x8FBF0014,
-    0x27BD0018,
-    0x03E00008,
-    0x00000000,
-    0x8C820038,
-    0x03E00008,
-    0x0002102B,
-    0x27BDFFD8,
-    0xAFA5002C,
-    0x00A07025,
-    0x3C018040,
-    0xC424C4C4,
-    0x3C05801D,
-    0xAFBF0024,
-    0x00AE2821,
-    0x3C078040,
-    0x240F0002,
-    0xAFAF0014,
-    0x8CE7C4C0,
-    0x90A5ABA0,
-    0xAFA00018,
-    0x00003025,
-    0x0C020D74,
-    0xE7A40010,
-    0x8FBF0024,
-    0x27BD0028,
-    0x03E00008,
-    0x00000000,
-    0x00A03025,
-    0x27BDFFE8,
-    0x3C05801D,
-    0xAFBF0014,
-    0x00A62821,
-    0x0C020E69,
-    0x90A5ABA0,
-    0x8FBF0014,
-    0x27BD0018,
-    0x03E00008,
-    0x00000000,
-    0x27BDFFE8,
-    0xAFBF0014,
-    0x3C058040,
-    0x3C068040,
-    0x8CC6C4C4,
-    0x0C020ECF,
-    0x8CA5C4C0,
-    0x8FBF0014,
-    0x27BD0018,
-    0x03E00008,
-    0x00000000,
-    0x27BDFFE8,
-    0xAFBF0014,
-    0x0C020FC8,
-    0x00000000,
-    0x8FBF0014,
-    0x27BD0018,
-    0x03E00008,
-    0x00000000,
-    0xC2D90000,
-    0x42B10000,
-    0x00000000,
-    0x00000000]
-
-countdown_number_manager = [
-    # Updates the Countdown number every frame. Which number in the save file it refers to depends on the map ID.
-    0x01020203,  # Map ID offset table start
-    0x03031104,
-    0x05090909,
-    0x12121209,
-    0x00000013,
-    0x1010130F,
-    0x1013110E,
-    0x130D0B0B,
-    0x0B0C0C08,
-    0x0807070A,
-    0x0F0F0613,
-    0x13131013,
-    0x13130000,  # Table end
-    # Creates the textbox object and saves the pointer to it.
-    0x0C0FF0F0,  # JAL   0x803FC3C0
-    0x00000000,  # NOP
-    0x3C08801D,  # LUI   T0, 0x801D
-    0xA100AA44,  # SB    R0, 0xAA44 (T0)
-    0x08006DDA,  # J     0x8001B768
-    0xAD02AA40,  # SW    V0, 0xAA40 (T0)
-    # Initializes the countdown number after checking if the textbox data is created.
-    0x3C08801D,  # LUI   T0, 0x801D
-    0x9109AA44,  # LBU   T1, 0xAA44 (T0)
-    0x15200010,  # BNEZ  T1,     [forward 0x10]
-    0x8D04AA40,  # LW    A0, 0xAA40 (T0)
-    0x1080000C,  # BEQZ  A0,     [forward 0x0C]
-    0x00000000,  # NOP
-    0x0C0FF0F9,  # JAL   0x803FC3E4
-    0x00000000,  # NOP
-    0x10400008,  # BEQZ  V0,     [forward 0x08]
-    0x00000000,  # NOP
-    0x3C08801D,  # LUI   T0, 0x801D
-    0xA102AA44,  # SB    V0, 0xAA44 (T0)
-    0x9109AE79,  # LBU   T1, 0xAE79 (T0)
-    0x3C0A8040,  # LUI   T2, 0x8040
-    0x01495021,  # ADDU  T2, T2, T1
-    0x0C0FF0FD,  # JAL   0x803FC3F4
-    0x9145C4D0,  # LBU   A1, 0xC4D0 (T2)
-    0x08005F33,  # J     0x80017CCC
-    0x00000000,  # NOP
-    # Updates the color of the number depending on what it currently is.
-    # 0 = Dark brown    Same as the initial count = Green     Otherwise = Light brown
-    0x3C08801D,  # LUI   T0, 0x801D
-    0x9109AB91,  # LBU   T1, 0xAB91 (T0)
-    0x3C0A8040,  # LUI   T2, 0x8040
-    0x01495021,  # ADDU  T2, T2, T1
-    0x914BC4D0,  # LBU   T3, 0xC4D0 (T2)
-    0x010B6821,  # ADDU  T5, T0, T3
-    0x91ACABA0,  # LBU   T4, 0xABA0 (T5)
-    0x3C0A8040,  # LUI   T2, 0x8040
-    0x016A5021,  # ADDU  T2, T3, T2
-    0x914EC7D0,  # LBU   T6, 0xC7D0 (T2)
-    0x11800009,  # BEQZ  T4,     [forward 0x09]
-    0x24050007,  # ADDIU A1, R0, 0x0007
-    0x118E0007,  # BEQ   T4, T6, [forward 0x07]
-    0x24050002,  # ADDIU A1, R0, 0x0002
-    0x24050006,  # ADDIU A1, R0, 0x0006
-    0x00000000,  # NOP
-    0x00000000,
-    0x00000000,
-    0x00000000,
-    0x00000000,
-    0x0C0FF128,  # JAL   0x803FC4A0
-    0x8D04AA40,  # LW    A0, 0xAA40 (T0)
-    # Updates the number being displayed.
-    0x3C04801D,  # LUI   A0, 0x801D
-    0x8C84AA40,  # LW    A0, 0xAA40 (A0)
-    0x0C0FF112,  # JAL   0x803FC448
-    0x000B2821,  # ADDU  A1, R0, T3
-    # Updates the position of the number depending on what our "demo number" currently is.
-    0x3C08801D,  # LUI   T0, 0x801D
-    0x8D04AA40,  # LW    A0, 0xAA40 (T0)
-    0x9109AA4A,  # LBU   T1, 0xAA4A (T0)
-    0x340AC2D9,  # ORI   T2, R0, 0xC2D9
-    0x11200009,  # BEQZ  T1,     [forward 0x09]
-    0x340B42B1,  # ORI   T3, R0, 0x42B1
-    0x312C0001,  # ANDI  T4, T1, 0x0001
-    0x55800006,  # BNEZL T4,     [forward 0x06]
-    0x340B43B1,  # ORI   T3, R0, 0x43B1
-    0x312C0002,  # ANDI  T4, T1, 0x0002
-    0x11800003,  # BEQZ  T4,     [forward 0x02]
-    0x00000000,  # NOP
-    0x340A42E1,  # ORI   T2, R0, 0x42E1
-    0x340B42CC,  # ORI   T3, R0, 0x42CC
-    0x3C0D8040,  # LUI   T5, 0x8040
-    0xA5AAC4C0,  # SH    T2, 0xC4C0 (T5)
-    0x0C0FF11D,  # JAL   0x803FC474
-    0xA5ABC4C4,  # SH    T3, 0xC4C4 (T5)
-    0x08005F33,  # J     0x80017CCC
-    0x00000000,  # NOP
-    # Changes the number's position when pausing.
-    0x3C08801D,  # LUI   T0, 0x801D
-    0x9109AA4A,  # LBU   T1, 0xAA4A (T0)
-    0x35290002,  # ORI   T1, T1, 0x0002
-    0x08021BA6,  # J     0x80086E98
-    0xA109AA4A,  # SB    T1, 0xAA4A (T0)
-    # Changes the number's position when un-pausing.
-    0x3C08801D,  # LUI   T0, 0x801D
-    0x9109AA4A,  # LBU   T1, 0xAA4A (T0)
-    0x312900FD,  # ANDI  T1, T1, 0x00FD
-    0x08021B0A,  # J     0x80086C28
-    0xA109AA4A,  # SB    T1, 0xAA4A (T0)
-    # Hides the number whenever the HUD vanishes (during cutscenes, etc.)
-    0xA20A0001,  # SB    T2, 0x0001 (S0)
-    0x3C0B801D,  # LUI   T3, 0x801D
-    0x916CAA4A,  # LBU   T4, 0xAA4A (T3)
-    0x358C0001,  # ORI   T4, T4, 0x0001
-    0x03E00008,  # JR    RA
-    0xA16CAA4A,  # SB    T4, 0xAA4A (T3)
-    0x00000000,  # NOP
-    # Un-hides the number whenever the HUD re-appears (after a cutscene ends, etc.)
-    0xA2000001,  # SB    R0, 0x0001 (S0)
-    0x3C08801D,  # LUI   T0, 0x801D
-    0x9109AA4A,  # LBU   T1, 0xAA4A (T0)
-    0x312900FE,  # ANDI  T1, T1, 0x00FE
-    0x03E00008,  # JR    RA
-    0xA109AA4A,  # SB    T1, 0xAA4A (T0)
-    0x00000000,  # NOP
-    # Decrements the Countdown number if the item picked up has a non-zero set in its field 0x45.
-    0x92080045,  # LBU   T0, 0x0045 (S0)
-    0x11000009,  # BEQZ  T0,     [forward 0x09]
-    0x3C09801D,  # LUI   T1, 0x801D
-    0x912AAE79,  # LBU   T2, 0xAE79 (T1)
-    0x3C0B8040,  # LUI   T3, 0x8040
-    0x016A5821,  # ADDU  T3, T3, T2
-    0x916CC4D0,  # LBU   T4, 0xC4D0 (T3)
-    0x01896821,  # ADDU  T5, T4, T1
-    0x91AEABA0,  # LBU   T6, 0xABA0 (T5)
-    0x25CEFFFF,  # ADDIU T6, T6, 0xFFFF
-    0xA1AEABA0,  # SB    T6, 0xABA0 (T5)
-    0x03200008   # JR    T9
-]
-
 new_game_extras = [
     # Upon starting a new game, this will write anything extra to the save file data that the run should have at the
     # start.
 
-    # The initial Countdown numbers begin here.
-    0x24080000,  # ADDIU T0, R0, 0x0000
-    0x24090014,  # ADDIU T1, R0, 0x0014
-    0x11090008,  # BEQ   T0, T1, [forward 0x08]
-    0x3C0A8040,  # LUI   T2, 0x8040
-    0x01485021,  # ADDU  T2, T2, T0
-    0x8D4AC7D0,  # LW    T2, 0xC7D0 (T2)
-    0x3C0B801D,  # LUI   T3, 0x801D
-    0x01685821,  # ADDU  T3, T3, T0
-    0xAD6AABA0,  # SW    T2, 0xABA0 (T3)
-    0x1000FFF8,  # B             [backward 0x08]
-    0x25080004,  # ADDIU T0, T0, 0x0004
     # start_inventory begins here.
     0x3C08801D,  # LUI   T0, 0x801D
     # Clear the multiworld buffers and set the "received item index" to 0

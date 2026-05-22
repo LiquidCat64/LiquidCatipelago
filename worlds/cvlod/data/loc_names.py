@@ -456,6 +456,14 @@ ccff_lizard_slab2 = "Castle Center: Lizard locker room slab - Item 2"
 ccff_lizard_slab3 = "Castle Center: Lizard locker room slab - Item 3"
 ccff_lizard_slab4 = "Castle Center: Lizard locker room slab - Item 4"
 
+# Castle Center Behemoth drops
+ccb_behemoth_drop_leg_hl = "Castle Center: Behemoth left hind leg drop"
+ccb_behemoth_drop_leg_hr = "Castle Center: Behemoth right hind leg drop"
+ccb_behemoth_drop_abdomen = "Castle Center: Behemoth abdomen drop"
+ccb_behemoth_drop_thorax = "Castle Center: Behemoth thorax drop"
+ccb_behemoth_drop_leg_fl = "Castle Center: Behemoth left front leg drop"
+ccb_behemoth_drop_leg_fr = "Castle Center: Behemoth right front leg drop"
+ccb_behemoth_drop_head = "Castle Center: Behemoth head drop"
 
 # Duel Tower main locations
 dt_pre_sweeper_l = "Duel Tower: Pre-Werewolf sweeper island - Left"

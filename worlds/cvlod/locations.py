@@ -424,6 +424,13 @@ CVLOD_LOCATIONS_INFO = {
     loc_names.ccia_nitro_shelf_i:            CVLoDLocationData(0x30F, 18, item_names.quest_nitro),
     loc_names.ccll_cwhall_wall:              CVLoDLocationData(0x128, 18, item_names.use_beef),
     loc_names.ccl_bookcase:                  CVLoDLocationData(0x12E, 18, item_names.use_card_s),
+    loc_names.ccb_behemoth_drop_leg_hl:      CVLoDLocationData(0x31E, 18, item_names.use_chicken),
+    loc_names.ccb_behemoth_drop_leg_hr:      CVLoDLocationData(0x31F, 18, item_names.use_chicken),
+    loc_names.ccb_behemoth_drop_abdomen:     CVLoDLocationData(0x320, 18, item_names.use_chicken),
+    loc_names.ccb_behemoth_drop_thorax:      CVLoDLocationData(0x321, 18, item_names.use_beef),
+    loc_names.ccb_behemoth_drop_leg_fl:      CVLoDLocationData(0x322, 18, item_names.use_chicken),
+    loc_names.ccb_behemoth_drop_leg_fr:      CVLoDLocationData(0x323, 18, item_names.use_chicken),
+    loc_names.ccb_behemoth_drop_head:        CVLoDLocationData(0x324, 18, item_names.use_chicken),
 
     # Duel Tower
     loc_names.dt_pre_sweeper_l:  CVLoDLocationData(0x249, 10, item_names.jewel_rs),
@@ -729,6 +736,15 @@ LIZARD_LOCKER_LOCATIONS = {loc_names.ccff_lizard_locker_fl,
                            loc_names.ccff_lizard_locker_nml,
                            loc_names.ccff_lizard_locker_nmr}
 
+# All Locations that are dropped by Behemoth in Castle Center. These should NOT be created if Behemoth Drops are off.
+BEHEMOTH_DROP_LOCATIONS = {loc_names.ccb_behemoth_drop_leg_hl,
+                           loc_names.ccb_behemoth_drop_leg_hr,
+                           loc_names.ccb_behemoth_drop_abdomen,
+                           loc_names.ccb_behemoth_drop_thorax,
+                           loc_names.ccb_behemoth_drop_leg_fl,
+                           loc_names.ccb_behemoth_drop_leg_fr,
+                           loc_names.ccb_behemoth_drop_head}
+
 # All Locations specific to Reinhardt and Carrie's version of Castle Wall. These should not be created if the Castle
 # Wall State is Cornell's.
 REIN_CARRIE_CW_LOCATIONS: list[str] = [
@@ -844,6 +860,10 @@ def get_locations_to_create(locations: list[str], options: CVLoDOptions) -> \
 
         # If the Location is a Lizard Locker Location, and the Lizard Lockers are not enabled, don't add it.
         if loc in LIZARD_LOCKER_LOCATIONS and not options.lizard_locker_items:
+            continue
+
+        # If the Location is a Behemoth Drop Location, and the Behemoth Drops are not enabled, don't add it.
+        if loc in BEHEMOTH_DROP_LOCATIONS and not options.behemoth_drops:
             continue
 
         # If the Location is an Empty Breakable Location, and the Empty Breakables are not enabled, don't add it.

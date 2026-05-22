@@ -662,6 +662,13 @@ CVLOD_STAGE_INFO = {
                                                                            ent_names.ccb_stairs]),
 
                         reg_names.ccb_behemoth_crack: CVLoDRegionData(locations=[loc_names.event_cc_crystal,
+                                                                                 loc_names.ccb_behemoth_drop_leg_hl,
+                                                                                 loc_names.ccb_behemoth_drop_leg_hr,
+                                                                                 loc_names.ccb_behemoth_drop_abdomen,
+                                                                                 loc_names.ccb_behemoth_drop_thorax,
+                                                                                 loc_names.ccb_behemoth_drop_leg_fl,
+                                                                                 loc_names.ccb_behemoth_drop_leg_fr,
+                                                                                 loc_names.ccb_behemoth_drop_head,
                                                                                  loc_names.event_cc_boss_1,
                                                                                  loc_names.event_cc_boss_2],
                                                                       entrances=[
@@ -1004,7 +1011,7 @@ CVLOD_STAGE_INFO = {
 
     StageNames.KEEP:
         CVLoDStageData(reg_names.ck_main, "", Scenes.CASTLE_KEEP_EXTERIOR, 0x00, 0,
-                       reg_names.ck_main, Scenes.CASTLE_KEEP_EXTERIOR, 0x01,
+                       reg_names.ck_main, Scenes.CASTLE_KEEP_EXTERIOR, 0x00,
                        reg_names.ck_main, "", Scenes.CASTLE_KEEP_DRAC_CHAMBER, 0x00, None,
                        StageIDs.KEEP,
                        {reg_names.ck_main: CVLoDRegionData(locations=[loc_names.ck_renon_sw,
@@ -1741,9 +1748,10 @@ def get_active_warps(world: "CVLoDWorld") -> list[str]:
     from a pre-made list."""
     active_warp_list = []
     # Create the list of possible warps from the active stage list. Leave the starting stage out as it's guaranteed to
-    # be the first warp.
+    # be the first warp, and Castle Keep if the Castle Keep Warp Possible option is off.
     possible_warps = [stage["name"] for stage in world.active_stage_info
-                      if stage["connecting_stages"]["prev"][0] != "Start"]
+                      if stage["connecting_stages"]["prev"][0] != "Start" and
+                      (stage["name"] != StageNames.KEEP or not world.options.castle_keep_warp_possible)]
 
     def arrange_warp_list() -> None:
         """Arranges a given of warps differently depending on what was chosen for the Warp Order option, and inserts
@@ -1771,7 +1779,7 @@ def get_active_warps(world: "CVLoDWorld") -> list[str]:
         elif world.options.warp_order == WarpOrder.option_randomized_order:
             world.random.shuffle(active_warp_list)
 
-        # Insert the starting stage at the start of the warp list
+        # Insert the starting stage at the start of the warp list.
         active_warp_list.insert(0, world.active_stage_info[0]["name"])
 
     # If a custom warp layout was provided, try getting the stage list out of that option.
@@ -1823,7 +1831,7 @@ def get_active_warps(world: "CVLoDWorld") -> list[str]:
     # and lower the number of random warps down to a valid number.
     if world.options.total_random_warps.value > len(possible_warps):
         logging.warning(f"[{world.player_name}] The Total Random Warps ({world.options.total_random_warps.value}) is "
-                        f"higher than the total number of non-starting stages ({len(possible_warps)}). The former "
+                        f"higher than the total number of possible warp stages ({len(possible_warps)}). The former "
                         f"will be lowered to {len(possible_warps)}.")
         world.options.total_random_warps.value = len(possible_warps)
 

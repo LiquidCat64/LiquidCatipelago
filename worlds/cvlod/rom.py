@@ -33,8 +33,8 @@ if TYPE_CHECKING:
 CVLOD_US_HASH = "25258460f98f567497b24844abe3a05b"
 
 ARCHIPELAGO_IDENTIFIER_START = 0xFFBFD0
-ARCHIPELAGO_PATCH_COMPAT_VER = 2
-ARCHIPELAGO_CLIENT_COMPAT_VER = "ARCHIPELAG03"
+ARCHIPELAGO_PATCH_COMPAT_VER = 3
+ARCHIPELAGO_CLIENT_COMPAT_VER = "ARCHIPELAG04"
 AUTH_NUMBER_START = 0xFFFF10
 QUEUED_TEXT_STRING_START = 0x7CEB00
 MULTIWORLD_TEXTBOX_POINTERS_START = 0x671C10
@@ -43,14 +43,14 @@ ROM_PADDING_START = 0xFCC000
 ROM_PADDING_BYTE = 0x00
 
 NG_EXTRAS_START = 0xFFC800
-INITIAL_COUNTDOWN_ARRAY_START = NG_EXTRAS_START - 0x30
-START_INVENTORY_ARRAY_START = NG_EXTRAS_START - 0x60
-START_INVENTORY_GOLD_UPPER_ADDR = NG_EXTRAS_START + 0x3E
-START_INVENTORY_GOLD_LOWER_ADDR = NG_EXTRAS_START + 0x42
-START_INVENTORY_POWERUPS_ADDR = NG_EXTRAS_START + 0x4B
-START_INVENTORY_SUBWEAPON_ADDR = NG_EXTRAS_START + 0x53
-START_INVENTORY_SUBWEAPON_LEVEL_ADDR = NG_EXTRAS_START + 0x5B
-START_INVENTORY_ICE_TRAP_ADDR = NG_EXTRAS_START + 0x63
+START_INVENTORY_ARRAY_START = NG_EXTRAS_START - 0x34
+START_INVENTORY_GOLD_UPPER_ADDR = NG_EXTRAS_START + 0x12
+START_INVENTORY_GOLD_LOWER_ADDR = NG_EXTRAS_START + 0x16
+START_INVENTORY_POWERUPS_ADDR = NG_EXTRAS_START + 0x1F
+START_INVENTORY_SUBWEAPON_ADDR = NG_EXTRAS_START + 0x27
+START_INVENTORY_SUBWEAPON_LEVEL_ADDR = NG_EXTRAS_START + 0x2F
+START_INVENTORY_ICE_TRAP_ADDR = NG_EXTRAS_START + 0x37
+COUNTDOWN_PTRS_ARRAY_START = 0xFFC61C
 MULTIWORLD_ITEM_TEXTS_START = 0xFA0000
 
 FOREST_OVL_CHARNEL_ITEMS_START = 0x7C60  # 0x802EB7D0
@@ -64,6 +64,11 @@ TELEPORT_JEWEL_START_STAGES = [StageNames.TUNNEL, StageNames.WATERWAY, StageName
 SCENE_STAGE_NAME_INDEXES = [2, 3, 3, 4, 4, 4, 4, 6, 7, 8, 8, 8, 8, 8, 8, 8,
                             1, 1, 1, 18, 17, 17, 18, 16, 17, 18, 4, 15, 17, 14, 13, 13,
                             13, 11, 11, 10, 10, 9, 9, 12, 16, 16, 5, 18, 18, 18, 17, 18, 18, 18]
+SCENE_COUNTDOWN_PTR_ARRAY_INDEXES = [ 1,  2,  2,  3,  3,  3, 17,  4,  5,  9,
+                                      9,  9, 18, 18, 18,  9,  0,  0,  0, 19,
+                                     16, 16, 19, 15, 16, 19, 17, 14, 19, 13,
+                                     11, 11, 11, 12, 12,  8,  8,  7,  7, 10,
+                                     15, 15,  6, 19, 19, 19, 16, 19, 19, 19]
 
 WARP_SCENE_OFFSETS = [0xADF67, 0xADF77, 0xADF87, 0xADF97, 0xADFA7, 0xADFBB, 0xADFCB, 0xADFDF]
 
@@ -118,8 +123,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         # GENERAL PRE-STAGE EDITS #
         # # # # # # # # # # # # # #
         # Custom overlay segment-loading code.
-        patcher.write_int32(0x18A94, 0x0800793D)  # J 0x8001E4F4
-        patcher.write_int32s(0x1F0F4, patches.custom_code_loader)
+        patcher.write_int32(0x18860, 0x0800793D)  # J 0x8001E4F4
+        patcher.write_int32s(0x1F0F4, patches.custom_segment_loader)
 
         # Initial Countdown numbers and Start Inventory.
         patcher.write_int32(0x90DBC, 0x080FF200)  # J	0x803FC800
@@ -134,32 +139,14 @@ class CVLoDPatchExtensions(APPatchExtension):
                            slot_patch_info["start inventory"]["sub weapon level"])
         patcher.write_byte(START_INVENTORY_ICE_TRAP_ADDR, slot_patch_info["start inventory"]["ice traps"])
 
-        # Everything related to the Countdown counter.
-        # NOTE: Must be written AFTER the custom overlay stuff.
-        if slot_patch_info["options"]["countdown"]:
-            patcher.write_int32(0x1C670, 0x080FF141)  # J 0x803FC504
-            patcher.write_int32(0x1F11C, 0x080FF147)  # J 0x803FC51C
-            patcher.write_int32s(0xFFC3C0, patches.countdown_number_displayer)
-            patcher.write_int32s(0xFFC4D0, patches.countdown_number_manager)
-            patcher.write_int32(0x877E0, 0x080FF18D)  # J 0x803FC634
-            patcher.write_int32(0x878F0, 0x080FF188)  # J 0x803FC620
-            patcher.write_int32s(0x8BFF0, [0x0C0FF192,  # JAL 0x803FC648
-                                            0xA2090000])  # SB  T1, 0x0000 (S0)
-            patcher.write_int32s(0x8C028, [0x0C0FF199,  # JAL 0x803FC664
-                                            0xA20E0000])  # SB  T6, 0x0000 (S0)
-            patcher.write_int32(0x108D80, 0x0C0FF1A0)  # JAL 0x803FC680
-
-            # Write the initial Countdown numbers array.
-            patcher.write_bytes(0xFFC7D0, slot_patch_info["initial countdowns"])
-
         # Kills the pointer to the Countdown number, resets the "in a demo?" value whenever changing/reloading the
         # game state, and mirrors the current game state value in a spot that's easily readable.
         patcher.write_int32(0x1168, 0x08007938)  # J 0x8001E4E0
-        patcher.write_int32s(0x1F0E0, [0x3C08801D,  # LUI   T0, 0x801D
-                                        0xA104AA30,  # SB    A0, 0xAA30 (T0)
-                                        0xA100AA4A,  # SB    R0, 0xAA4A (T0)
-                                        0x03E00008,  # JR    RA
-                                        0xFD00AA40])  # SD    R0, 0xAA40 (T0)
+        patcher.write_int32s(0x1F0E0, [0x3C08801D,    # LUI   T0, 0x801D
+                                        0xA104AA30,   # SB    A0, 0xAA30 (T0)
+                                        0xA100AA4A,   # SB    R0, 0xAA4A (T0)
+                                        0x03E00008,   # JR    RA
+                                        0xAD00AA40])  # SW    R0, 0xAA40 (T0)
 
         # Enable being able to set one of the three alternate setup flags (0x2A1, 0x2A2, or 0x2A3) by setting the 0x40
         # and/or 0x80 bits in the spawn ID.
@@ -353,9 +340,9 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32s(0x107740, [0x0C0FF380,   # JAL   0x803FCE00
                                         0x25CFFFFF])  # ADDIU T7, T6, 0xFFFF
         patcher.write_int32s(0xFFCE00, patches.item_customizer)
-        patcher.write_int32s(0x1078B0, [0x0C0FF38B,   # JAL   0x803FCE2C
+        patcher.write_int32s(0x1078B0, [0x0C0FF390,   # JAL   0x803FCE40
                                         0x94C90038])  # LHU   T1, 0x0038 (A2)
-        patcher.write_int32s(0xFFCE2C, patches.pickup_model_switcher)
+        patcher.write_int32s(0xFFCE40, patches.pickup_model_switcher)
         patcher.write_int32s(0x107A5C, [0x0C0FF3AC,   # JAL   0x803FCEB0
                                         0x94CF0038])  # LHU   T7, 0x0038 (A2)
         patcher.write_int32s(0xFFCEB0, patches.pickup_spawn_height_switcher)
@@ -368,6 +355,24 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32s(0x108EB0, [0x0C0FF3C4,   # JAL   0x803FCF10
                                         0x96190038])  # LHU   T9, 0x0038 (S0)
         patcher.write_int32s(0xFFCF10, patches.pickup_shine_height_switcher)
+
+        # Enable checking field 0x12 in a pickup's entry in the interactables settings table to see if we should skip
+        # checking its pickup flag or not, instead of it being hardcoded to White Jewels no matter what.
+        patcher.write_int32s(0x10775C, [0x956C6778,   # LHU   T4, 0x6778 (T3)
+                                        0x29210031,   # SLTI  AT, T1, 0x0031
+                                        0x10200024,   # BEQZ  AT,     [forward 0x24]
+                                        0xA4D90050,   # SH    T9, 0x0050 (A2)
+                                        0x916B678A,   # LBU   T3, 0x678A (T3)
+                                        0x00000000,   # NOP
+                                        0x00000000,   # NOP
+                                        0x00000000])  # NOP
+        patcher.write_byte(0x11703A, 0x01)  # White Jewels
+        patcher.write_byte(0x11717A, 0x01)  # The Contract
+
+        # Add a spawn check to the pickups to see if there are currently other pickups spawned with the spawning
+        # pickup's flag set on it.
+        patcher.write_int32(0x1077CC, 0x080FF600)  # J 0x803FD800
+        patcher.write_int32s(0xFFD800, patches.pickup_other_spawned_flag_checker)
 
         # Everything related to dropping the previous sub-weapon
         if slot_patch_info["options"]["drop_previous_sub_weapon"]:
@@ -410,55 +415,55 @@ class CVLoDPatchExtensions(APPatchExtension):
 
 
         # NPC items rework
-        patcher.write_int32s(0xFFC6E8, patches.npc_item_rework)
+        patcher.write_int32s(0xFFC720, patches.npc_item_rework)
         # Change all the NPC item gives to run through the new routine, and write all their item values.
         # Fountain Top Shine
         if CVLOD_LOCATIONS_INFO[loc_names.villafy_fountain_shine].flag_id in loc_values:
             patcher.write_int16(0x35E, 0x8040, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
-            patcher.write_int16(0x362, 0xC700, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
+            patcher.write_int16(0x362, 0xC738, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
             patcher.write_byte(0x367, 0x00, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
             patcher.write_int16(0x36E, 0x0068, NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
             patcher.write_bytes(0x720, cvlod_string_to_bytearray("...🅰0/", add_end_char=True),
                                 NIFiles.OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX)
-            patcher.write_int16s(0xFFC6E8,
+            patcher.write_int16s(0xFFC720,
                                  [loc_values[CVLOD_LOCATIONS_INFO[loc_names.villafy_fountain_shine].flag_id][0],
                                   CVLOD_LOCATIONS_INFO[loc_names.villafy_fountain_shine].flag_id])
         # 6am Rose Patch
         if CVLOD_LOCATIONS_INFO[loc_names.villafo_6am_roses].flag_id in loc_values:
             patcher.write_int16(0x1E2, 0x8040, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
-            patcher.write_int16(0x1E6, 0xC700, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
+            patcher.write_int16(0x1E6, 0xC738, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
             patcher.write_byte(0x1EB, 0x01, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
             patcher.write_int16(0x1F2, 0x0078, NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
             patcher.write_bytes(0x380, cvlod_string_to_bytearray("...🅰0/", add_end_char=True),
                                 NIFiles.OVERLAY_6AM_ROSE_PATCH_TEXTBOX)
-            patcher.write_int16s(0xFFC6E8 + 0x4,
+            patcher.write_int16s(0xFFC720 + 0x4,
                                  [loc_values[CVLOD_LOCATIONS_INFO[loc_names.villafo_6am_roses].flag_id][0],
                                   CVLOD_LOCATIONS_INFO[loc_names.villafo_6am_roses].flag_id])
         # Vincent
         if CVLOD_LOCATIONS_INFO[loc_names.villala_vincent].flag_id in loc_values:
             patcher.write_int16(0x180E, 0x8040, NIFiles.OVERLAY_VINCENT)
-            patcher.write_int16(0x1812, 0xC700, NIFiles.OVERLAY_VINCENT)
+            patcher.write_int16(0x1812, 0xC738, NIFiles.OVERLAY_VINCENT)
             patcher.write_byte(0x1817, 0x02, NIFiles.OVERLAY_VINCENT)
             patcher.write_int16(0x181E, 0x027F, NIFiles.OVERLAY_VINCENT)
-            patcher.write_int16s(0xFFC6E8 + 0x8,
+            patcher.write_int16s(0xFFC720 + 0x8,
                                  [loc_values[CVLOD_LOCATIONS_INFO[loc_names.villala_vincent].flag_id][0],
                                   CVLOD_LOCATIONS_INFO[loc_names.villala_vincent].flag_id])
         # Mary
         if CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id in loc_values:
             patcher.write_int16(0xB16, 0x8040, NIFiles.OVERLAY_MARY)
-            patcher.write_int16(0xB1A, 0xC700, NIFiles.OVERLAY_MARY)
+            patcher.write_int16(0xB1A, 0xC738, NIFiles.OVERLAY_MARY)
             patcher.write_byte(0xB1F, 0x03, NIFiles.OVERLAY_MARY)
             patcher.write_int16(0xB26, 0x0086, NIFiles.OVERLAY_MARY)
-            patcher.write_int16s(0xFFC6E8 + 0xC,
+            patcher.write_int16s(0xFFC720 + 0xC,
                                  [loc_values[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0],
                                   CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id])
         # Heinrich Meyer
         if CVLOD_LOCATIONS_INFO[loc_names.ccll_heinrich].flag_id in loc_values:
             patcher.write_int16(0x962A, 0x8040, NIFiles.OVERLAY_LIZARD_MEN)
-            patcher.write_int16(0x962E, 0xC700, NIFiles.OVERLAY_LIZARD_MEN)
+            patcher.write_int16(0x962E, 0xC738, NIFiles.OVERLAY_LIZARD_MEN)
             patcher.write_byte(0x9633, 0x04, NIFiles.OVERLAY_LIZARD_MEN)
             patcher.write_int16(0x963A, 0x0284, NIFiles.OVERLAY_LIZARD_MEN)
-            patcher.write_int16s(0xFFC6E8 + 0x10,
+            patcher.write_int16s(0xFFC720 + 0x10,
                                  [loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccll_heinrich].flag_id][0],
                                   CVLOD_LOCATIONS_INFO[loc_names.ccll_heinrich].flag_id])
 
@@ -595,7 +600,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla and \
                     not loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id][1]:
                 patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(FOREST_OVL_CHARNEL_ITEMS_START + 8,
-                                                                         PickupFlags.GRAVITY | PickupFlags.INVISIBLE)
+                                                                         PickupFlags.GRAVITY | PickupFlags.HIDDEN)
             # Entry 1
             patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
                 FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 2,
@@ -610,7 +615,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                     not loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id][1]:
                 patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
                     FOREST_OVL_CHARNEL_ITEMS_START + CHARNEL_ITEM_LEN + 8,
-                    PickupFlags.GRAVITY | PickupFlags.INVISIBLE)
+                    PickupFlags.GRAVITY | PickupFlags.HIDDEN)
             # Entry 8
             patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
                 FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 2,
@@ -625,7 +630,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                     not loc_values[CVLOD_LOCATIONS_INFO[loc_names.forest_charnel_1].flag_id][1]:
                 patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
                     FOREST_OVL_CHARNEL_ITEMS_START + (CHARNEL_ITEM_LEN * 8) + 8,
-                    PickupFlags.GRAVITY | PickupFlags.INVISIBLE)
+                    PickupFlags.GRAVITY | PickupFlags.HIDDEN)
         # If the chosen prize coffin is not coffin 0, swap the actor var C's of the lids of coffin 0 and the coffin that
         # did get chosen.
         if slot_patch_info["prize coffin id"]:
@@ -677,7 +682,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Add the backup King Skeleton jaws item that will spawn only if the player orphans it the first time.
         patcher.scenes[Scenes.FOREST_OF_SILENCE].actor_lists["proxy"].append(
             CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos= 0.03125,
-                                  y_pos=0, z_pos=-1430,execution_flags=0, object_id=Objects.INTERACTABLE,
+                                  y_pos=0.0, z_pos=-1430.0, execution_flags=0, object_id=Objects.INTERACTABLE,
                                   flag_id=0x2C,  # Drawbridge lowering cutscene flag.
                                   var_a=CVLOD_LOCATIONS_INFO[loc_names.forest_skelly_mouth].flag_id, var_b=0,
                                   var_c=Pickups.ROAST_CHICKEN, var_d=0, extra_condition_ptr=0)
@@ -1095,7 +1100,7 @@ class CVLoDPatchExtensions(APPatchExtension):
             # If it's a local Item she has, have her say she will give it to you.
             if not loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][1]:
                 mary_item_text = (f"give you this "
-                                  f"✨{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][2]+1}/"
+                                  f"✨{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][2]}/"
                                   f"{loc_text[CVLOD_LOCATIONS_INFO[loc_names.villala_mary].flag_id][0]}✨0/")
             # Otherwise, have her say she will send it to [player].
             else:
@@ -2162,6 +2167,22 @@ class CVLoDPatchExtensions(APPatchExtension):
                 if actor["spawn_flags"] & ActorSpawnFlags.REINHARDT_AND_CARRIE:
                     actor["spawn_flags"] &= ~ActorSpawnFlags.ALL_CHARACTERS
 
+        # Prevent being able to activate the bottom CC elevator switch if not every boss is down (Behemoth and either
+        # Rosa or Camilla).
+        elev_switch_boss_check_start = patcher.get_decompressed_file_size(
+            NIFiles.OVERLAY_CC_ELEVATOR_SWITCH_TEXTBOX)
+        patcher.write_int32(0x220, 0x0F800000 | (elev_switch_boss_check_start // 4),
+                            NIFiles.OVERLAY_CC_ELEVATOR_SWITCH_TEXTBOX)
+        patcher.write_int32s(elev_switch_boss_check_start, patches.cc_bottom_elev_boss_checker,
+                             NIFiles.OVERLAY_CC_ELEVATOR_SWITCH_TEXTBOX)
+        patcher.write_int32(0x234, 0x00000000, NIFiles.OVERLAY_CC_ELEVATOR_SWITCH_TEXTBOX)  # NOP
+        # Special message for when we try using the elevator switch with the crystal on but the bosses unbeaten.
+        patcher.scenes[Scenes.CASTLE_CENTER_BOTTOM_ELEV].scene_text[6]["text"] = (
+            "Still not working...?\n"
+            "It seems you still have\n"
+            "unfinished basement\n"
+            "boss business!🅰0/")
+
         # Prevent the CC elevator from working from the top if the elevator switch is not activated.
         patcher.write_int32(0xD7A74, 0x080FF0B0)  # J 0x803FC2C0
         patcher.write_int32s(0xFFC2C0, patches.elevator_flag_checker)
@@ -2276,6 +2297,135 @@ class CVLoDPatchExtensions(APPatchExtension):
                                                                                 "prevents you from setting\n" 
                                                                                 "anything until the seal\n" 
                                                                                 "is removed!🅰0/")
+
+        # Make Behemoth drop randomized items upon destroying his parts.
+        if CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_hl].flag_id in loc_values:
+            # Change the arguments in all calls to the "Behemoth drop item" function to unique identifier numbers so we
+            # can tell which randomized item we should be dropping, as well as make it so it's not necessary to destroy
+            # the parts with Holy Water to make their items drop.
+            # Hind left/right leg
+            patcher.write_int32(0x8210, 0x00000000, NIFiles.OVERLAY_BEHEMOTH)  # NOP
+            patcher.write_int16(0x821E, 0x0001, NIFiles.OVERLAY_BEHEMOTH)
+            patcher.write_int16(0x8232, 0x0002, NIFiles.OVERLAY_BEHEMOTH)
+            # Abdomen (during and after fight)
+            patcher.write_int32(0x827C, 0x00000000, NIFiles.OVERLAY_BEHEMOTH)  # NOP
+            patcher.write_int16(0x828A, 0x0003, NIFiles.OVERLAY_BEHEMOTH)
+            patcher.write_int32(0x7B80, 0x00000000, NIFiles.OVERLAY_BEHEMOTH)  # NOP
+            patcher.write_int16(0x7B8E, 0x0003, NIFiles.OVERLAY_BEHEMOTH)
+            # Thorax
+            patcher.write_int16(0x7CF2, 0x0004, NIFiles.OVERLAY_BEHEMOTH)
+            # Front left/right leg
+            patcher.write_int32(0x7C8C, 0x00000000, NIFiles.OVERLAY_BEHEMOTH)  # NOP
+            patcher.write_int16(0x7C9A, 0x0005, NIFiles.OVERLAY_BEHEMOTH)
+            patcher.write_int16(0x7CC2, 0x0006, NIFiles.OVERLAY_BEHEMOTH)
+            # Head (during and after fight)
+            patcher.write_int32s(0x80E0, [0x00000000, 0x00000000], NIFiles.OVERLAY_BEHEMOTH)  # NOP NOP
+            patcher.write_int16(0x80EE, 0x0007, NIFiles.OVERLAY_BEHEMOTH)
+            patcher.write_int32(0x7BF0, 0x00000000, NIFiles.OVERLAY_BEHEMOTH)  # NOP
+            patcher.write_int16(0x7BFE, 0x0007, NIFiles.OVERLAY_BEHEMOTH)
+
+            # Create the drop info tables and stick it onto the end of the Behemoth overlay.
+            behemoth_drop_table_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_BEHEMOTH)
+            patcher.write_int16s(behemoth_drop_table_start,
+                                  # Hind left leg
+                                 [loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_hl].flag_id][0],
+                                  CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_hl].flag_id,
+                                  PickupFlags.GRAVITY, 0x0000,
+                                  # Hind right leg
+                                  loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_hr].flag_id][0],
+                                  CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_hr].flag_id,
+                                  PickupFlags.GRAVITY, 0x0000,
+                                  # Abdomen
+                                  loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_abdomen].flag_id][0],
+                                  CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_abdomen].flag_id,
+                                  PickupFlags.GRAVITY, 0x0000,
+                                  # Thorax
+                                  loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_thorax].flag_id][0],
+                                  CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_thorax].flag_id,
+                                  PickupFlags.GRAVITY, 0x0000,
+                                  # Front left leg
+                                  loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_fl].flag_id][0],
+                                  CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_fl].flag_id,
+                                  PickupFlags.GRAVITY, 0x0000,
+                                  # Front right leg
+                                  loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_fr].flag_id][0],
+                                  CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_fr].flag_id,
+                                  PickupFlags.GRAVITY, 0x0000,
+                                  # Head
+                                  loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_head].flag_id][0],
+                                  CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_head].flag_id,
+                                  PickupFlags.GRAVITY, 0x0000], NIFiles.OVERLAY_BEHEMOTH)
+            # Handle invisible items if applicable.
+            if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
+                if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_hl].flag_id][1]:
+                    patcher.write_int16(behemoth_drop_table_start + (8 * 0) + 4, PickupFlags.GRAVITY|PickupFlags.HIDDEN,
+                                        NIFiles.OVERLAY_BEHEMOTH)
+                if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_hr].flag_id][1]:
+                    patcher.write_int16(behemoth_drop_table_start + (8 * 1) + 4, PickupFlags.GRAVITY|PickupFlags.HIDDEN,
+                                        NIFiles.OVERLAY_BEHEMOTH)
+                if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_abdomen].flag_id][1]:
+                    patcher.write_int16(behemoth_drop_table_start + (8 * 2) + 4, PickupFlags.GRAVITY|PickupFlags.HIDDEN,
+                                        NIFiles.OVERLAY_BEHEMOTH)
+                if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_thorax].flag_id][1]:
+                    patcher.write_int16(behemoth_drop_table_start + (8 * 3) + 4, PickupFlags.GRAVITY|PickupFlags.HIDDEN,
+                                        NIFiles.OVERLAY_BEHEMOTH)
+                if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_fl].flag_id][1]:
+                    patcher.write_int16(behemoth_drop_table_start + (8 * 4) + 4, PickupFlags.GRAVITY|PickupFlags.HIDDEN,
+                                        NIFiles.OVERLAY_BEHEMOTH)
+                if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_fl].flag_id][1]:
+                    patcher.write_int16(behemoth_drop_table_start + (8 * 5) + 4, PickupFlags.GRAVITY|PickupFlags.HIDDEN,
+                                        NIFiles.OVERLAY_BEHEMOTH)
+                if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_head].flag_id][1]:
+                    patcher.write_int16(behemoth_drop_table_start + (8 * 6) + 4, PickupFlags.GRAVITY|PickupFlags.HIDDEN,
+                                        NIFiles.OVERLAY_BEHEMOTH)
+            # Add the hack that modifies the Behemoth's drops proper.
+            behemoth_drop_modifier_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_BEHEMOTH)
+            patcher.write_int32s(behemoth_drop_modifier_start, patches.behemoth_drop_modifier, NIFiles.OVERLAY_BEHEMOTH)
+            patcher.write_int32(0x86BC, 0x0BC00000 | (behemoth_drop_modifier_start // 4), NIFiles.OVERLAY_BEHEMOTH)
+            # Make the above hack point to the correct table start address.
+            patcher.write_int16(behemoth_drop_modifier_start + 6, 0x0F00 | (behemoth_drop_table_start >> 16),
+                                NIFiles.OVERLAY_BEHEMOTH)
+            patcher.write_int16(behemoth_drop_modifier_start + 10, behemoth_drop_table_start & 0xFFFF,
+                                NIFiles.OVERLAY_BEHEMOTH)
+
+            # Add the backup items that will spawn only if the player orphans Behemoth's drops the first time.
+            patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].actor_lists["room 3"] += [
+                CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos=36.0,
+                                      y_pos=0.0, z_pos=-22.0, execution_flags=0, object_id=Objects.INTERACTABLE,
+                                      flag_id=0xF4,  # Defeated Behemoth flag.
+                                      var_a=CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_hl].flag_id, var_b=0,
+                                      var_c=Pickups.ROAST_CHICKEN, var_d=0, extra_condition_ptr=0),
+                CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos=41.0,
+                                      y_pos=0.0, z_pos=-38.0, execution_flags=0, object_id=Objects.INTERACTABLE,
+                                      flag_id=0xF4,  # Defeated Behemoth flag.
+                                      var_a=CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_hr].flag_id, var_b=0,
+                                      var_c=Pickups.ROAST_CHICKEN, var_d=0, extra_condition_ptr=0),
+                CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos=9.0,
+                                      y_pos=0.0, z_pos=-19.0, execution_flags=0, object_id=Objects.INTERACTABLE,
+                                      flag_id=0xF4,  # Defeated Behemoth flag.
+                                      var_a=CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_abdomen].flag_id, var_b=0,
+                                      var_c=Pickups.ROAST_CHICKEN, var_d=0, extra_condition_ptr=0),
+                CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos=9.0,
+                                      y_pos=0.0, z_pos=9.0, execution_flags=0, object_id=Objects.INTERACTABLE,
+                                      flag_id=0xF4,  # Defeated Behemoth flag.
+                                      var_a=CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_thorax].flag_id, var_b=0,
+                                      var_c=Pickups.ROAST_BEEF, var_d=0, extra_condition_ptr=0),
+                CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos=40.0,
+                                      y_pos=0.0, z_pos=4.0, execution_flags=0, object_id=Objects.INTERACTABLE,
+                                      flag_id=0xF4,  # Defeated Behemoth flag.
+                                      var_a=CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_fl].flag_id, var_b=0,
+                                      var_c=Pickups.ROAST_CHICKEN, var_d=0, extra_condition_ptr=0),
+                CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos=40.0,
+                                      y_pos=0.0, z_pos=24.0, execution_flags=0, object_id=Objects.INTERACTABLE,
+                                      flag_id=0xF4,  # Defeated Behemoth flag.
+                                      var_a=CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_leg_fr].flag_id, var_b=0,
+                                      var_c=Pickups.ROAST_CHICKEN, var_d=0, extra_condition_ptr=0),
+                CVLoDNormalActorEntry(spawn_flags=ActorSpawnFlags.SPAWN_IF_FLAG_SET, status_flags=0, x_pos=18.0,
+                                      y_pos=0.0, z_pos=34.0, execution_flags=0, object_id=Objects.INTERACTABLE,
+                                      flag_id=0xF4,  # Defeated Behemoth flag.
+                                      var_a=CVLOD_LOCATIONS_INFO[loc_names.ccb_behemoth_drop_head].flag_id, var_b=0,
+                                      var_c=Pickups.ROAST_CHICKEN, var_d=0, extra_condition_ptr=0),
+            ]
 
 
         # # # # # # # # # # # # # #
@@ -2414,13 +2564,13 @@ class CVLoDPatchExtensions(APPatchExtension):
             if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
                 if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_1].flag_id][1]:
                     patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(0x70C0 + (4 * 0) + 2,
-                                                                            PickupFlags.GRAVITY|PickupFlags.INVISIBLE)
+                                                                            PickupFlags.GRAVITY|PickupFlags.HIDDEN)
                 if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_2].flag_id][1]:
                     patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(0x70C0 + (4 * 1) + 2,
-                                                                            PickupFlags.GRAVITY|PickupFlags.INVISIBLE)
+                                                                            PickupFlags.GRAVITY|PickupFlags.HIDDEN)
                 if not loc_values[CVLOD_LOCATIONS_INFO[loc_names.tosor_super_3].flag_id][1]:
                     patcher.scenes[Scenes.TOWER_OF_SORCERY].write_ovl_int16(0x70C0 + (4 * 2) + 2,
-                                                                            PickupFlags.GRAVITY|PickupFlags.INVISIBLE)
+                                                                            PickupFlags.GRAVITY|PickupFlags.HIDDEN)
 
         # If the Empty Breakables are on, place freestanding items set up to spawn when breaking each of the cyan
         # diamonds that normally drop nothing.
@@ -3066,7 +3216,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                                         if NEW_VISIBLE_ITEM_COORDS[actor["var_a"]][2] is not None:
                                             actor["z_pos"] = NEW_VISIBLE_ITEM_COORDS[actor["var_a"]][2]
                                 else:
-                                    actor["var_b"] |= PickupFlags.INVISIBLE
+                                    actor["var_b"] |= PickupFlags.HIDDEN
                         # If it's not a Location with a pickup to change, Permanent Powerups are on, and the pickup is
                         # a PowerUp, change it to a Red Jewel(L).
                         elif slot_patch_info["options"]["permanent_powerups"] and actor["var_c"] == Pickups.POWERUP:
@@ -3086,7 +3236,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                                 if loc_values[scene.one_hit_breakables[actor["var_c"]]["flag_id"]][1]:
                                     scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] &= ~PickupFlags.HIDDEN
                                 else:
-                                    scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] |= PickupFlags.INVISIBLE
+                                    scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] |= PickupFlags.HIDDEN
                         # If it's not a Location with a pickup to change, Permanent Powerups are on, and the pickup is
                         # a PowerUp, change it to a Red Jewel(L).
                         elif slot_patch_info["options"]["permanent_powerups"] and \
@@ -3105,10 +3255,10 @@ class CVLoDPatchExtensions(APPatchExtension):
                             if slot_patch_info["options"]["invisible_items"] != InvisibleItems.option_vanilla:
                                 if loc_values[scene.one_hit_special_breakables[actor["var_c"]]["flag_id"]][1]:
                                     scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] \
-                                        &= ~PickupFlags.INVISIBLE
+                                        &= ~PickupFlags.HIDDEN
                                 else:
                                     scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] \
-                                        |= PickupFlags.INVISIBLE
+                                        |= PickupFlags.HIDDEN
                         # If it's not a Location with a pickup to change, Permanent Powerups are on, and the pickup is
                         # a PowerUp, change it to a Red Jewel(L).
                         elif slot_patch_info["options"]["permanent_powerups"] and \
@@ -3502,6 +3652,24 @@ class CVLoDPatchExtensions(APPatchExtension):
             # Write the actual text after the header.
             patcher.write_bytes(text_address + 2, cvlod_string_to_bytearray(multiworld_text, wrap=False,
                                                                             add_end_char=True))
+
+        # Everything related to the Countdown counters.
+        if slot_patch_info["options"]["countdown"]:
+            patcher.write_int32(0xB4440, 0x803FC3C0)
+            patcher.write_int32(0x18A5C, 0x0C0FF101)  # JAL 0x803FC404
+            patcher.write_bytes(0xFFC3C0, pkgutil.get_data(__name__, "data/countdown.ovl"))
+            # Write the Countdown flag arrays on the end of each scene's overlay and update the array of pointers to
+            # them to where they should be when each scene is loaded.
+            for i in range(len(SCENE_COUNTDOWN_PTR_ARRAY_INDEXES)):
+                # If the array index is higher than the size of the slot patch info's array of countdown arrays, don't
+                # do anything. It's a scene not associated with any stage and has no pickup flags to track.
+                if SCENE_COUNTDOWN_PTR_ARRAY_INDEXES[i] >= len(slot_patch_info["countdown flags"]):
+                    continue
+                countdown_flag_addr = len(patcher.scenes[i].overlay)
+                patcher.scenes[i].write_ovl_int16s(
+                    countdown_flag_addr,slot_patch_info["countdown flags"][SCENE_COUNTDOWN_PTR_ARRAY_INDEXES[i]])
+                patcher.write_int32(COUNTDOWN_PTRS_ARRAY_START + (i * 4),
+                                    countdown_flag_addr + SCENE_OVERLAY_RDRAM_START)
 
         # Write the compatibility version string the client will use to distinguish a vanilla ROM from an AP one.
         patcher.write_bytes(ARCHIPELAGO_IDENTIFIER_START, ARCHIPELAGO_CLIENT_COMPAT_VER.encode("utf-8"))

@@ -370,7 +370,7 @@ class Objects(IntEnum):
     ENEMY_SKELETON_WARRIOR = 0xE4
     ENEMY_SNAKE = 0xE5
     ENEMY_GLASS_KNIGHT = 0xE6
-    ENEMY_MOTORCYCLE_SKELETON = 0xE7
+    ENEMY_SKELETON_BIKER = 0xE7
     ENEMY_LIZARD_MAN = 0xE8
     ENEMY_KING_SKELETON = 0xE9
     ENEMY_MERMAN = 0xEA
@@ -391,6 +391,7 @@ class Objects(IntEnum):
     NPC_BOAT = 0xFA
     NPC_GILLES_DE_RAIS_INTRO = 0xFB
     NPC_WOLF_CORNELL = 0xFC
+    RANDO_WARP_MENU = 0xFD  # Normally unused; rando repurposes it for the Warp Menu object.
     ENEMY_GENERATOR_1 = 0x102
     ENEMY_GENERATOR_2 = 0x103
     ENEMY_GENERATOR_3 = 0x104
@@ -640,8 +641,7 @@ class Objects(IntEnum):
 
 # IDs for the compressed files pointed to by the game's "Nisitenma-Ichigo" table.
 class NIFiles(IntEnum):
-    OVERLAY_RANDO_WARP_MENU = 1
-    ASSET_DEBUG_FONT = 2
+    ASSET_DEBUG_FONT = 2  # Overwritten with the warp menu overlay in this rando.
     MAP_FOREST_OF_SILENCE = 3
     MAP_CASTLE_WALL_TOWERS = 4
     MAP_CASTLE_WALL_MAIN = 5
@@ -823,6 +823,7 @@ class NIFiles(IntEnum):
     OVERLAY_TAKE_NITRO_TEXTBOX = 366
     OVERLAY_NITRO_DISPOSAL_TEXTBOX = 367
     OVERLAY_INGREDIENT_SET_TEXTBOX = 368
+    OVERLAY_CC_ELEVATOR_SWITCH_TEXTBOX = 369
     OVERLAY_6AM_ROSE_PATCH_TEXTBOX = 370
     OVERLAY_FOUNTAIN_TOP_SHINE_TEXTBOX = 371
     OVERLAY_FOUNTAIN_PUZZLE = 373

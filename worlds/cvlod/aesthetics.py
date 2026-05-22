@@ -296,24 +296,23 @@ def randomize_fountain_puzzle(world: "CVLoDWorld") -> dict[tuple[int, int], byte
             (0x143, NIFiles.OVERLAY_FOUNTAIN_PUZZLE): FOUNTAIN_LETTERS_TO_BYTES[villa_fountain_order[3]]}
 
 
-def get_countdown_numbers(options: CVLoDOptions, active_locations: Iterable[Location]) -> list[int]:
-    """Figures out which Countdown numbers to increase for each Location after verifying the Item on the Location should
-    count towards a number and creates the entire array of starting countdown numbers.
+def get_countdown_flags(options: CVLoDOptions, active_locations: Iterable[Location]) -> list[list[int]]:
+    """Figures out which Locations have Items that should count towards a Countdown number and assembles each array of
+    event flag IDs that will be checked to determine what the current on-screen number should be in each scene.
 
     The exact number each Location contributes to is determined by the ID of the scene that said Location is in. Said
-    scene ID is an index in a table that, in turn, contains the actual index of the Location's countdown number in the
-    countdown numbers array."""
+    scene ID is an index in a table that, in turn, contains a pointer to the current map's array of event flag IDs to
+    check to determine what the current number on-screen should be."""
 
-    # Create the array. The number of countdown numbers is the highest number in the list of countdown numbers for each
-    # scene.
-    countdown_array = [0 for _ in range(19)]
+    # Create the array of arrays. The number of countdown numbers is the highest number in the list of countdown numbers
+    # for each scene.
+    countdown_arrays = [[] for _ in range(19)]
 
     # Loop over every Location, figure out which countdown number it is, and if it should count on it.
     for loc in active_locations:
         # If the Countdown option is set to Majors, then only Items with the Progression and/or Useful classifications
         # set on them will count. Otherwise, all Locations will count, including those with filler/trap Items. Event
-        # Locations and Locations with a scene ID of 0xFF (indicating they occur in multiple scenes) will never count
-        # no matter what.
+        # Locations will never count no matter what.
         if loc.address is not None and CVLOD_LOCATIONS_INFO[loc.name].countdown is not None and \
                 (options.countdown == Countdown.option_all_locations or
                  (options.countdown == Countdown.option_progression_only and loc.item.classification &
@@ -321,11 +320,17 @@ def get_countdown_numbers(options: CVLoDOptions, active_locations: Iterable[Loca
                  (options.countdown == Countdown.option_progression_useful and loc.item.classification &
                   (ItemClassification.progression | ItemClassification.useful))):
 
-            # Get the Location's countdown number and increment it.
-            countdown_array[CVLOD_LOCATIONS_INFO[loc.name].countdown] += 1
+            # Get the Location's countdown array and add its Location ID to it
+            # (said Location ID is the event flag ID the game will check to see if you have it).
+            countdown_arrays[CVLOD_LOCATIONS_INFO[loc.name].countdown] += [loc.address]
+
+    # Add a 0 to the end of each array to indicate to the game that that's where the array terminates.
+    # An event flag of 0 in the game's code is often used to skip the flag check or other special behaviors.
+    for array in countdown_arrays:
+        array += [0]
 
     # Return the final array.
-    return countdown_array
+    return countdown_arrays
 
 
 def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Location]) -> {int: (int, bool)}:
@@ -377,54 +382,41 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
             # Make the Item the unused Special3 - our multiworld item.
             item_byte = Pickups.SPECIAL3
 
-        # Figure out the Item's appearance byte. If it's an N64-vania player's Item, change the multiworld Item's model
-        # to match what it is. Otherwise, have it be an Archipelago Item. Do not write this if it's an NPC item, as that
-        # would tell the Countdown to decrease even if it shouldn't.
-        if loc not in NPC_LOCATIONS:
-            # If the Item is a LoD Item, pick the Pickup ID of the Item its assuming (regardless of whether it's local).
-            if loc.item.game == GAME_NAME:
-                # If the Item has an entry in the mappings of Items with different Pickup ID appearances in use, use the
-                # pickup ID there.
-                if loc.item.name in OTHER_APPEARANCE_PICKUPS:
-                    appearance_byte = OTHER_APPEARANCE_PICKUPS[loc.item.name] - 1
-                # If it's an Ice Trap, change its model to one of the appearances we determined before.
-                # elif loc.item.code == 0x12:
-                #     appearance_byte = get_item_info(world.random.choice(trap_appearances), "code")
-                # If we chose a PermaUp as our trap appearance, change it to its actual in-game ID of 0x0B.
-                #     if appearance_byte == 0x10C:
-                #         appearance_byte = 0x0B
-                # If it's none of the above exceptions, make the appearance whatever it should be as per the pickup ID
-                # for the pickup it's taking the appearance of minus 1.
-                else:
-                    appearance_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id - 1
-            # If it's a CV64 Item, see if it has an ID in either LoD's Item Info dict or the CV64-exclusive Items dict.
-            # If it does, use that Pickup ID.
-            elif loc.item.game == "Castlevania 64" and (loc.item.name in ALL_CVLOD_ITEMS
-                                                        or loc.item.name in CV64_EXCLUSIVE_ITEMS):
-                # Use the Pickup ID from the CV64 Exclusive Items mapping if present there.
-                if loc.item.name in CV64_EXCLUSIVE_ITEMS:
-                    appearance_byte = CV64_EXCLUSIVE_ITEMS[loc.item.name] - 1
-                # Use the Pickup ID from the Other Appearances mapping if present there.
-                elif loc.item.name in OTHER_APPEARANCE_PICKUPS:
-                    appearance_byte = OTHER_APPEARANCE_PICKUPS[loc.item.name] - 1
-                # Otherwise, use the Pickup ID from its regular Item info.
-                else:
-                    appearance_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id - 1            # If not from either N64-vania, or it's an undefined CV64-exclusive Item, choose a generic Archipelago Item.
-            elif loc.item.advancement:
-                appearance_byte = AP_PROG_PICKUP_INDEX - 1 # Clocktower Key B (Actual Key B's appearance is changed)
+        # Figure out the Item's appearance byte.
+        # If the Item is a LoD Item, pick the Pickup ID of the Item its assuming (regardless of whether it's local).
+        if loc.item.game == GAME_NAME:
+            # If the Item has an entry in the mappings of Items with different Pickup ID appearances in use, use the
+            # pickup ID there.
+            if loc.item.name in OTHER_APPEARANCE_PICKUPS:
+                appearance_byte = OTHER_APPEARANCE_PICKUPS[loc.item.name] - 1
+            # If it's an Ice Trap, change its model to one of the appearances we determined before.
+            # elif loc.item.code == 0x12:
+            #     appearance_byte = get_item_info(world.random.choice(trap_appearances), "code")
+            # If we chose a PermaUp as our trap appearance, change it to its actual in-game ID of 0x0B.
+            #     if appearance_byte == 0x10C:
+            #         appearance_byte = 0x0B
+            # If it's none of the above exceptions, make the appearance whatever it should be as per the pickup ID
+            # for the pickup it's taking the appearance of minus 1.
             else:
-                appearance_byte = AP_NON_PROG_PICKUP_INDEX - 1  # Specail3 ID
+                appearance_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id - 1
+        # If it's a CV64 Item, see if it has an ID in either LoD's Item Info dict or the CV64-exclusive Items dict.
+        # If it does, use that Pickup ID.
+        elif loc.item.game == "Castlevania 64" and (loc.item.name in ALL_CVLOD_ITEMS
+                                                    or loc.item.name in CV64_EXCLUSIVE_ITEMS):
+            # Use the Pickup ID from the CV64 Exclusive Items mapping if present there.
+            if loc.item.name in CV64_EXCLUSIVE_ITEMS:
+                appearance_byte = CV64_EXCLUSIVE_ITEMS[loc.item.name] - 1
+            # Use the Pickup ID from the Other Appearances mapping if present there.
+            elif loc.item.name in OTHER_APPEARANCE_PICKUPS:
+                appearance_byte = OTHER_APPEARANCE_PICKUPS[loc.item.name] - 1
+            # Otherwise, use the Pickup ID from its regular Item info.
+            else:
+                appearance_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id - 1
+        # If not from either N64-vania, or it's an undefined CV64-exclusive Item, choose a generic Archipelago Item.
+        elif loc.item.advancement:
+            appearance_byte = AP_PROG_PICKUP_INDEX - 1 # Clocktower Key B (Actual Key B's appearance is changed)
         else:
-            appearance_byte = 0x00
-
-        # Set the 0x80 bit in the appearance byte to flag the Item as something that should decrement the Countdown
-        # when picked up, if applicable.
-        if (world.options.countdown.value == Countdown.option_progression_only and
-                loc.item.classification & ItemClassification.progression) or \
-                (world.options.countdown.value == Countdown.option_progression_useful and
-                 loc.item.classification & (ItemClassification.progression | ItemClassification.useful)) or \
-                world.options.countdown.value == Countdown.option_all_locations:
-            appearance_byte |= 0x80
+            appearance_byte = AP_NON_PROG_PICKUP_INDEX - 1  # Specail3 ID
 
         # Put the appearance and item bytes together to get the final item value to write on that Location.
         item_value = (appearance_byte << 8) + item_byte

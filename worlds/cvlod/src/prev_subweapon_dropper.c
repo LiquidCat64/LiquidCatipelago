@@ -1,4 +1,4 @@
-// Written by Moises
+// Written by Moisés originally for CV64, further modified by Liquid Cat
 #include "object.h"
 #include "math.h"
 #include "cvlod.h"
