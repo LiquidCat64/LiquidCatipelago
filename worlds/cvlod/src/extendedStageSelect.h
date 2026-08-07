@@ -9,7 +9,6 @@
 
 #define NUM_MAPS 17
 #define OPTION_MAX 8
-#define SPECIALS_PER_WARP 2
 #define NUMBER_OF_HEADERS 5
 #define NUMBER_OF_CONVENIENCE_WARPS 3
 
@@ -22,7 +21,7 @@ typedef struct {
     textboxObject* YesNoTextbox;
     textboxObject* DifficultyTextbox;
     textboxObject* SpecialCountTextbox;
-    textboxObject* ArrowTextbox;
+    selectionArrowObject* SelectionArrow;
     s8 num_maps;
     s8 specials_per_warp;
     s8 first_string_ID;
@@ -48,6 +47,8 @@ void (*extendedStageSelect_functions[])(extendedStageSelect* self) =
     extendedStageSelect_loop,
     extendedStageSelect_warpToMap
 };
+
+s32 extendedStageSelect_checkIfSelectable(extendedStageSelect*, s8);
 
 const s8* destMapIDs[NUM_MAPS] = {
     16,
@@ -88,6 +89,12 @@ const s8* destSpawnIDs[NUM_MAPS] = {
     2,
     1
 }; 
+
+// [0] = special1s per warp
+// [1] = number of maps
+u8 misc_vars[] = {
+    1, 17
+};
 
 // To be overwritten with the actual name pool by the rando patcher.
 u16 stage_names_pool[] = {
@@ -150,15 +157,12 @@ u16 header_names_pool[] = {
     0xA200, 0x005F, 0xA200, 0x0058, 0xFFFF, 0xB500,
 };
 
-u16 arrow_textbox_pool[] = {
-    0x0065, 0xFFFF, 0xB500, 0x0000
-};
-
 const char* characterNames[] = {
     "Reinhardt",
     "Carrie",
     "Cornell",
     "Henry",
+    "Wolf Cornell",
 };
 
 u16 character_sound_ids[] = {
@@ -188,5 +192,7 @@ extern u16 screen_letterbox_pos_up;
 extern u16 screen_letterbox_pos_right;
 extern u16 screen_letterbox_pos_down;
 extern u16 expansion_pak_enabled;
+
+extern s16 character_hurt_sound_ids[];
 
 #endif

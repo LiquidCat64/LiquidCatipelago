@@ -6,7 +6,7 @@ from .options import CVLoDOptions, BackgroundMusic, Countdown, IceTrapAppearance
     CastleCenterBranchingPaths, VillaBranchingPaths
 from .stages import CVLOD_STAGE_INFO
 from .locations import CVLOD_LOCATIONS_INFO, NPC_LOCATIONS, LOC_IDS_TO_INFO
-from .items import ALL_CVLOD_ITEMS, SUB_WEAPON_IDS, OTHER_APPEARANCE_PICKUPS
+from .items import ALL_CVLOD_ITEMS, SUB_WEAPON_IDS, CVLOD_PICKUP_INFO
 from .cvlod_text import cvlod_string_to_bytearray
 
 from typing import TYPE_CHECKING, Iterable
@@ -375,20 +375,16 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
             # If the Location does not give its Item via a pickup (read: it's either an NPC or a shop Item), write the
             # Item's actual ID instead of its Pickup ID.
             if loc.name in NPC_LOCATIONS:
-                item_byte = ALL_CVLOD_ITEMS[loc.item.name].item_id
+                item_byte = CVLOD_PICKUP_INFO[ALL_CVLOD_ITEMS[loc.item.name].pickup_id - 1].item_id
             else:
                 item_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id
         else:
-            # Make the Item the unused Special3 - our multiworld item.
-            item_byte = Pickups.SPECIAL3
+            # Make the Item one of the AP Items. Doesn't matter which one.
+            item_byte = Pickups.AP_FILLER
 
         # Figure out the Item's appearance byte.
         # If the Item is a LoD Item, pick the Pickup ID of the Item its assuming (regardless of whether it's local).
         if loc.item.game == GAME_NAME:
-            # If the Item has an entry in the mappings of Items with different Pickup ID appearances in use, use the
-            # pickup ID there.
-            if loc.item.name in OTHER_APPEARANCE_PICKUPS:
-                appearance_byte = OTHER_APPEARANCE_PICKUPS[loc.item.name] - 1
             # If it's an Ice Trap, change its model to one of the appearances we determined before.
             # elif loc.item.code == 0x12:
             #     appearance_byte = get_item_info(world.random.choice(trap_appearances), "code")
@@ -397,8 +393,7 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
             #         appearance_byte = 0x0B
             # If it's none of the above exceptions, make the appearance whatever it should be as per the pickup ID
             # for the pickup it's taking the appearance of minus 1.
-            else:
-                appearance_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id - 1
+            appearance_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id - 1
         # If it's a CV64 Item, see if it has an ID in either LoD's Item Info dict or the CV64-exclusive Items dict.
         # If it does, use that Pickup ID.
         elif loc.item.game == "Castlevania 64" and (loc.item.name in ALL_CVLOD_ITEMS
@@ -406,17 +401,24 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
             # Use the Pickup ID from the CV64 Exclusive Items mapping if present there.
             if loc.item.name in CV64_EXCLUSIVE_ITEMS:
                 appearance_byte = CV64_EXCLUSIVE_ITEMS[loc.item.name] - 1
-            # Use the Pickup ID from the Other Appearances mapping if present there.
-            elif loc.item.name in OTHER_APPEARANCE_PICKUPS:
-                appearance_byte = OTHER_APPEARANCE_PICKUPS[loc.item.name] - 1
             # Otherwise, use the Pickup ID from its regular Item info.
             else:
                 appearance_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id - 1
-        # If not from either N64-vania, or it's an undefined CV64-exclusive Item, choose a generic Archipelago Item.
-        elif loc.item.advancement:
-            appearance_byte = AP_PROG_PICKUP_INDEX - 1 # Clocktower Key B (Actual Key B's appearance is changed)
+        # If not from either N64-vania, or it's an undefined CV64-exclusive Item, use one of the off-world AP Items.
+        # Which one to use depends on the Item's classification.
         else:
-            appearance_byte = AP_NON_PROG_PICKUP_INDEX - 1  # Specail3 ID
+            # Decide which AP Item to use to represent the other game item.
+            if loc.item.classification & ItemClassification.progression and \
+                loc.item.classification & ItemClassification.useful:
+                appearance_byte = Pickups.AP_PROG_USEFUL - 1  # Progression + Useful
+            elif loc.item.classification & ItemClassification.progression:
+                appearance_byte = Pickups.AP_PROG - 1  # Progression
+            elif loc.item.classification & ItemClassification.useful:
+                appearance_byte = Pickups.AP_USEFUL - 1  # Useful
+            elif loc.item.classification & ItemClassification.trap:
+                appearance_byte = Pickups.AP_TRAP - 1  # Trap
+            else:
+                appearance_byte = Pickups.AP_FILLER - 1  # Filler
 
         # Put the appearance and item bytes together to get the final item value to write on that Location.
         item_value = (appearance_byte << 8) + item_byte
@@ -560,7 +562,7 @@ def get_start_inventory_data(player: int, options: CVLoDOptions, precollected_it
         -> dict[str, list[int] | int]:
     """Calculate and return the starting inventory values. Not every Item goes into the menu inventory, so everything
     has to be handled appropriately."""
-    start_inventory_data = {"inv array": [0 for _ in range(0x30)],
+    start_inventory_data = {"inv array": [0 for _ in range(len(CVLOD_PICKUP_INFO))],
                             "gold": 0,
                             "powerups": 0,
                             "ice traps": 0,
@@ -589,11 +591,6 @@ def get_start_inventory_data(player: int, options: CVLoDOptions, precollected_it
         elif item.name == item_names.powerup:
             if start_inventory_data["powerups"] < 2:
                 start_inventory_data["powerups"] += 1
-        # If it's a PermaUp, increment the PowerUp ID's count in the inventory array specifically (if we already have
-        # fewer than 2).
-        elif item.name == item_names.permaup:
-            if start_inventory_data["inv array"][ALL_CVLOD_ITEMS[item_names.powerup].item_id-1] < 2:
-                start_inventory_data["inv array"][ALL_CVLOD_ITEMS[item_names.powerup].item_id - 1] += 1
         # If the Item is a moneybag, increment the starting gold amount by that bag's worth (it's right in the name).
         elif "GOLD" in item.name:
             start_inventory_data["gold"] += int(item.name[0:4])
@@ -615,11 +612,19 @@ def get_start_inventory_data(player: int, options: CVLoDOptions, precollected_it
             if start_inventory_data["ice traps"] < 0xFF:
                 start_inventory_data["ice traps"] += 1
         # If it's literally any other Item, increment its count in the inventory array (the index in which is determined
-        # by the regular Item ID). Note that Specials hax a max of 99 regardless of the maximum for the other Items.
+        # by the regular Item ID). Note that Specials hax a max of 99 regardless of the maximum for the other Items,
+        # and the Perma series of items all have their own maxes as well.
         else:
             if (start_inventory_data["inv array"][item.code-1] < max_items) or \
-                    ("Special" in item.name and start_inventory_data["inv array"][item.code-1] < 99):
+                    ("Special" in item.name and start_inventory_data["inv array"][item.code-1] < 99) or \
+                    (item.name == item_names.perma_up and start_inventory_data["inv array"][item.code-1] < 2) or \
+                    ("Perma" in item.name and start_inventory_data["inv array"][item.code-1] < 3):
                 start_inventory_data["inv array"][item.code-1] += 1
+
+        # If receiving a perma weapon, and we currently don't have a starting sub-weapon set, set the weapon now.
+        if item.name in [item_names.perma_axe, item_names.perma_cross, item_names.perma_water, item_names.perma_knife] \
+            and not start_inventory_data["sub weapon"]:
+            start_inventory_data["sub weapon"] = item.code - 0x31
 
     # Return the final start inventory data.
     return start_inventory_data
@@ -629,16 +634,16 @@ def get_item_text_color(classification: int) -> int:
     """Given an item classification, returns an in-game color index value that is associated with that classification + 1 for the purposes of coloring item names in-game."""
     # Progression + Useful
     if ItemClassification.progression & classification and ItemClassification.useful & classification:
-        return TextColors.YELLOW + 1
+        return TextColors.YELLOW
     # Progression
     elif ItemClassification.progression & classification:
-        return TextColors.PLUM + 1
+        return TextColors.PLUM
     # Useful
     elif ItemClassification.useful & classification:
-        return TextColors.SLATE_BLUE + 1
+        return TextColors.SLATE_BLUE
     # Trap
     elif ItemClassification.trap & classification:
-        return TextColors.SALMON + 1
+        return TextColors.SALMON
     # Filler
     else:
-        return TextColors.CYAN + 1
+        return TextColors.CYAN

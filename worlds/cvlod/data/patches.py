@@ -8,11 +8,11 @@ custom_segment_loader = [
     0x00000000,  # NOP
     # Load the custom segment and then return to enter the main game loop.
     0x3C0400FF,  # LUI   A0, 0x00FF
-    0x3484C000,  # ORI   A0, A0, 0xC000
+    0x34848000,  # ORI   A0, A0, 0x8000
     0x3C058040,  # LUI   A1, 0x8040
-    0x24A5C000,  # ADDIU A1, A1, 0xC000
+    0x24A58000,  # ADDIU A1, A1, 0x8000
     0x0C00690B,  # JAL   0x8001A42C
-    0x24064000,  # ADDIU A2, R0, 0x4000
+    0x34068000,  # ORI   A2, R0, 0x8000
     0x00000000,  # NOP
     0x08005F1A,  # J     0x80017C68
     0x00000000,  # NOP
@@ -282,6 +282,130 @@ give_subweapon_stopper = [
     0x254A0001,  # ADDIU T2, T2, 0x0001
     0xA12A9BE2,  # SB    T2, 0x9BE2 (T1)
     0x0804F0BF,  # J     0x8013C2FC
+]
+
+perma_subweapon_switcher = [
+    # Hooked into one of the essential movement function calls on every character, this will allow switching the
+    # player's current sub-weapon with R + D-pad depending on what perma sub-weapons they currently have.
+    0x27BDFFF8,  # ADDIU SP, SP, -0x08
+    0xAFBF0004,  # SW    RA, 0x0004 (SP)
+    # Call the player function that the game was supposed to call here.
+    0x0C00AA66,  # JAL   0x8002A998
+    0x00000000,  # NOP
+    # If we currently have NO sub-weapon at all, don't bother doing any of this.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x950EAB3E,  # LHU   T6, 0xAB3E (T0)
+    0x11C0003C,  # BEQZ  T6,     [forward 0x3C]
+    # Check if we're holding R. If not, don't do any of this.
+    0x910987F7,  # LBU   T1, 0x87F7 (T0)
+    0x31290010,  # ANDI  T1, T1, 0x0010
+    0x11200039,  # BEQZ  T1,     [forward 0x39]
+    # Check if we pressed D-pad left OR right. If we didn't, do the checks for pressing up or down instead.
+    0x910987F8,  # LBU   T1, 0x87F8 (T0)
+    0x312A0003,  # ANDI  T2, T1, 0x0003
+    0x1140001B,  # BEQZ  T2,     [forward 0x1B]
+    # Save the initial sub-weapon value for later...
+    0x25CB0000,  # ADDIU T3, T6, 0x0000
+    # Check if we pressed D-pad right. If not, assume we pressed left instead.
+    0x312A0001,  # ANDI  T2, T1, 0x0001
+    0x1140000C,  # BEQZ  T2,     [forward 0x0C]
+    0x00000000,  # NOP
+    # Start of incremental sub-weapon cycle loop. Increment the sub-weapon value by 1.
+    0x256B0001,  # ADDIU T3, T3, 0x0001
+    # If the new value is 5 or higher, set it back down to 1 instead.
+    0x29610005,  # SLTI  AT, T3, 0x0005
+    0x50200001,  # BEQZL AT,     [forward 0x01]
+    0x240B0001,  # ADDIU T3, R0, 0x0001
+    # If the new sub-weapon value equals the one we started with, abort now as we did a full loop.
+    0x116E002D,  # BEQ   T3, T6, [forward 0x2D]
+    # Use the new sub-weapon value to get our current count of that weapon's perma item.
+    # If we have 0, go back to the start of the loop. Otherwise, consider it our new weapon to switch to.
+    0x010B6021,  # ADDU  T4, T0, T3
+    0x918DAB74,  # LBU   T5, 0xAB74 (T4)
+    0x11A0FFF8,  # BEQZ  T5,     [backward 0x08]
+    0x00000000,  # NOP
+    0x10000009,  # B             [forward 0x09]
+    0x00000000,  # NOP
+    # Start of decremental sub-weapon cycle loop. Decrement the sub-weapon value by 1.
+    0x256BFFFF,  # ADDIU T3, T3, 0xFFFF
+    # If the new value is 0, set it up to 4 instead.
+    0x51600001,  # BEQZL T3,     [forward 0x01]
+    0x240B0004,  # ADDIU T3, R0, 0x0004
+    # If the new sub-weapon value equals the one we started with, abort now as we did a full loop.
+    0x116E0023,  # BEQ   T3, T6, [forward 0x23]
+    # Use the new sub-weapon value to get our current count of that weapon's perma item.
+    # If we have 0, go back to the start of the loop. Otherwise, consider it our new weapon to switch to.
+    0x010B6021,  # ADDU  T4, T0, T3
+    0x918DAB74,  # LBU   T5, 0xAB74 (T4)
+    0x11A0FFF9,  # BEQZ  T5,     [backward 0x07]
+    0x00000000,  # NOP
+    # Get our current equipped level for that weapon and store the new sub-weapon value before jumping to where the
+    # weapon level modification happens.
+    0x918DAB4F,  # LBU   T5, 0xAB4F (T4)
+    0x10000015,  # B             [forward 0x15]
+    0xA50BAB3E,  # SH    T3, 0xAB3E (T0)
+    0x00000000,  # NOP
+    # Check if we pressed down. If not, go to the pressed up check.
+    0x312A0004,  # ANDI  T2, T1, 0x0004
+    0x11400007,  # BEQZ  T2,     [forward 0x07]
+    0x00000000,  # NOP
+    # Get the current equipped level for our current sub-weapon and check if it's 0.
+    # If it is, abort now as it can't go lower.
+    0x010B6021,  # ADDU  T4, T0, T3
+    0x918DAB4F,  # LBU   T5, 0xAB4F (T4)
+    0x11A00015,  # BEQZ  T5,     [forward 0x15]
+    # Decrement the equipped level by 1, store it, and jump to where the weapon level modification happens.
+    0x25ADFFFF,  # ADDIU T5, T5, 0xFFFF
+    0x1000000B,  # B             [forward 0x0B]
+    0xA18DAB4F,  # SB    T5, 0xAB4F (T4)
+    # Check if we pressed up. If not, abort now as we pressed no direction at all.
+    0x312A0008,  # ANDI  T2, T1, 0x0008
+    0x11400010,  # BEQZ  T2,     [forward 0x10]
+    # Get the current equipped level for our current sub-weapon and check if incrementing it makes it equal to or higher
+    # than our current perma item count for the weapon. If it is, abort now as it can't go higher.
+    # Otherwise, store the new equipped level and proceed on to where the weapon level modification happens.
+    0x010B6021,  # ADDU  T4, T0, T3
+    0x918DAB4F,  # LBU   T5, 0xAB4F (T4)
+    0x918FAB74,  # LBU   T7, 0xAB74 (T4)
+    0x25AD0001,  # ADDIU T5, T5, 0x0001
+    0x01AF082A,  # SLT   AT, T5, T7
+    0x1020000A,  # BEQZ  AT,     [forward 0x0A]
+    0x00000000,  # NOP
+    0xA18DAB4F,  # SB    T5, 0xAB4F (T4)
+    # Store the new current weapon level that we determined in one of the prior four check blocks.
+    0xA50DAE26,  # SH    T5, 0xAE26 (T0)
+    # Set the bit in one of the Gameplay Menu Manager's structs that indicates the HUD counters should update.
+    0x8D0DAC0C,  # LW    T5, 0xAC0C (T0)
+    0x8DAD0060,  # LW    T5, 0x0060 (T5)
+    0x91AC0000,  # LBU   T4, 0x0000 (T5)
+    0x358C0008,  # ORI   T4, T4, 0x0008
+    0xA1AC0000,  # SB    T4, 0x0000 (T5)
+    # Play the "sub-weapon pickup" sound and return.
+    0x0C0059BE,  # JAL   0x800166F8
+    0x240401F5,  # ADDIU A0, R0, 0x01F5  <- sub-weapon pickup sound ID
+    0x8FBF0004,  # LW    RA, 0x0004 (SP)
+    0x03E00008,  # JR    RA
+    0x27BD0008   # ADDIU SP, SP, 0x08
+]
+
+load_perma_restorer = [
+    # Restores the player's main and sub-weapon levels upon loading from either a death or the file select.
+
+    # Get the PermaUp count and write it in the main weapon level.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x910AAB74,  # LBU   T2, 0xAB74 (T0)
+    0xA50AAE22,  # SH    T2, 0xAE22 (T0)
+    # If the player has a sub-weapon equipped, get the equipped weapon's level and write it in the sub-weapon level.
+    0x950BAB3E,  # LHU   T3, 0xAB3E (T0)
+    0x11600005,  # BEQZ  T3,     [forward 0x05]
+    0x010B6021,  # ADDU  T4, T0, T3
+    0x918AAB4F,  # LBU   T2, 0xAB3F (T4)
+    0xA50AAE26,  # SH    T2, 0xAE26 (T0)
+    0x03E00008,  # JR    RA
+    0x00000000,  # NOP
+    # Otherwise, if we have no sub-weapon equipped, set the sub-weapon level to 0.
+    0x03E00008,  # JR    RA
+    0xA500AE26,  # SH    R0, 0xAE26 (T0)
 ]
 
 file_select_stage_position_setter = [
@@ -608,13 +732,21 @@ ck_door_music_player = [
 ]
 
 drac_condition_checker = [
-    # Checks the Special2 counter to see if the required amount of the goal item has been reached and disallows opening
-    # Dracula's doors if not.
+    # Checks the McGuffin item counters (Special2, Trophy, and Big Crystal) to see if the required amounts of each of
+    # them have been reached and disallows opening Dracula's doors if not.
     0x24020000,  # ADDIU V0, R0, 0x0000
     0x3C0A801D,  # LUI   T2, 0x801D
     0x914BAB48,  # LBU   T3, 0xAB48 (T2)
-    0x296A0000,  # SLTI  T2, T3, 0x0000
-    0x55400001,  # BNEZL T2,     [forward 0x01]
+    0x296C0000,  # SLTI  T4, T3, 0x0000 <- Required Special2s
+    0x55800001,  # BNEZL T4,     [forward 0x01]
+    0x24020001,  # ADDIU V0, R0, 0x0001
+    0x914BAB49,  # LBU   T3, 0xAB49 (T2)
+    0x296C0000,  # SLTI  T4, T3, 0x0000 <- Required Trophies
+    0x55800001,  # BNEZL T4,     [forward 0x01]
+    0x24020001,  # ADDIU V0, R0, 0x0001
+    0x914BAB64,  # LBU   T3, 0xAB64 (T2)
+    0x296C0000,  # SLTI  T4, T3, 0x0000 <- Required Big Crystal
+    0x55800001,  # BNEZL T4,     [forward 0x01]
     0x24020001,  # ADDIU V0, R0, 0x0001
     0x03E00008,  # JR    RA
     0x00000000   # NOP
@@ -719,18 +851,18 @@ elevator_flag_checker = [
     0x08055CFC   # J     0x801573F0
 ]
 
-special2_giver = [
-    # Gives a Special2/Crystal/Trophy through the multiworld system, and clears the byte preventing warping.
+trophy_giver = [
+    # Gives a Trophy through the multiworld system, and clears the byte preventing warping.
     # Can be hooked into anything; just make sure the JR T9 is replaced with a jump back to where it should be.
-    # It may be further modified to remove the Special2 giving part depending on what Dracula's Condition is.
+    # It may be further modified to remove the Trophy giving part depending on what Dracula's Condition is.
     0x3C09801D,  # LUI   T1, 0x801D
-    0x24080005,  # ADDIU T0, R0, 0x0005
+    0x24080006,  # ADDIU T0, R0, 0x0006  <- Trophy ID (Can replace with any Item ID)
     0xA128AA4C,  # SB    T0, 0xAA4C (T1)
     0x03200008,  # JR    T9
     0xA120AA4B,  # SB    R0, 0xAA4B (T1)
 ]
 
-special2_giver_lizard_edition = [
+trophy_giver_lizard_edition = [
     # Special version of the above hack specifically for the Waterway Lizard-man Trio. It turns out the code that
     # resumes the waterway music after they are dead is very spaghetti, so we are instead opting to hook into the code
     # that depletes their combined health bar whenever they get hit.
@@ -739,12 +871,12 @@ special2_giver_lizard_edition = [
     0x15400008,  # BNEZ  T2,     [forward 0x08]
     0xA46A0000,  # SH    T2, 0x0000 (V1)
     0x3C09801D,  # LUI   T1, 0x801D
-    # Set flag 0x2F7 (normally unused) so we know the lizards were properly exterminated.
+    # Set Event Flag 0x2F7 (normally unused) so we know the lizards were properly exterminated.
     0x9128AABE,  # LBU   T0, 0xAABE (T1)
     0x35080001,  # ORI   T0, T0, 0x0001
     0xA128AABE,  # SB    T0, 0xAABE (T1)
-    # Give a Special2 and un-set the "can't warp" byte.
-    0x24080005,  # ADDIU T0, R0, 0x0005
+    # Give a Trophy and un-set the "can't warp" byte.
+    0x24080006,  # ADDIU T0, R0, 0x0006
     0xA120AA4B,  # SB    R0, 0xAA4B (T1)
     0xA128AA4C,  # SB    T0, 0xAA4C (T1)
     0x03E00008,  # JR    RA
@@ -782,7 +914,6 @@ item_customizer = [
     0xA4CF0038,  # SH    T7, 0x0038 (A2)
     # Do the logic for indexing to the pickup's entry in the interactuables settings table now so we can do additional
     # checks with it after returning.
-    0x3C0B8019,  # LUI   T3, 0x8019
     0x000F5080,  # SLL   T2, T7, 2
     0x014F5021,  # ADDU  T2, T2, T7
     0x000A5080,  # SLL   T2, T2, 2
@@ -817,7 +948,7 @@ pickup_spin_speed_switcher = [
     0x55000001,  # BNEZL T0,     [forward 0x01]
     0x01004825,  # OR    T1, T0, R0
     0x03E00008,  # JR    RA
-    0x3C028019,  # LUI   V0, 0x8019
+    0x3C028040,  # LUI   V0, 0x8040
 ]
 
 pickup_shine_size_switcher = [
@@ -826,7 +957,7 @@ pickup_shine_size_switcher = [
     0x55000001,  # BNEZL T0,     [forward 0x01]
     0x01007825,  # OR    T7, T0, R0
     0x03E00008,  # JR    RA
-    0x3C048019,  # LUI   A0, 0x8019
+    0x3C048040,  # LUI   A0, 0x8040
 ]
 
 pickup_shine_height_switcher = [
@@ -836,6 +967,30 @@ pickup_shine_height_switcher = [
     0x0100C825,  # OR    T9, T0, R0
     0x03E00008,  # JR    RA
     0x24050015,  # ADDIU A1, R0, 0x0015
+]
+
+pickup_extended_spawn_height_checks = [
+    # Additional spawn height checks for the randomizer's custom pickups. Specifically the Perma Axe and Perma Cross
+    # should have their spawn height changed in the same way as the normal Axe and Cross.
+
+    # Check if the item's range check for the height adjustment jump table passed. If it did, jump back and proceed
+    # as normal.
+    0x10200003,  # BEQZ  AT,     [forward 0x03]
+    0x00000000,  # NOP
+    0x08061C74,  # J     0x801871D0
+    0x00000000,  # NOP
+    # If the check did not pass, check the Item ID to see if it's the Perma Axe or Perma Cross. If it's either, jump
+    # to the code that adjusts the normal Axe and Cross's height.
+    0x24090034,  # ADDIU T1, R0, 0x0034
+    0x112A0003,  # BEQ   T1, T2, [forward 0x03]
+    0x24090035,  # ADDIU T1, R0, 0x0035
+    0x152A0003,  # BNE   T1, T2, [forward 0x03]
+    0x00000000,  # NOP
+    0x08061C79,  # J     0x801871E4
+    0x00000000,  # NOP
+    # Otherwise, jump to where the jump table check would go if it didn't pass.
+    0x08061CCD,  # J     0x80187334
+    0x00000000   # NOP
 ]
 
 pickup_other_spawned_flag_checker = [
@@ -853,7 +1008,7 @@ pickup_other_spawned_flag_checker = [
     0x8D081530,  # LW    T0, 0x1530 (T0)
     0x340A0000,  # ORI   T2, R0, 0x0000
     0x340B0027,  # ORI   T3, R0, 0x0027
-    0x3C0E8019,  # LUI   T6, R0, 0x8019
+    0x3C0E8040,  # LUI   T6, R0, 0x8040
     # Start looping over each spawned actor entry.
     # If we've reached the end of the array, break out of the loop.
     0x11090014,  # BEQ   T0, T1, [forward 0x14]
@@ -865,8 +1020,8 @@ pickup_other_spawned_flag_checker = [
     0x158B000E,  # BNE   T4, T3, [forward 0x0E]
     0x8D0F0070,  # LW    T7, 0x0070 (T0)
     0x91EF0019,  # LBU   T7, 0x0019 (T7)
-    # ID of the other pickup actor is 0x31 or greater? Disregard it, as it's a text spot.
-    0x29F80031,  # SLTI  T8, T7, 0x0031
+    # ID of the other pickup actor is 0xB4 or greater? Disregard it, as it's a text spot.
+    0x29F800B4,  # SLTI  T8, T7, 0x00B4
     0x1300000A,  # BEQZ  T8,     [forward 0x0A]
     # Check the interactable's entry in the interactable settings table. If it's a text spot, or if it has our custom
     # "disregard flag checks" value set on its entry, disregard it.
@@ -1022,7 +1177,7 @@ new_game_extras = [
     0x24090000,  # ADDIU T1, R0, 0x0000  <- Starting Ice Traps
     0xA109AA49,  # SB    T1, 0xAA49 (T0)
     0x240C0000,  # ADDIU T4, R0, 0x0000
-    0x240D0030,  # ADDIU T5, R0, 0x0030
+    0x240D0038,  # ADDIU T5, R0, 0x0038
     0x11AC0007,  # BEQ   T5, T4, [forward 0x07]
     0x3C0A8040,  # LUI   T2, 0x8040
     0x014C5021,  # ADDU  T2, T2, T4
@@ -1031,7 +1186,33 @@ new_game_extras = [
     0x25080001,  # ADDIU T0, T0, 0x0001
     0x1000FFF9,  # B             [backward 0x07]
     0x258C0001,  # ADDIU T4, T4, 0x0001
-    0x03E00008   # JR    RA
+    # If starting with perma sub-weapons, set their equipped starting levels. Subtract 1 from each count to get the
+    # starting level, unless the count is 0, in which case skip it.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x24090000,  # ADDIU T1, R0, 0x0000
+    0x29210004,  # SLTI  AT, T1, 0x0004
+    0x10200007,  # BEQZ  AT,     [forward 0x07]
+    0x910AAB75,  # LBU   T2, 0xAB75 (T0)
+    0x11400002,  # BEQZ  T2,     [forward 0x02]
+    0x254AFFFF,  # ADDIU T2, T2, 0xFFFF
+    0xA10AAB50,  # SB    T2, 0xAB50 (T0)
+    0x25080001,  # ADDIU T0, T0, 0x0001
+    0x1000FFF8,  # B             [backward 0x08]
+    0x25290001,  # ADDIU T1, T1, 0x0001
+    # Add the starting equipped weapon level to the currently equipped weapon's starting level to get the actual
+    # starting weapon level.
+    0x3C08801D,  # LUI   T0, 0x801D
+    0x9509AB3E,  # LHU   T1, 0xAB3E (T0)
+    0x11200008,  # BEQZ  T1,     [forward 0x08]
+    0x01095021,  # ADDU  T2, T0, T1
+    0x914BAB4F,  # LBU   T3, 0xAB4F (T2)
+    0x950CAE26,  # LHU   T4, 0xAE26 (T0)
+    0x016C5821,  # ADDU  T3, T3, T4
+    0x296D0003,  # SLTI  T5, T3, 0x0003
+    0x51A00001,  # BEQZL T5,     [forward 0x01]
+    0x240B0002,  # ADDIU T3, R0, 0x0002
+    0xA50BAE26,  # SH    T3, 0xAE26 (T0)
+    0x03E00008,  # JR    RA
 ]
 
 shopsanity_stuff = [
@@ -1148,6 +1329,14 @@ special_sound_notifs = [
     0x15030003,  # BNE   T0, V1, [forward 0x03]
     0x00000000,  # NOP
     0x0C0059BE,  # JAL   0x800166f8
+    0x240402E4,  # ADDIU A0, R0, 0x02E4   <- Dracula hurt sound ID
+    0x08023F25,  # J     0x8008FC94
+    0x24020001,  # ADDIU V0, R0, 0x0001
+    # Special3 aka Trophy (Same as the Special2 but with its own count).
+    0x24080000,  # ADDIU T0, R0, 0x0000   <- Trophies required
+    0x15030003,  # BNE   T0, V1, [forward 0x03]
+    0x00000000,  # NOP
+    0x0C0059BE,  # JAL   0x800166f8
     0x240402E4,  # ADDIU A0, R0, 0x02E4
     0x08023F25,  # J     0x8008FC94
     0x24020001,  # ADDIU V0, R0, 0x0001
@@ -1166,7 +1355,93 @@ special_sound_notifs = [
     0x0C0059BE,  # JAL   0x800166f8
     0x2404019B,  # ADDIU A0, R0, 0x019B
     0x08023F25,  # J     0x8008FC94
-    0x24020001   # ADDIU V0, R0, 0x0001
+    0x24020001,  # ADDIU V0, R0, 0x0001
+    # Big Crystal aka Execution Key (should just play the Dracula sound no matter what because you only ever get 1).
+    0x24080021,  # ADDIU T0, R0, 0x0021
+    0x14880004,  # BNE   A0, T0, [forward 0x04]
+    0x00000000,  # NOP
+    0x0C0059BE,  # JAL   0x800166F8
+    0x240402E4,  # ADDIU A0, R0, 0x02E4
+    0x24020001,  # ADDIU V0, R0, 0x0001
+    0x08023F23,  # J     0x8008FC8C
+    0x00000000,  # NOP
+]
+
+extended_items_functionality = [
+    # All functionality for receiving custom Items with an Item ID of 0x31 or greater.
+
+    # Check if the passed Item ID is 0x31 or greater. If not, return back to the spot in the code that we jumped from.
+    # Otherwise, continue on to the custom functionality.
+    0x10200003,  # BEQZ AT,      [forward 0x03]
+    0x00000000,  # NOP
+    0x08023EE1,  # J     0x8008FB84
+    0x2401002E,  # ADDIU AT, R0, 0x002E
+    # If we picked up a PermaUp, increment the PermaUps counter by 1 and jump to the regular PowerUp-giving code.
+    0x24080031,  # ADDIU T0, R0, 0x0031
+    0x15040008,  # BNE   T0, A0, [forward 0x08]
+    0x3C09801D,  # LUI   T1, 0x801D
+    0x9128AB74,  # LBU   T0, 0xAB74 (T1)
+    0x25080001,  # ADDIU T0, T0, 0x0001
+    0x290A0003,  # SLTI  T2, T0, 0x0003
+    0x55400001,  # BNEZL T2,     [forward 0x01]
+    0xA128AB74,  # SB    T0, 0xAB74
+    0x08023E67,  # J     0x8008F99C
+    0x00000000,  # NOP
+    # If we picked up a Perma Sub-weapon, increment the counts for that weapon by 1.
+    0x28880036,  # SLTI  T0, A0, 0x0036
+    0x1100001F,  # BEQZ  T0,     [forward 0x1F]
+    # Subtract 0x31 from the Item ID to get what should be the sub-weapon ID.
+    0x2489FFCF,  # ADDIU T1, A0, 0xFFCF
+    # Check if we have no sub-weapon equipped. If so, equip the perma weapon we just picked up.
+    0x3C0A801D,  # LUI   T2, 0x801D
+    0x954BAB3E,  # LHU   T3, 0xAB3E (T2)
+    0x51600001,  # BEQZL T3,     [forward 0x01]
+    0xA549AB3E,  # SH    T1, 0xAB3E (T2)
+    # If the weapon we picked up equals the one we currently have equipped,
+    # increment the weapon level (if it's not Level 3 already).
+    0x15690005,  # BNE   T3, T1, [forward 0x05]
+    0x954FAE26,  # LHU   T7, 0xAE26 (T2)
+    0x25EF0001,  # ADDIU T7, T7, 0x0001
+    0x29E10003,  # SLTI  AT, T7, 0x0003
+    0x54200001,  # BNEZL AT,     [forward 0x01]
+    0xA54FAE26,  # SH    T7, 0xAE26 (T2)
+    # Set the bit in one of the Gameplay Menu Manager's structs that indicates the HUD counters should update.
+    0x8D4DAC0C,  # LW    T5, 0xAC0C (T2)
+    0x8DAD0060,  # LW    T5, 0x0060 (T5)
+    0x91AC0000,  # LBU   T4, 0x0000 (T5)
+    0x358C0008,  # ORI   T4, T4, 0x0008
+    0xA1AC0000,  # SB    T4, 0x0000 (T5)
+    # Set the save file count for the perma weapon we've collected (capped at 3) and the unused count for the normal
+    # version of the sub-weapon that we use to determine the player's equipped level for that weapon.
+    0x01495021,  # ADDU  T2, T2, T1
+    0x914CAB74,  # LBU   T4, 0xAB74 (T2)
+    0x258C0001,  # ADDIU T4, T4, 0x0001
+    0x29810004,  # SLTI  AT, T4, 0x0004
+    0x10200006,  # BEQZ  AT,     [forward 0x06]
+    0x914FAB4F,  # LBU   T7, 0xAB4F (T2)
+    0xA14CAB74,  # SB    T4, 0xAB74 (T2)
+    0x25EF0001,  # ADDIU T7, T7, 0x0001
+    # Store the new equipped level only if this is not the first of this perma weapon we've collected.
+    0x258CFFFF,  # ADDIU T4, T4, 0xFFFF
+    0x55800001,  # BNEZL T4,     [forward 0x01]
+    0xA14FAB4F,  # SB    T7, 0xAB4F (T2)
+    # Play the "sub-weapon pickup" sound and return.
+    0x0C0059BE,  # JAL   0x800166F8
+    0x240401F5,  # ADDIU A0, R0, 0x01F5  <- sub-weapon pickup sound ID
+    0x08023F25,  # J     0x8008FC94
+    0x24020001,  # ADDIU V0, R0, 0x0001
+    # If we picked up a Trap AP Item, call the function that plays the current character's hurt sound.
+    0x24080039,  # ADDIU T0, R0, 0x0039  <- Trap AP Item ID
+    0x15040005,  # BNE   T0, A0, [forward 0x05]
+    0x24050000,  # ADDIU A1, R0, 0x0000
+    0x3C04800B,  # LUI   A0, 0x800B
+    0x34843E7C,  # ORI   A0, A0, 0x3E7C
+    0x0C008777,  # JAL   0x80021DDC
+    0x00000000,
+    # Jump to the end of the give item function with 1 in V0 so the game will know that the give was successful
+    # (we could carry more of that Item).
+    0x08023F25,  # J     0x8008FC94
+    0x24020001,  # ADDIU V0, R0, 0x0001
 ]
 
 stage_intro_cs_player = [
@@ -1672,8 +1947,9 @@ multiworld_item_name_loader = [
     # Don't do this if we're picking up a White Jewel, tho, because the flag ID value means something entirely
     # different for them and we never care about loading a custom string for them.
     0x96090038,  # LHU   T1, 0x0038 (S0)
-    0x1120000B,  # BEQZ  T1,     [forward 0x0B]
-    0x3C0800FA,  # LUI   T0, 0x00FA
+    0x1120000C,  # BEQZ  T1,     [forward 0x0C]
+    0x3C0800F9,  # LUI   T0, 0x00F9
+    0x3508C000,  # ORI   T0, T0, 0xC000
     0x9609005A,  # LHU   T1, 0x005A (S0)
     # Shift the flag ID up by 8 and add it to 0xFA0000 to get the start address for this pickup's string.
     0x00094A00,  # SLL   T1, T1, 8
@@ -1689,7 +1965,7 @@ multiworld_item_name_loader = [
     0xA109AA20,  # SB    T1, 0xAA20 (T0)
     # Return to and continue the pickup routine like normal.
     0x96030038,  # LHU   V1, 0x0038 (S0)
-    0x3C048019,  # LUI   A0, 0x8019
+    0x3C048040,  # LUI   A0, 0x8040
     0x00037880,  # SLL   T7, T7, V1
     0x01E37821,  # ADDU  T7, T7, V1
     0x08061F2A,  # J     0x80187CA8

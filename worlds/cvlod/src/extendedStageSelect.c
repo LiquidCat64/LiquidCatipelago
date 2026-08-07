@@ -53,7 +53,7 @@ void extendedStageSelect_createTextboxes(extendedStageSelect* self) {
     // Special1 count
     self->SpecialCountTextbox = (*createTextboxObject)(self);
     // Selection arrow
-    self->ArrowTextbox = (*createTextboxObject)(self);
+    self->SelectionArrow = (*object_createAndSetChild)(self, 0x1A8);
 
     // Go to extendedStageSelect_init()
     (*object_curLevel_goToNextFuncAndClearTimer)(self->header.current_function, &self->header.functionInfo_ID);
@@ -64,8 +64,8 @@ void extendedStageSelect_init(extendedStageSelect* self) {
 
     // Get selection variable values from common memory.
     // The map number and specials per warp will always be referred to from the object to make it easier for the rando to dynamically patch these.
-    self->num_maps = NUM_MAPS;
-    self->specials_per_warp = SPECIALS_PER_WARP;
+    self->specials_per_warp = misc_vars[0];
+    self->num_maps = misc_vars[1];
     self->option = MOD_SELECTED_OPTION;
     self->map = MOD_SELECTED_MAP;
     self->character = SaveStruct_gameplay.character;
@@ -117,22 +117,28 @@ void extendedStageSelect_init(extendedStageSelect* self) {
     (*textboxObject_setTextScale)(self->headerNamesTextboxes[4], 1.5f, 1.5f);
 
     for (i = 0; i < NUMBER_OF_HEADERS-1; i++) {
-        (*textboxObject_setColorPalette)(self->headerNamesTextboxes[i], TEXT_COLOR_YELLOW);
+        (*textboxObject_setColorPalette)(self->headerNamesTextboxes[i], TEXT_COLOR_MID_BROWN);
     }
 
     /////////////// Map Names ///////////////
-    for (i = 0, j = self->first_string_ID + i; i < OPTION_MAX; i++, j++) {
-        // Y pos varies by 20.0f, starting from 90.0f
+    for (i = 0, j = self->first_string_ID; i < OPTION_MAX; i++, j++) {
+        // Y pos varies by 20.0f, starting from 90.0f.
         (*textboxObject_setParams_CustomFormattedString)(self->mapNamesTextboxes[i], GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, (*text_getMessageFromPool)(stage_names_pool, j)), 0, -130.0f, 90.f - (20.0f * i), 16, 1);
+        // Set all unavailable options to dark brown.
+        if (!(*extendedStageSelect_checkIfSelectable)(self, j)) {
+            (*textboxObject_setColorPalette)(self->mapNamesTextboxes[i], TEXT_COLOR_DARK_BROWN);
+        }
     }
-    // Set the color of the first option to red
-    (*textboxObject_setColorPalette)(self->mapNamesTextboxes[self->option], TEXT_COLOR_RED);
+    // Set the color of the initial option to red (if selectable).
+    if ((*extendedStageSelect_checkIfSelectable)(self, self->map)) {
+        (*textboxObject_setColorPalette)(self->mapNamesTextboxes[self->option], TEXT_COLOR_RED);
+    }
 
     /////////////// Character names ///////////////
     // Set the character name to Wolf Cornell if the character animation set is Wolf Cornell's, or the current character otherwise.
     if (SaveStruct_gameplay.character_animation_set == TYPE_WOLF_CORNELL) {
         (*textboxObject_setParams_ASCIIFormattedString)(self->characterNamesTextbox, GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, characterNames[TYPE_WOLF_CORNELL]), 0, 10.0f, -90.f, 16, 1);
-        (*textboxObject_setColorPalette)(self->characterNamesTextbox, TEXT_COLOR_BROWN);
+        (*textboxObject_setColorPalette)(self->characterNamesTextbox, TEXT_COLOR_DARK_BROWN);
     }
     else {
         (*textboxObject_setParams_ASCIIFormattedString)(self->characterNamesTextbox, GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, characterNames[self->character]), 0, 10.0f, -90.f, 16, 1);
@@ -155,17 +161,15 @@ void extendedStageSelect_init(extendedStageSelect* self) {
             // Y pos varies by 50.0f, starting from 75.0f
             (*textboxObject_setParams_CustomFormattedString)(self->convenienceWarpTextboxes[i], GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, (*text_getMessageFromPool)(convenience_warp_names_pool, i)), 1, 85.0f, 75.f - (50.0f * i), 16, 3);
             (*textboxObject_setTextScale)(self->convenienceWarpTextboxes[i], 0.8f, 1.0f);
-            (*textboxObject_setColorPalette)(self->convenienceWarpTextboxes[i], TEXT_COLOR_YELLOW);
+            (*textboxObject_setColorPalette)(self->convenienceWarpTextboxes[i], TEXT_COLOR_MID_BROWN);
         }
 	
     }
     (*textboxObject_setParams_number)(self->SpecialCountTextbox, SaveStruct_gameplay.inventory_item_amount[3], 1, 115.0f, 107.0f, 2, TEXT_FONT_DEFAULT);
 
-    /////////////// Selection arrow textbox ///////////////
-    // The arrow will start next to whichever option is selected by default.
-    (*textboxObject_setParams_CustomFormattedString)(self->ArrowTextbox, GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, arrow_textbox_pool), 0, -140.0f, 91.f - (20.0f * self->option), 16, 1);
-    (*textboxObject_setColorPalette)(self->ArrowTextbox, TEXT_COLOR_RED);
-
+    /////////////// Selection arrow ///////////////
+    // Set the arrow to rotate and shift its gradient.
+    self->SelectionArrow->arrow_params->flags |= SPIN | SHIFT_GRADIENT;
 
     // Set background color to dark red.
     background_color.color_u32 = 0x300000FF;
@@ -229,11 +233,10 @@ void extendedStageSelect_loop(extendedStageSelect* self) {
     u32 i = 0;
 
     // Map selection
-    // Disallow pressing down if we don't have enough Special1s to select the option below our current one, or if pressing down would increase the map number beyond what was defined for the limit.
-    if (((controllers[0].buttons_pressed & BTN_DDOWN || (*selection_moveCursor)(BTN_DDOWN)) && SaveStruct_gameplay.inventory_item_amount[3] / ((self->map + 1) * self->specials_per_warp)) && self->map + 1 < self->num_maps) {
-        // If the cursor is at the bottom of the list, scroll down
-        if (self->option == (OPTION_MAX - 1) && self->map < self->num_maps - 1) {
-            self->option = (OPTION_MAX - 1);
+    if ((controllers[0].buttons_pressed & BTN_DDOWN || (*selection_moveCursor)(BTN_DDOWN)) && self->map + 1 < self->num_maps) {
+        // If the cursor is on the second option from the bottom of the list, and not on the second-to-last option overall, scroll down.
+        if (self->option == (OPTION_MAX - 2) && self->map < self->num_maps - 2) {
+            self->option = (OPTION_MAX - 2);
             self->first_string_ID++;
             // Go through the list of options and update the strings with the next one immediatly below it,
             // simulating the user scrolling down by one in the list
@@ -242,22 +245,35 @@ void extendedStageSelect_loop(extendedStageSelect* self) {
                     self->first_string_ID = self->num_maps - 1;
                 }
                 (*textboxObject_setCustomFormattedText)(self->mapNamesTextboxes[i], GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, (*text_getMessageFromPool)(stage_names_pool, self->first_string_ID + i)));
+                // Set the color to dark brown if not selectable.
+                if (!(*extendedStageSelect_checkIfSelectable)(self, self->first_string_ID + i)) {
+                    (*textboxObject_setColorPalette)(self->mapNamesTextboxes[i], TEXT_COLOR_DARK_BROWN);
+                } else if (i == self->option) {
+                // If it's the option we currently have selected, set it to red.
+                    (*textboxObject_setColorPalette)(self->mapNamesTextboxes[i], TEXT_COLOR_RED);
+                } else {
+                // Otherwise, set it to white.
+                    (*textboxObject_setColorPalette)(self->mapNamesTextboxes[i], TEXT_COLOR_WHITE);
+                }
             }
         }
         else if (self->option < (OPTION_MAX - 1)) {
             self->option++;
-            // Set current option to red, and previous option to white
-            (*textboxObject_setColorPalette)(self->mapNamesTextboxes[self->option], TEXT_COLOR_RED);
-            (*textboxObject_setColorPalette)(self->mapNamesTextboxes[self->option - 1], TEXT_COLOR_WHITE);
-            // Update the position of the selection arrow.
-            (*textboxObject_setPos)(self->ArrowTextbox, -140.0f, 91.f - (20.0f * self->option));
+            // Set the current option to red if selectable.
+            if ((*extendedStageSelect_checkIfSelectable)(self, self->map + 1)) {
+                (*textboxObject_setColorPalette)(self->mapNamesTextboxes[self->option], TEXT_COLOR_RED);
+            }
+            // Set the previous option to white if selectable.
+            if ((*extendedStageSelect_checkIfSelectable)(self, self->map)) {
+                (*textboxObject_setColorPalette)(self->mapNamesTextboxes[self->option - 1], TEXT_COLOR_WHITE);
+            }
         }
         self->map++;
     }
     if (controllers[0].buttons_pressed & BTN_DUP || (*selection_moveCursor)(BTN_DUP)) {
-        // If the cursor is at the top of the list, scroll up
-        if (self->option == 0 && self->map > 0) {
-            self->option = 0;
+        // If the cursor is on the second option from the top of the list, and not on the second option overall, scroll up.
+        if (self->option == 1 && self->map > 1) {
+            self->option = 1;
             self->first_string_ID--;
             // Go through the list of options and update the strings with the next one immediatly before it,
             // simulating the user scrolling up by one in the list
@@ -266,15 +282,28 @@ void extendedStageSelect_loop(extendedStageSelect* self) {
                     self->first_string_ID = 0;
                 }
                 (*textboxObject_setCustomFormattedText)(self->mapNamesTextboxes[i], GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, (*text_getMessageFromPool)(stage_names_pool, self->first_string_ID + i)));
+                // Set the color to dark brown if not selectable.
+                if (!(*extendedStageSelect_checkIfSelectable)(self, self->first_string_ID + i)) {
+                    (*textboxObject_setColorPalette)(self->mapNamesTextboxes[i], TEXT_COLOR_DARK_BROWN);
+                } else if (i == self->option) {
+                // If it's the option we currently have selected, set it to red.
+                    (*textboxObject_setColorPalette)(self->mapNamesTextboxes[i], TEXT_COLOR_RED);
+                } else {
+                // Otherwise, set it to white.
+                    (*textboxObject_setColorPalette)(self->mapNamesTextboxes[i], TEXT_COLOR_WHITE);
+                }
             }
         }
         else if (self->option > 0) {
             self->option--;
-            // Set current option to red, and option below to white
-            (*textboxObject_setColorPalette)(self->mapNamesTextboxes[self->option], TEXT_COLOR_RED);
-            (*textboxObject_setColorPalette)(self->mapNamesTextboxes[self->option + 1], TEXT_COLOR_WHITE);
-            // Update the position of the selection arrow.
-            (*textboxObject_setPos)(self->ArrowTextbox, -140.0f, 91.f - (20.0f * self->option));
+            // Set the current option to red if selectable.
+            if ((*extendedStageSelect_checkIfSelectable)(self, self->map - 1)) {
+                (*textboxObject_setColorPalette)(self->mapNamesTextboxes[self->option], TEXT_COLOR_RED);
+            }
+            // Set the previous option to white if selectable.
+            if ((*extendedStageSelect_checkIfSelectable)(self, self->map)) {
+                (*textboxObject_setColorPalette)(self->mapNamesTextboxes[self->option + 1], TEXT_COLOR_WHITE);
+            }
         }
         self->map--;
     }
@@ -291,7 +320,7 @@ void extendedStageSelect_loop(extendedStageSelect* self) {
     if (controllers[0].buttons_pressed & BTN_Z) {
         // If we are Wolf Cornell (the character animation set ID is 4), play Wolf Cornell's hurt sound and don't do anything. Switching is disallowed while he's active.
         if (SaveStruct_gameplay.character_animation_set == TYPE_WOLF_CORNELL) {
-            (*playSound)(0x40C); 
+            (*playSound)(character_hurt_sound_ids[SaveStruct_gameplay.character_animation_set]); 
         }
         else {
             if (self->character == HENRY) {
@@ -300,10 +329,12 @@ void extendedStageSelect_loop(extendedStageSelect* self) {
             else {
                 self->character++;
             }
-            // Update the character name string to show the selected character name
+            // Update the character name string to show the selected character name.
             (*textboxObject_setASCIIText)(self->characterNamesTextbox, GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, characterNames[self->character]));
-	    // Play a voice clip associated with the new character
-            (*playSound)(character_sound_ids[self->character]); 
+	    // Play a voice clip associated with the new character.
+            (*playSound)(character_sound_ids[self->character]);
+            // Set the new character's animation set so we'll hear their voice when selecting an unavailable warp while still in the menu.
+            SaveStruct_gameplay.character_animation_set = self->character;
         }
     }
 
@@ -330,10 +361,16 @@ void extendedStageSelect_loop(extendedStageSelect* self) {
         (*textboxObject_setASCIIText)(self->DifficultyTextbox, GET_UNMAPPED_ADDRESS(EXTENDED_STAGE_SELECT_OVERLAY_ID, DifficultySelection[self->difficulty]));
     }
 
-    // Go to extendedStageSelect_warpToMap() when selecting an option with A
+    // Go to extendedStageSelect_warpToMap() when selecting an option with A, if we have enough Special1s to warp there.
     if (controllers[0].buttons_pressed & BTN_A) {
-        self->confirmed = 1;
-        (*object_curLevel_goToNextFuncAndClearTimer)(self->header.current_function, &self->header.functionInfo_ID);
+        // Check if we can select the option. If we can't, disallow the selection and play the character's hurt sound.
+        if (!(*extendedStageSelect_checkIfSelectable)(self, self->map)) {
+            (*playSound)(character_hurt_sound_ids[SaveStruct_gameplay.character_animation_set]);
+        } else {
+        // Otherwise, select it.
+            self->confirmed = 1;
+            (*object_curLevel_goToNextFuncAndClearTimer)(self->header.current_function, &self->header.functionInfo_ID);
+        }
     }
 
     // Go to extendedStageSelect_warpToMap() while skipping some functionality when backing out wiht B
@@ -356,6 +393,14 @@ void extendedStageSelect_loop(extendedStageSelect* self) {
         self->convenience_warp = 3;
         (*object_curLevel_goToNextFuncAndClearTimer)(self->header.current_function, &self->header.functionInfo_ID);
     }
+
+    // Un-hide the selection arrow model and update its transformation values.
+    self->SelectionArrow->model->type &= ~0x8000;
+    self->SelectionArrow->model->position.x = -140.0f;
+    self->SelectionArrow->model->position.y = 83.0f - (20.0f * self->option);
+    self->SelectionArrow->model->model_angle.roll = 0xC000;
+    self->SelectionArrow->model->size.x = 0.07f;
+    self->SelectionArrow->model->size.y = 0.12f;
 }
 
 void extendedStageSelect_warpToMap(extendedStageSelect* self) {
@@ -402,6 +447,24 @@ void extendedStageSelect_warpToMap(extendedStageSelect* self) {
 
     SaveStruct_gameplay.character = self->character;
     SaveStruct_gameplay.alternate_costume = self->alternate_costume;
-    current_opened_menu = NOT_ON_MENU;          // Prevent any menu to open all of the sudden after warping
-    (*changeGameState)(GAMEPLAY);               // Restart the gameplay state with the selected options
+    // Set/clear the "alternate costume in use" flag as well so the game will know whether to enable the costume upon save/load.
+    if (self->alternate_costume) {
+        SaveStruct_gameplay.flags |= COSTUME_IS_BEING_USED;
+    } else {
+        SaveStruct_gameplay.flags &= ~COSTUME_IS_BEING_USED;
+    }
+    current_opened_menu = NOT_ON_MENU;          // Prevent any menu to open all of the sudden after warping.
+    (*changeGameState)(GAMEPLAY);               // Restart the gameplay state with the selected options.
+}
+
+s32 extendedStageSelect_checkIfSelectable(extendedStageSelect* self, s8 option_id) {
+    // Given an option ID, checks if that option is selectable.
+    // If we need more than 0 Special1s per warp, and we are not selecting the first (always free) option, check if we have enough Special1s to warp there.
+    // Return 0 if we don't, or 1 if we do.
+    if (option_id && self->specials_per_warp) {
+        if (!(SaveStruct_gameplay.inventory_item_amount[3] / ((option_id) * self->specials_per_warp))) {
+            return 0;
+        }
+    }
+    return 1;
 }

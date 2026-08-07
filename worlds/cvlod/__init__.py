@@ -7,10 +7,11 @@ import json
 
 from BaseClasses import Region, Tutorial, ItemClassification
 from .data.misc_names import GAME_NAME
-from .items import CVLoDItem, ALL_CVLOD_ITEMS, POSSIBLE_EXTRA_FILLER, get_item_names_to_ids, get_item_pool
+from .items import CVLoDItem, ALL_CVLOD_ITEMS, CVLOD_PICKUP_INFO, POSSIBLE_EXTRA_FILLER, get_item_names_to_ids, \
+    get_item_pool
 from .locations import CVLoDLocation, get_locations_to_create, get_location_name_groups, get_location_names_to_ids
 from .entrances import verify_entrances, get_warp_entrances
-from .options import CVLoDOptions, DraculasCondition, SubWeaponShuffle
+from .options import CVLoDOptions, SubWeaponShuffle
 from .stages import get_active_stages, shuffle_stages, get_stage_exits, get_active_warps, find_stage_of_region, \
     find_stage_in_list, get_regions_from_all_active_stages, verify_branches, CVLoDActiveStage, MISC_REGIONS, \
     ALL_CVLOD_REGIONS
@@ -83,17 +84,13 @@ class CVLoDWorld(World):
     web = CVLoDWeb()
 
     def generate_early(self) -> None:
-        # Generate the player's unique authentication
+        # Generate the player's unique authentication number.
         self.auth = bytearray(self.random.getrandbits(8) for _ in range(16))
 
-        # Set the total and required Special2s to the specified YAML numbers if it's Specials, or to 0 if not.
-        if self.options.draculas_condition == DraculasCondition.option_specials:
-            self.options.total_special2s.value = self.options.total_special2s.value
-            self.required_s2s = int(self.options.percent_special2s_required.value / 100 *
-                                    self.options.total_special2s.value)
-        else:
-            self.options.total_special2s.value = 0
-            self.required_s2s = 0
+        # Set the total and required Special2s to the specified YAML numbers.
+        self.options.total_special2s.value = self.options.total_special2s.value
+        self.required_s2s = int(self.options.percent_special2s_required.value / 100 *
+                                self.options.total_special2s.value)
 
         stage_1_blacklist = {}
 
@@ -101,18 +98,17 @@ class CVLoDWorld(World):
         # This start is simply too constrained for the generator to handle when many S1s are needed to warp.
         if self.options.special1s_per_warp > 4 and not self.options.multi_hit_breakables:
             stage_1_blacklist[StageNames.CLOCK] = ("Too many Special1s needed to warp out for the generator to handle "
-                                                    "with Multi Hit Breakables disabled.")
+                                                   "with Multi Hit Breakables disabled.")
 
         # Get the slot's "intended" stage list in the order said stages appear in.
         active_stage_order = get_active_stages(self, stage_1_blacklist)
 
-        # If Dracula's Condition is Crystal, check to see if Castle Center is in the stage list. If it's not, then we'll
+        # If the Big Crystal is required, check to see if Castle Center is in the stage list. If it's not, then we'll
         # have to change it to something else.
-        if self.options.draculas_condition == DraculasCondition.option_crystal \
-                and StageNames.CENTER not in active_stage_order:
-            logging.warning(f"[{self.player_name}] Dracula's Condition cannot be Crystal if Castle Center is not "
-                            f"present in the stage list. It will be changed to None instead.")
-            self.options.draculas_condition.value = DraculasCondition.option_none
+        if self.options.big_crystal_required and StageNames.CENTER not in active_stage_order:
+            logging.warning(f"[{self.player_name}] The Castle Center Big Crystal cannot be required if Castle Center "
+                            "is not present in the stage list. This Dracula condition will be dropped.")
+            self.options.big_crystal_required.value = 0
 
         # Validate the chosen stage branch options with the chosen stage list.
         verify_branches(self, active_stage_order)
@@ -131,16 +127,15 @@ class CVLoDWorld(World):
         # Create the seed's list of warps.
         self.active_warp_list = get_active_warps(self)
 
-        # If there are more S1s needed to unlock the whole warp menu than there are S1s in total, drop S1s per warp to
-        # the highest valid number.
+        # If there are more S1s needed to unlock the whole warp menu than there are S1s in total, set Total Special1s
+        # to the minimum needed number.
         if self.options.special1s_per_warp * (len(self.active_warp_list) - 1) > self.options.total_special1s:
-            new_s1s_per_warp = self.options.total_special1s // (len(self.active_warp_list) - 1)
-            logging.warning(f"[{self.player_name}] Too many required Special1s "
-                            f"({self.options.special1s_per_warp.value * (len(self.active_warp_list) - 1)}) for "
+            new_total_s1s = self.options.special1s_per_warp.value * (len(self.active_warp_list) - 1)
+            logging.warning(f"[{self.player_name}] Too many required Special1s ({new_total_s1s}) for "
                             f"Special1s Per Warp setting: {self.options.special1s_per_warp.value} with Total Special1s "
-                            f"setting: {self.options.total_special1s.value}. Lowering Special1s Per Warp to: "
-                            f"{new_s1s_per_warp}")
-            self.options.special1s_per_warp.value = new_s1s_per_warp
+                            f"setting: {self.options.total_special1s.value}. Increasing Total Special1s to the minimum "
+                            f"required number.")
+            self.options.total_special1s.value = new_total_s1s
 
     def create_regions(self) -> None:
         # Create the Menu Region and all Stage Regions.
@@ -178,42 +173,40 @@ class CVLoDWorld(World):
                                                                                  ItemClassification.progression))
 
                 # If we're looking at a boss kill Trophy, increment the total available bosses. This way, we can catch
-                # gen failures should the player set more bosses required than there are total.
+                # gen failures should the player set more bosses required than there are available in their world.
                 if locked_item == item_names.event_trophy:
                     self.total_available_bosses += 1
 
-        # If Dracula's Condition is Bosses and there are fewer bosses total than the required number specified by the
-        # player, throw a warning and lower the option value to something valid.
-        if self.options.draculas_condition == DraculasCondition.option_bosses and self.total_available_bosses < \
-                self.options.bosses_required.value:
-            # If we have absolutely no bosses available at all, meaning we have no active stages with bosses and the
-            # Renon and Vincent fights are both disabled, let the player know of this and change Dracula's Condition to
-            # None. Otherwise, throw a regular warning and lower the required bosses.
-            if not self.total_available_bosses:
-                logging.warning(f"[{self.multiworld.player_name[self.player]}] Dracula's Condition cannot be Bosses "
-                                f"because there are absolutely no stages present in the stage list with bosses at all. "
-                                f"It will be changed to None instead.")
-                self.options.draculas_condition.value = DraculasCondition.option_none
-            else:
-                logging.warning(f"[{self.multiworld.player_name[self.player]}] Not enough bosses available for a "
-                                f"{self.options.bosses_required.value}-boss requirement. Bosses Required will be "
-                                f"lowered to {self.total_available_bosses}.")
-                self.options.bosses_required.value = self.total_available_bosses
+        # If there are fewer bosses total than the required number specified by the player, throw a warning and lower
+        # the option value down to the determined available number.
+        if self.total_available_bosses < self.options.bosses_required.value:
+            logging.warning(f"[{self.multiworld.player_name[self.player]}] Not enough bosses available for a "
+                            f"{self.options.bosses_required.value}-boss requirement. Bosses Required will be "
+                            f"lowered to the highest available number: {self.total_available_bosses}.")
+            self.options.bosses_required.value = self.total_available_bosses
 
     def create_item(self, name: str, force_classification: ItemClassification | None = None) -> CVLoDItem:
+        # If we're opting to create the Item with a specified classification, set the Item's classification to it.
         if force_classification is not None:
             classification = force_classification
+        # Otherwise, if not, set the classification to what the apworld put as the default classification.
         else:
-            classification = ALL_CVLOD_ITEMS[name].default_classification
+            # If the Item has no data in the Item info, meaning it's an Event Item, consider Progression its
+            # default classification.
+            if name not in ALL_CVLOD_ITEMS:
+                classification = ItemClassification.progression
+            else:
+                classification = ALL_CVLOD_ITEMS[name].default_classification
 
+        # Set the Item's AP ID if it has info defined in the apworld's item info.
         if name in ALL_CVLOD_ITEMS:
-            code = ALL_CVLOD_ITEMS[name].item_id
+            code = CVLOD_PICKUP_INFO[ALL_CVLOD_ITEMS[name].pickup_id - 1].item_id
+        # If it has no info, set the ID to None as it's an Event Item.
         else:
             code = None
 
-        created_item = CVLoDItem(name, classification, code, self.player)
-
-        return created_item
+        # Create and return the Item.
+        return CVLoDItem(name, classification, code, self.player)
 
     def create_items(self) -> None:
         # Set up the Items correctly and submit them to the multiworld's Item pool.
@@ -235,9 +228,10 @@ class CVLoDWorld(World):
                                 "castle_wall_state": self.options.castle_wall_state.value,
                                 "villa_state": self.options.villa_state.value,
                                 "villa_maze_kid": self.options.villa_maze_kid.value,
-                                "draculas_condition": self.options.draculas_condition.value,
+                                "big_crystal_required": self.options.big_crystal_required.value,
                                 "total_special2s": self.options.total_special2s.value,
                                 "required_special2s": self.required_s2s,
+                                "total_available_bosses": self.total_available_bosses,
                                 "bosses_required": self.options.bosses_required.value,
                                 "empty_breakables": self.options.empty_breakables.value,
                                 "lizard_locker_items": self.options.lizard_locker_items.value,
@@ -254,6 +248,7 @@ class CVLoDWorld(World):
                                 "detransform_at_will": self.options.detransform_at_will.value,
                                 "drop_previous_sub_weapon": self.options.drop_previous_sub_weapon.value,
                                 "permanent_powerups": self.options.permanent_powerups.value,
+                                "permanent_sub_weapons": self.options.permanent_sub_weapons.value,
                                 "disable_time_restrictions": self.options.disable_time_restrictions.value,
                                 "skip_gondolas": self.options.skip_gondolas.value,
                                 "skip_waterway_blocks": self.options.skip_waterway_blocks.value,

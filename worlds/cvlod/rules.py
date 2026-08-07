@@ -2,7 +2,7 @@ from typing import Dict, TYPE_CHECKING
 
 from BaseClasses import CollectionState
 from worlds.generic.Rules import CollectionRule
-from .options import DraculasCondition, CastleWallState, VillaState
+from .options import CastleWallState, VillaState
 from .data import item_names, loc_names, ent_names, reg_names
 
 if TYPE_CHECKING:
@@ -15,7 +15,7 @@ class CVLoDRules:
     rules: Dict[str, CollectionRule]
     s1s_per_warp: int
     required_s2s: int
-    drac_condition: int
+    big_crystal_required: int
     required_bosses: int
     castle_wall_state: int
     villa_state: int
@@ -25,7 +25,7 @@ class CVLoDRules:
         self.world = world
         self.s1s_per_warp = world.options.special1s_per_warp.value
         self.required_s2s = world.required_s2s
-        self.drac_condition = world.options.draculas_condition.value
+        self.big_crystal_required = world.options.big_crystal_required.value
         self.required_bosses = world.options.bosses_required.value
         self.castle_wall_state = world.options.castle_wall_state.value
         self.villa_state = world.options.villa_state.value
@@ -247,13 +247,19 @@ class CVLoDRules:
         return state.has(item_names.quest_key_clock_e, self.player)
 
     def ck_can_enter_dracs_chamber(self, state: CollectionState) -> bool:
-        """Completed the necessary objective to fulfill Dracula's Condition. Always True if no condition is set."""
-        if self.drac_condition == DraculasCondition.option_crystal:
-            return state.has(item_names.event_cc_crystal, self.player)
-        elif self.drac_condition == DraculasCondition.option_bosses:
-            return state.has(item_names.event_trophy, self.player, self.required_bosses)
-        elif self.drac_condition == DraculasCondition.option_specials:
-            return state.has(item_names.special2, self.player, self.required_s2s)
+        """Completed the necessary objectives to open Dracula's door. Always True if no condition is set."""
+
+        # If the Big Crystal is required, and we don't have it, the door is locked.
+        if self.big_crystal_required and not state.has(item_names.event_cc_crystal, self.player):
+            return False
+        # If we haven't beaten the required number of bosses, the door is locked.
+        if not state.has(item_names.event_trophy, self.player, self.required_bosses):
+            return False
+        # If we haven't collected the required number of S2s, the door is locked.
+        if not state.has(item_names.special2, self.player, self.required_s2s):
+            return False
+        # If we make it all the way through to here, meaning every condition is satisfied, return True to indicate the
+        # door is unlocked.
         return True
 
     def set_cvlod_rules(self) -> None:

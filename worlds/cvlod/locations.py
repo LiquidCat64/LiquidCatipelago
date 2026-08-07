@@ -3,8 +3,8 @@ import logging
 from BaseClasses import Location
 from .data import loc_names, item_names
 from .data.misc_names import GAME_NAME
-from .options import CVLoDOptions, SubWeaponShuffle, DraculasCondition, RenonFightCondition, VincentFightCondition, \
-    VillaState, CastleWallState
+from .options import CVLoDOptions, SubWeaponShuffle, RenonFightCondition, VincentFightCondition, VillaState, \
+    CastleWallState
 
 from typing import NamedTuple
 
@@ -594,7 +594,7 @@ CVLOD_EVENT_MAPPING: dict[str, str] = {
     loc_names.event_tow_switch: item_names.event_tow_switch,
     loc_names.event_cc_planets: item_names.event_cc_planets,
     loc_names.event_cc_elevator: item_names.event_cc_elevator,
-    loc_names.event_cc_crystal: item_names.event_crystal,
+    loc_names.event_cc_crystal: item_names.event_cc_crystal,
     loc_names.event_fl_boss: item_names.event_trophy,
     loc_names.event_forest_boss_1: item_names.event_trophy,
     loc_names.event_forest_boss_2: item_names.event_trophy,
@@ -617,6 +617,7 @@ CVLOD_EVENT_MAPPING: dict[str, str] = {
     loc_names.event_dt_boss_2: item_names.event_trophy,
     loc_names.event_dt_boss_3: item_names.event_trophy,
     loc_names.event_dt_boss_4: item_names.event_trophy,
+    loc_names.event_tosci_boss: item_names.event_trophy,
     loc_names.event_roc_boss: item_names.event_trophy,
     loc_names.event_ck_boss_1: item_names.event_trophy,
     loc_names.event_ck_boss_2: item_names.event_trophy,
@@ -889,9 +890,8 @@ def get_locations_to_create(locations: list[str], options: CVLoDOptions) -> \
         # Check to see if the Location is in the Events Mapping dict.
         # If it is, then handle it like an event Location.
         elif loc in CVLOD_EVENT_MAPPING:
-            # Don't place the Boss Trophy Locations if Dracula's Condition is not Bosses.
-            if CVLOD_EVENT_MAPPING[loc] == item_names.event_trophy and \
-                    options.draculas_condition != DraculasCondition.option_bosses:
+            # Don't place the Boss Trophy Locations if no bosses are required.
+            if CVLOD_EVENT_MAPPING[loc] == item_names.event_trophy and not options.bosses_required:
                 continue
 
             # Don't place the Vincent or Renon fight Locations if said fights are completely disabled.
@@ -908,7 +908,7 @@ def get_locations_to_create(locations: list[str], options: CVLoDOptions) -> \
             # If we end up here, meaning the Location is undefined in both dicts, throw an error indicating such and
             # skip creating it.
             logging.error(f"The Location \"{loc}\" is not in either CVLOD_LOCATIONS_INFO or "
-                          f"CVLOD_EVENT_MAPPING. Please add it to one or the other to create it properly.")
+                          "CVLOD_EVENT_MAPPING. Please add it to one or the other to create it properly.")
             continue
 
         # Update the dict containing our Locations to create for the Region.

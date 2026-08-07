@@ -12,24 +12,25 @@ class Costumes(IntEnum):
     ALTERNATE = 1
 
 class TextColors(IntEnum):
-    WHITE = 0
-    RED = 1
-    GREEN = 2
-    BLUE = 3
-    LIGHT_YELLOW = 4
-    LIGHT_BROWN = 5
-    MID_BROWN = 6
-    DARK_BROWN = 7
-    WHITE_NO_OUTLINE = 8
-    RED_NO_OUTLINE = 9
-    WHITE_DUPE = 10
+    DEFAULT = 0
+    WHITE = 1
+    RED = 2
+    GREEN = 3
+    BLUE = 4
+    LIGHT_YELLOW = 5
+    LIGHT_BROWN = 6
+    MID_BROWN = 7
+    DARK_BROWN = 8
+    WHITE_NO_OUTLINE = 9
+    RED_NO_OUTLINE = 10
+    WHITE_DUPE = 11
     # Start of the randomizer's extended text colors.
-    YELLOW = 11
-    CYAN = 12
-    PLUM = 13
-    SLATE_BLUE = 14
-    SALMON = 15
-    MAGENTA = 16
+    YELLOW = 12
+    CYAN = 13
+    PLUM = 14
+    SLATE_BLUE = 15
+    SALMON = 16
+    MAGENTA = 17
 
 class StageIDs(IntEnum):
     FOGGY = 0
@@ -75,7 +76,7 @@ class Items(IntEnum):
     RED_JEWEL_L = 0x03
     SPECIAL1 = 0x04
     SPECIAL2 = 0x05
-    SPECIAL3 = 0x06  # The AP Item in this implementation. All 3 Specials are unused CV64 leftovers in the normal game.
+    SPECIAL3 = 0x06  # The AP Item in this rando. All 3 Specials are unused CV64 leftovers in the normal game.
     ROAST_CHICKEN = 0x07
     ROAST_BEEF = 0x08
     HEALING_KIT = 0x09
@@ -92,7 +93,7 @@ class Items(IntEnum):
     SUN_CARD = 0x14
     MOON_CARD = 0x15
     WINCH_LEVER = 0x16
-    OLDREYS_DIARY = 0x17  # Unused in the regular game. Used as a fountain code item in this implementation.
+    OLDREYS_DIARY = 0x17  # Unused in the regular game. Used as a fountain code item in this rando.
     CREST_HALF_A = 0x18
     CREST_HALF_B = 0x19
     ROSE_BROOCH = 0x1A
@@ -102,7 +103,7 @@ class Items(IntEnum):
     GARDEN_KEY = 0x1E
     COPPER_KEY = 0x1F
     CHAMBER_KEY = 0x20
-    EXECUTION_KEY = 0x21  # Unused CV64 leftover in the regular game. Will probably be the Ice Trap in this.
+    EXECUTION_KEY = 0x21  # Unused CV64 leftover in the regular game. Used as the Big Crystal item in this rando.
     DECK_KEY = 0x22
     ROSE_GARDEN_KEY = 0x23
     THORN_KEY = 0x24
@@ -118,6 +119,17 @@ class Items(IntEnum):
     FIVE_HUNDRED_GOLD = 0x2E
     THREE_HUNDRED_GOLD = 0x2F
     ONE_HUNDRED_GOLD = 0x30
+    # New rando items begin here.
+    PERMAUP = 0x31
+    PERMA_KNIFE = 0x32
+    PERMA_WATER = 0x33
+    PERMA_CROSS = 0x34
+    PERMA_AXE = 0x35
+    AP_FILLER = 0x36
+    AP_USEFUL = 0x37
+    AP_PROG = 0x38
+    AP_TRAP = 0x39
+    AP_PROG_USEFUL = 0x3A
 
 # The pickup actor IDs sometimes differ from the regular item IDs. So they all have to be defined separately.
 class Pickups(IntEnum):
@@ -169,6 +181,17 @@ class Pickups(IntEnum):
     CLOCKTOWER_KEY_E = 0x2E
     CLOCKTOWER_KEY_A = 0x2F
     CLOCKTOWER_KEY_B = 0x30
+    # New rando pickups begin here.
+    PERMAUP = 0x31
+    PERMA_KNIFE = 0x32
+    PERMA_WATER = 0x33
+    PERMA_CROSS = 0x34
+    PERMA_AXE = 0x35
+    AP_FILLER = 0x36
+    AP_USEFUL = 0x37
+    AP_PROG = 0x38
+    AP_TRAP = 0x39
+    AP_PROG_USEFUL = 0x3A
 
 class ActorSpawnFlags(IntFlag):
     SPAWN_ONLY_ONCE =             0x0001

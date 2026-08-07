@@ -1,5 +1,7 @@
 import base64
 import json
+import struct
+
 import Utils
 
 from BaseClasses import Location
@@ -10,20 +12,21 @@ import hashlib
 import os
 import pkgutil
 
-from .data import patches, loc_names
+from .data import patches, loc_names, item_names
 from .data.enums import Scenes, NIFiles, Objects, ObjectExecutionFlags, ActorSpawnFlags, Items, Pickups, PickupFlags, \
-    DoorFlags, StageNames
+    DoorFlags, StageNames, TextColors
 from .data.misc_names import GAME_NAME
-from .items import HIGHER_SPAWNING_ITEMS
+from .items import CVLOD_PICKUP_INFO, HIGHER_SPAWNING_ITEMS, SUB_WEAPON_IDS
 from .locations import CVLOD_LOCATIONS_INFO, THREE_HIT_BREAKABLES_INFO, HIGHER_SPAWNING_PROBLEM_LOCATIONS, \
     NEW_VISIBLE_ITEM_COORDS
 from .patcher import CVLoDRomPatcher, CVLoDSceneTextEntry, CVLoDNormalActorEntry, CVLoDSpawnEntranceEntry, \
-    SCENE_OVERLAY_RDRAM_START
+    SCENE_OVERLAY_RDRAM_START, N64_RDRAM_START, DLIST_START
 from .stages import CVLOD_STAGE_INFO
-from .cvlod_text import cvlod_string_to_bytearray, cvlod_strings_to_pool, cvlod_text_wrap, LEN_LIMIT_MULTIWORLD_TEXT
+from .cvlod_text import cvlod_string_to_bytearray, cvlod_strings_to_pool, cvlod_text_wrap, \
+    LEN_LIMIT_MULTIWORLD_TEXT
 # from .aesthetics import renon_item_dialogue
 from .options import VincentFightCondition, RenonFightCondition, PostBehemothBoss, RoomOfClocksBoss, \
-    DuelTowerFinalBoss, CastleKeepEndingSequence, DraculasCondition, InvisibleItems, PantherDash, VillaBranchingPaths, \
+    DuelTowerFinalBoss, CastleKeepEndingSequence, InvisibleItems, VillaBranchingPaths, \
     CastleCenterBranchingPaths, CastleWallState, VillaState, VillaMazeKid, DisableTimeRestrictions, CVLoDDeathLink
 from settings import get_settings
 
@@ -43,7 +46,7 @@ ROM_PADDING_START = 0xFCC000
 ROM_PADDING_BYTE = 0x00
 
 NG_EXTRAS_START = 0xFFC800
-START_INVENTORY_ARRAY_START = NG_EXTRAS_START - 0x34
+START_INVENTORY_ARRAY_START = NG_EXTRAS_START - 0x60
 START_INVENTORY_GOLD_UPPER_ADDR = NG_EXTRAS_START + 0x12
 START_INVENTORY_GOLD_LOWER_ADDR = NG_EXTRAS_START + 0x16
 START_INVENTORY_POWERUPS_ADDR = NG_EXTRAS_START + 0x1F
@@ -51,8 +54,13 @@ START_INVENTORY_SUBWEAPON_ADDR = NG_EXTRAS_START + 0x27
 START_INVENTORY_SUBWEAPON_LEVEL_ADDR = NG_EXTRAS_START + 0x2F
 START_INVENTORY_ICE_TRAP_ADDR = NG_EXTRAS_START + 0x37
 COUNTDOWN_PTRS_ARRAY_START = 0xFFC61C
-MULTIWORLD_ITEM_TEXTS_START = 0xFA0000
+MULTIWORLD_ITEM_TEXTS_START = 0xF9C000
 
+NEW_INTERACTABLES_TABLE_ROM_START = 0xFF8000
+NEW_INTERACTABLES_TABLE_RDRAM_START = N64_RDRAM_START | 0x3F8000
+OLD_FIRST_TEXT_SPOT_ID = 0x31
+
+LEVER_SPAWNED_ACTORS_START = 0x1128C8
 FOREST_OVL_CHARNEL_ITEMS_START = 0x7C60  # 0x802EB7D0
 CHARNEL_ITEM_LEN = 0xC
 FIRST_CHARNEL_LID_ACTOR = 72
@@ -116,7 +124,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Get the dictionaries of item values mapped to their location IDs and relevant name texts out of the slot
         # patch info and convert each location ID key from a string into an int.
         loc_values = {int(loc_id): item_value for loc_id, item_value in slot_patch_info["location values"].items()}
-        loc_text = {int(loc_id): item_names for loc_id, item_names in slot_patch_info["location text"].items()}
+        loc_text = {int(loc_id): names for loc_id, names in slot_patch_info["location text"].items()}
 
 
         # # # # # # # # # # # # # #
@@ -125,6 +133,210 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Custom overlay segment-loading code.
         patcher.write_int32(0x18860, 0x0800793D)  # J 0x8001E4F4
         patcher.write_int32s(0x1F0F4, patches.custom_segment_loader)
+
+        # Before doing ANYTHING else, build the new interactables info and item appearance settings tables and inject
+        # them into the game.
+        new_first_text_spot_id = len(CVLOD_PICKUP_INFO) + 1
+        new_interactables_settings = bytearray(0)
+        new_item_appearances_settings = bytearray(0)
+        for i in range(len(CVLOD_PICKUP_INFO)):
+            new_interactables_settings += bytearray(b'\x00\x01') + \
+                                          struct.pack(">H", CVLOD_PICKUP_INFO[i].item_id) + \
+                                          bytearray(b'\x00\x00\x00\x00\x00\x00\x00\x00') + \
+                                          struct.pack(">H", CVLOD_PICKUP_INFO[i].shine_height) + \
+                                          bytearray(b'\x00\x00\x00\x0C') + \
+                                          struct.pack(">B", CVLOD_PICKUP_INFO[i].skip_flag_check) + bytearray(b'\x00')
+            new_item_appearances_settings += struct.pack(">I", CVLOD_PICKUP_INFO[i].dlist_addr) + \
+                                             struct.pack(">f", CVLOD_PICKUP_INFO[i].scale) + \
+                                             struct.pack(">B", CVLOD_PICKUP_INFO[i].texture_id) + \
+                                             struct.pack(">B", CVLOD_PICKUP_INFO[i].color_id) + \
+                                             struct.pack(">B", CVLOD_PICKUP_INFO[i].opacity) + bytearray(b'\x00') + \
+                                             struct.pack(">B", CVLOD_PICKUP_INFO[i].item_id) + \
+                                             struct.pack(">B", CVLOD_PICKUP_INFO[i].misc_flags) + \
+                                             struct.pack(">H", CVLOD_PICKUP_INFO[i].text_pool_id)
+        # Extract the text spot settings and stick them onto the end of the interactables settings table we just made.
+        new_interactables_settings += patcher.read_bytes(0x1173E8, 0x2D0)
+        # Determine where the new item appearances table and item name pools should lie based on the lengths of our new
+        # tables.
+        new_item_appearances_table_rdram_start = NEW_INTERACTABLES_TABLE_RDRAM_START + len(new_interactables_settings)
+        new_item_name_texts_start = \
+            NEW_INTERACTABLES_TABLE_RDRAM_START + len(new_interactables_settings) + len(new_item_appearances_settings)
+        # Write the expanded interactables table in its new spot.
+        patcher.write_bytes(NEW_INTERACTABLES_TABLE_ROM_START, new_interactables_settings)
+        # Write the expanded item appearance settings table in its new spot.
+        patcher.write_bytes(NEW_INTERACTABLES_TABLE_ROM_START + len(new_interactables_settings),
+                            new_item_appearances_settings)
+
+        # Update EVERY pointer to the Interactables table in the ENTIRE game to instead point to the new table location.
+        # Pickups
+        patcher.write_int16(0x10773E, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x1078CE, (NEW_INTERACTABLES_TABLE_RDRAM_START + 2) & 0xFFFF)
+        patcher.write_int16(0x1078AA, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x107932, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x10793A, NEW_INTERACTABLES_TABLE_RDRAM_START & 0xFFFF)
+        patcher.write_int16(0x10803E, (NEW_INTERACTABLES_TABLE_RDRAM_START + 2) & 0xFFFF)
+        patcher.write_int16(0x1082BA, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x1082EA, (NEW_INTERACTABLES_TABLE_RDRAM_START + 2) & 0xFFFF)
+        patcher.write_int16(0x108E9E, (NEW_INTERACTABLES_TABLE_RDRAM_START + 2) & 0xFFFF)
+        patcher.write_int16(0x108EAA, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x108ECE, (NEW_INTERACTABLES_TABLE_RDRAM_START + 12) & 0xFFFF)
+        patcher.write_int16(0x10956E, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x109576, (NEW_INTERACTABLES_TABLE_RDRAM_START + 16) & 0xFFFF)
+        patcher.write_int16(0x109036, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x10904A, NEW_INTERACTABLES_TABLE_RDRAM_START & 0xFFFF)
+        patcher.write_int16(0x10853E, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x108562, (NEW_INTERACTABLES_TABLE_RDRAM_START + 2) & 0xFFFF)
+        patcher.write_int16(0x10857A, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x108592, (NEW_INTERACTABLES_TABLE_RDRAM_START + 2) & 0xFFFF)
+        patcher.write_int16(0x1085B6, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x1085CA, (NEW_INTERACTABLES_TABLE_RDRAM_START + 2) & 0xFFFF)
+        patcher.write_int16(0x1086C6, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x1086EA, (NEW_INTERACTABLES_TABLE_RDRAM_START + 2) & 0xFFFF)
+        patcher.write_int16(0x108B2A, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x108B4A, (NEW_INTERACTABLES_TABLE_RDRAM_START + 2) & 0xFFFF)
+        patcher.write_int16(0x108CF2, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x108D12, (NEW_INTERACTABLES_TABLE_RDRAM_START + 2) & 0xFFFF)
+        patcher.write_int16(0x108D8E, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x108DA6, (NEW_INTERACTABLES_TABLE_RDRAM_START + 2) & 0xFFFF)
+        # Text spots
+        patcher.write_int16(0x107D06, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x107D0E, NEW_INTERACTABLES_TABLE_RDRAM_START & 0xFFFF)
+        patcher.write_int16(0x10974A, NEW_INTERACTABLES_TABLE_RDRAM_START >> 16)
+        patcher.write_int16(0x10976A, (NEW_INTERACTABLES_TABLE_RDRAM_START - 0x308) & 0xFFFF)
+        patcher.write_int16(0x1084A2, NEW_INTERACTABLES_TABLE_RDRAM_START >> 16)
+        patcher.write_int16(0x1084BA, (NEW_INTERACTABLES_TABLE_RDRAM_START - 0x308) & 0xFFFF)
+        patcher.write_int16(0x108C3A, NEW_INTERACTABLES_TABLE_RDRAM_START >> 16)
+        patcher.write_int16(0x108C52, (NEW_INTERACTABLES_TABLE_RDRAM_START - 0x308) & 0xFFFF)
+        patcher.write_int16(0x10839A, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x10839E, NEW_INTERACTABLES_TABLE_RDRAM_START & 0xFFFF)
+        patcher.write_int16(0x108632, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x108636, NEW_INTERACTABLES_TABLE_RDRAM_START & 0xFFFF)
+        patcher.write_int16(0x108886, NEW_INTERACTABLES_TABLE_RDRAM_START >> 16)
+        patcher.write_int16(0x10888E, (NEW_INTERACTABLES_TABLE_RDRAM_START - 0x308) & 0xFFFF)
+        patcher.write_int16(0x10896A, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x10896E, NEW_INTERACTABLES_TABLE_RDRAM_START & 0xFFFF)
+        patcher.write_int16(0x1089A2, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x1089A6, NEW_INTERACTABLES_TABLE_RDRAM_START & 0xFFFF)
+        patcher.write_int16(0x108A0A, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x108A0E, NEW_INTERACTABLES_TABLE_RDRAM_START & 0xFFFF)
+        patcher.write_int16(0x108A52, NEW_INTERACTABLES_TABLE_RDRAM_START >> 16)
+        patcher.write_int16(0x108A6A, (NEW_INTERACTABLES_TABLE_RDRAM_START - 0x308) & 0xFFFF)
+        patcher.write_int16(0x108412, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x108416, NEW_INTERACTABLES_TABLE_RDRAM_START & 0xFFFF)
+        patcher.write_int16(0x107D72, (NEW_INTERACTABLES_TABLE_RDRAM_START >> 16) + 1)
+        patcher.write_int16(0x107D86, NEW_INTERACTABLES_TABLE_RDRAM_START & 0xFFFF)
+        # Update the text spot code to subtract the new text spot IDs to get the proper text pool text IDs.
+        patcher.write_int16(0x10861E, 0xFFFF - new_first_text_spot_id + 2)
+        patcher.write_int16(0x10886E, 0xFFFF - new_first_text_spot_id + 2)
+        patcher.write_int16(0x108386, 0xFFFF - new_first_text_spot_id + 2)
+        # Update all checks to see if the pickup ID is below 0x31 to be below our new first text ID instead.
+        patcher.write_int16(0x901F6, new_first_text_spot_id)
+        patcher.write_int16(0x9021A, new_first_text_spot_id)
+        patcher.write_int16(0x90256, new_first_text_spot_id)
+        patcher.write_int16(0x90286, new_first_text_spot_id)
+        patcher.write_int16(0x90292, new_first_text_spot_id)
+        patcher.write_int16(0x902CA, new_first_text_spot_id)
+        patcher.write_int16(0x902FA, new_first_text_spot_id)
+        patcher.write_int16(0x90306, new_first_text_spot_id)
+        patcher.write_int16(0x9033E, new_first_text_spot_id)
+        patcher.write_int16(0x9036E, new_first_text_spot_id)
+        patcher.write_int16(0x9037A, new_first_text_spot_id)
+        patcher.write_int16(0x90396, new_first_text_spot_id)
+        patcher.write_int16(0x90422, new_first_text_spot_id)
+        patcher.write_int16(0x90452, new_first_text_spot_id)
+        patcher.write_int16(0x107816, new_first_text_spot_id)
+        patcher.write_int16(0x107CFE, new_first_text_spot_id)
+        patcher.write_int16(0x107E2E, new_first_text_spot_id)
+        patcher.write_int16(0x10945A, new_first_text_spot_id)
+        patcher.write_int16(0x109086, new_first_text_spot_id)
+        patcher.write_int16(0x109752, new_first_text_spot_id)
+        patcher.write_int16(0x108332, new_first_text_spot_id)
+        patcher.write_int16(0x10833A, new_first_text_spot_id)
+        patcher.write_int16(0x10837E, new_first_text_spot_id)
+        patcher.write_int16(0x108546, new_first_text_spot_id)
+        patcher.write_int16(0x108612, new_first_text_spot_id)
+        patcher.write_int16(0x1086CE, new_first_text_spot_id)
+        patcher.write_int16(0x1086F6, new_first_text_spot_id)
+        patcher.write_int16(0x108866, new_first_text_spot_id)
+        patcher.write_int16(0x108B32, new_first_text_spot_id)
+        patcher.write_int16(0x108BEE, new_first_text_spot_id)
+        patcher.write_int16(0x108CFA, new_first_text_spot_id)
+        # Update every lever-spawned text spot actor to have their new interactable IDs in this randomizer.
+        # All text spots placed in the actor lists will be updated when we later loop through every list.
+        for i in range(7):
+            patcher.write_int16(LEVER_SPAWNED_ACTORS_START + (i * 8) + 2,
+                                patcher.read_bytes(LEVER_SPAWNED_ACTORS_START + (i * 8) + 2, 2, return_as_int=True) +
+                                new_first_text_spot_id - OLD_FIRST_TEXT_SPOT_ID)
+        # Update the pointer to the Interactables table to instead point to the new table location.
+        patcher.write_int16(0x901E2, (new_item_appearances_table_rdram_start >> 16) + 1)
+        patcher.write_int16(0x901E6, new_item_appearances_table_rdram_start & 0xFFFF)
+
+        # Extract the Item name and description text pools.
+        item_name_pool = patcher.extract_text_pool(0xB88C8)
+        item_desc_pool = patcher.extract_text_pool(0x3B08, NIFiles.OVERLAY_PAUSE_MENU)
+
+        # Append the extra item names to the end of the item name pool.
+        item_name_pool += [item_names.perma_up, item_names.perma_knife, item_names.perma_water, item_names.perma_cross,
+                           item_names.perma_axe, "AP Item"]
+        # Capitalize the "k" in "Archives key" and "Rose Garden key" to be consistent with...
+        # literally every other key name!
+        item_name_pool[CVLOD_PICKUP_INFO[Pickups.ARCHIVES_KEY-1].text_pool_id] = item_names.quest_key_arch
+        item_name_pool[CVLOD_PICKUP_INFO[Pickups.ROSE_GARDEN_KEY-1].text_pool_id] = item_names.quest_key_rose
+        # Add the apostrophe that should be in "Oldrey's Diary".
+        item_name_pool[CVLOD_PICKUP_INFO[Pickups.OLDREYS_DIARY-1].text_pool_id] = item_names.quest_diary
+        # Rename the Special3 to "Trophy" and the Execution Key to "Big Crystal"
+        item_name_pool[CVLOD_PICKUP_INFO[Pickups.SPECIAL3-1].text_pool_id] = item_names.event_trophy
+        item_name_pool[CVLOD_PICKUP_INFO[Pickups.EXECUTION_KEY-1].text_pool_id] = item_names.event_cc_crystal
+        # Make the "PowerUp" textbox appear even if you already have two.
+        patcher.write_int32(0x87E34, 0x00000000)  # NOP
+        # Change the Special1 description to tell you how many you need to unlock a warp.
+        item_desc_pool[CVLOD_PICKUP_INFO[Pickups.SPECIAL1-1].text_pool_id] = \
+            (f"✨{TextColors.YELLOW}/{slot_patch_info['options']['special1s_per_warp']}✨0/ per warp unlock.\n"
+             f"{slot_patch_info['options']['total_special1s']} of this item exist in total.\n"
+             "Z + R + START to warp.")
+        # New descriptions for the Special2 and 3 (Trophy) and Execution Key (Big Crystal).
+        item_desc_pool[CVLOD_PICKUP_INFO[Pickups.SPECIAL2-1].text_pool_id] = \
+            (f"Need ✨{TextColors.PLUM}/{slot_patch_info['options']['required_special2s']}✨0//"
+             f"{slot_patch_info['options']['total_special2s']} to kill Dracula.\n"
+             "Looking closely, you see...\n"
+             "a piece of him within?")
+        item_desc_pool[CVLOD_PICKUP_INFO[Pickups.SPECIAL3-1].text_pool_id] = \
+            ("Proof you killed a powerful\n"
+             f"Night Creature. Earn ✨{TextColors.SALMON}/{slot_patch_info['options']['bosses_required']}✨0//"
+             f"{slot_patch_info['options']['total_available_bosses']}\n"
+             "to battle Dracula.")
+        item_desc_pool[CVLOD_PICKUP_INFO[Pickups.EXECUTION_KEY-1].text_pool_id] = \
+            (f"The Big Crystal is ✨{TextColors.BLUE}/ON✨0/!\n"
+             "A step closer to teaching\n"
+             "the old man a lesson!")
+        item_desc_pool += ["Increases main weapon\n"
+                           "level permanently.\n"
+                           "Kept after dying.",
+                           "A Knife you always have.\n"
+                           "Use R + D-pad to change\n"
+                           "sub-weapon and level.",
+                           "Holy Water you always have.\n"
+                           "Use R + D-pad to change\n"
+                           "sub-weapon and level.",
+                           "A Cross you always have.\n"
+                           "Use R + D-pad to change\n"
+                           "sub-weapon and level.",
+                           "An Axe you always have.\n"
+                           "Use R + D-pad to change\n"
+                           "sub-weapon and level."]
+
+        # Append the model data for the AP items onto the end of the items assets file.
+        patcher.write_bytes(patcher.get_decompressed_file_size(NIFiles.ASSET_PICKUPS),
+                            pkgutil.get_data(__name__, "data/ap_icons.bin"), NIFiles.ASSET_PICKUPS)
+        # Update the items' decompressed file size in the map file infos array.
+        patcher.write_int32(0x10F24C, DLIST_START | patcher.get_decompressed_file_size(NIFiles.ASSET_PICKUPS))
+
+        # Allow the pause menu to check beyond the Clocktower Key B count for items to show in it.
+        patcher.write_int16(0x3A72, 0x0036, NIFiles.OVERLAY_PAUSE_MENU)
+
+        # output = open(f"is_this_right", "wb")
+        # output.write(patcher.decompressed_files[NIFiles.ASSET_PICKUPS])
+        # output.close()
 
         # Initial Countdown numbers and Start Inventory.
         patcher.write_int32(0x90DBC, 0x080FF200)  # J	0x803FC800
@@ -276,13 +488,15 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Enable being able to carry multiple Special jewels, Nitros, Mandragoras, and Key Items simultaneously, and
         # make the Special1 and 2 play sounds when you reach milestones with them.
         patcher.write_int32s(0xFFDA50, patches.special_sound_notifs)
-        patcher.write_int16(0xFFDA6E, slot_patch_info["options"]["special1s_per_warp"])
-        patcher.write_int16(0xFFDA82, len(slot_patch_info["warps"]))
+        patcher.write_int16(0xFFDA52, slot_patch_info["options"]["required_special2s"])
+        patcher.write_int16(0xFFDA6E, slot_patch_info["options"]["bosses_required"])
+        patcher.write_int16(0xFFDA8A, slot_patch_info["options"]["special1s_per_warp"])
+        patcher.write_int16(0xFFDA9E, len(slot_patch_info["warps"]))
         # Special1
         patcher.write_int32s(0x904B8, [0x90C8AB47,   # LBU   T0, 0xAB47 (A2)
                                        0x00681821,   # ADDU  V1, V1, T0
                                        0xA0C3AB47,   # SB    V1, 0xAB47 (A2)
-                                       0x080FF69B,   # J     0x803FDA6C
+                                       0x080FF6A2,   # J     0x803FDA88
                                        0x00000000])  # NOP
         # Special2
         patcher.write_int32s(0x904CC, [0x90C8AB48,   # LBU   T0, 0xAB48 (A2)
@@ -290,8 +504,12 @@ class CVLoDPatchExtensions(APPatchExtension):
                                        0xA0C3AB48,   # SB    V1, 0xAB48 (A2)
                                        0x080FF694,   # J     0x803FDA50
                                        0x00000000])  # NOP
-        # Special3 (NOP this one for usage as the AP item)
-        patcher.write_int32(0x904E8, 0x00000000)
+        # Special3 (Trophy)
+        patcher.write_int32s(0x904E0, [0x90C8AB49,   # LBU   T0, 0xAB49 (A2)
+                                       0x00681821,   # ADDU  V1, V1, T0
+                                       0xA0C3AB49,   # SB    V1, 0xAB49 (A2)
+                                       0x080FF69B,   # J     0x803FDA6C
+                                       0x00000000])  # NOP
         # Magical Nitro
         patcher.write_int32(0x9071C, 0x10000004)  # B [forward 0x04]
         patcher.write_int32s(0x90734, [0x25430001,  # ADDIU	V1, T2, 0x0001
@@ -302,39 +520,22 @@ class CVLoDPatchExtensions(APPatchExtension):
                                         0x10000003])  # B [forward 0x03]
         # Key Items
         patcher.write_byte(0x906C7, 0x63)
+        patcher.write_int32(0x90868, 0x080FF6AE)  # J 0x803FDAB8
         # Increase Use Item capacity to 99 if "Increase Item Limit" is turned on
         if slot_patch_info["options"]["increase_item_limit"]:
             patcher.write_byte(0x90617, 0x63)  # Most items
             patcher.write_byte(0x90767, 0x63)  # Sun/Moon cards
+        # Add the functionality for receiving custom Items with an Item ID higher than 0x30.
+        patcher.write_int32s(0x9077C, [0x080FF6C0,   # J      0x803FDB00
+                                       0x00000000])  # NOP
+        patcher.write_int32s(0xFFDB00, patches.extended_items_functionality)
 
-        # Rename the Special3 to "AP Item"
-        patcher.write_bytes(0xB89AA, cvlod_string_to_bytearray("AP Item "))
-        # Change the Special3's appearance to that of a spinning contract and move its pickup shine down to reflect its
-        # new appearance.
-        patcher.write_int32s(0x117708, [0x06006358, 0x3F800000, 0xFFFFFF00])
-        patcher.write_int16(0x117098, 0x000A)
-        # Change the Clocktower Key A's appearance to that of a larger PowerUp (which is our PermaUp).
-        # The actual Clocktower Key A will be using the appearance of the Garden Key since it's identical.
-        patcher.write_int32s(0x117998, [0x06008D00, 0x3FB00000, 0xFFFFFF00, 0x2C00002E])
-        patcher.write_int16(0x1173CC, 0x0032)
-        # Change the Clocktower Key B's appearance to that of a larger spinning contract (for progression).
-        # The actual Clocktower Key B will be using the appearance of the Copper Key since it's identical.
-        patcher.write_int32s(0x1179A8, [0x06006358, 0x3FB00000, 0xFFFFFF00, 0x2D01002F])
-        patcher.write_int16(0x1173E0, 0x000C)
-        # Disable spinning on the Special1 and 2 pickup models so colorblind people can more easily identify them.
-        patcher.write_byte(0x1176F5, 0x00)  # Special1
-        patcher.write_byte(0x117705, 0x00)  # Special2
-        # Make the Special2 the same size as a Red jewel(L) to further distinguish them.
-        patcher.write_int32(0x1176FC, 0x3FA66666)
-        # Capitalize the "k" in "Archives key" and "Rose Garden key" to be consistent with...
-        # literally every other key name!
-        patcher.write_byte(0xB8AFF, 0x2B)
-        patcher.write_byte(0xB8BCB, 0x2B)
-        # Make the "PowerUp" textbox appear even if you already have two.
-        patcher.write_int32(0x87E34, 0x00000000)  # NOP
-        # Write "Z + R + START" over the Special1 description.
-        patcher.write_bytes(0x3B7C, cvlod_string_to_bytearray("Z + R + START", add_end_char=True),
-                            NIFiles.OVERLAY_PAUSE_MENU)
+        # Add the ability to toggle sub-weapons depending on the player's perma weapon counts.
+        patcher.write_int32s(0xFFD8A0, patches.perma_subweapon_switcher)
+        patcher.write_int32(0x74544C, 0x0C0FF628)  # JAL   0x803FD8A0
+        patcher.write_int32(0x74CF38, 0x0C0FF628)  # JAL   0x803FD8A0
+        patcher.write_int32(0x75A78C, 0x0C0FF628)  # JAL   0x803FD8A0
+        patcher.write_int32(0x763BBC, 0x0C0FF628)  # JAL   0x803FD8A0
 
         # Enable changing the item model/visibility on any item instance.
         patcher.write_int32s(0x107740, [0x0C0FF380,   # JAL   0x803FCE00
@@ -355,14 +556,19 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int32s(0x108EB0, [0x0C0FF3C4,   # JAL   0x803FCF10
                                         0x96190038])  # LHU   T9, 0x0038 (S0)
         patcher.write_int32s(0xFFCF10, patches.pickup_shine_height_switcher)
+        # Add additional spawn height checks for the Perma Axe and Perma Cross.
+        patcher.write_int32(0x107A78, 0x080FF3E0)  # J 0x803FCF80
+        patcher.write_int32s(0xFFCF80, patches.pickup_extended_spawn_height_checks)
 
         # Enable checking field 0x12 in a pickup's entry in the interactables settings table to see if we should skip
         # checking its pickup flag or not, instead of it being hardcoded to White Jewels no matter what.
-        patcher.write_int32s(0x10775C, [0x956C6778,   # LHU   T4, 0x6778 (T3)
-                                        0x29210031,   # SLTI  AT, T1, 0x0031
-                                        0x10200024,   # BEQZ  AT,     [forward 0x24]
+        patcher.write_int32s(0x10775C, [0x29210000 +  # SLTI  AT, T1, 0x00B5
+                                        new_first_text_spot_id,
+                                        0x10200025,   # BEQZ  AT,     [forward 0x25]
                                         0xA4D90050,   # SH    T9, 0x0050 (A2)
-                                        0x916B678A,   # LBU   T3, 0x678A (T3)
+                                        0x916B0000 +  # LBU   T3, 0xEF32 (T3)
+                                        ((NEW_INTERACTABLES_TABLE_RDRAM_START + 18) & 0xFFFF),
+                                        0x00000000,   # NOP
                                         0x00000000,   # NOP
                                         0x00000000,   # NOP
                                         0x00000000])  # NOP
@@ -502,26 +708,27 @@ class CVLoDPatchExtensions(APPatchExtension):
         # (only replaces file 2, which is the unused debug font assets file in the vanilla ROM).
         patcher.write_int32(0xAFA80, 0x800BCC20)
         patcher.write_int32s(0xBD820, [0x40000002, 0x00001000])
-        # Generate the warp menu's text pool of destination names for this slot and insert it in the overlay.
+        # Generate the warp menu's text pool of destination names for this slot and insert it in the overlay
+        # (stage_names_pool symbol).
         warp_texts = [" " for _ in CVLOD_STAGE_INFO]
         warp_texts[0] = slot_patch_info["warps"][0]
         for warp_index in range(1, len(slot_patch_info["warps"])):
             warp_texts[warp_index] = (f"◊{str(warp_index * slot_patch_info['options']['special1s_per_warp']).zfill(2)} "
                                       f"{slot_patch_info['warps'][warp_index]}")
-        patcher.write_bytes(0x13E8, cvlod_strings_to_pool(warp_texts, wrap=False), NIFiles.ASSET_DEBUG_FONT)
-        # Write the warp scene IDs.
-        patcher.write_int32(0x1360, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_scene_id,
+        patcher.write_bytes(0x16EC, cvlod_strings_to_pool(warp_texts, wrap=False), NIFiles.ASSET_DEBUG_FONT)
+        # Write the warp scene IDs (destMapIDs symbol).
+        patcher.write_int32(0x1660, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_scene_id,
                             NIFiles.ASSET_DEBUG_FONT)
-        patcher.write_int32s(0x1364, [CVLOD_STAGE_INFO[warp].mid_scene_id for warp in slot_patch_info['warps'][1:]],
+        patcher.write_int32s(0x1664, [CVLOD_STAGE_INFO[warp].mid_scene_id for warp in slot_patch_info['warps'][1:]],
                              NIFiles.ASSET_DEBUG_FONT)
-        # Write the warp spawn entrance IDs.
-        patcher.write_int32(0x13A4, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_spawn_id,
+        # Write the warp spawn entrance IDs (destSpawnIDs symbol).
+        patcher.write_int32(0x16A4, CVLOD_STAGE_INFO[slot_patch_info['warps'][0]].start_spawn_id,
                             NIFiles.ASSET_DEBUG_FONT)
-        patcher.write_int32s(0x13A8, [CVLOD_STAGE_INFO[warp].mid_spawn_id for warp in slot_patch_info['warps'][1:]],
+        patcher.write_int32s(0x16A8, [CVLOD_STAGE_INFO[warp].mid_spawn_id for warp in slot_patch_info['warps'][1:]],
                              NIFiles.ASSET_DEBUG_FONT)
-        # Write the Special1s per warp and the total number of warps in the code.
-        patcher.write_int16(0x1C6, len(slot_patch_info['warps']), NIFiles.ASSET_DEBUG_FONT)
-        patcher.write_int16(0x1CA, slot_patch_info['options']['special1s_per_warp'], NIFiles.ASSET_DEBUG_FONT)
+        # Write the Special1s per warp and the total number of warps in the code (misc_vars symbol).
+        patcher.write_byte(0x16E8, slot_patch_info['options']['special1s_per_warp'], NIFiles.ASSET_DEBUG_FONT)
+        patcher.write_byte(0x16E9, len(slot_patch_info['warps']), NIFiles.ASSET_DEBUG_FONT)
 
 
         # # # # # # # # # # #
@@ -2229,12 +2436,17 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Custom messages for when trying to interact with each of the Hazardous Materials Disposals, explaining why we
         # can't use any of them.
         patcher.scenes[Scenes.CASTLE_CENTER_BOTTOM_ELEV].scene_text[8]["text"] = (
-            "\"Hazardous materials\n"
-            " disposal.\"🅰0/\n"
-            "You stare inside its darkness\n"
-            "only to see a terrifying\n"
-            "smiling face entity stare back!\n"
-            "Yeah, let's...leave it alone.🅰0/")
+            '"Hazardous materials\n'
+            ' disposal."🅰0/\n'
+            "There's...a poster taped here?🅰0/\f"
+            '      This way\n'
+            f'       to the    ✨{TextColors.RED}/o✨0/~Y  /\n'
+            f'       ✨{TextColors.RED}/FUN!!!✨0/     [✨{TextColors.RED}/=)✨0/ ]_\n'
+            '                   J🅰0/\f'
+            "An extremely sick feeling\n"
+            "stops you touching it at the\n"
+            "very last second. This party\n"
+            "sounds anything but...🅰0/")
         patcher.scenes[Scenes.CASTLE_CENTER_FACTORY].scene_text[3]["text"] = (
             "\"Hazardous materials\n"
             " disposal.\"\n"
@@ -2785,7 +2997,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # vulnerable to the Axe lightning strike, but actually hitting it with that seems impossible anyway...right?)
         patcher.write_int16(0xDDA, 0x07C0, NIFiles.OVERLAY_DRACULA_ULTIMATE)
 
-        # Prevent Dracula's doors from opening if the required amount of the goal item (Special2 normally) is not found.
+        # Prevent Dracula's doors from opening if the required amounts of the goal items are not found.
         drac_door_check_start = len(patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].overlay)
         patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].doors[0]["door_flags"] = DoorFlags.EXTRA_CHECK_FUNC_ENABLED
         patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].doors[0]["extra_condition_ptr"] = \
@@ -2797,66 +3009,70 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].doors[1]["flag_locked_text_id"] = 0
         patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int32s(drac_door_check_start,
                                                                      patches.drac_condition_checker)
-        # Write different option values and door messages and name the Special2 differently depending on what
-        # Dracula's Condition is. The option values will be written to both the door check and the Dracula special
-        # sound notif check.
-        boss_extension_hack = patches.special2_giver.copy()
-        boss_extension_hack_liz = patches.special2_giver_lizard_edition.copy()
-        if slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_crystal:
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int16(
+            drac_door_check_start + 0xE, slot_patch_info["options"]["required_special2s"])
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int16(
+            drac_door_check_start + 0x1E, slot_patch_info["options"]["bosses_required"])
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int16(
+            drac_door_check_start + 0x2E, slot_patch_info["options"]["big_crystal_required"])
+        # Determine what text the door, when interacting with it while it's locked, should say first depending on which
+        # of Dracula's conditions are and aren't enabled.
+        # Only the Big Crystal
+        if slot_patch_info["options"]["big_crystal_required"] and not slot_patch_info["options"]["required_special2s"] \
+                and not slot_patch_info["options"]["bosses_required"]:
             patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = ("The door is sealed\n"
-                                                                                 "by a crystalline force...🅰0/\f"
-                                                                                 "You'll need the power\n"
-                                                                                 "of the Big Crystal in\n"
-                                                                                 "Castle Center's basement\n"
-                                                                                 "to undo the seal.🅰0/")
-            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int16(drac_door_check_start + 0xE, 1)
-            patcher.write_int16(0xFFDA52, 1)
-            patcher.write_bytes(0xB8998, cvlod_string_to_bytearray("Crystal "))
-            # Make the Big Crystal give the Crystal item for Dracula's door.
+                                                                                 "by a crystalline force.\n")
+        # Only Trophies
+        elif slot_patch_info["options"]["bosses_required"] and not slot_patch_info["options"]["required_special2s"] \
+                and not slot_patch_info["options"]["big_crystal_required"]:
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = ("The door is sealed\n"
+                                                                                 "by a malevolent force.\n")
+        # Only Special2s
+        elif slot_patch_info["options"]["required_special2s"] and not slot_patch_info["options"]["bosses_required"] \
+                and not slot_patch_info["options"]["big_crystal_required"]:
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = ("The door is sealed\n"
+                                                                                 "by a special force.\n")
+        # Any multiple together.
+        else:
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = ("The door is sealed\n"
+                                                                                 "by multiple forces.\n")
+        patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] += ("You must do the following\n"
+                                                                              "to unseal it...🅰0/")
+
+        # Apply different hacks and extend the door text with various messages depending on which goal conditions
+        # are enabled.
+        # Big Crystal
+        if slot_patch_info["options"]["big_crystal_required"]:
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] += \
+                (f"\fActivate the ✨{TextColors.BLUE}/Big Crystal✨0/\n"
+                 "in Castle Center's basement.🅰0/")
+            # Make the Big Crystal give its item for Dracula's door.
             crystal_s2_giver_start = len(patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].overlay)
             patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].write_ovl_int32(
                 0x548, 0x0C0B0000 | ((crystal_s2_giver_start + (SCENE_OVERLAY_RDRAM_START & 0xFFFFFF)) // 4))
             patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].write_ovl_int32s(crystal_s2_giver_start,
-                                                                           patches.special2_giver)
-            # NOP the Special2-giving part of the boss extension hack so bosses won't give Special2s.
+                                                                           patches.trophy_giver)
+            patcher.scenes[Scenes.CASTLE_CENTER_BASEMENT].write_ovl_byte(crystal_s2_giver_start + 7,
+                                                                         Items.EXECUTION_KEY)
+        # Bosses
+        boss_extension_hack = patches.trophy_giver.copy()
+        boss_extension_hack_liz = patches.trophy_giver_lizard_edition.copy()
+        if slot_patch_info["options"]["bosses_required"]:
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] += \
+                (f"\fVanquish ✨{TextColors.SALMON}/{slot_patch_info['options']['bosses_required']}✨0//"
+                 f"{slot_patch_info['options']['total_available_bosses']} particularly\n"
+                 "strong creatures of the night\n"
+                 f"and collect their ✨{TextColors.SALMON}/Trophies✨0/.🅰0/")
+        else:
+        # If no bosses are required, NOP the Special2-giving part of the boss extension hack so bosses won't give
+        # Trophies.
             boss_extension_hack[len(boss_extension_hack)-3] = 0x00000000
             boss_extension_hack_liz[len(boss_extension_hack_liz)-3] = 0x00000000
-        #    special2_text = "The crystal is on!\n" \
-        #                    "Time to teach the old man\n" \
-        #                    "a lesson!"
-        elif slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_bosses:
-            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = \
-                ("The door is sealed\n"
-                 "by a malevolent force...🅰0/\f"
-                 "You'll need to vanquish\n"
-                 f"{slot_patch_info['options']['bosses_required']} powerful monsters\n"
-                 "to undo the seal.🅰0/")
-            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int16(
-                drac_door_check_start + 0xE, slot_patch_info["options"]["bosses_required"])
-            patcher.write_int16(0xFFDA52, slot_patch_info["options"]["bosses_required"])
-            patcher.write_bytes(0xB8998, cvlod_string_to_bytearray("Trophy  "))
-        #    special2_text = f"Proof you killed a powerful\n" \
-        #                    f"Night Creature. Earn {required_s2s}/{total_s2s}\n" \
-        #                    f"to battle Dracula."
-        elif slot_patch_info["options"]["draculas_condition"] == DraculasCondition.option_specials:
-            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] = \
-                ("The door is sealed\n"
-                 "by a special force...🅰0/\f"
-                 "You'll need to find\n"
-                 f"{slot_patch_info['options']['required_special2s']} Special2 jewels\n"
-                 "to undo the seal.🅰0/")
-            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].write_ovl_int16(
-                drac_door_check_start + 0xE, slot_patch_info["options"]["required_special2s"])
-            patcher.write_int16(0xFFDA52, slot_patch_info["options"]["required_special2s"])
-            # NOP the Special2-giving part of the boss extension hack so bosses won't give Special2s.
-            boss_extension_hack[len(boss_extension_hack)-3] = 0x00000000
-            boss_extension_hack_liz[len(boss_extension_hack_liz)-3] = 0x00000000
-        #    special2_text = f"Need {required_s2s}/{total_s2s} to kill Dracula.\n" \
-        #                    f"Looking closely, you see...\n" \
-        #                    f"a piece of him within?"
-        # else:
-        #    special2_text = "If you're reading this,\n" \
-        #                    "how did you get a Special2!?"
+        # Special2s
+        if slot_patch_info["options"]["required_special2s"]:
+            patcher.scenes[Scenes.CASTLE_KEEP_EXTERIOR].scene_text[0]["text"] += \
+                (f"\fFind ✨{TextColors.PLUM}/{slot_patch_info['options']['required_special2s']}✨0//"
+                 f"{slot_patch_info['options']['total_special2s']} ✨{TextColors.PLUM}/Special2✨0/ jewels.🅰0/")
 
         # Apply the common boss defeat extension hack to every boss fight in the game.
         # Sea Monster
@@ -2902,8 +3118,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Hard Mode Gardener (never gives Special2s no matter what, but will always un-set the "can't warp" byte)
         boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_GARDENER)
         patcher.write_int32(0x2D84, 0x0FC00000 | (boss_s2_giver_start // 4), NIFiles.OVERLAY_GARDENER)
-        patcher.write_int32s(boss_s2_giver_start, patches.special2_giver, NIFiles.OVERLAY_GARDENER)
-        patcher.write_int32(boss_s2_giver_start + ((len(patches.special2_giver) - 3) * 4),
+        patcher.write_int32s(boss_s2_giver_start, patches.trophy_giver, NIFiles.OVERLAY_GARDENER)
+        patcher.write_int32(boss_s2_giver_start + ((len(patches.trophy_giver) - 3) * 4),
                             0x00000000, NIFiles.OVERLAY_GARDENER)  # NOP
         # Queen Algenie
         boss_s2_giver_start = patcher.get_decompressed_file_size(NIFiles.OVERLAY_QUEEN_ALGENIE)
@@ -3148,15 +3364,14 @@ class CVLoDPatchExtensions(APPatchExtension):
         # are exclusive to non-Normal difficulties or try writing an Item they should have onto them if they aren't.
         for scene_id, scene in enumerate(patcher.scenes):
             # Update the table in the Pause Menu overlay containing the per-scene stage numbers to have the Pause Menu
-            # display the correct positon number when pausing in that scene.
+            # display the correct position number when pausing in that scene.
             patcher.write_byte(0x4D28 + (scene_id * 4), SCENE_STAGE_NAME_INDEXES[scene_id], NIFiles.OVERLAY_PAUSE_MENU)
             for list_name, actor_list in scene.actor_lists.items():
                 for actor in actor_list:
                     # If the actor is not a Location-associated actor, or if it's already marked for deletion, or it's
                     # a text spot pickup actor, skip it.
                     if actor["object_id"] not in [Objects.ONE_HIT_BREAKABLE, Objects.THREE_HIT_BREAKABLE,
-                                                  Objects.INTERACTABLE] + SPECIAL_1HBS or "delete" in actor or \
-                            (actor["object_id"] == Objects.INTERACTABLE and actor["var_c"] not in Pickups):
+                                                  Objects.INTERACTABLE] + SPECIAL_1HBS or "delete" in actor:
                         continue
 
                     # If it's not an enemy pillar actor, check its spawn flags for what difficulties it spawns on.
@@ -3175,8 +3390,11 @@ class CVLoDPatchExtensions(APPatchExtension):
 
                     # If it's a freestanding pickup, the flag to check is in its Var A.
                     if actor["object_id"] == Objects.INTERACTABLE:
-                        # If the pickup is a text spot, skip it.
-                        if actor["var_c"] > len(Pickups) + 1:
+                        # If the pickup is a text spot normally, add the number of added entries in the randomizer's
+                        # expanded interactables table to put it on its new text ID for this and otherwise skip doing
+                        # anything else with it.
+                        if actor["var_c"] >= OLD_FIRST_TEXT_SPOT_ID:
+                            actor["var_c"] += new_first_text_spot_id - OLD_FIRST_TEXT_SPOT_ID
                             continue
                         # If the pickup is a White Jewel, update that White Jewel's entry in the White Jewel info table
                         # if its Var A is not 0 and continue.
@@ -3217,9 +3435,13 @@ class CVLoDPatchExtensions(APPatchExtension):
                                             actor["z_pos"] = NEW_VISIBLE_ITEM_COORDS[actor["var_a"]][2]
                                 else:
                                     actor["var_b"] |= PickupFlags.HIDDEN
-                        # If it's not a Location with a pickup to change, Permanent Powerups are on, and the pickup is
-                        # a PowerUp, change it to a Red Jewel(L).
-                        elif slot_patch_info["options"]["permanent_powerups"] and actor["var_c"] == Pickups.POWERUP:
+                        # If it's not a Location with a pickup to change, and either Permanent Powerups are on and the
+                        # pickup is a PowerUp normally, or Permanent Sub-weapons is on and the pickup is a sub-weapon,
+                        # change it to a Red Jewel(L).
+                        elif (slot_patch_info["options"]["permanent_powerups"] and
+                              actor["var_c"] == Pickups.POWERUP) or \
+                                (slot_patch_info["options"]["permanent_sub_weapons"] and
+                                 actor["var_c"] in SUB_WEAPON_IDS):
                             actor["var_c"] = Pickups.RED_JEWEL_L
 
                     # If it's a regular 1HB, the flag to check AND the value to write the new Item over is in the 1HB
@@ -3237,10 +3459,13 @@ class CVLoDPatchExtensions(APPatchExtension):
                                     scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] &= ~PickupFlags.HIDDEN
                                 else:
                                     scene.one_hit_breakables[actor["var_c"]]["pickup_flags"] |= PickupFlags.HIDDEN
-                        # If it's not a Location with a pickup to change, Permanent Powerups are on, and the pickup is
-                        # a PowerUp, change it to a Red Jewel(L).
-                        elif slot_patch_info["options"]["permanent_powerups"] and \
-                                scene.one_hit_breakables[actor["var_c"]]["pickup_id"] == Pickups.POWERUP:
+                        # If it's not a Location with a pickup to change, and either Permanent Powerups are on and the
+                        # pickup is a PowerUp normally, or Permanent Sub-weapons is on and the pickup is a sub-weapon,
+                        # change it to a Red Jewel(L).
+                        elif (slot_patch_info["options"]["permanent_powerups"] and
+                              scene.one_hit_breakables[actor["var_c"]]["pickup_id"] == Pickups.POWERUP) or \
+                                (slot_patch_info["options"]["permanent_sub_weapons"] and
+                                 scene.one_hit_breakables[actor["var_c"]]["pickup_id"] in SUB_WEAPON_IDS):
                             scene.one_hit_breakables[actor["var_c"]]["pickup_id"] = Pickups.RED_JEWEL_L
 
                     # If it's a special 1HB, then it's similar to the regular 1HB but in the special 1HB data instead.
@@ -3259,10 +3484,13 @@ class CVLoDPatchExtensions(APPatchExtension):
                                 else:
                                     scene.one_hit_special_breakables[actor["var_c"]]["pickup_flags"] \
                                         |= PickupFlags.HIDDEN
-                        # If it's not a Location with a pickup to change, Permanent Powerups are on, and the pickup is
-                        # a PowerUp, change it to a Red Jewel(L).
-                        elif slot_patch_info["options"]["permanent_powerups"] and \
-                                scene.one_hit_special_breakables[actor["var_c"]]["pickup_id"] == Pickups.POWERUP:
+                        # If it's not a Location with a pickup to change, and either Permanent Powerups are on and the
+                        # pickup is a PowerUp normally, or Permanent Sub-weapons is on and the pickup is a sub-weapon,
+                        # change it to a Red Jewel(L).
+                        elif (slot_patch_info["options"]["permanent_powerups"] and
+                              scene.one_hit_special_breakables[actor["var_c"]]["pickup_id"] == Pickups.POWERUP) or \
+                                (slot_patch_info["options"]["permanent_sub_weapons"] and
+                                 scene.one_hit_special_breakables[actor["var_c"]]["pickup_id"] in SUB_WEAPON_IDS):
                             scene.one_hit_special_breakables[actor["var_c"]]["pickup_id"] = Pickups.RED_JEWEL_L
 
                     # If it's a 3HB, get that 3HB's regular flag ID from its 3HB flag data to figure out which one it
@@ -3285,6 +3513,13 @@ class CVLoDPatchExtensions(APPatchExtension):
                                 for three_hit_pickup_index in range(three_hit["pickup_count"]):
                                     if scene.three_hit_drop_ids[first_3hb_pickup_index +
                                                                 three_hit_pickup_index] == Pickups.POWERUP:
+                                        scene.three_hit_drop_ids[first_3hb_pickup_index
+                                                                 + three_hit_pickup_index] = Pickups.RED_JEWEL_L
+                            # Do the same for sub-weapons if Permanent Sub-weapons is on.
+                            if slot_patch_info["options"]["permanent_sub_weapons"]:
+                                for three_hit_pickup_index in range(three_hit["pickup_count"]):
+                                    if scene.three_hit_drop_ids[first_3hb_pickup_index +
+                                                                three_hit_pickup_index] in SUB_WEAPON_IDS:
                                         scene.three_hit_drop_ids[first_3hb_pickup_index
                                                                  + three_hit_pickup_index] = Pickups.RED_JEWEL_L
                             continue
@@ -3397,7 +3632,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                         stage["connecting_stages"]["next alt 1"][0]].start_spawn_id)
                     patcher.write_byte(0xD3B0F, CVLOD_STAGE_INFO[
                         stage["connecting_stages"]["next alt 2"][0]].start_scene_id)
-                    patcher.write_byte(0xD3B47, CVLOD_STAGE_INFO[
+                    patcher.write_byte(0xD3BA3, CVLOD_STAGE_INFO[
                         stage["connecting_stages"]["next alt 2"][0]].start_spawn_id)
                     # Write the text explaining what the coffin's possible destinations are.
                     patcher.scenes[Scenes.VILLA_CRYPT].scene_text[2]["text"] = \
@@ -3440,7 +3675,8 @@ class CVLoDPatchExtensions(APPatchExtension):
                     CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=-4.0, y_pos=10.0, z_pos=210.0,
                                           execution_flags=0,
                                           object_id=Objects.INTERACTABLE, flag_id=0, var_a=30, var_b=20,
-                                          var_c=0x33, var_d=0, extra_condition_ptr=0)
+                                          var_c=new_first_text_spot_id + 2, var_d=0,
+                                          extra_condition_ptr=0)
                 ]
 
             # If Castle Center is the current stage, make adjustments to Carrie's end loading zone in the top elevator
@@ -3456,9 +3692,9 @@ class CVLoDPatchExtensions(APPatchExtension):
                     patcher.scenes[Scenes.CASTLE_CENTER_TOP_ELEV].scene_text[0]["text"] = \
                         ("There's a sheet of\n"
                          "      paper taped back here...🅰0/\f"
-                         "Ahead (Blue):\n"
+                         "Ahead (Blue/Medusa Heads):\n"
                          f"    {stage['connecting_stages']['next'][0]}\n"
-                         "Behind (Yellow):\n"
+                         "Behind (Yellow/Ghosts):\n"
                          f"    {stage['connecting_stages']['next alt 1'][0]}🅰0/")
                 # Otherwise, have Carrie's zone send the player to the primary next stage.
                 else:
@@ -3475,7 +3711,8 @@ class CVLoDPatchExtensions(APPatchExtension):
                     CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=0.0, y_pos=20.0, z_pos=-15.0,
                                           execution_flags=0,
                                           object_id=Objects.INTERACTABLE, flag_id=0, var_a=15, var_b=5,
-                                          var_c=0x31, var_d=0, extra_condition_ptr=0)
+                                          var_c=new_first_text_spot_id, var_d=0,
+                                          extra_condition_ptr=0)
                 ]
 
 
@@ -3518,10 +3755,16 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int16(0x4CB8, 0x1F40, NIFiles.OVERLAY_PAUSE_MENU)  # Healing kit   (10000 -> 8000)
             patcher.write_int16(0x4CBE, 0x1388, NIFiles.OVERLAY_PAUSE_MENU)  # Roast beef    ( 8000 -> 5000)
             patcher.write_int16(0x4CC4, 0x09C4, NIFiles.OVERLAY_PAUSE_MENU)  # Roast chicken ( 5000 -> 2500)
-            # Update the menu descriptions to reflect the new amounts.
-            patcher.write_bytes(0x3BC4, cvlod_string_to_bytearray("25%"), NIFiles.OVERLAY_PAUSE_MENU)
-            patcher.write_bytes(0x3C18, cvlod_string_to_bytearray("50%"), NIFiles.OVERLAY_PAUSE_MENU)
-            patcher.write_bytes(0x3C9E, cvlod_string_to_bytearray("80% "), NIFiles.OVERLAY_PAUSE_MENU)
+            # Update the menu descriptions to reflect the new heal amounts.
+            item_desc_pool[CVLOD_PICKUP_INFO[Pickups.ROAST_CHICKEN-1].text_pool_id] = \
+                item_desc_pool[CVLOD_PICKUP_INFO[Pickups.ROAST_CHICKEN-1].text_pool_id][0:9] + "25%" + \
+                item_desc_pool[CVLOD_PICKUP_INFO[Pickups.ROAST_CHICKEN-1].text_pool_id][12:]
+            item_desc_pool[CVLOD_PICKUP_INFO[Pickups.ROAST_BEEF-1].text_pool_id] = \
+                item_desc_pool[CVLOD_PICKUP_INFO[Pickups.ROAST_BEEF-1].text_pool_id][0:9] + "50%" + \
+                item_desc_pool[CVLOD_PICKUP_INFO[Pickups.ROAST_BEEF-1].text_pool_id][12:]
+            item_desc_pool[CVLOD_PICKUP_INFO[Pickups.HEALING_KIT-1].text_pool_id] = \
+                item_desc_pool[CVLOD_PICKUP_INFO[Pickups.HEALING_KIT-1].text_pool_id][0:32] + "80%" + \
+                item_desc_pool[CVLOD_PICKUP_INFO[Pickups.HEALING_KIT-1].text_pool_id][36:]
             patcher.write_bytes(0x2D38, cvlod_string_to_bytearray("25%"), NIFiles.OVERLAY_RENONS_SHOP)
             patcher.write_bytes(0x2D8E, cvlod_string_to_bytearray("50%"), NIFiles.OVERLAY_RENONS_SHOP)
             patcher.write_bytes(0x2E16, cvlod_string_to_bytearray("80% "), NIFiles.OVERLAY_RENONS_SHOP)
@@ -3542,55 +3785,50 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int16(0xB4C60, 0x31D)
             patcher.write_int16(0xB4C64, 0x31D)
 
-        # Permanent PowerUp stuff
+        # Prevent the Game Over and File Select screens from resetting the current PowerUps and sub-weapon level to 0.
+        # We will let a different hack decide what to do with this...
+        patcher.write_int32(0x2CC, 0x00000000, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
+        patcher.write_int32(0x2D4, 0x00000000, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
+        patcher.write_int32(0x1ED4, 0x00000000, NIFiles.OVERLAY_GAME_OVER_SCREEN)
+        patcher.write_int32(0x1EDC, 0x00000000, NIFiles.OVERLAY_GAME_OVER_SCREEN)
+        patcher.write_int32(0x1FA8, 0x00000000, NIFiles.OVERLAY_GAME_OVER_SCREEN)
+        patcher.write_int32(0x1FB0, 0x00000000, NIFiles.OVERLAY_GAME_OVER_SCREEN)
+        # Have the "copySave_cPakToGame" function also copy the PermaUps count into the PowerUps count and the player's
+        # current sub-weapon's equipped weapon level into the current weapon level.
+        patcher.write_int32(0x1CD08, 0x080FF2E4)  # J   0x803FCB90
+        patcher.write_int32s(0xFFCB90, patches.load_perma_restorer)
+        # Make the PowerUp giving code skip incrementing the PowerUp counter if we are receiving a higher number than 2
+        # (rather than the game then decrementing it later after checking if the given item is 0x0C).
+        patcher.write_byte(0x905B7, 0x15)
+        patcher.write_int32(0x90610, 0x00E01021)  # J   0xADDU  V0, R0, A3
+        # Prevent PowerUps from dropping from regular enemies and boss projectiles if Permanent PowerUps is on.
         if slot_patch_info["options"]["permanent_powerups"]:
-            # Make receiving PowerUps increase the unused menu PowerUp counter instead of the one outside the save
-            # struct.
-            patcher.write_int32(0x87E20, 0x916BAB4F)  # LBU T3, 0xAB4F (T3)
-            patcher.write_int32(0x87E38, 0xA02CAB4F)  # SB  T4, 0xAB4F (AT)
-            patcher.write_int32(0x905A4, 0x90C3288F)  # LBU V1, 0x288F (A2)
-            patcher.write_int32(0x905F8, 0x90C3288F)  # LBU V1, 0x288F (A2)
-            patcher.write_int32(0x90608, 0xA0CB288F)  # SB  T3, 0x288F (A2)
-            # Make common attack stuff check the menu PowerUp counter.
-            patcher.write_int32(0x45B14, 0x904A288F)  # LBU   T2, 0x288F (V0)
-            patcher.write_int32(0x45B68, 0x904F288F)  # LBU   T7, 0x288F (V0)
-            patcher.write_int32(0x5EC58, 0x9049288F)  # LBU   T1, 0x288F (V0)
-            patcher.write_int32(0x5EC8C, 0x9049288F)  # LBU   T1, 0x288F (V0)
-            # Make Reinhardt's whip check the menu PowerUp counter.
-            patcher.write_int32(0x74780C, 0x9125288F)  # LBU   A1, 0x288F (T1)
-            # Make Carrie's orb check the menu PowerUp counter.
-            patcher.write_int32(0x74FE9C, 0x9102288F)  # LBU   V0, 0x288F (T0)
-            patcher.write_int32(0x753C38, 0x93CB288F)  # LBU   T3, 0x288F (FP)
-            patcher.write_int32(0x753FD8, 0x93CE288F)  # LBU   T6, 0x288F (FP)
-            patcher.write_int32(0x755760, 0x92B9288F)  # LBU   T9, 0x288F (S5)
-            patcher.write_int32(0x7557AC, 0x92A2288F)  # LBU   V0, 0x288F (S5)
-            patcher.write_int32(0x7558C0, 0x92B8288F)  # LBU   T8, 0x288F (S5)
-            patcher.write_int32(0x7559E4, 0x92B8288F)  # LBU   T8, 0x288F (S5)
-            patcher.write_int32(0x755A58, 0x92AE288F)  # LBU   T6, 0x288F (S5)
-            patcher.write_int32(0x755AC8, 0x92AD288F)  # LBU   T5, 0x288F (S5)
-            patcher.write_int32(0x755B50, 0x92B8288F)  # LBU   T8, 0x288F (S5)
-            # Make Cornell's shockwave check the menu PowerUp counter.
-            patcher.write_int32(0x75D2DC, 0x90E2288F)  # LBU   V0, 0x288F (A3)
-            patcher.write_int32(0x75FAC8, 0x924C288F)  # LBU   T4, 0x288F (S2)
-            # Make Henry's gun check the menu PowerUp counter.
-            patcher.write_int32(0x765E20, 0x90A3288F)  # LBU   V1, 0x288F (A1)
-            patcher.write_int32(0x768B74, 0x916BAB4F)  # LBU   T3, 0xAB4F (T3)
-            # Make enemies check the menu PowerUp counter when hit.
-            patcher.write_int32(0x8CBC, 0x916BAB4F, NIFiles.OVERLAY_SKELETON_WARRIOR)  # LBU   T3, 0xAB4F (T3)
-            patcher.write_int32(0x275C, 0x9108AB4F, NIFiles.OVERLAY_CERBERUS)  # LBU   T0, 0xAB4F (T0)
-            patcher.write_int32(0x4378, 0x9042AB4F, NIFiles.OVERLAY_WERE_JAGUAR_AND_BULL)  # LBU   V0, 0xAB4F (V0)
-            # Prevent PowerUps from dropping from regular enemies and boss projectiles.
             patcher.write_int32(0x52F14, 0x34020002)  # ORI   V0, R0, 0x0002
             patcher.write_int32(0x494, 0x34080002, NIFiles.OVERLAY_SLIME)  # ORI   T0, R0, 0x0002
             patcher.write_int32(0x1E70, 0x340B0002, NIFiles.OVERLAY_WHITE_DRAGONS)  # ORI   T3, R0, 0x0002
             patcher.write_int32(0x49AC, 0x34090002, NIFiles.OVERLAY_WHITE_DRAGONS)  # ORI   T1, R0, 0x0002
             patcher.write_int32(0x3118, 0x34190002, NIFiles.OVERLAY_CERBERUS)  # ORI   T9, R0, 0x0002
             patcher.write_int32(0x2F60, 0x340E0002, NIFiles.OVERLAY_STONE_DOG)  # ORI  T6, R0, 0x0002
+            # Replace all guaranteed PowerUp drops with Red Jewel(L)'s instead.
             patcher.write_byte(0x18EF, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_WERE_TIGER)
             patcher.write_byte(0xC8FB, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_DRACULA)
             patcher.write_byte(0x584F, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_TRUE_DRACULA)
-            # Rename the PowerUp to "PermaUp"
-            patcher.write_bytes(0xB8A34, cvlod_string_to_bytearray("PermaUp"))
+        # Prevent Sub-weapons from dropping from regular enemies and boss projectiles if Permanent Sub-weapons is on.
+        if slot_patch_info["options"]["permanent_sub_weapons"]:
+            patcher.write_int32(0x52E80, 0x10000022)  # B       [forward 0x22]
+            patcher.write_int32(0x1798, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_SLIME)
+            patcher.write_int32(0x17A4, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_SLIME)
+            patcher.write_int16(0x3176, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_CERBERUS)
+            patcher.write_int16(0x31FE, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_CERBERUS)
+            patcher.write_int16(0x322E, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_CERBERUS)
+            patcher.write_int16(0x3292, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_CERBERUS)
+            patcher.write_int32(0x6E70, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_STONE_DOG)
+            patcher.write_int32(0x6E78, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_STONE_DOG)
+            patcher.write_int32(0x6E80, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_STONE_DOG)
+            patcher.write_int32(0x6E88, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_STONE_DOG)
+            patcher.write_int16(0xBD2E, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_LIZARD_MEN)
+            patcher.write_int16(0xBD36, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_LIZARD_MEN)
+            patcher.write_int16(0x5D4E, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_VINCENT)
 
         # If Fall Guard is enabled, NOP the instructions that store the updated player state stuff for when they land
         # hard enough to lose health but NOT hard enough to be OHKO'd by the floor.
@@ -3621,14 +3859,14 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int16s(0x450, starting_flags, NIFiles.OVERLAY_HENRY_NG_INITIALIZER)
 
         # Everything relating to loading the other game items text.
-        patcher.write_int32s(0x108550, [0x080FF88B,   # J     0x803FE22C
+        patcher.write_int32s(0x108550, [0x080FF88A,   # J     0x803FE228
                                         0x00000000])  # NOP
         patcher.write_int32(0x87DC4, 0x0C0FF89E)  # JAL 0x803FE278
         patcher.write_int32(0x87E60, 0x0C0FF8A8)  # JAL 0x803FE2A0
         patcher.write_int32(0x87E70, 0x0C0FF8B9)  # JAL	0x803FE2E4
         patcher.write_int32s(0x87E8C, [0x0C0FF8CB,   # JAL 0x803FE32C
                                        0x3C014000])  # LUI AT, 0x4000
-        patcher.write_int32s(0xFFE22C, patches.multiworld_item_name_loader)
+        patcher.write_int32s(0xFFE228, patches.multiworld_item_name_loader)
         patcher.write_bytes(0x1F1CC, [0x00 for _ in range(264)])
         patcher.write_bytes(0x1F2DC, [0x00 for _ in range(264)])
 
@@ -3670,6 +3908,46 @@ class CVLoDPatchExtensions(APPatchExtension):
                     countdown_flag_addr,slot_patch_info["countdown flags"][SCENE_COUNTDOWN_PTR_ARRAY_INDEXES[i]])
                 patcher.write_int32(COUNTDOWN_PTRS_ARRAY_START + (i * 4),
                                     countdown_flag_addr + SCENE_OVERLAY_RDRAM_START)
+
+        # Clear the actor in the Test Grid causing problems loading into it.
+        patcher.scenes[Scenes.TEST_GRID].actor_lists["proxy"][0]["delete"] = True
+        # Put one instance of every item in the Test Grid room, spaced some units apart.
+        for i in range(len(CVLOD_PICKUP_INFO)):
+            patcher.scenes[Scenes.TEST_GRID].actor_lists["proxy"] += [
+            CVLoDNormalActorEntry(spawn_flags=0, status_flags=0, x_pos=0.0 - (len(CVLOD_PICKUP_INFO) * 5) + (i * 10.0),
+                                  y_pos=0.0, z_pos=0.0, execution_flags=0, object_id=Objects.INTERACTABLE, flag_id=0,
+                                  var_a=0, var_b=0, var_c=1+i, var_d=0, extra_condition_ptr=0),
+            ]
+
+        # Write the item name and description text pools back in and update the pointers to them.
+        patcher.write_bytes(NEW_INTERACTABLES_TABLE_ROM_START + len(new_interactables_settings) + \
+                            len(new_item_appearances_settings), cvlod_strings_to_pool(item_name_pool, wrap=False))
+        patcher.write_int16(0x87DBE, (new_item_name_texts_start >> 16) + 1)
+        patcher.write_int16(0x87DC2, new_item_name_texts_start & 0xFFFF)
+        patcher.write_int16(0x2B02, (new_item_name_texts_start >> 16) + 1, NIFiles.OVERLAY_PAUSE_MENU)
+        patcher.write_int16(0x2B06, new_item_name_texts_start & 0xFFFF, NIFiles.OVERLAY_PAUSE_MENU)
+        patcher.write_int16(0x2BCE, (new_item_name_texts_start >> 16) + 1, NIFiles.OVERLAY_PAUSE_MENU)
+        patcher.write_int16(0x2BD2, new_item_name_texts_start & 0xFFFF, NIFiles.OVERLAY_PAUSE_MENU)
+        patcher.write_int16(0x32DA, (new_item_name_texts_start >> 16) + 1, NIFiles.OVERLAY_PAUSE_MENU)
+        patcher.write_int16(0x32DE, new_item_name_texts_start & 0xFFFF, NIFiles.OVERLAY_PAUSE_MENU)
+        patcher.write_int16(0x3116, (new_item_name_texts_start >> 16) + 1, NIFiles.OVERLAY_PAUSE_MENU)
+        patcher.write_int16(0x311A, new_item_name_texts_start & 0xFFFF, NIFiles.OVERLAY_PAUSE_MENU)
+        patcher.write_int16(0xA32, (new_item_name_texts_start >> 16) + 1, NIFiles.OVERLAY_RENONS_SHOP)
+        patcher.write_int16(0xA36, new_item_name_texts_start & 0xFFFF, NIFiles.OVERLAY_RENONS_SHOP)
+        patcher.write_int16(0xC76, (new_item_name_texts_start >> 16) + 1, NIFiles.OVERLAY_RENONS_SHOP)
+        patcher.write_int16(0xC7A, new_item_name_texts_start & 0xFFFF, NIFiles.OVERLAY_RENONS_SHOP)
+        patcher.write_int16(0x130A, (new_item_name_texts_start >> 16) + 1, NIFiles.OVERLAY_RENONS_SHOP)
+        patcher.write_int16(0x130E, new_item_name_texts_start & 0xFFFF, NIFiles.OVERLAY_RENONS_SHOP)
+        patcher.write_int16(0x1486, (new_item_name_texts_start >> 16) + 1, NIFiles.OVERLAY_RENONS_SHOP)
+        patcher.write_int16(0x148A, new_item_name_texts_start & 0xFFFF, NIFiles.OVERLAY_RENONS_SHOP)
+        patcher.write_int16(0x23B2, (new_item_name_texts_start >> 16) + 1, NIFiles.OVERLAY_RENONS_SHOP)
+        patcher.write_int16(0x23BE, new_item_name_texts_start & 0xFFFF, NIFiles.OVERLAY_RENONS_SHOP)
+        patcher.write_int16(0x25BA, (new_item_name_texts_start >> 16) + 1, NIFiles.OVERLAY_RENONS_SHOP)
+        patcher.write_int16(0x25C6, new_item_name_texts_start & 0xFFFF, NIFiles.OVERLAY_RENONS_SHOP)
+        patcher.write_int16(0x154A, patcher.get_decompressed_file_size(NIFiles.OVERLAY_PAUSE_MENU) & 0xFFFF,
+                            NIFiles.OVERLAY_PAUSE_MENU)
+        patcher.write_bytes(patcher.get_decompressed_file_size(NIFiles.OVERLAY_PAUSE_MENU),
+                            cvlod_strings_to_pool(item_desc_pool, wrap=False), NIFiles.OVERLAY_PAUSE_MENU)
 
         # Write the compatibility version string the client will use to distinguish a vanilla ROM from an AP one.
         patcher.write_bytes(ARCHIPELAGO_IDENTIFIER_START, ARCHIPELAGO_CLIENT_COMPAT_VER.encode("utf-8"))

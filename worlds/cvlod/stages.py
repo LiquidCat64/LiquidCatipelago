@@ -808,7 +808,8 @@ CVLOD_STAGE_INFO = {
                                                                          loc_names.toscit_ctrl_rr,
                                                                          loc_names.toscit_ctrl_interface_f,
                                                                          loc_names.toscit_ctrl_interface_rl,
-                                                                         loc_names.toscit_ctrl_interface_rr],
+                                                                         loc_names.toscit_ctrl_interface_rr,
+                                                                         loc_names.event_tosci_boss],
                                                               entrances=[ent_names.toscit_from_ctrl_door,
                                                                          ent_names.toscit_end])}),
 
@@ -1011,7 +1012,7 @@ CVLOD_STAGE_INFO = {
 
     StageNames.KEEP:
         CVLoDStageData(reg_names.ck_main, "", Scenes.CASTLE_KEEP_EXTERIOR, 0x00, 0,
-                       reg_names.ck_main, Scenes.CASTLE_KEEP_EXTERIOR, 0x00,
+                       reg_names.ck_main, Scenes.CASTLE_KEEP_EXTERIOR, 0x01,
                        reg_names.ck_main, "", Scenes.CASTLE_KEEP_DRAC_CHAMBER, 0x00, None,
                        StageIDs.KEEP,
                        {reg_names.ck_main: CVLoDRegionData(locations=[loc_names.ck_renon_sw,

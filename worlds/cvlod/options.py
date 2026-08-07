@@ -126,7 +126,7 @@ class CastleKeepWarpPossible(Toggle):
 class WarpLayout(FreeText):
     """Allows specifying a custom set of warps to be used, rather than it being a specific number of random ones.
     Type the names of each stage that you want to have a warp, separated by a semicolon. The starting stage does not need to be included.
-    Example: Castle Center;Duel Tower;The Outer Wall creates warps for Castle Wall, Duel Tower, and The Outer Wall, unlocked in that order if Warp Order is set to Seed Stage Order.
+    Example: Castle Center;Duel Tower;The Outer Wall creates warps for Castle Center, Duel Tower, and The Outer Wall, unlocked in that order if Warp Order is set to Seed Stage Order.
     If left blank or an invalid list is provided, a random selection will be used instead, the number of which can be specified in Total Random Warps."""
     display_name = "Warp Layout"
 
@@ -148,42 +148,37 @@ class TotalSpecial1s(Range):
     display_name = "Total Special1s"
 
 
-class DraculasCondition(Choice):
-    """Sets the requirement for unlocking and opening the door to Dracula's chamber.
-    None: No requirement. Door is unlocked from the start.
-    Crystal: Activate the big crystal in Castle Center's basement. Neither boss afterwards has to be defeated.
-    Bosses: Kill a specified number of bosses with health bars and claim their Trophies.
-    Specials: Find a specified number of Special2 jewels shuffled in the main item pool."""
-    display_name = "Dracula's Condition"
-    option_none = 0
-    option_crystal = 1
-    option_bosses = 2
-    option_specials = 3
-    default = 1
+class BigCrystalRequired(DefaultOnToggle):
+    """Whether activating the big crystal in Castle Center's basement should be required to enter Dracula's chamber at the end of the game.
+    Can be mixed with other conditions."""
+    display_name = "Big Crystal Required"
+
+
+class TotalSpecial2s(Range):
+    """How many Speical2 jewels are in the pool in total.
+    Finding a percentage of these can be required to enter Dracula's chamber."""
+    range_start = 0
+    range_end = 99
+    default = 0
+    display_name = "Total Special2s"
 
 
 class PercentSpecial2sRequired(Range):
-    """Percentage of Special2s required to enter Dracula's chamber when Dracula's Condition is Special2s."""
+    """Percentage of Special2s in the pool that are required to enter Dracula's chamber.
+    Can be mixed with other conditions."""
     range_start = 1
     range_end = 100
     default = 80
     display_name = "Percent Special2s Required"
 
 
-class TotalSpecial2s(Range):
-    """How many Speical2 jewels are in the pool in total when Dracula's Condition is Special2s."""
-    range_start = 1
-    range_end = 99
-    default = 25
-    display_name = "Total Special2s"
-
-
 class BossesRequired(Range):
-    """How many bosses need to be defeated to enter Dracula's chamber when Dracula's Condition is set to Bosses.
-    This will automatically adjust if there are fewer available bosses than the chosen number."""
-    range_start = 1
-    range_end = 26
-    default = 23
+    """How many bosses need to be defeated to enter Dracula's chamber.
+    This will automatically adjust if there are fewer available bosses than the chosen number.
+    Can be mixed with other conditions."""
+    range_start = 0
+    range_end = 25
+    default = 0
     display_name = "Bosses Required"
 
 
@@ -259,7 +254,7 @@ class VillaMazeKid(Choice):
     display_name = "Villa Maze Kid"
     option_malus = 0
     option_henry = 1
-    default = 0
+    default = "random"
 
 
 class ShopPrices(Choice):
@@ -351,7 +346,7 @@ class NerfHealingItems(Toggle):
 
 
 class DetransformAtWill(Toggle):
-    """Allows Cornell to transform back to human from wolf at any time by pressing L again."""
+    """Allows Cornell to transform back to human from wolf at any time by pressing L again, conserving jewels."""
     display_name = "Detransform At Will"
 
 
@@ -378,10 +373,16 @@ class DropPreviousSubWeapon(DefaultOnToggle):
 
 
 class PermanentPowerUps(Toggle):
-    """Replaces PowerUps with PermaUps, which upgrade your B weapon level permanently and will stay even after
-    dying and/or continuing.
-    To compensate, only two will be in the pool overall, and they will not drop from any enemy or projectile."""
+    """Adds two PermaUps to the item pool which, when found, will upgrade your B weapon level permanently and will stay even after dying and/or continuing.
+    To compensate, all regular PowerUps will be removed from the game; they won't be in the pool or regular locations, nor will they drop from any enemy or projectile."""
     display_name = "Permanent PowerUps"
+
+
+class PermanentSubWeapons(Toggle):
+    """Adds three Perma versions of each sub-weapon to the item pool. The first weapon instance, when found, will allow switching to that weapon at will and then subsequent instances will unlock its upgraded forms permanently even after dying.
+    To compensate, all regular sub-weapons will be removed from the game; they won't be in the pool or regular locations, nor will they drop from any enemy or projectile.
+    Use R + D-pad Left/Right to switch between unlocked weapons, and Up/Down to change the weapon's level (if unlocked)."""
+    display_name = "Permanent Sub-weapons"
 
 
 class IceTrapPercentage(Range):
@@ -561,9 +562,9 @@ class CVLoDOptions(PerGameCommonOptions):
     sub_weapon_shuffle: SubWeaponShuffle
     spare_keys: SpareKeys
     # hard_item_pool: HardItemPool
-    draculas_condition: DraculasCondition
-    percent_special2s_required: PercentSpecial2sRequired
+    big_crystal_required: BigCrystalRequired
     total_special2s: TotalSpecial2s
+    percent_special2s_required: PercentSpecial2sRequired
     bosses_required: BossesRequired
     carrie_logic: CarrieLogic
     hard_logic: HardLogic
@@ -588,6 +589,7 @@ class CVLoDOptions(PerGameCommonOptions):
     invisible_items: InvisibleItems
     drop_previous_sub_weapon: DropPreviousSubWeapon
     permanent_powerups: PermanentPowerUps
+    permanent_sub_weapons: PermanentSubWeapons
     # ice_trap_percentage: IceTrapPercentage
     # ice_trap_appearance: IceTrapAppearance
     disable_time_restrictions: DisableTimeRestrictions
@@ -609,14 +611,17 @@ class CVLoDOptions(PerGameCommonOptions):
 
 
 cvlod_option_groups = [
-    OptionGroup("gameplay tweaks", [
+    OptionGroup("Dracula's Conditions", [
+        BigCrystalRequired, BossesRequired, TotalSpecial2s, PercentSpecial2sRequired
+    ]),
+    OptionGroup("Gameplay Tweaks", [
         HardItemPool, ShopPrices, MinimumGoldPrice, MaximumGoldPrice, PostBehemothBoss, RoomOfClocksBoss,
         RenonFightCondition, VincentFightCondition, CastleKeepEndingSequence, IncreaseItemLimit, NerfHealingItems,
         LoadingZoneHeals, DetransformAtWill, InvisibleItems, DropPreviousSubWeapon, PermanentPowerUps,
-        IceTrapPercentage, IceTrapAppearance, DisableTimeRestrictions, SkipGondolas, SkipWaterwayBlocks, Countdown,
-        BigToss, PantherDash, IncreaseShimmySpeed, FallGuard, CVLoDDeathLink
+        PermanentSubWeapons, IceTrapPercentage, IceTrapAppearance, DisableTimeRestrictions, SkipGondolas,
+        SkipWaterwayBlocks, Countdown, BigToss, PantherDash, IncreaseShimmySpeed, FallGuard, CVLoDDeathLink
     ]),
-    OptionGroup("cosmetics", [
+    OptionGroup("Cosmetics", [
         WindowColorR, WindowColorG, WindowColorB, WindowColorA, BackgroundMusic, MapLighting, RestoreCornellFallVoice
     ])
 ]

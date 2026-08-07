@@ -102,8 +102,8 @@ def cvlod_string_to_bytearray(cvlod_text: str, len_limit: int = LEN_LIMIT_MAP_TE
             # Otherwise, throw an error explaining that the argument was incorrectly formatted with characters other
             # than number digits or the arg end character.
             else:
-                logging.error("CVLoD control character argument is incorrectly formatted. It must be numbers "
-                              "followed by a \"/\".")
+                logging.error('CVLoD control character argument is incorrectly formatted. It must be numbers '
+                              'followed by a "/".')
             ctrl_arg_mode = False
             arg_number = "0"
             continue
@@ -121,8 +121,8 @@ def cvlod_string_to_bytearray(cvlod_text: str, len_limit: int = LEN_LIMIT_MAP_TE
                 text_bytes.extend([0x00])
             continue
 
-        # If the current character has a mapping in the non-ASCII characters dict, append that character's mapping said
-        # dict.
+        # If the current character has a mapping in the non-ASCII characters dict, append that character's mapping from
+        # said dict.
         if char in NON_ASCII_MAPPINGS:
             text_bytes.extend(int.to_bytes(NON_ASCII_MAPPINGS[char], 2, "big"))
             continue

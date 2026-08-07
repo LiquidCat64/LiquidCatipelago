@@ -9,6 +9,7 @@ from .cvlod_text import cvlod_string_to_bytearray, cvlod_strings_to_pool, cvlod_
     CVLOD_STRING_END_CHARACTER, CVLOD_TEXT_POOL_END_CHARACTER
 
 N64_RDRAM_START = 0x80000000
+DLIST_START = 0x06000000
 CRC1_START = 0x10
 CRC2_START = 0x14
 CRC_ROM_START = 0x1000
@@ -907,6 +908,37 @@ class CVLoDRomPatcher:
     def write_int32s(self, start_address: int, values: list[int], file_num: int = 0) -> None:
         for i, value in enumerate(values):
             self.write_int32(start_address + (i * 4), value, file_num)
+
+    def extract_text_pool(self, start_address: int, file_num: int = 0) -> [str]:
+        """Given the start address of a text pool, reads out the entire text pool from the ROM and converts/returns it as a list of strings."""
+
+        # Loop over every character in the text pool.
+        current_text_char_start = start_address
+        raw_text_data = bytearray(0)
+        extracted_strings = []
+        while True:
+            text_char = self.read_bytes(current_text_char_start, 2, file_num=file_num)
+
+            # Increment the current text character start for the next loop.
+            current_text_char_start += 2
+
+            # If we found the character indicating the end of the entire pool, terminate the loop.
+            if text_char == CVLOD_TEXT_POOL_END_CHARACTER:
+                break
+
+            # If we found the character indicating the end of a string in the text pool, convert what we
+            # extracted of the current string now and save it.
+            if text_char == CVLOD_STRING_END_CHARACTER:
+                extracted_strings.append(cvlod_bytes_to_string(raw_text_data))
+
+                # Reset the raw scene text back to nothing and then continue to the next iteration.
+                raw_text_data = bytearray(0)
+                continue
+
+            raw_text_data += text_char
+
+        # Return the final result.
+        return extracted_strings
 
     def extract_normal_scene_actor_list(self, scene_id: int, start_addr: int) -> list[CVLoDNormalActorEntry]:
         """Extracts normal actor list data out of a given scene ID's overlay starting at a given address."""
