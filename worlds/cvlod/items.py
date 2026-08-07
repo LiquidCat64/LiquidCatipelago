@@ -212,32 +212,45 @@ def get_item_pool(world: "CVLoDWorld") -> list[CVLoDItem]:
     tier_1_filler = []
     tier_2_filler = []
     non_filler = []
+    total_filler = 0
 
     def replace_filler(replacement_items: [CVLoDItem]) -> None:
         """Replaces filler Items in the already-created Item pool with specified, different Items. Tier 1 filler will
         be replaced first, and then tier 2 when the less valuable tier 1 has run out. If there's no filler left, an
         exception will be raised."""
-        nonlocal non_filler, tier_1_filler, tier_2_filler
+        nonlocal non_filler, tier_1_filler, tier_2_filler, total_filler
 
+        # Check if we're trying to replace more filler Items than we currently have. If we are, throw a warning and
+        # push the Items precollected. The slot is very likely a 1 or 2 stage micro slot if we're hitting this, so we
+        # might as well let the player just start with things like the Perma Weapons if it comes to that...
+        if len(replacement_items) > total_filler:
+            # ...unless we're trying to push Special1s precollected, in which case throw an exception because we
+            # REALLY don't want that above all else and it was likely handled wrong!
+            if replacement_items[0].name == item_names.special1:
+                raise Exception(f"Ran out of replaceable filler for {world.player_name}'s Special1s. "
+                                f"Something wasn't handled right...")
+
+            logging.warning(f"[{world.player_name}] Ran out of replaceable filler. The following Items will be forced "
+                            "into your starting inventory: "
+                            f"{[replacement_item.name for replacement_item in replacement_items]}.")
+            world.push_precollected(replacement_items)
+            return
+
+        # Replace the filler Items one by one.
         for _ in range(len(replacement_items)):
             # If the tier 1 filler list has stuff in it, remove a random Item from it.
             if tier_1_filler:
                 del tier_1_filler[world.random.randrange(0, len(tier_1_filler))]
-            # If the tier 2 filler list has stuff in it, remove a random Item from it instead.
-            elif tier_2_filler:
-                del tier_2_filler[world.random.randrange(0, len(tier_2_filler))]
-            # Otherwise, if both lists were empty, raise an exception because something went wrong.
-            # We should NOT be hitting this to begin with.
+            # Otherwise, meaning the tier 2 filler list has stuff in it, remove a random Item from it instead.
             else:
-                raise Exception(f"Ran out of replaceable filler for {world.player_name}. "
-                                f"Something wasn't handled right...")
+                del tier_2_filler[world.random.randrange(0, len(tier_2_filler))]
+
+            # Subtract 1 from the total filler count that we manually check for things.
+            total_filler -= 1
 
         # Add the replacement Item to the non-Filler list.
         non_filler += replacement_items
 
-
-    total_items = 0
-    extras_count = 0
 
     # Get from each Location its vanilla Item and add it to the item lists.
     for loc in active_locations:
@@ -282,10 +295,12 @@ def get_item_pool(world: "CVLoDWorld") -> list[CVLoDItem]:
             # these will be the first replaced in it.
             if item_to_add.name in POSSIBLE_EXTRA_FILLER:
                 tier_1_filler.append(item_to_add)
+                total_filler += 1
             # Otherwise, consider it tier 2 filler. These filler items are more valuable than mere moneybags and jewels
             # and as such won't be replaced until there's no more tier 1 filler.
             else:
                 tier_2_filler.append(item_to_add)
+                total_filler += 1
         # Otherwise, if the Item is not filler, add it to the non-filler list.
         else:
             non_filler.append(item_to_add)
@@ -308,23 +323,12 @@ def get_item_pool(world: "CVLoDWorld") -> list[CVLoDItem]:
     if world.options.permanent_powerups:
         replace_filler([world.create_item(item_names.perma_up), world.create_item(item_names.perma_up)])
 
-    # Get the total filler amount for the purposes of determining if we can replace existing filler with other Items.
-    total_filler = len(tier_1_filler) + len(tier_2_filler)
-
-    # Add the Perma Sub-weapons to the pool if Permanent Sub-weapons is on,
-    # and we have enough filler to add all 12 instances.
+    # Add the Perma Sub-weapons to the pool if Permanent Sub-weapons is on.
     if world.options.permanent_sub_weapons:
-        perma_weapons = [world.create_item(item_names.perma_knife) for _ in range(3)] + \
-                        [world.create_item(item_names.perma_water) for _ in range(3)] + \
-                        [world.create_item(item_names.perma_cross) for _ in range(3)] + \
-                        [world.create_item(item_names.perma_axe) for _ in range(3)]
-        if total_filler > 12:
-            replace_filler(perma_weapons)
-        # If there is NOT enough filler, push all the weapons as precollected. The slot is very likely a 1 or 2 stage
-        # micro slot if we're hitting this, so we might as well let the player just start with them...
-        else:
-            for weapon in perma_weapons:
-                world.push_precollected(weapon)
+        replace_filler([world.create_item(item_names.perma_knife) for _ in range(3)] + \
+                       [world.create_item(item_names.perma_water) for _ in range(3)] + \
+                       [world.create_item(item_names.perma_cross) for _ in range(3)] + \
+                       [world.create_item(item_names.perma_axe) for _ in range(3)])
 
     # Check if the total filler is less than the number of Specials we are adding. If it is, then we will need to adjust
     # the Special totals. The PANIC adjuster, if you will!
