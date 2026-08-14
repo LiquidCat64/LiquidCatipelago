@@ -21,7 +21,7 @@ from .data.enums import StageNames
 from worlds.AutoWorld import WebWorld, World
 from .aesthetics import randomize_lighting, shuffle_sub_weapons, randomize_music, get_start_inventory_data,\
     get_location_write_values, randomize_shop_prices, get_transition_write_values,  get_countdown_flags,\
-    randomize_fountain_puzzle, randomize_charnel_prize_coffin, get_location_text
+    get_location_text
 from .rom import CVLoDRomPatcher, get_base_rom_path, CVLoDProcedurePatch, CVLOD_US_HASH, ARCHIPELAGO_PATCH_COMPAT_VER
 from .client import CastlevaniaLoDClient
 

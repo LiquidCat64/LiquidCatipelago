@@ -1752,7 +1752,7 @@ def get_active_warps(world: "CVLoDWorld") -> list[str]:
     # be the first warp, and Castle Keep if the Castle Keep Warp Possible option is off.
     possible_warps = [stage["name"] for stage in world.active_stage_info
                       if stage["connecting_stages"]["prev"][0] != "Start" and
-                      (stage["name"] != StageNames.KEEP or not world.options.castle_keep_warp_possible)]
+                      (stage["name"] != StageNames.KEEP or world.options.castle_keep_warp_possible)]
 
     def arrange_warp_list() -> None:
         """Arranges a given of warps differently depending on what was chosen for the Warp Order option, and inserts

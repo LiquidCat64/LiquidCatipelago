@@ -1162,40 +1162,46 @@ class CVLoDRomPatcher:
                 # Get the size of the original actor list by counting the number of entries in the list without entries
                 # deleted that have a defined start address. If the new actor data is the same size or smaller
                 # than it was before, write it back where it was originally (if we even have a list to begin with).
+                # The pointer will be zero by default if we are opting to have no list, whether because there is no list
+                # to begin with or we are opting to delete all entries.
+                new_actor_list_addr = 0x00000000
                 if len(actor_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].actor_lists[list_name]
                                            if "start_addr" in orig_entry]):
                     if actor_list:
                         self.scenes[scene_id].write_ovl_bytes(self.scenes[scene_id].actor_lists[
                                                                   list_name][0]["start_addr"] \
                                                               - SCENE_OVERLAY_RDRAM_START, list_data)
-                # If it's larger, however, put it on the end of the overlay and update the pointer(s) to it.
+                        # Leave the pointer to the list unchanged, it's in the same location.
+                        new_actor_list_addr = self.scenes[scene_id].actor_lists[list_name][0]["start_addr"]
+                # If it's larger, however, put it on the end of the overlay.
                 else:
                     new_actor_list_addr = len(self.scenes[scene_id].overlay) + SCENE_OVERLAY_RDRAM_START
                     self.scenes[scene_id].overlay += list_data
 
-                    # If it's an init list, the pointer to update is the third pointer in the scene's entry in the
-                    # game's table of loaded scene actor list starts and determine how far in it is relative to the
-                    # start of the overlay in RDRAM.
-                    if list_name == "init":
-                        self.write_int32(SCENE_ACTOR_PTRS_START + 8 + (scene_id * 0x10), new_actor_list_addr)
-                    # If it's a proxy list, the pointer to update is the second pointer in the above-mentioned table.
-                    elif list_name == "proxy":
-                        self.write_int32(SCENE_ACTOR_PTRS_START + 4 + (scene_id * 0x10), new_actor_list_addr)
-                    # If it's a room list, take the fourth pointer in the table to arrive at the scene's list of room
-                    # actor list pointers, and then offset into it by the room number.
-                    elif "room" in list_name:
-                        room_list_ptrs_start = self.read_bytes(SCENE_ACTOR_PTRS_START + 12 + (scene_id * 0x10), 4,
-                                                               return_as_int=True) - SCENE_OVERLAY_RDRAM_START
+                # Update the pointer(s) to the list to be where it should be at when the overlay is loaded.
+                # If it's an init list, the pointer to update is the third pointer in the scene's entry in the game's
+                # table of loaded scene actor list starts and determine how far in it is relative to the start of the
+                # overlay in RDRAM.
+                if list_name == "init":
+                    self.write_int32(SCENE_ACTOR_PTRS_START + 8 + (scene_id * 0x10), new_actor_list_addr)
+                # If it's a proxy list, the pointer to update is the second pointer in the above-mentioned table.
+                elif list_name == "proxy":
+                    self.write_int32(SCENE_ACTOR_PTRS_START + 4 + (scene_id * 0x10), new_actor_list_addr)
+                # If it's a room list, take the fourth pointer in the table to arrive at the scene's list of room actor
+                # list pointers, and then offset into it by the room number.
+                elif "room" in list_name:
+                    room_list_ptrs_start = self.read_bytes(SCENE_ACTOR_PTRS_START + 12 + (scene_id * 0x10), 4,
+                                                            return_as_int=True) - SCENE_OVERLAY_RDRAM_START
 
-                        self.scenes[scene_id].write_ovl_int32(room_list_ptrs_start + (int(list_name[5:]) * 4),
-                                                              new_actor_list_addr)
-                    # Otherwise, if it's a 3HB pillar list, loop through every pillar data and update its actor pointer
-                    # there.
-                    else:
-                        old_actor_list_addr = self.scenes[scene_id].actor_lists["pillars"][0]["start_addr"]
-                        for pillar_data in self.scenes[scene_id].enemy_pillars:
-                            pillar_data["actor_list_start"] = new_actor_list_addr + (pillar_data["actor_list_start"] -
-                                                                                     old_actor_list_addr)
+                    self.scenes[scene_id].write_ovl_int32(room_list_ptrs_start + (int(list_name[5:]) * 4),
+                                                            new_actor_list_addr)
+                # Otherwise, if it's a 3HB pillar list, loop through every pillar data and update its actor pointer
+                # there.
+                else:
+                    old_actor_list_addr = self.scenes[scene_id].actor_lists["pillars"][0]["start_addr"]
+                    for pillar_data in self.scenes[scene_id].enemy_pillars:
+                        pillar_data["actor_list_start"] = new_actor_list_addr + (pillar_data["actor_list_start"] -
+                                                                                    old_actor_list_addr)
 
 
             # # # ENEMY PILLARS LIST # # #
@@ -1214,16 +1220,25 @@ class CVLoDRomPatcher:
 
             # If the new pillar data is the same size or smaller than it was before, write it back where it was
             # originally (if we even have a list to begin with).
+            # The pointer will be zero by default if we are opting to have no list, whether because there is no list to
+            # begin with or we are opting to delete all entries.
+            new_pillar_list_addr = 0x00000000
             if len(new_pillar_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].enemy_pillars
                                             if "start_addr" in orig_entry]):
                 if new_pillar_list:
                     self.scenes[scene_id].write_ovl_bytes(self.scenes[scene_id].enemy_pillars[0]["start_addr"] \
                                                           - SCENE_OVERLAY_RDRAM_START, list_data)
+                    # Leave the pointer to the list unchanged, it's in the same location.
+                    new_pillar_list_addr = self.scenes[scene_id].enemy_pillars[0]["start_addr"]
             # If it's larger, however, put it on the end of the overlay and update the pointer to it
             # (if it's not higher than Outer Wall's as that's where the pointer table ends).
             elif scene_id <= Scenes.THE_OUTER_WALL:
                 new_pillar_list_addr = len(self.scenes[scene_id].overlay) + SCENE_OVERLAY_RDRAM_START
                 self.scenes[scene_id].overlay += list_data
+
+            # Update the pointer(s) to the list to be where it should be at when the overlay is loaded
+            # (if its ID is not higher than Outer Wall's).
+            if scene_id <= Scenes.THE_OUTER_WALL:
                 self.write_int32(SCENE_ENEMY_PILLARS_PTRS_START + (scene_id * 4), new_pillar_list_addr)
 
 
@@ -1242,16 +1257,23 @@ class CVLoDRomPatcher:
 
             # If the new 1HB data is the same size or smaller than it was before, write it back where it was originally
             # (if we even have a list to begin with).
+            # The pointer will be zero by default if we are opting to have no list, whether because there is no list to
+            # begin with or we are opting to delete all entries.
+            new_1hb_list_addr = 0x00000000
             if len(new_1hb_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].one_hit_breakables
                                             if "start_addr" in orig_entry]):
                 if new_1hb_list:
                     self.scenes[scene_id].write_ovl_bytes(self.scenes[scene_id].one_hit_breakables[0]["start_addr"] \
                                                           - SCENE_OVERLAY_RDRAM_START, list_data)
-            # If it's larger, however, put it on the end of the overlay and update the pointer to it.
+                    # Leave the pointer to the list unchanged, it's in the same location.
+                    new_1hb_list_addr = self.scenes[scene_id].one_hit_breakables[0]["start_addr"]
+            # If it's larger, however, put it on the end of the overlay.
             else:
                 new_1hb_list_addr = len(self.scenes[scene_id].overlay) + SCENE_OVERLAY_RDRAM_START
                 self.scenes[scene_id].overlay += list_data
-                self.write_int32(SCENE_1HB_PTRS_START + (scene_id * 4), new_1hb_list_addr)
+
+            # Update the pointer(s) to the list to be where it should be at when the overlay is loaded.
+            self.write_int32(SCENE_1HB_PTRS_START + (scene_id * 4), new_1hb_list_addr)
 
 
             # # # SPECIAL 1-HIT BREAKABLES LIST # # #
@@ -1270,6 +1292,9 @@ class CVLoDRomPatcher:
 
             # If the new special 1HB data is the same size or smaller than it was before, write it back where it was
             # originally (if we even have a list to begin with).
+            # The pointer will be zero by default if we are opting to have no list, whether because there is no list to
+            # begin with or we are opting to delete all entries.
+            new_special_1hb_list_addr = 0x00000000
             if len(new_special_1hb_list) <= len([orig_entry for orig_entry in
                                                  self.scenes[scene_id].one_hit_special_breakables
                                                  if "start_addr" in orig_entry]):
@@ -1277,13 +1302,17 @@ class CVLoDRomPatcher:
                     self.scenes[scene_id].write_ovl_bytes(
                         self.scenes[scene_id].one_hit_special_breakables[0]["start_addr"] \
                         - SCENE_OVERLAY_RDRAM_START, list_data)
-            # If it's larger, however, put it on the end of the overlay and update the pointer to it.
+                    # Leave the pointer to the list unchanged, it's in the same location.
+                    new_special_1hb_list_addr = self.scenes[scene_id].one_hit_special_breakables[0]["start_addr"]
+            # If it's larger, however, put it on the end of the overlay.
             else:
                 new_special_1hb_list_addr = len(self.scenes[scene_id].overlay) + SCENE_OVERLAY_RDRAM_START
                 self.scenes[scene_id].overlay += list_data
 
-                # Split the pointer up into an upper and lower half and write them separately onto the hardcoded
-                # instructions for that scene.
+            # Update the pointer(s) to the list to be where it should be at when the overlay is loaded.
+            # Split the pointer up into an upper and lower half and write them separately onto the hardcoded
+            # instructions for that scene.
+            if scene_id in SPECIAL_1HB_HARDCODED_PTRS_ADDRS:
                 upper_addr_half = new_special_1hb_list_addr >> 0x10
                 lower_addr_half = new_special_1hb_list_addr & 0xFFFF
                 # Increment the upper half if the lower is 0x8000 or higher.
@@ -1335,16 +1364,23 @@ class CVLoDRomPatcher:
 
             # If the new 3HB data is the same size or smaller than it was before, write it back where it was
             # originally (if we even have a list to begin with).
+            # The pointer will be zero by default if we are opting to have no list, whether because there is no list to
+            # begin with or we are opting to delete all entries.
+            new_3hb_list_addr = 0x00000000
             if len(new_3hb_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].three_hit_breakables
                                             if "start_addr" in orig_entry]):
                 if new_3hb_list:
                     self.scenes[scene_id].write_ovl_bytes(self.scenes[scene_id].three_hit_breakables[0]["start_addr"] \
                                                           - SCENE_OVERLAY_RDRAM_START, list_data)
-            # If it's larger, however, put it on the end of the overlay and update the pointer to it.
+                    # Leave the pointer to the list unchanged, it's in the same location.
+                    new_3hb_list_addr = self.scenes[scene_id].three_hit_breakables[0]["start_addr"]
+            # If it's larger, however, put it on the end of the overlay.
             else:
                 new_3hb_list_addr = len(self.scenes[scene_id].overlay) + SCENE_OVERLAY_RDRAM_START
                 self.scenes[scene_id].overlay += list_data
-                self.write_int32(SCENE_3HB_PTRS_START + (scene_id * 4), new_3hb_list_addr)
+
+            # Update the pointer(s) to the list to be where it should be at when the overlay is loaded.
+            self.write_int32(SCENE_3HB_PTRS_START + (scene_id * 4), new_3hb_list_addr)
 
 
             # # # DOORS LIST # # #
@@ -1378,16 +1414,23 @@ class CVLoDRomPatcher:
 
             # If the new door data is the same size or smaller than it was before, write it back where it was
             # originally (if we even have a list to begin with).
+            # The pointer will be zero by default if we are opting to have no list, whether because there is no list to
+            # begin with or we are opting to delete all entries.
+            new_door_list_addr = 0x00000000
             if len(new_door_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].doors
                                           if "start_addr" in orig_entry]):
                 if new_door_list:
                     self.scenes[scene_id].write_ovl_bytes(self.scenes[scene_id].doors[0]["start_addr"] \
                                                           - SCENE_OVERLAY_RDRAM_START, door_data)
-            # If it's larger, however, put it on the end of the overlay and update the pointer to it.
+                    # Leave the pointer to the list unchanged, it's in the same location.
+                    new_door_list_addr = self.scenes[scene_id].doors[0]["start_addr"]
+            # If it's larger, however, put it on the end of the overlay.
             else:
                 new_door_list_addr = len(self.scenes[scene_id].overlay) + SCENE_OVERLAY_RDRAM_START
                 self.scenes[scene_id].overlay += door_data
-                self.write_int32(SCENE_DOOR_PTRS_START + (scene_id * 4), new_door_list_addr)
+
+            # Update the pointer(s) to the list to be where it should be at when the overlay is loaded.
+            self.write_int32(SCENE_DOOR_PTRS_START + (scene_id * 4), new_door_list_addr)
 
 
             # # # LOADING ZONES LIST # # #
@@ -1412,16 +1455,23 @@ class CVLoDRomPatcher:
 
             # If the new loading zone data is the same size or smaller than it was before, write it back where it was
             # originally (if we even have a list to begin with).
+            # The pointer will be zero by default if we are opting to have no list, whether because there is no list to
+            # begin with or we are opting to delete all entries.
+            new_loading_zone_list_ptr = 0x00000000
             if len(new_loading_zone_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].loading_zones
                                                   if "start_addr" in orig_entry]):
                 if new_loading_zone_list:
                     self.scenes[scene_id].write_ovl_bytes(self.scenes[scene_id].loading_zones[0]["start_addr"] \
                                                           - SCENE_OVERLAY_RDRAM_START, loading_zone_data)
-            # If it's larger, however, put it on the end of the overlay and update the pointer to it.
+                    # Leave the pointer to the list unchanged, it's in the same location.
+                    new_loading_zone_list_ptr = self.scenes[scene_id].loading_zones[0]["start_addr"]
+            # If it's larger, however, put it on the end of the overlay.
             else:
                 new_loading_zone_list_ptr = len(self.scenes[scene_id].overlay) + SCENE_OVERLAY_RDRAM_START
                 self.scenes[scene_id].overlay += loading_zone_data
-                self.write_int32(SCENE_LOADING_ZONE_PTRS_START + (scene_id * 4), new_loading_zone_list_ptr)
+
+            # Update the pointer(s) to the list to be where it should be at when the overlay is loaded.
+            self.write_int32(SCENE_LOADING_ZONE_PTRS_START + (scene_id * 4), new_loading_zone_list_ptr)
 
 
             # # # TEXT # # #
@@ -1478,17 +1528,23 @@ class CVLoDRomPatcher:
 
             # If the new spawn spot data is the same size or smaller than it was before, write it back where it was
             # in the common segment originally (if we even have a list to begin with).
+            # The pointer will be zero by default if we are opting to have no list, whether because there is no list to
+            # begin with or we are opting to delete all entries.
+            new_spawn_list_ptr = 0x00000000
             if len(new_spawn_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].spawn_spots
                                                   if "start_addr" in orig_entry]):
                 if new_spawn_list:
                     self.write_bytes(self.scenes[scene_id].spawn_spots[0]["start_addr"] \
                                                           - COMMON_SEGMENT_RDRAM_START + COMMON_SEGMENT_ROM_START,
                                      spawn_data)
-            # If it's larger, however, put it on the end of the overlay and update the pointer to it.
+                    # Leave the pointer to the list unchanged, it's in the same location.
+                    new_spawn_list_ptr = self.scenes[scene_id].spawn_spots[0]["start_addr"]
+            # If it's larger, however, put it on the end of the overlay.
             else:
                 new_spawn_list_ptr = len(self.scenes[scene_id].overlay) + SCENE_OVERLAY_RDRAM_START
                 self.scenes[scene_id].overlay += spawn_data
-                self.write_int32(SCENE_SPAWN_COORDS_PTRS_START + (scene_id * 4), new_spawn_list_ptr)
+
+            self.write_int32(SCENE_SPAWN_COORDS_PTRS_START + (scene_id * 4), new_spawn_list_ptr)
 
 
             # Pad the overlay to 0x10 if it isn't.

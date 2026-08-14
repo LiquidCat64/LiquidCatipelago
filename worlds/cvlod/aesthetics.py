@@ -267,35 +267,6 @@ def randomize_shop_prices(world: "CVLoDWorld") -> dict[int, bytes]:
     # return price_dict
 
 
-def randomize_charnel_prize_coffin(world: "CVLoDWorld") -> dict[int, bytes]:
-    """Randomizes which of the five coffins in the Forest of Silence's Charnel Houses will be the "prize coffin" that
-    will contain three checks upon being broken. Returns the bytes and addresses to write to make the change after
-    deciding it."""
-    pass
-    # correct_charnel_coffin = world.random.randint(0, 4)
-
-    # Swap the IDs of coffin 00 and the new coffin the checks will be in.
-    # return {CHARNEL_COFFIN_ACTORS_START + 0x19 + (ACTOR_ENTRY_LENGTH * correct_charnel_coffin): b"\x00",
-    #         CHARNEL_COFFIN_ACTORS_START + 0x19: int.to_bytes(correct_charnel_coffin, 1, "big")}
-
-
-def randomize_fountain_puzzle(world: "CVLoDWorld") -> dict[tuple[int, int], bytes]:
-    """Randomizes the combination for the Cornell Villa fountain puzzle and returns both the solution bytes to write
-    in the fountain puzzle code AND in Oldrey's Diary's description."""
-
-    villa_fountain_order = ["O", "M", "H", "V"]  # Vanilla order
-    world.random.shuffle(villa_fountain_order)
-
-    return {(0x4780, NIFiles.OVERLAY_PAUSE_MENU): cvlod_string_to_bytearray(f"{villa_fountain_order[0]} "
-                                                                         f"{villa_fountain_order[1]} "
-                                                                         f"{villa_fountain_order[2]} "
-                                                                         f"{villa_fountain_order[3]}      ")[0],
-            (0x173, NIFiles.OVERLAY_FOUNTAIN_PUZZLE): FOUNTAIN_LETTERS_TO_BYTES[villa_fountain_order[0]],
-            (0x16B, NIFiles.OVERLAY_FOUNTAIN_PUZZLE): FOUNTAIN_LETTERS_TO_BYTES[villa_fountain_order[1]],
-            (0x163, NIFiles.OVERLAY_FOUNTAIN_PUZZLE): FOUNTAIN_LETTERS_TO_BYTES[villa_fountain_order[2]],
-            (0x143, NIFiles.OVERLAY_FOUNTAIN_PUZZLE): FOUNTAIN_LETTERS_TO_BYTES[villa_fountain_order[3]]}
-
-
 def get_countdown_flags(options: CVLoDOptions, active_locations: Iterable[Location]) -> list[list[int]]:
     """Figures out which Locations have Items that should count towards a Countdown number and assembles each array of
     event flag IDs that will be checked to determine what the current on-screen number should be in each scene.
@@ -328,6 +299,10 @@ def get_countdown_flags(options: CVLoDOptions, active_locations: Iterable[Locati
     # An event flag of 0 in the game's code is often used to skip the flag check or other special behaviors.
     for array in countdown_arrays:
         array += [0]
+
+        # Add another 0 if the array length is now odd to keep it 4-aligned when it actually goes into the game.
+        if len(array) % 2:
+            array += [0]
 
     # Return the final array.
     return countdown_arrays

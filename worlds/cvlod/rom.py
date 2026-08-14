@@ -84,6 +84,7 @@ SPECIAL_1HBS = [Objects.FOGGY_LAKE_ABOVE_DECKS_BARREL, Objects.FOGGY_LAKE_BELOW_
                 Objects.SORCERY_BLUE_DIAMOND]
 
 FOUNTAIN_LETTERS_TO_NUMBERS = {"O": 1, "M": 2, "H": 3, "V": 4}
+FOUNTAIN_LETTERS_TO_WORDS = {"O": "mine", "M": "Mary's", "H": "Henry's", "V": "one for visitors"}
 
 VILLA_MAZE_CORNELL_ENEMY_INDEXES = [75, 76, 80, 82, 83, 84, 85, 86, 87, 88, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101]
 VILLA_MAZE_HENRY_ESCORT_ENEMY_INDEXES = [66, 67, 68, 69, 70, 71, 72, 73, 74, 77, 78, 79]
@@ -245,6 +246,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int16(0x90422, new_first_text_spot_id)
         patcher.write_int16(0x90452, new_first_text_spot_id)
         patcher.write_int16(0x107816, new_first_text_spot_id)
+        patcher.write_int16(0x10781E, new_first_text_spot_id)
         patcher.write_int16(0x107CFE, new_first_text_spot_id)
         patcher.write_int16(0x107E2E, new_first_text_spot_id)
         patcher.write_int16(0x10945A, new_first_text_spot_id)
@@ -267,6 +269,20 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int16(LEVER_SPAWNED_ACTORS_START + (i * 8) + 2,
                                 patcher.read_bytes(LEVER_SPAWNED_ACTORS_START + (i * 8) + 2, 2, return_as_int=True) +
                                 new_first_text_spot_id - OLD_FIRST_TEXT_SPOT_ID)
+        # Do the same thing for all hardcoded NPC-spawned text spots.
+        patcher.write_int16(0x226, patcher.read_bytes(0x226, 2, return_as_int=True,
+                                                      file_num=NIFiles.OVERLAY_VINCENT) +
+                            new_first_text_spot_id - OLD_FIRST_TEXT_SPOT_ID, NIFiles.OVERLAY_VINCENT)
+        patcher.write_int16(0x132, patcher.read_bytes(0x132, 2, return_as_int=True,
+                                                      file_num=NIFiles.OVERLAY_MARY) +
+                            new_first_text_spot_id - OLD_FIRST_TEXT_SPOT_ID, NIFiles.OVERLAY_MARY)
+        patcher.write_int16(0x1856, patcher.read_bytes(0x1856, 2, return_as_int=True,
+                                                       file_num=NIFiles.OVERLAY_LIZARD_MEN) +
+                            new_first_text_spot_id - OLD_FIRST_TEXT_SPOT_ID, NIFiles.OVERLAY_LIZARD_MEN)
+        # ...as well as the text spots spawned when the Charnel House coffins are broken.
+        patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
+            0x7C58, patcher.scenes[Scenes.FOREST_OF_SILENCE].read_ovl_bytes(0x7C58, 2, return_as_int=True) +
+                    new_first_text_spot_id - OLD_FIRST_TEXT_SPOT_ID)
         # Update the pointer to the Interactables table to instead point to the new table location.
         patcher.write_int16(0x901E2, (new_item_appearances_table_rdram_start >> 16) + 1)
         patcher.write_int16(0x901E6, new_item_appearances_table_rdram_start & 0xFFFF)
@@ -307,22 +323,22 @@ class CVLoDPatchExtensions(APPatchExtension):
              "to battle Dracula.")
         item_desc_pool[CVLOD_PICKUP_INFO[Pickups.EXECUTION_KEY-1].text_pool_id] = \
             (f"The Big Crystal is ✨{TextColors.BLUE}/ON✨0/!\n"
-             "A step closer to teaching\n"
+             "One step closer to teaching\n"
              "the old man a lesson!")
         item_desc_pool += ["Increases main weapon\n"
                            "level permanently.\n"
                            "Kept after dying.",
                            "A Knife you always have.\n"
-                           "Use R + D-pad to change\n"
+                           "Use R + D-PAD to change\n"
                            "sub-weapon and level.",
                            "Holy Water you always have.\n"
-                           "Use R + D-pad to change\n"
+                           "Use R + D-PAD to change\n"
                            "sub-weapon and level.",
                            "A Cross you always have.\n"
-                           "Use R + D-pad to change\n"
+                           "Use R + D-PAD to change\n"
                            "sub-weapon and level.",
                            "An Axe you always have.\n"
-                           "Use R + D-pad to change\n"
+                           "Use R + D-PAD to change\n"
                            "sub-weapon and level."]
 
         # Append the model data for the AP items onto the end of the items assets file.
@@ -1104,11 +1120,12 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.VILLA_FRONT_YARD].actor_lists["init"][2]["delete"] = True
 
         # Write the new Villa fountain puzzle order both in the code and Oldrey's Diary's description.
-        patcher.write_bytes(0x4780, cvlod_string_to_bytearray(f"{slot_patch_info['fountain order'][0]} "
-                                                               f"{slot_patch_info['fountain order'][1]} "
-                                                               f"{slot_patch_info['fountain order'][2]} "
-                                                               f"{slot_patch_info['fountain order'][3]}      "),
-                            NIFiles.OVERLAY_PAUSE_MENU)
+        item_desc_pool[CVLOD_PICKUP_INFO[Pickups.OLDREYS_DIARY - 1].text_pool_id] = \
+            ('"Gravestones to prepare:\n'
+             f"{FOUNTAIN_LETTERS_TO_WORDS[slot_patch_info['fountain order'][0]]}, "
+             f"{FOUNTAIN_LETTERS_TO_WORDS[slot_patch_info['fountain order'][1]]}, "
+             f"{FOUNTAIN_LETTERS_TO_WORDS[slot_patch_info['fountain order'][2]]}, and then "
+             f"{FOUNTAIN_LETTERS_TO_WORDS[slot_patch_info['fountain order'][3]]}!\"")
         patcher.write_byte(0x173, FOUNTAIN_LETTERS_TO_NUMBERS[slot_patch_info["fountain order"][0]],
                            NIFiles.OVERLAY_FOUNTAIN_PUZZLE)
         patcher.write_byte(0x16B, FOUNTAIN_LETTERS_TO_NUMBERS[slot_patch_info["fountain order"][1]],
@@ -2438,15 +2455,18 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.scenes[Scenes.CASTLE_CENTER_BOTTOM_ELEV].scene_text[8]["text"] = (
             '"Hazardous materials\n'
             ' disposal."🅰0/\n'
-            "There's...a poster taped here?🅰0/\f"
-            '      This way\n'
-            f'       to the    ✨{TextColors.RED}/o✨0/~Y  /\n'
-            f'       ✨{TextColors.RED}/FUN!!!✨0/     [✨{TextColors.RED}/=)✨0/ ]_\n'
-            '                   J🅰0/\f'
+            "There's...a poster taped here?\n"
+            "And why is it distorting!?🅰0/\f"
+            "    |     This way      |\n"
+            f"    |   ✨{TextColors.RED}/O✨0/  to the  ✨{TextColors.RED}/O✨0/    |\n"
+            "    |    \\ PARTY! /     |\n"
+            f"    |  It'll be ✨{TextColors.RED}/FUN!!! =)✨0/  |🅰0/\f"
             "An extremely sick feeling\n"
             "stops you touching it at the\n"
-            "very last second. This party\n"
-            "sounds anything but...🅰0/")
+            "exact last second.🅰0/\n"
+            "You don't know why, but\n"
+            "vampirism seems a way better\n"
+            "fate than whatever this is...🅰0/")
         patcher.scenes[Scenes.CASTLE_CENTER_FACTORY].scene_text[3]["text"] = (
             "\"Hazardous materials\n"
             " disposal.\"\n"
@@ -3809,26 +3829,27 @@ class CVLoDPatchExtensions(APPatchExtension):
             patcher.write_int32(0x49AC, 0x34090002, NIFiles.OVERLAY_WHITE_DRAGONS)  # ORI   T1, R0, 0x0002
             patcher.write_int32(0x3118, 0x34190002, NIFiles.OVERLAY_CERBERUS)  # ORI   T9, R0, 0x0002
             patcher.write_int32(0x2F60, 0x340E0002, NIFiles.OVERLAY_STONE_DOG)  # ORI  T6, R0, 0x0002
-            # Replace all guaranteed PowerUp drops with Red Jewel(L)'s instead.
+            # Replace all guaranteed PowerUp drops with Red Jewel(s)'s instead.
             patcher.write_byte(0x18EF, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_WERE_TIGER)
             patcher.write_byte(0xC8FB, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_DRACULA)
             patcher.write_byte(0x584F, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_TRUE_DRACULA)
         # Prevent Sub-weapons from dropping from regular enemies and boss projectiles if Permanent Sub-weapons is on.
         if slot_patch_info["options"]["permanent_sub_weapons"]:
             patcher.write_int32(0x52E80, 0x10000022)  # B       [forward 0x22]
-            patcher.write_int32(0x1798, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_SLIME)
-            patcher.write_int32(0x17A4, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_SLIME)
-            patcher.write_int16(0x3176, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_CERBERUS)
-            patcher.write_int16(0x31FE, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_CERBERUS)
-            patcher.write_int16(0x322E, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_CERBERUS)
-            patcher.write_int16(0x3292, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_CERBERUS)
-            patcher.write_int32(0x6E70, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_STONE_DOG)
-            patcher.write_int32(0x6E78, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_STONE_DOG)
-            patcher.write_int32(0x6E80, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_STONE_DOG)
-            patcher.write_int32(0x6E88, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_STONE_DOG)
-            patcher.write_int16(0xBD2E, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_LIZARD_MEN)
-            patcher.write_int16(0xBD36, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_LIZARD_MEN)
-            patcher.write_int16(0x5D4E, Pickups.RED_JEWEL_L, NIFiles.OVERLAY_VINCENT)
+            patcher.write_int32(0x1798, Pickups.RED_JEWEL_S, NIFiles.OVERLAY_SLIME)
+            patcher.write_int32(0x17A4, Pickups.RED_JEWEL_S, NIFiles.OVERLAY_SLIME)
+            patcher.write_int16(0x922A, Pickups.RED_JEWEL_S, NIFiles.OVERLAY_SKELETON_WARRIOR)
+            patcher.write_int16(0x3176, Pickups.RED_JEWEL_S, NIFiles.OVERLAY_CERBERUS)
+            patcher.write_int16(0x31FE, Pickups.RED_JEWEL_S, NIFiles.OVERLAY_CERBERUS)
+            patcher.write_int16(0x322E, Pickups.RED_JEWEL_S, NIFiles.OVERLAY_CERBERUS)
+            patcher.write_int16(0x3292, Pickups.RED_JEWEL_S, NIFiles.OVERLAY_CERBERUS)
+            patcher.write_int32(0x6E70, Pickups.RED_JEWEL_S, NIFiles.OVERLAY_STONE_DOG)
+            patcher.write_int32(0x6E78, Pickups.RED_JEWEL_S, NIFiles.OVERLAY_STONE_DOG)
+            patcher.write_int32(0x6E80, Pickups.RED_JEWEL_S, NIFiles.OVERLAY_STONE_DOG)
+            patcher.write_int32(0x6E88, Pickups.RED_JEWEL_S, NIFiles.OVERLAY_STONE_DOG)
+            patcher.write_int16(0xBD2E, Pickups.RED_JEWEL_S, NIFiles.OVERLAY_LIZARD_MEN)
+            patcher.write_int16(0xBD36, Pickups.RED_JEWEL_S, NIFiles.OVERLAY_LIZARD_MEN)
+            patcher.write_int16(0x5D4E, Pickups.RED_JEWEL_S, NIFiles.OVERLAY_VINCENT)
 
         # If Fall Guard is enabled, NOP the instructions that store the updated player state stuff for when they land
         # hard enough to lose health but NOT hard enough to be OHKO'd by the floor.
@@ -3905,7 +3926,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                     continue
                 countdown_flag_addr = len(patcher.scenes[i].overlay)
                 patcher.scenes[i].write_ovl_int16s(
-                    countdown_flag_addr,slot_patch_info["countdown flags"][SCENE_COUNTDOWN_PTR_ARRAY_INDEXES[i]])
+                    countdown_flag_addr, slot_patch_info["countdown flags"][SCENE_COUNTDOWN_PTR_ARRAY_INDEXES[i]])
                 patcher.write_int32(COUNTDOWN_PTRS_ARRAY_START + (i * 4),
                                     countdown_flag_addr + SCENE_OVERLAY_RDRAM_START)
 
@@ -3947,7 +3968,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         patcher.write_int16(0x154A, patcher.get_decompressed_file_size(NIFiles.OVERLAY_PAUSE_MENU) & 0xFFFF,
                             NIFiles.OVERLAY_PAUSE_MENU)
         patcher.write_bytes(patcher.get_decompressed_file_size(NIFiles.OVERLAY_PAUSE_MENU),
-                            cvlod_strings_to_pool(item_desc_pool, wrap=False), NIFiles.OVERLAY_PAUSE_MENU)
+                            cvlod_strings_to_pool(item_desc_pool), NIFiles.OVERLAY_PAUSE_MENU)
 
         # Write the compatibility version string the client will use to distinguish a vanilla ROM from an AP one.
         patcher.write_bytes(ARCHIPELAGO_IDENTIFIER_START, ARCHIPELAGO_CLIENT_COMPAT_VER.encode("utf-8"))

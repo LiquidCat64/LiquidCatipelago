@@ -505,7 +505,8 @@ npc_item_rework = [
     0x3C0C801D,  # LUI   T4, 0x801D
     0xA18BAA4C,  # SB    T3, 0xAA4C (T4)
     # Copy from the ROM the off-world Item string corresponding to that NPC Item.
-    0x3C0B00FA,  # LUI   T3, 0x00FA
+    0x3C0B00F9,  # LUI   T3, 0x00F9
+    0x356BC000,  # ORI   T3, T3, 0xC000
     # Shift the flag ID up by 8 and add it to 0xFA0000 to get the start address for this NPC Item's string.
     0x00194A00,  # SLL   T1, T9, 8
     0x01692021,  # ADDU  A0, T3, T1

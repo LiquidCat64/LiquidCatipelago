@@ -200,7 +200,7 @@ HIGHER_SPAWNING_ITEMS = [Pickups.CROSS, Pickups.AXE, Pickups.WINCH_LEVER, Pickup
                          Pickups.ROSE_BROOCH]
 
 def get_item_names_to_ids() -> dict[str, int]:
-    return {item: CVLOD_PICKUP_INFO[data.pickup_id].item_id for item, data in ALL_CVLOD_ITEMS.items()}
+    return {item: CVLOD_PICKUP_INFO[data.pickup_id - 1].item_id for item, data in ALL_CVLOD_ITEMS.items()}
 
 
 def get_item_pool(world: "CVLoDWorld") -> list[CVLoDItem]:
