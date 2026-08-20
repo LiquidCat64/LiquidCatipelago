@@ -165,7 +165,7 @@ class CastlevaniaLoDClient(BizHawkClient):
                 # If the player died at the Castle Keep exterior map on one of the Room of Clocks boss towers
                 # (determinable by checking the entrance value as well as the map value), consider Room of Clocks the
                 # actual area of death.
-                if save_struct[0x131] == Scenes.CASTLE_KEEP_EXTERIOR and save_struct[0x133] in [0, 1]:
+                if save_struct[0x131] == Scenes.CASTLE_KEEP_EXTERIOR and save_struct[0x133] in [2, 3, 4]:
                     area_of_death = StageNames.ROOM
                 # If they died in Renon's arena in Room of Clocks (entrance 3), consider Castle Keep the actual area.
                 elif save_struct[0x131] == Scenes.ROOM_OF_CLOCKS and save_struct[0x133] == 3:
@@ -186,7 +186,8 @@ class CastlevaniaLoDClient(BizHawkClient):
                 else:
                     area_of_death = DEATHLINK_AREA_NAMES[DEATHLINK_AREA_NUMBERS[save_struct[0x131]]]
 
-                # If Child Henry was the one who perished (read: we still have health), use a special message.
+                # If Child Henry was the one who perished (read: we still have health, meaning this death had to have
+                # been detected through Child Henry dying), use a special message.
                 # The message will be extra special if we are Adult Henry!
                 if curr_hp and save_struct[0xD5] == Players.HENRY:
                     death_message = (f'"My sincere apologies, but {ctx.player_names[ctx.slot]}, in letting their '

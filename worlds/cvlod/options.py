@@ -530,6 +530,15 @@ class WindowColorA(Range):
     default = 96
 
 
+class GoddessStatueHints(DefaultOnToggle):
+    """
+    Whether the goddess statues in Castle Center should contain hints as to the whereabouts of Magical Nitro and Mandragora.
+    The elevator room statue will contain a hint for a Mandragora, the gear room statue will contain a hint for a Magical Nitro, and the library statue will have a hint for each.
+    The area mentioned in the hint will be a location group the item's location is in, chosen at random if there's multiple. If the location of your item in someone else's world does not have a location group defined for it, only the player who has it will be specified.
+    """
+    display_name = "Goddess Statue Hints"
+
+
 class CVLoDDeathLink(Choice):
     __doc__ = (DeathLink.__doc__ + "\n\n    Explosive: Makes received death links kill you via the Magical Nitro " +
                "explosion instead of the normal death animation.")
@@ -595,6 +604,7 @@ class CVLoDOptions(PerGameCommonOptions):
     disable_time_restrictions: DisableTimeRestrictions
     skip_gondolas: SkipGondolas
     skip_waterway_blocks: SkipWaterwayBlocks
+    goddess_statue_hints: GoddessStatueHints
     countdown: Countdown
     # big_toss: BigToss
     # panther_dash: PantherDash
@@ -619,7 +629,8 @@ cvlod_option_groups = [
         RenonFightCondition, VincentFightCondition, CastleKeepEndingSequence, IncreaseItemLimit, NerfHealingItems,
         LoadingZoneHeals, DetransformAtWill, InvisibleItems, DropPreviousSubWeapon, PermanentPowerUps,
         PermanentSubWeapons, IceTrapPercentage, IceTrapAppearance, DisableTimeRestrictions, SkipGondolas,
-        SkipWaterwayBlocks, Countdown, BigToss, PantherDash, IncreaseShimmySpeed, FallGuard, CVLoDDeathLink
+        SkipWaterwayBlocks, GoddessStatueHints, Countdown, BigToss, PantherDash, IncreaseShimmySpeed, FallGuard,
+        CVLoDDeathLink
     ]),
     OptionGroup("Cosmetics", [
         WindowColorR, WindowColorG, WindowColorB, WindowColorA, BackgroundMusic, MapLighting, RestoreCornellFallVoice

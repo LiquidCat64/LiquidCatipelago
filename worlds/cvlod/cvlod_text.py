@@ -353,7 +353,7 @@ def cvlod_command_scrubber(cvlod_text: str) -> str:
     new_text = ""
 
     for char in cvlod_text:
-        if char in CVLOD_COMMAND_CHARS:
+        if char in CVLOD_COMMAND_CHARS and char != " ":  # Exception made for space characters, for obvious reasons...
             new_text += CVLOD_DEFAULT_CHAR
         else:
             new_text += char

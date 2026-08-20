@@ -4,7 +4,7 @@ from BaseClasses import Item, ItemClassification
 from .data import item_names
 from .data.misc_names import GAME_NAME
 from .locations import CVLOD_LOCATIONS_INFO
-from .options import SpareKeys, CastleWallState, VillaState, SubWeaponShuffle
+from .options import SpareKeys, CastleWallState, VillaState
 from .data.enums import Items, Pickups
 
 from enum import IntFlag
@@ -288,6 +288,14 @@ def get_item_pool(world: "CVLoDWorld") -> list[CVLoDItem]:
 
         # Create the Item object.
         item_to_add = world.create_item(item_name)
+
+        # If we're adding a Nitro or Mandragora with goddess statue hint text on, save it for the purposes of later
+        # making goddess statue hint text.
+        if world.options.goddess_statue_hints:
+            if item_name == item_names.quest_nitro:
+                world.goddess_statue_hint_items[0].append(item_to_add)
+            elif item_name == item_names.quest_mandragora:
+                world.goddess_statue_hint_items[1].append(item_to_add)
 
         # If the Item's classification is Filler, add it to one of the filler lists.
         if item_to_add.classification == ItemClassification.filler:

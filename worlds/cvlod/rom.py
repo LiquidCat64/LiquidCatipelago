@@ -2451,7 +2451,7 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Prevent throwing Nitro in the Hazardous Materials Disposals.
         patcher.write_int32(0x1E4, 0x24020001, NIFiles.OVERLAY_NITRO_DISPOSAL_TEXTBOX)  # ADDIU V0, R0, 0x0001
         # Custom messages for when trying to interact with each of the Hazardous Materials Disposals, explaining why we
-        # can't use any of them.
+        # can't use any of them (yes, these are all different internet creepypasta references, lol).
         patcher.scenes[Scenes.CASTLE_CENTER_BOTTOM_ELEV].scene_text[8]["text"] = (
             '"Hazardous materials\n'
             ' disposal."🅰0/\n'
@@ -2465,16 +2465,22 @@ class CVLoDPatchExtensions(APPatchExtension):
             "stops you touching it at the\n"
             "exact last second.🅰0/\n"
             "You don't know why, but\n"
-            "vampirism seems a way better\n"
-            "fate than whatever this is...🅰0/")
+            "vampirism feels a better\n"
+            "fate than whatever this is...🅰0/")  # The reference: Backrooms Partygoers and Level Fun
         patcher.scenes[Scenes.CASTLE_CENTER_FACTORY].scene_text[3]["text"] = (
             "\"Hazardous materials\n"
             " disposal.\"\n"
             "It seems jammed shut.🅰0/\f"
             "Some graffiti is scrawled on:\n"
-            "\"This'll teach you to not be a\n"
-            "COWARD transporting Nitro\n"
-            "through here!\"🅰0/")
+            "\"Here lies L.\n"
+            "He's no longer real.🅰0/\n"
+            "Cause of death:\n"
+            "drowning in his\n"
+            "personalized copy of\n"
+            "this video game.\"🅰0/\f"
+            "A \"video\" game? Huh!?\n"
+            "You've never heard of\n"
+            "this in your life...🅰0/")  # The reference: L is Real, BEN Drowned, every copy of [game] is personalized
         patcher.scenes[Scenes.CASTLE_CENTER_LIZARD_LAB].scene_text[4]["text"] = (
             "\"Hazardous materials\n"
             " disposal.\"\n"
@@ -2485,10 +2491,10 @@ class CVLoDPatchExtensions(APPatchExtension):
             "attempted to escape through it.\n"
             "-Dr. [       ]\"🅰0/\f"
             "The writer's name is blacked\n"
-            "out and there's an insignia\n"
-            "with three arrows that you've\n"
+            "out and there's a three-\n"
+            "arrow insignia that you've\n"
             "never seen before.🅰30/.🅰30/.🅰30/.🅰30/.🅰30/\n"
-            "yet it feels eerily familiar!?🅰0/")
+            "yet it feels eerily familiar!?🅰0/")  # The reference: SCP Foundation
 
         # Allow placing both bomb components at a cracked wall at once while having multiple copies of each, prevent
         # placing them at the downstairs crack altogether until the seal is removed, and enable placing both in one
@@ -2659,6 +2665,17 @@ class CVLoDPatchExtensions(APPatchExtension):
                                       var_c=Pickups.ROAST_CHICKEN, var_d=0, extra_condition_ptr=0),
             ]
 
+        # Write the goddess statue hints, if they exist.
+        if slot_patch_info["statue text"]:
+            patcher.scenes[Scenes.CASTLE_CENTER_BOTTOM_ELEV].scene_text[0]["text"] = \
+                patcher.scenes[Scenes.CASTLE_CENTER_BOTTOM_ELEV].scene_text[0]["text"][:120] + \
+                cvlod_text_wrap(slot_patch_info["statue text"][1]) + "🅰0/\nSome kind of code?🅰0/"
+            patcher.scenes[Scenes.CASTLE_CENTER_FACTORY].scene_text[0]["text"] = \
+                patcher.scenes[Scenes.CASTLE_CENTER_FACTORY].scene_text[0]["text"][:114] + \
+                cvlod_text_wrap(slot_patch_info["statue text"][0]) + "🅰0/\nSome kind of code?🅰0/"
+            patcher.scenes[Scenes.CASTLE_CENTER_LIBRARY].scene_text[0]["text"] = \
+                patcher.scenes[Scenes.CASTLE_CENTER_LIBRARY].scene_text[0]["text"][:121] + \
+                cvlod_text_wrap(slot_patch_info["statue text"][2]) + "🅰0/\nSome kind of code?🅰0/"
 
         # # # # # # # # # # # # # #
         # TOWER OF SCIENCE EDITS  #

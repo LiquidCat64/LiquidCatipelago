@@ -1,13 +1,12 @@
 from BaseClasses import ItemClassification, Location, Item
 from .data import item_names, reg_names, ent_names
-from .data.enums import NIFiles, Pickups, StageNames, TextColors
+from .data.enums import Pickups, StageNames, TextColors
 from .data.misc_names import GAME_NAME
-from .options import CVLoDOptions, BackgroundMusic, Countdown, IceTrapAppearance, InvisibleItems, \
-    CastleCenterBranchingPaths, VillaBranchingPaths
+from .options import CVLoDOptions, Countdown, InvisibleItems, CastleCenterBranchingPaths, VillaBranchingPaths
 from .stages import CVLOD_STAGE_INFO
 from .locations import CVLOD_LOCATIONS_INFO, NPC_LOCATIONS, LOC_IDS_TO_INFO
-from .items import ALL_CVLOD_ITEMS, SUB_WEAPON_IDS, CVLOD_PICKUP_INFO
-from .cvlod_text import cvlod_string_to_bytearray
+from .items import ALL_CVLOD_ITEMS, SUB_WEAPON_IDS, CVLOD_PICKUP_INFO, CVLoDItem
+from .cvlod_text import cvlod_command_scrubber
 
 from typing import TYPE_CHECKING, Iterable
 
@@ -427,18 +426,19 @@ def get_location_text(world: "CVLoDWorld", active_locations: Iterable[Location])
             continue
 
         # If the Item's name is longer than 103 characters, truncate the name to inject at 103.
+        # Regardless, scrub all command characters from it in order to be safe.
         if len(loc.item.name) > 103:
-            item_name = loc.item.name[0:103]
+            item_name = cvlod_command_scrubber(loc.item.name[0:103])
         else:
-            item_name = loc.item.name
+            item_name = cvlod_command_scrubber(loc.item.name)
 
         # If the Item is local, put an empty string for the player name. The slot's own name will never be shown in-game
         # when it comes to local Items, so we'll be using that to determine if it's local while patching.
         if loc.item.player == world.player:
             player_name = ""
-        # Otherwise, get the actual player name.
+        # Otherwise, get the actual player name. Scrub all command characters from it just to be safe.
         else:
-            player_name = world.multiworld.get_player_name(loc.item.player)
+            player_name = cvlod_command_scrubber(world.multiworld.get_player_name(loc.item.player))
             # The player name should not be more than 16 characters. But truncate it at that just to be safe!
             if len(player_name) > 16:
                 player_name = player_name[0:16]
@@ -531,6 +531,54 @@ def get_transition_write_values(options: CVLoDOptions, active_stage_info: list[C
 
     # Return the final transition values.
     return transition_values
+
+
+def get_statue_hints(world: "CVLoDWorld") -> list[str]:
+    """Creates multiworld-specific hint text to go in the text that appears when checking the Castle Center goddess
+    statues. The elevator room statue will contain a hint on the whereabouts of a Mandragora, the gear room statue a
+    Magical Nitro, and the library statue both (getting here requires using a pair in the first place, so hinting
+    about a second pair here makes sense).
+
+    The hints don't tell you the exact Location name, but rather, a Location name group that the Location can be found
+    in, which should tell players roughly where to search for it without completely being a free client hint. If the
+    Location is in no Location name groups, then it will only mention the name of the slot that has the Item."""
+
+    # If there aren't at least two Nitros and Mandragoras, return an empty list. Don't bother creating any statue text.
+    if len(world.goddess_statue_hint_items[0]) > 2 or len(world.goddess_statue_hint_items[1]) > 2:
+        return []
+
+    def create_hint_text(own_hint_item: CVLoDItem):
+        # If the drawn Item is local in the player's own world, use a blank player name.
+        if own_hint_item.location.player == world.player:
+            other_player_name = ""
+        # Otherwise, get the name of that other player. Make sure we scrub all command characters from it!
+        # Other than the magenta text start/end characters we'll be wrapping this up in...
+        else:
+            other_player_name = f"✨{TextColors.MAGENTA}/" + cvlod_command_scrubber(
+                f"{world.multiworld.get_player_name(own_hint_item.location.player)}'s ") + "✨0/"
+
+        # Figure out what Location groups in the other player's game the Item's Location is a part of. Don't take
+        # the "Everywhere" group as that just includes everything.
+        other_world_loc_groups = world.multiworld.worlds[own_hint_item.location.player].location_name_groups
+        selectable_loc_groups = [loc_group for loc_group in other_world_loc_groups if own_hint_item.location.name in
+                                 other_world_loc_groups[loc_group] and loc_group != "Everywhere"]
+
+        # If no valid group was found, use "world somewhere" as the generic group name.
+        if not selectable_loc_groups:
+            chosen_loc_group_name = "world somewhere"
+        # Otherwise, choose one of our found Location group names at random and build a string with that.
+        # Limit the group name at 50 characters and scrub any commands just to be safe!
+        else:
+            chosen_loc_group_name = cvlod_command_scrubber(world.random.choice(selectable_loc_groups)[:50])
+
+        # Create the hint text and add it to the end of the card strings list.
+        return f'"{own_hint_item.name} can be found in {other_player_name}{chosen_loc_group_name}."'
+
+    # Create and return all strings.
+    return [create_hint_text(world.goddess_statue_hint_items[0][0]),             # Gears statue
+            create_hint_text(world.goddess_statue_hint_items[1][0]),             # Elevator statue
+            create_hint_text(world.goddess_statue_hint_items[0][1]) + "🅰0/\n" +  # Library statue (2-in-one)
+            create_hint_text(world.goddess_statue_hint_items[1][1])]
 
 
 def get_start_inventory_data(player: int, options: CVLoDOptions, precollected_items: list[Item]) \

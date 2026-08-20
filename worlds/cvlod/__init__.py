@@ -19,9 +19,9 @@ from .rules import CVLoDRules
 from .data import item_names, reg_names, ent_names
 from .data.enums import StageNames
 from worlds.AutoWorld import WebWorld, World
-from .aesthetics import randomize_lighting, shuffle_sub_weapons, randomize_music, get_start_inventory_data,\
-    get_location_write_values, randomize_shop_prices, get_transition_write_values,  get_countdown_flags,\
-    get_location_text
+from .aesthetics import randomize_lighting, shuffle_sub_weapons, randomize_music, get_start_inventory_data, \
+    get_location_write_values, randomize_shop_prices, get_transition_write_values,  get_countdown_flags, \
+    get_location_text, get_statue_hints
 from .rom import CVLoDRomPatcher, get_base_rom_path, CVLoDProcedurePatch, CVLOD_US_HASH, ARCHIPELAGO_PATCH_COMPAT_VER
 from .client import CastlevaniaLoDClient
 
@@ -74,6 +74,7 @@ class CVLoDWorld(World):
 
     active_stage_info: list[CVLoDActiveStage]
     active_warp_list: list[str]
+    goddess_statue_hint_items: tuple[list[CVLoDItem], list[CVLoDItem]]
 
     # Default values to possibly be updated in generate_early
     required_s2s: int = 0
@@ -84,6 +85,8 @@ class CVLoDWorld(World):
     web = CVLoDWeb()
 
     def generate_early(self) -> None:
+        self.goddess_statue_hint_items = ([], [])
+
         # Generate the player's unique authentication number.
         self.auth = bytearray(self.random.getrandbits(8) for _ in range(16))
 
@@ -273,6 +276,7 @@ class CVLoDWorld(World):
                            "prize coffin id": self.random.randint(0, 4),
                            # Cornell Villa fountain puzzle order to be randomized.
                            "fountain order": ["O", "M", "H", "V"],
+                           "statue text": get_statue_hints(self),
                            "patch compatibility": ARCHIPELAGO_PATCH_COMPAT_VER,
                            "auth": base64.b64encode(self.auth).decode()}
 
