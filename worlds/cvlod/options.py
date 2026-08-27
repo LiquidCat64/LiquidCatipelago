@@ -105,7 +105,7 @@ class SpareKeys(Choice):
 
 
 class ItemPoolDifficulty(Choice):
-    """Which difficulty in the gamme the item pool should be based on. Harder difficulty = lower value consumables, gold, and jewels in the pool.
+    """Which difficulty in the game the item pool should be based on. Harder difficulty = lower value consumables, gold, and jewels in the pool.
     A few sub-weapon locations will also become regular locations and their distribution will be different."""
     display_name = "Item Pool Difficulty"
     option_easy = 0
