@@ -11,7 +11,7 @@ from .items import CVLoDItem, ALL_CVLOD_ITEMS, CVLOD_PICKUP_INFO, POSSIBLE_EXTRA
     get_item_pool
 from .locations import CVLoDLocation, get_locations_to_create, get_location_name_groups, get_location_names_to_ids
 from .entrances import verify_entrances, get_warp_entrances
-from .options import CVLoDOptions, SubWeaponShuffle
+from .options import CVLoDOptions, SubWeaponShuffle, cvlod_option_groups
 from .stages import get_active_stages, shuffle_stages, get_stage_exits, get_active_warps, find_stage_of_region, \
     find_stage_in_list, get_regions_from_all_active_stages, verify_branches, CVLoDActiveStage, MISC_REGIONS, \
     ALL_CVLOD_REGIONS
@@ -19,9 +19,8 @@ from .rules import CVLoDRules
 from .data import item_names, reg_names, ent_names
 from .data.enums import StageNames
 from worlds.AutoWorld import WebWorld, World
-from .aesthetics import randomize_lighting, shuffle_sub_weapons, randomize_music, get_start_inventory_data, \
-    get_location_write_values, randomize_shop_prices, get_transition_write_values,  get_countdown_flags, \
-    get_location_text, get_statue_hints
+from .aesthetics import randomize_lighting, randomize_music, get_start_inventory_data,  get_location_write_values, \
+    randomize_shop_prices, get_transition_write_values,  get_countdown_flags, get_location_text, get_statue_hints
 from .rom import CVLoDRomPatcher, get_base_rom_path, CVLoDProcedurePatch, CVLOD_US_HASH, ARCHIPELAGO_PATCH_COMPAT_VER
 from .client import CastlevaniaLoDClient
 
@@ -49,6 +48,8 @@ class CVLoDWeb(WebWorld):
         ["Liquid Cat"]
     )]
 
+    option_groups = cvlod_option_groups
+
 
 class CVLoDWorld(World):
     """
@@ -75,6 +76,7 @@ class CVLoDWorld(World):
     active_stage_info: list[CVLoDActiveStage]
     active_warp_list: list[str]
     goddess_statue_hint_items: tuple[list[CVLoDItem], list[CVLoDItem]]
+    shuffled_sub_weapons: dict[int, tuple[int, bool]]
 
     # Default values to possibly be updated in generate_early
     required_s2s: int = 0
@@ -86,6 +88,7 @@ class CVLoDWorld(World):
 
     def generate_early(self) -> None:
         self.goddess_statue_hint_items = ([], [])
+        self.shuffled_sub_weapons = {}
 
         # Generate the player's unique authentication number.
         self.auth = bytearray(self.random.getrandbits(8) for _ in range(16))
@@ -156,6 +159,7 @@ class CVLoDWorld(World):
         created_regions[0].add_exits(get_warp_entrances(self.active_warp_list))
 
         # Loop over every Region and create and add its Locations and Entrances.
+        sub_weapons_to_shuffle = {}
         for reg in created_regions:
 
             # Add the Entrances to the Region (if it has any).
@@ -167,7 +171,8 @@ class CVLoDWorld(World):
             reg_loc_names = ALL_CVLOD_REGIONS[reg.name]["locations"]
             if reg_loc_names is None:
                 continue
-            locations_with_ids, locked_pairs = get_locations_to_create(reg_loc_names, self.options)
+            locations_with_ids, locked_pairs, reg_sub_weapon_shuffle_locs = \
+                get_locations_to_create(reg_loc_names, self.options)
             reg.add_locations(locations_with_ids, CVLoDLocation)
 
             # Place locked Items on all of their associated Locations (if any Locations have any).
@@ -179,6 +184,16 @@ class CVLoDWorld(World):
                 # gen failures should the player set more bosses required than there are available in their world.
                 if locked_item == item_names.event_trophy:
                     self.total_available_bosses += 1
+
+            # Add the sub weapon shuffle IDs for the Region to the total mapping. Get the Pickup ID instead of the name.
+            for sub_id, sub_item_name in reg_sub_weapon_shuffle_locs.items():
+                sub_weapons_to_shuffle[sub_id] = ALL_CVLOD_ITEMS[sub_item_name].pickup_id
+
+        # Shuffle the values in the dict of sub-weapon locations that we are opting to shuffle.
+        sub_bytes = list(sub_weapons_to_shuffle.values())
+        self.random.shuffle(sub_bytes)
+        self.shuffled_sub_weapons = {loc_id: (sub_byte, True)
+                                     for loc_id, sub_byte in dict(zip(sub_weapons_to_shuffle, sub_bytes)).items()}
 
         # If there are fewer bosses total than the required number specified by the player, throw a warning and lower
         # the option value down to the determined available number.
@@ -283,9 +298,9 @@ class CVLoDWorld(World):
         # Randomize the fountain order.
         self.random.shuffle(slot_patch_info["fountain order"])
 
-        # If Sub-weapons are shuffled amongst themselves, update the location values with them.
+        # Update the location values with the shuffled sub-weapon values.
         if self.options.sub_weapon_shuffle == SubWeaponShuffle.option_own_pool:
-            slot_patch_info["location values"].update(shuffle_sub_weapons(self))
+            slot_patch_info["location values"].update(self.shuffled_sub_weapons)
 
         # Shop prices
         #if self.options.shop_prices:

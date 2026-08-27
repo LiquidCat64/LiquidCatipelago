@@ -236,12 +236,12 @@ warp_menu_opener = [
     0x9508FBA0,  # LHU   T0, 0xFBA0 (T0)
     0x24093010,  # ADDIU T1, R0, 0x3010
     0x15090013,  # BNE   T0, T1, [forward 0x13]
-    # Check our custom "can warp" byte for a non-zero value. If zero, don't warp.
+    # Check our custom "can warp" byte for a non-zero value. If not zero, don't warp.
     0x3C08801D,  # LUI   T0, 0x801D
     0x9109AA4B,  # LBU   T1, 0xAA4B (T0)
     0x15200010,  # BNEZ  T1,     [forward 0x10]
     # Check if a "Dracula 1 intro cutscene" flag is set. If it is, don't warp as we're likely in the escape sequence.
-    0x9109AA8F,  # LBU   T1, 0xAA4B (T0)
+    0x9109AA8F,  # LBU   T1, 0xAA8F (T0)
     0x312A0018,  # ANDI  T2, T1, 0x0018
     0x1540000D,  # BNEZ  T2,     [forward 0x0D]
     0x00000000,  # NOP
@@ -1021,17 +1021,18 @@ pickup_other_spawned_flag_checker = [
     0x158B000E,  # BNE   T4, T3, [forward 0x0E]
     0x8D0F0070,  # LW    T7, 0x0070 (T0)
     0x91EF0019,  # LBU   T7, 0x0019 (T7)
-    # ID of the other pickup actor is 0xB4 or greater? Disregard it, as it's a text spot.
-    0x29F800B4,  # SLTI  T8, T7, 0x00B4
+    # ID of the other pickup actor is 0x31 or greater? Disregard it, as it's a text spot.
+    # This should be automatically updated while patching as the number of pickups that the rando adds changes.
+    0x29F80031,  # SLTI  T8, T7, 0x0031
     0x1300000A,  # BEQZ  T8,     [forward 0x0A]
     # Check the interactable's entry in the interactable settings table. If it's a text spot, or if it has our custom
-    # "disregard flag checks" value set on its entry, disregard it.
+    # "disregard flag checks" value set on its entry (meaning it's a White Jewel, etc.), disregard it.
     0x25EFFFFF,  # ADDIU T7, T7, 0xFFFF
     0x000FC080,  # SLL   T8, T7, 2
     0x030FC021,  # ADDU  T8, T8, T7
     0x0018C080,  # SLL   T8, T8, 2
     0x030EC821,  # ADDU  T9, T8, T6
-    0x932F678A,  # LBU   T7, 0x678A (T9)
+    0x932F8012,  # LBU   T7, 0x8012 (T9)
     0x15E00003,  # BNEZ  T7,     [forward 0x03]
     0x00000000,  # NOP
     # Check if the pickup we're looking at has the same flag as the one we're trying to spawn.

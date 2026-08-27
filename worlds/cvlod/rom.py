@@ -16,7 +16,7 @@ from .data import patches, loc_names, item_names
 from .data.enums import Scenes, NIFiles, Objects, ObjectExecutionFlags, ActorSpawnFlags, Items, Pickups, PickupFlags, \
     DoorFlags, StageNames, TextColors
 from .data.misc_names import GAME_NAME
-from .items import CVLOD_PICKUP_INFO, HIGHER_SPAWNING_ITEMS, SUB_WEAPON_IDS
+from .items import CVLOD_PICKUP_INFO, HIGHER_SPAWNING_ITEMS, SUB_WEAPON_PICKUP_IDS
 from .locations import CVLOD_LOCATIONS_INFO, THREE_HIT_BREAKABLES_INFO, HIGHER_SPAWNING_PROBLEM_LOCATIONS, \
     NEW_VISIBLE_ITEM_COORDS
 from .patcher import CVLoDRomPatcher, CVLoDSceneTextEntry, CVLoDNormalActorEntry, CVLoDSpawnEntranceEntry, \
@@ -282,6 +282,13 @@ class CVLoDPatchExtensions(APPatchExtension):
         # ...as well as the text spots spawned when the Charnel House coffins are broken.
         patcher.scenes[Scenes.FOREST_OF_SILENCE].write_ovl_int16(
             0x7C58, patcher.scenes[Scenes.FOREST_OF_SILENCE].read_ovl_bytes(0x7C58, 2, return_as_int=True) +
+                    new_first_text_spot_id - OLD_FIRST_TEXT_SPOT_ID)
+        # ...and don't forget the spots spawned by the Castle Wall portcullises as well!
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].write_ovl_int16(
+            0x3128, patcher.scenes[Scenes.CASTLE_WALL_MAIN].read_ovl_bytes(0x3128, 2, return_as_int=True) +
+                    new_first_text_spot_id - OLD_FIRST_TEXT_SPOT_ID)
+        patcher.scenes[Scenes.CASTLE_WALL_MAIN].write_ovl_int16(
+            0x3148, patcher.scenes[Scenes.CASTLE_WALL_MAIN].read_ovl_bytes(0x3148, 2, return_as_int=True) +
                     new_first_text_spot_id - OLD_FIRST_TEXT_SPOT_ID)
         # Update the pointer to the Interactables table to instead point to the new table location.
         patcher.write_int16(0x901E2, (new_item_appearances_table_rdram_start >> 16) + 1)
@@ -595,6 +602,8 @@ class CVLoDPatchExtensions(APPatchExtension):
         # pickup's flag set on it.
         patcher.write_int32(0x1077CC, 0x080FF600)  # J 0x803FD800
         patcher.write_int32s(0xFFD800, patches.pickup_other_spawned_flag_checker)
+        # Auto-update the text spot check in it with the new first text spot ID.
+        patcher.write_int16(0xFFD800 + 0x3A, new_first_text_spot_id)
 
         # Everything related to dropping the previous sub-weapon
         if slot_patch_info["options"]["drop_previous_sub_weapon"]:
@@ -2464,9 +2473,10 @@ class CVLoDPatchExtensions(APPatchExtension):
             "An extremely sick feeling\n"
             "stops you touching it at the\n"
             "exact last second.🅰0/\n"
-            "You don't know why, but\n"
-            "vampirism feels a better\n"
-            "fate than whatever this is...🅰0/")  # The reference: Backrooms Partygoers and Level Fun
+            "You don't know what, but\n"
+            "something tells you no\n"
+            "Purifying amount may save\n"
+            "you from...whatever this is.🅰0/")  # The reference: Backrooms Partygoers and Level Fun
         patcher.scenes[Scenes.CASTLE_CENTER_FACTORY].scene_text[3]["text"] = (
             "\"Hazardous materials\n"
             " disposal.\"\n"
@@ -3478,7 +3488,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                         elif (slot_patch_info["options"]["permanent_powerups"] and
                               actor["var_c"] == Pickups.POWERUP) or \
                                 (slot_patch_info["options"]["permanent_sub_weapons"] and
-                                 actor["var_c"] in SUB_WEAPON_IDS):
+                                 actor["var_c"] in SUB_WEAPON_PICKUP_IDS):
                             actor["var_c"] = Pickups.RED_JEWEL_L
 
                     # If it's a regular 1HB, the flag to check AND the value to write the new Item over is in the 1HB
@@ -3502,7 +3512,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                         elif (slot_patch_info["options"]["permanent_powerups"] and
                               scene.one_hit_breakables[actor["var_c"]]["pickup_id"] == Pickups.POWERUP) or \
                                 (slot_patch_info["options"]["permanent_sub_weapons"] and
-                                 scene.one_hit_breakables[actor["var_c"]]["pickup_id"] in SUB_WEAPON_IDS):
+                                 scene.one_hit_breakables[actor["var_c"]]["pickup_id"] in SUB_WEAPON_PICKUP_IDS):
                             scene.one_hit_breakables[actor["var_c"]]["pickup_id"] = Pickups.RED_JEWEL_L
 
                     # If it's a special 1HB, then it's similar to the regular 1HB but in the special 1HB data instead.
@@ -3527,7 +3537,8 @@ class CVLoDPatchExtensions(APPatchExtension):
                         elif (slot_patch_info["options"]["permanent_powerups"] and
                               scene.one_hit_special_breakables[actor["var_c"]]["pickup_id"] == Pickups.POWERUP) or \
                                 (slot_patch_info["options"]["permanent_sub_weapons"] and
-                                 scene.one_hit_special_breakables[actor["var_c"]]["pickup_id"] in SUB_WEAPON_IDS):
+                                 scene.one_hit_special_breakables[actor["var_c"]]["pickup_id"]
+                                 in SUB_WEAPON_PICKUP_IDS):
                             scene.one_hit_special_breakables[actor["var_c"]]["pickup_id"] = Pickups.RED_JEWEL_L
 
                     # If it's a 3HB, get that 3HB's regular flag ID from its 3HB flag data to figure out which one it
@@ -3556,7 +3567,7 @@ class CVLoDPatchExtensions(APPatchExtension):
                             if slot_patch_info["options"]["permanent_sub_weapons"]:
                                 for three_hit_pickup_index in range(three_hit["pickup_count"]):
                                     if scene.three_hit_drop_ids[first_3hb_pickup_index +
-                                                                three_hit_pickup_index] in SUB_WEAPON_IDS:
+                                                                three_hit_pickup_index] in SUB_WEAPON_PICKUP_IDS:
                                         scene.three_hit_drop_ids[first_3hb_pickup_index
                                                                  + three_hit_pickup_index] = Pickups.RED_JEWEL_L
                             continue

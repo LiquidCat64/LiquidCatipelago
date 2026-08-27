@@ -4,8 +4,8 @@ from .data.enums import Pickups, StageNames, TextColors
 from .data.misc_names import GAME_NAME
 from .options import CVLoDOptions, Countdown, InvisibleItems, CastleCenterBranchingPaths, VillaBranchingPaths
 from .stages import CVLOD_STAGE_INFO
-from .locations import CVLOD_LOCATIONS_INFO, NPC_LOCATIONS, LOC_IDS_TO_INFO
-from .items import ALL_CVLOD_ITEMS, SUB_WEAPON_IDS, CVLOD_PICKUP_INFO, CVLoDItem
+from .locations import CVLOD_LOCATIONS_INFO, NPC_LOCATIONS
+from .items import ALL_CVLOD_ITEMS, SUB_WEAPON_EQUIP_IDS, CVLOD_PICKUP_INFO, CVLoDItem
 from .cvlod_text import cvlod_command_scrubber
 
 from typing import TYPE_CHECKING, Iterable
@@ -31,9 +31,6 @@ CV64_EXCLUSIVE_ITEMS: dict[str, int] = {
     "Clocktower Key2": Pickups.STOREROOM_KEY,
     "Clocktower Key3": Pickups.STOREROOM_KEY,
 }
-
-FOUNTAIN_LETTERS_TO_BYTES = {"O": b"\x01", "M": b"\x02", "H": b"\x03", "V": b"\x04"}
-CHARNEL_COFFIN_ACTORS_START = 0x777C94
 
 rom_looping_music_fade_ins = {
     0x10: None,
@@ -171,27 +168,6 @@ def randomize_lighting(world: "CVLoDWorld") -> dict[int, bytes]:
                 # The fourth entry in the lighting table affects the lighting on some item pickups; skip it
                 randomized_lighting[0x1091A0 + (entry * 28) + sub_entry] = bytes([world.random.randint(0, 255)])
     return randomized_lighting
-
-
-def shuffle_sub_weapons(world: "CVLoDWorld") -> {int: (int, bool)}:
-    """Shuffles the sub-weapons in their own Locations."""
-
-    # Get every active sub-weapon Location in the slot by looping over each active stage and checking all its
-    # Locations. Sub-weapon Locations will not normally have been created.
-    all_locs_dict = {CVLOD_LOCATIONS_INFO[loc].flag_id: ALL_CVLOD_ITEMS[CVLOD_LOCATIONS_INFO[loc].normal_item].pickup_id
-                     for stage, stage_info in CVLOD_STAGE_INFO.items() for reg, reg_info in stage_info.regions.items()
-                     for loc in reg_info["locations"] if loc in CVLOD_LOCATIONS_INFO}
-
-    # Filter all Locations that have a sub-weapon normally.
-    sub_weapon_dict = {}
-    for loc_id, item in all_locs_dict.items():
-        if LOC_IDS_TO_INFO[loc_id].normal_item in SUB_WEAPON_IDS:
-            sub_weapon_dict[loc_id] = item
-
-    # Shuffle the values in the sub-weapon dict and return it.
-    sub_bytes = list(sub_weapon_dict.values())
-    world.random.shuffle(sub_bytes)
-    return {loc_id: (sub_byte, True) for loc_id, sub_byte in dict(zip(sub_weapon_dict, sub_bytes)).items()}
 
 
 def randomize_music(world: "CVLoDWorld") -> dict[int, bytes]:
@@ -353,8 +329,19 @@ def get_location_write_values(world: "CVLoDWorld", active_locations: Iterable[Lo
             else:
                 item_byte = ALL_CVLOD_ITEMS[loc.item.name].pickup_id
         else:
-            # Make the Item one of the AP Items. Doesn't matter which one.
-            item_byte = Pickups.AP_FILLER
+            # Make the Item one of the AP Items. Which one it is should only matter for the Trap Item in practice,
+            # as that one plays the character's "hurt" sound when picked up.
+            if loc.item.classification & ItemClassification.progression and \
+                loc.item.classification & ItemClassification.useful:
+                item_byte = Pickups.AP_PROG_USEFUL  # Progression + Useful
+            elif loc.item.classification & ItemClassification.progression:
+                item_byte = Pickups.AP_PROG  # Progression
+            elif loc.item.classification & ItemClassification.useful:
+                item_byte = Pickups.AP_USEFUL  # Useful
+            elif loc.item.classification & ItemClassification.trap:
+                item_byte = Pickups.AP_TRAP  # Trap
+            else:
+                item_byte = Pickups.AP_FILLER  # Filler
 
         # Figure out the Item's appearance byte.
         # If the Item is a LoD Item, pick the Pickup ID of the Item its assuming (regardless of whether it's local).
@@ -544,7 +531,7 @@ def get_statue_hints(world: "CVLoDWorld") -> list[str]:
     Location is in no Location name groups, then it will only mention the name of the slot that has the Item."""
 
     # If there aren't at least two Nitros and Mandragoras, return an empty list. Don't bother creating any statue text.
-    if len(world.goddess_statue_hint_items[0]) > 2 or len(world.goddess_statue_hint_items[1]) > 2:
+    if len(world.goddess_statue_hint_items[0]) < 2 or len(world.goddess_statue_hint_items[1]) < 2:
         return []
 
     def create_hint_text(own_hint_item: CVLoDItem):
@@ -600,15 +587,15 @@ def get_start_inventory_data(player: int, options: CVLoDOptions, precollected_it
     # Loop over every Item in our pre-collected Items list.
     for item in precollected_items:
         # If the Item is a sub-weapon, set the current starting sub-weapon to this one.
-        if item.name in SUB_WEAPON_IDS:
+        if item.name in SUB_WEAPON_EQUIP_IDS:
             # If we are receiving another instance of the same sub-weapon as before, increment the starting weapon
             # level (if it's not already at the max).
-            if SUB_WEAPON_IDS[item.name] == start_inventory_data["sub weapon"]:
+            if SUB_WEAPON_EQUIP_IDS[item.name] == start_inventory_data["sub weapon"]:
                 if start_inventory_data["sub weapon level"] < 2:
                     start_inventory_data["sub weapon level"] += 1
             # Otherwise, set the level back to 0 and change the sub-weapon to the new one.
             else:
-                start_inventory_data["sub weapon"] = SUB_WEAPON_IDS[item.name]
+                start_inventory_data["sub weapon"] = SUB_WEAPON_EQUIP_IDS[item.name]
                 start_inventory_data["sub weapon level"] = 0
         # If the Item is a PowerUp, increment the starting PowerUp count (if it's not already at the max).
         elif item.name == item_names.powerup:

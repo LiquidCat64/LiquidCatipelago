@@ -35,7 +35,6 @@ class CVLoDRules:
             loc_names.villala_vincent: self.villa_can_meet_rosa,
             loc_names.villala_mary: self.villa_can_rescue_maze_kid,
             loc_names.event_villa_child: self.villa_can_open_hybrid_rose_door,
-            loc_names.event_cc_crystal: self.cc_can_explode_lower_wall,
             loc_names.event_cc_elevator: self.cc_can_activate_crystal,
             loc_names.event_dracula: self.ck_can_enter_dracs_chamber
         }
@@ -76,6 +75,7 @@ class CVLoDRules:
             # Castle Center
             ent_names.ccb_tc_to_door: self.cc_can_open_chamber_door,
             ent_names.ccb_tc_from_door: self.cc_can_open_chamber_door,
+            ent_names.ccb_wall: self.cc_can_explode_lower_wall,
             ent_names.ccll_upper_wall_in: self.cc_can_explode_upper_wall,
             ent_names.ccll_upper_wall_out: self.cc_can_explode_upper_wall,
             ent_names.ccbe_elevator: self.cc_can_activate_elevator,

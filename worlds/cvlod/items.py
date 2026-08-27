@@ -4,7 +4,7 @@ from BaseClasses import Item, ItemClassification
 from .data import item_names
 from .data.misc_names import GAME_NAME
 from .locations import CVLOD_LOCATIONS_INFO
-from .options import SpareKeys, CastleWallState, VillaState
+from .options import SpareKeys, CastleWallState, VillaState, ItemPoolDifficulty
 from .data.enums import Items, Pickups
 
 from enum import IntFlag
@@ -186,10 +186,13 @@ ALL_CVLOD_ITEMS = {
     #                                            ItemClassification.trap),
 }
 
-SUB_WEAPON_IDS: dict[str, int] = {item_names.sub_knife: 1,
-                                  item_names.sub_holy: 2,
-                                  item_names.sub_cross: 3,
-                                  item_names.sub_axe: 4}
+SUB_WEAPON_PICKUP_IDS = [Pickups.KNIFE, Pickups.HOLY_WATER, Pickups.CROSS, Pickups.AXE]
+
+
+SUB_WEAPON_EQUIP_IDS: dict[str, int] = {item_names.sub_knife: 1,
+                                       item_names.sub_holy: 2,
+                                       item_names.sub_cross: 3,
+                                       item_names.sub_axe: 4}
 
 POSSIBLE_EXTRA_FILLER = [item_names.jewel_rs, item_names.jewel_rl,
                          item_names.gold_500, item_names.gold_300, item_names.gold_100]
@@ -257,10 +260,17 @@ def get_item_pool(world: "CVLoDWorld") -> list[CVLoDItem]:
         if loc.address is None:
             continue
 
-        #if world.options.hard_item_pool and get_location_info(loc.name, "hard item") is not None:
-        #    item_to_add = get_location_info(loc.name, "hard item")
-        #else:
-        item_name = CVLOD_LOCATIONS_INFO[loc.name].normal_item
+        # If the Item Pool Difficulty is Hard and the Location has a Hard item defined for it, use the Hard item.
+        if world.options.item_pool_difficulty == ItemPoolDifficulty.option_hard and \
+                CVLOD_LOCATIONS_INFO[loc.name].hard_item:
+            item_name = CVLOD_LOCATIONS_INFO[loc.name].hard_item
+        # If the Item Pool Difficulty is Easy and the Location has an Easy item defined for it, use the Easy item.
+        elif world.options.item_pool_difficulty == ItemPoolDifficulty.option_easy and \
+                CVLOD_LOCATIONS_INFO[loc.name].easy_item:
+            item_name = CVLOD_LOCATIONS_INFO[loc.name].easy_item
+        # Otherwise, use the regular Item.
+        else:
+            item_name = CVLOD_LOCATIONS_INFO[loc.name].normal_item
 
         # If the Item is a Winch Lever, and the Castle Wall State is Reinhardt/Carrie's, add a PowerUp instead because
         # the Winch Lever is useless.
@@ -283,7 +293,7 @@ def get_item_pool(world: "CVLoDWorld") -> list[CVLoDItem]:
 
         # If the Item we're adding is a sub-weapon and Permanent Sub-weapons is on, add a random extra filler.
         # The Perma weapons will be added after the initial item pool is created.
-        if item_name in SUB_WEAPON_IDS and world.options.permanent_sub_weapons:
+        if item_name in SUB_WEAPON_PICKUP_IDS and world.options.permanent_sub_weapons:
             item_name = world.get_filler_item_name()
 
         # Create the Item object.

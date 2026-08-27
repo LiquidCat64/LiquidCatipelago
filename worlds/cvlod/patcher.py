@@ -5,8 +5,8 @@ import struct
 from typing import Collection, TypedDict, NotRequired
 from .data.enums import Scenes, Objects, ObjectExecutionFlags, ActorSpawnFlags, Items, Pickups, PickupFlags, \
     DoorFlags
-from .cvlod_text import cvlod_string_to_bytearray, cvlod_strings_to_pool, cvlod_bytes_to_string, \
-    CVLOD_STRING_END_CHARACTER, CVLOD_TEXT_POOL_END_CHARACTER
+from .cvlod_text import cvlod_strings_to_pool, cvlod_bytes_to_string, CVLOD_STRING_END_CHARACTER, \
+    CVLOD_TEXT_POOL_END_CHARACTER
 
 N64_RDRAM_START = 0x80000000
 DLIST_START = 0x06000000
@@ -221,6 +221,7 @@ class CVLoDScene:
     loading_zones: list[CVLoDLoadingZoneEntry]  # Loading zones in the scene.
     # Dict of the normal init/proxy/room actor lists in the scene mapped to which one it is.
     actor_lists: dict[str, list[CVLoDNormalActorEntry | CVLoDPillarActorEntry]]
+    actor_list_start_addrs: dict[str, int]
     highest_ids: dict[str, int]  # Highest IDs for specific data like 1-hit breakables, determined from the actors.
     start_addr: int | None  # Where in RDRAM the scene's data starts when loaded, if it's vanilla. For easier debugging.
     name: str | None  # The name of the scene. To more easily see which one it is while debugging.
@@ -242,6 +243,7 @@ class CVLoDScene:
         self.doors = []
         self.loading_zones = []
         self.actor_lists = {}
+        self.actor_list_start_addrs = {}
         self.space_available = {}
         self.three_hit_drops_orig_len = 0
         self.scene_text_orig_size = 0
@@ -374,18 +376,18 @@ class CVLoDRomPatcher:
             # and keeps them spawned regardless of both the player's proximity to them and what room they're in). Take
             # the third pointer in the scene's entry in the game's table of loaded scene actor list starts and determine
             # how far in it is relative to the start of the overlay in RDRAM.
-            init_actors_start = self.read_bytes(SCENE_ACTOR_PTRS_START + 8 + (scene_id * 0x10), 4,
-                                                return_as_int=True) - SCENE_OVERLAY_RDRAM_START
-            self.scenes[scene_id].actor_lists["init"] = self.extract_normal_scene_actor_list(scene_id,
-                                                                                             init_actors_start)
+            self.scenes[scene_id].actor_list_start_addrs["init"] = \
+                self.read_bytes(SCENE_ACTOR_PTRS_START + 8 + (scene_id * 0x10), 4, return_as_int=True)
+            self.scenes[scene_id].actor_lists["init"] = self.extract_normal_scene_actor_list(
+                scene_id, self.scenes[scene_id].actor_list_start_addrs["init"] - SCENE_OVERLAY_RDRAM_START)
 
             # Extract the scene's proxy actor list (the one that will spawn its things ONLY while the player is
             # within a certain proximity from them and is also not tied to any room). This is the second pointer in the
             # scene's entry in the above-mentioned table.
-            proxy_actors_start = self.read_bytes(SCENE_ACTOR_PTRS_START + 4 + (scene_id * 0x10),
-                                                 4, return_as_int=True) - SCENE_OVERLAY_RDRAM_START
-            self.scenes[scene_id].actor_lists["proxy"] = self.extract_normal_scene_actor_list(scene_id,
-                                                                                                 proxy_actors_start)
+            self.scenes[scene_id].actor_list_start_addrs["proxy"] = \
+                self.read_bytes(SCENE_ACTOR_PTRS_START + 4 + (scene_id * 0x10), 4, return_as_int=True)
+            self.scenes[scene_id].actor_lists["proxy"] = self.extract_normal_scene_actor_list(
+                scene_id, self.scenes[scene_id].actor_list_start_addrs["proxy"] - SCENE_OVERLAY_RDRAM_START)
 
             # Extract the scene's room actor lists (the ones that will spawn their things only while their designated
             # rooms are loaded and, much like the init list, don't care about the player's proximity). Not every scene
@@ -408,12 +410,14 @@ class CVLoDRomPatcher:
                 # difference between the scene decorations data start address and the room actor pointers start address;
                 # the latter structs always begin immediately after the former.
                 room_list_ptrs = [self.scenes[scene_id].read_ovl_bytes(room_actor_ptrs_start + (room_id * 4), 4,
-                                                                        return_as_int=True) - SCENE_OVERLAY_RDRAM_START
+                                                                        return_as_int=True)
                                   for room_id in range((scene_decorations_data_start - room_actor_ptrs_start) // 4)]
                 # Extract the actor lists at the pointers we just extracted.
                 for room_id in range(len(room_list_ptrs)):
+                    self.scenes[scene_id].actor_list_start_addrs[f"room {room_id}"] = room_list_ptrs[room_id]
                     self.scenes[scene_id].actor_lists[f"room {room_id}"] = \
-                        self.extract_normal_scene_actor_list(scene_id, room_list_ptrs[room_id])
+                        self.extract_normal_scene_actor_list(scene_id,
+                                                             room_list_ptrs[room_id] - SCENE_OVERLAY_RDRAM_START)
 
             # Extract the enemy pillar data if enemy pillar data exists (highest found enemy pillar ID is 0 or higher).
             # This should only occur for the Tower of Execution (Central Tower) map.
@@ -462,6 +466,7 @@ class CVLoDRomPatcher:
                 # Extract the map's enemy pillar actor list using the lowest and highest pillar actor list addresses
                 # that we gleamed from the regular enemy pillar data.
                 pillar_actor_list = []
+                self.scenes[scene_id].actor_list_start_addrs["pillars"] = lowest_pillar_actor_list_start
                 for pillar_actor_list_id in range((highest_pillar_actor_list_end - lowest_pillar_actor_list_start)
                                                   // ENEMY_PILLAR_ACTOR_ENTRY_LENGTH):
                     current_enemy_pillar_actor_start = lowest_pillar_actor_list_start - SCENE_OVERLAY_RDRAM_START + \
@@ -1161,18 +1166,13 @@ class CVLoDRomPatcher:
 
                 # Get the size of the original actor list by counting the number of entries in the list without entries
                 # deleted that have a defined start address. If the new actor data is the same size or smaller
-                # than it was before, write it back where it was originally (if we even have a list to begin with).
-                # The pointer will be zero by default if we are opting to have no list, whether because there is no list
-                # to begin with or we are opting to delete all entries.
-                new_actor_list_addr = 0x00000000
+                # than it was before, write it back where it was originally.
+                new_actor_list_addr = self.scenes[scene_id].actor_list_start_addrs[list_name]
                 if len(actor_list) <= len([orig_entry for orig_entry in self.scenes[scene_id].actor_lists[list_name]
                                            if "start_addr" in orig_entry]):
-                    if actor_list:
-                        self.scenes[scene_id].write_ovl_bytes(self.scenes[scene_id].actor_lists[
-                                                                  list_name][0]["start_addr"] \
-                                                              - SCENE_OVERLAY_RDRAM_START, list_data)
-                        # Leave the pointer to the list unchanged, it's in the same location.
-                        new_actor_list_addr = self.scenes[scene_id].actor_lists[list_name][0]["start_addr"]
+                    self.scenes[scene_id].write_ovl_bytes(
+                        self.scenes[scene_id].actor_list_start_addrs[list_name] \
+                        - SCENE_OVERLAY_RDRAM_START, list_data)
                 # If it's larger, however, put it on the end of the overlay.
                 else:
                     new_actor_list_addr = len(self.scenes[scene_id].overlay) + SCENE_OVERLAY_RDRAM_START
@@ -1198,7 +1198,7 @@ class CVLoDRomPatcher:
                 # Otherwise, if it's a 3HB pillar list, loop through every pillar data and update its actor pointer
                 # there.
                 else:
-                    old_actor_list_addr = self.scenes[scene_id].actor_lists["pillars"][0]["start_addr"]
+                    old_actor_list_addr = self.scenes[scene_id].actor_list_start_addrs["pillars"]
                     for pillar_data in self.scenes[scene_id].enemy_pillars:
                         pillar_data["actor_list_start"] = new_actor_list_addr + (pillar_data["actor_list_start"] -
                                                                                     old_actor_list_addr)

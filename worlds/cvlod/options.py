@@ -104,10 +104,14 @@ class SpareKeys(Choice):
     default = 0
 
 
-class HardItemPool(Toggle):
-    """Replaces some items in the item pool with less valuable ones, to make the item pool sort of resemble Hard Mode
-    in the PAL version."""
-    display_name = "Hard Item Pool"
+class ItemPoolDifficulty(Choice):
+    """Which difficulty in the gamme the item pool should be based on. Harder difficulty = lower value consumables, gold, and jewels in the pool.
+    A few sub-weapon locations will also become regular locations and their distribution will be different."""
+    display_name = "Item Pool Difficulty"
+    option_easy = 0
+    option_normal = 1
+    option_hard = 2
+    default = 1
 
 
 class TotalRandomWarps(Range):
@@ -177,7 +181,7 @@ class BossesRequired(Range):
     This will automatically adjust if there are fewer available bosses than the chosen number.
     Can be mixed with other conditions."""
     range_start = 0
-    range_end = 25
+    range_end = 26
     default = 0
     display_name = "Bosses Required"
 
@@ -219,7 +223,7 @@ class LizardLockerItems(Toggle):
 
 class BehemothDrops(Toggle):
     """Adds 7 items dropped by Behemoth's various body parts to the pool.
-    They will all drop regardless of whether you destroy them with Holy Water or not.
+    They will all drop regardless of whether you destroy them with Holy Water or not, and will still be there if you were to leave and come back without picking them up.
     This can make clearing Castle Center fully a bit more worthwhile."""
     display_name = "Behemoth Drops"
 
@@ -307,7 +311,7 @@ class RoomOfClocksBoss(Choice):
 
 
 class RenonFightCondition(Choice):
-    """Sets the condition on which the Renon fight will trigger."""
+    """Sets the condition on which the Renon fight at Castle Keep will trigger."""
     display_name = "Renon Fight Condition"
     option_never = 0
     option_spend_30k = 1
@@ -316,7 +320,7 @@ class RenonFightCondition(Choice):
 
 
 class VincentFightCondition(Choice):
-    """Sets the condition on which the vampire Vincent fight will trigger."""
+    """Sets the condition on which the vampire Vincent fight at Castle Keep will trigger."""
     display_name = "Vincent Fight Condition"
     option_never = 0
     option_wait_16_days = 1
@@ -570,7 +574,7 @@ class CVLoDOptions(PerGameCommonOptions):
     villa_maze_kid: VillaMazeKid
     sub_weapon_shuffle: SubWeaponShuffle
     spare_keys: SpareKeys
-    # hard_item_pool: HardItemPool
+    item_pool_difficulty: ItemPoolDifficulty
     big_crystal_required: BigCrystalRequired
     total_special2s: TotalSpecial2s
     percent_special2s_required: PercentSpecial2sRequired
@@ -621,18 +625,42 @@ class CVLoDOptions(PerGameCommonOptions):
 
 
 cvlod_option_groups = [
-    OptionGroup("Dracula's Conditions", [
+    OptionGroup("Goal Options", [
         BigCrystalRequired, BossesRequired, TotalSpecial2s, PercentSpecial2sRequired
     ]),
-    OptionGroup("Gameplay Tweaks", [
-        HardItemPool, ShopPrices, MinimumGoldPrice, MaximumGoldPrice, PostBehemothBoss, RoomOfClocksBoss,
-        RenonFightCondition, VincentFightCondition, CastleKeepEndingSequence, IncreaseItemLimit, NerfHealingItems,
-        LoadingZoneHeals, DetransformAtWill, InvisibleItems, DropPreviousSubWeapon, PermanentPowerUps,
-        PermanentSubWeapons, IceTrapPercentage, IceTrapAppearance, DisableTimeRestrictions, SkipGondolas,
-        SkipWaterwayBlocks, GoddessStatueHints, Countdown, BigToss, PantherDash, IncreaseShimmySpeed, FallGuard,
-        CVLoDDeathLink
+    OptionGroup("Warp Options", [
+        WarpLayout, WarpOrder, TotalRandomWarps, CastleKeepWarpPossible, Special1sPerWarp, TotalSpecial1s
+    ]),
+    OptionGroup("Stage Randomization", [
+        StageLayout, StageShuffle, ShuffledStartingStage, VillaBranchingPaths, CastleCenterBranchingPaths
+    ]),
+    OptionGroup("Stage State Options", [
+        CastleWallState, VillaState, VillaMazeKid, PostBehemothBoss, DuelTowerFinalBoss, RoomOfClocksBoss,
+        RenonFightCondition, VincentFightCondition, CastleKeepEndingSequence
+    ]),
+    OptionGroup("Location Pool Options", [
+        MultiHitBreakables, SubWeaponShuffle, EmptyBreakables, LizardLockerItems, BehemothDrops
+    ]),
+    OptionGroup("Item Pool Options", [
+        PermanentPowerUps, PermanentSubWeapons, ItemPoolDifficulty, SpareKeys
+    ]),
+    OptionGroup("Logic Options", [
+        CarrieLogic, HardLogic
+    ]),
+    # OptionGroup("Trap Options", [ TODO: Add traps and all their associated options.
+    #     IceTrapPercentage, IceTrapAppearance,
+    # ]),
+    #OptionGroup("Shop Options", [ TODO: Add Shopsanity and all its associated options.
+    #    ShopPrices, MinimumGoldPrice, MaximumGoldPrice
+    #]),
+    OptionGroup("Quality of Life", [
+        Countdown, InvisibleItems, IncreaseItemLimit, DropPreviousSubWeapon, DetransformAtWill, DisableTimeRestrictions,
+        SkipGondolas, SkipWaterwayBlocks, GoddessStatueHints, IncreaseShimmySpeed, FallGuard, # Panther Dash
+    ]),
+    OptionGroup("Difficulty Enhancements", [
+        NerfHealingItems, LoadingZoneHeals, CVLoDDeathLink, # BigToss
     ]),
     OptionGroup("Cosmetics", [
-        WindowColorR, WindowColorG, WindowColorB, WindowColorA, BackgroundMusic, MapLighting, RestoreCornellFallVoice
+        WindowColorR, WindowColorG, WindowColorB, WindowColorA, RestoreCornellFallVoice # BackgroundMusic, MapLighting
     ])
 ]
