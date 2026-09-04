@@ -3,7 +3,6 @@ from BaseClasses import ItemClassification, Location, Item
 #from .locations import CVHODIS_LOCATIONS_INFO, ALT_PICKUP_OFFSETS, GUARDIAN_GRINDER_LOCATIONS
 #from .items import ALL_CVHODIS_ITEMS
 #from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_DESCRIPTION, DESCRIPTION_DISPLAY_LINES
-from .rom import AP_HINT_TEXT_START
 from .data import item_names
 from .data.enums import PickupTypes
 #from .data.misc_names import GAME_NAME
@@ -227,10 +226,6 @@ def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Locati
 
                 # Create the hint text and add it to the end of the card strings list.
                 card_strings.append(f"{own_loc_group} contains {other_player_name}{own_hint_loc.item.name}.\t")
-
-        # Convert the hint to HoD's text format and map it to its ROM address.
-        #converted_strings[AP_HINT_TEXT_START + ((card_number - 1) * 0x100)] = bytes(cvhodis_string_to_bytearray(
-        #    card_hint, len_limit=LEN_LIMIT_DESCRIPTION, max_lines=DESCRIPTION_DISPLAY_LINES, textbox_advance=False))
 
     return card_strings
 
