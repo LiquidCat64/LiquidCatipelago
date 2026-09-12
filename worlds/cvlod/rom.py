@@ -2920,6 +2920,9 @@ class CVLoDPatchExtensions(APPatchExtension):
         # Make the Normal difficulty 3HB in the Abyss scene drop a fourth pickup.
         # The 3HB pickups array for the scene conveniently has an unused entry between the Normal and Hard drops.
         patcher.scenes[Scenes.CLOCK_TOWER_ABYSS].three_hit_breakables[1]["pickup_count"] = 4
+        # Slot 7 in the scene's array of 3HB pickups is normally empty. Put something in there by default so that it
+        # doesn't drop a glitchy text spot if 3HBs aren't randomized.
+        patcher.scenes[Scenes.CLOCK_TOWER_ABYSS].three_hit_drop_ids[7] = Pickups.RED_JEWEL_S
 
         # If the Castle Keep Ending Sequence is Cornell's, make the Ada actor and cutscene trigger before Door D
         # universal as a hint of sorts to what fight is in store for the player. Otherwise, delete it for everyone.

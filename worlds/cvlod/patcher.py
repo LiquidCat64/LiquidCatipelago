@@ -815,9 +815,7 @@ class CVLoDRomPatcher:
             # have their spawn data begin at, based on the data patterns suggesting the Dracula Ultimate map's spawn
             # data was copied for them as a placeholder.
             elif scene_id == Scenes.CASTLE_KEEP_VOID:
-                spawn_entrances_end = \
-                    self.read_bytes(SCENE_SPAWN_COORDS_PTRS_START + (Scenes.CASTLE_KEEP_VOID * 4) + SCENE_SPAWN_LENGTH,
-                                    4, return_as_int=True) - COMMON_SEGMENT_RDRAM_START + COMMON_SEGMENT_ROM_START
+                spawn_entrances_end = spawn_entrances_start + SCENE_SPAWN_LENGTH + 2
             # Otherwise, the spawn entrances end for the current map is where the entrances for the next map begin.
             else:
                 spawn_entrances_end = \
