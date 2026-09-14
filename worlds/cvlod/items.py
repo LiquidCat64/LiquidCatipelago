@@ -190,9 +190,9 @@ SUB_WEAPON_PICKUP_IDS = [Pickups.KNIFE, Pickups.HOLY_WATER, Pickups.CROSS, Picku
 
 
 SUB_WEAPON_EQUIP_IDS: dict[str, int] = {item_names.sub_knife: 1,
-                                       item_names.sub_holy: 2,
-                                       item_names.sub_cross: 3,
-                                       item_names.sub_axe: 4}
+                                        item_names.sub_holy: 2,
+                                        item_names.sub_cross: 3,
+                                        item_names.sub_axe: 4}
 
 POSSIBLE_EXTRA_FILLER = [item_names.jewel_rs, item_names.jewel_rl,
                          item_names.gold_500, item_names.gold_300, item_names.gold_100]
@@ -293,7 +293,7 @@ def get_item_pool(world: "CVLoDWorld") -> list[CVLoDItem]:
 
         # If the Item we're adding is a sub-weapon and Permanent Sub-weapons is on, add a random extra filler.
         # The Perma weapons will be added after the initial item pool is created.
-        if item_name in SUB_WEAPON_PICKUP_IDS and world.options.permanent_sub_weapons:
+        if ALL_CVLOD_ITEMS[item_name].pickup_id in SUB_WEAPON_PICKUP_IDS and world.options.permanent_sub_weapons:
             item_name = world.get_filler_item_name()
 
         # Create the Item object.
