@@ -1,6 +1,8 @@
 import struct
 
 from typing import Collection, TypedDict, NotRequired
+
+from .cvhodis_text import CVHODIS_STRING_END_CHARACTER, cvhodis_bytes_to_string, cvhodis_string_to_bytearray
 from .data.enums import Areas, Enemies, PickupTypes, ActorTypes, SpecialObjects
 
 GBA_ROM_START = 0x8000000
@@ -8,6 +10,10 @@ GBA_EWRAM_START = 0x2000000
 IPS_EOF = 0x454F46
 
 AREA_PTRS_PTR_START = 0x1EC8
+ORIG_TEXT_PTRS_START = 0x495500
+ORIG_NUMBER_OF_TEXTS = 0x2AB
+ORIG_STRINGS_START = 0xCA25C
+ORIG_STRINGS_END = 0xDAD94
 
 ACTOR_ENTRY_LENGTH = 0xC
 LOADING_ZONE_ENTRY_LENGTH = 0xC
@@ -68,6 +74,7 @@ class CVHoDisRoomState(CVHoDisRoomDataEntry):
 
 class CVHoDisRomPatcher:
     rom: bytearray
+    text: list[str]
     areas: list[list[list[CVHoDisRoomState]]]  # Room State lists within Room lists within Area lists.
     area_ptrs_start: int
     actor_lists: dict[int, list[CVHoDisActorEntry]]
@@ -103,7 +110,31 @@ class CVHoDisRomPatcher:
                     self.free_space_lookup[current_free_space_start] = len(self.rom[current_free_space_start:])
                     extra_data_start = 0
 
-        # Grab a hardcoded pointer to the start of the Area room pointer lists.
+        # Extract all the game's text.
+        self.text = []
+        for text_id in range(ORIG_NUMBER_OF_TEXTS):
+            text_ptr = self.read_bytes(ORIG_TEXT_PTRS_START + (text_id * 4), 4, "<I") & 0x1FFFFFF
+
+            # From the pointer to the start of the string, loop over every character in it.
+            current_text_char_start = text_ptr
+            raw_text_data = bytearray(0)
+            while True:
+                text_char = self.read_bytes(current_text_char_start, 2)
+
+                # Increment the current text character start for the next loop.
+                current_text_char_start += 2
+
+                # If we found the character indicating the end of the string, convert what we extracted of the current
+                # string now, save it, and exit the loop.
+                if text_char == CVHODIS_STRING_END_CHARACTER:
+                    self.text += [cvhodis_bytes_to_string(raw_text_data)]
+                    break
+
+                # Add the text character we read to what we extracted.
+                raw_text_data += text_char
+
+        # Grab a hardcoded pointer in the code to the start of the Area room pointer lists.
+        # The same one that DSVania Editor grabs, to be consistent with it.
         self.area_ptrs_start = self.read_bytes(AREA_PTRS_PTR_START, 4, "<I") & ~GBA_ROM_START
 
         # Read out the important common area data structs into a format that is easy to edit and then reinsert
@@ -533,6 +564,73 @@ class CVHoDisRomPatcher:
 
     def get_output_rom(self) -> bytes:
         """Reinserts all modified extracted data and returns the resulting ROM."""
+
+        # # # TEXT # # #
+        # Convert all the extracted text back to its original encoding and re-insert it.
+        curr_string_start = ORIG_STRINGS_START
+        new_text_ptrs = []
+        for text in self.text:
+            # Convert the string back to HoD's encoding exactly as it is. Don't wrap it or anything.
+            cvhodis_encoded_text = cvhodis_string_to_bytearray(text)
+
+            # Determine where in the ROM we should insert the string.
+            # Strings should be written back starting at where they start normally up until where they end normally,
+            # at which point we'll start inserting them using the find free space method.
+            if curr_string_start + len(cvhodis_encoded_text) <= ORIG_STRINGS_END:
+                new_text_ptrs.append(curr_string_start | GBA_ROM_START)
+                self.write_bytes(curr_string_start, cvhodis_encoded_text, update_free_space=False)
+                # Add the length of the encoded string to the current string start for the next iteration.
+                curr_string_start += len(cvhodis_encoded_text)
+            else:
+                new_text_ptrs.append(self.find_space_and_write_buffer(cvhodis_encoded_text) | GBA_ROM_START)
+
+        # If we have the same number of strings as the vanilla game or fewer, write the text pointers back at where they
+        # start in the ROM normally.
+        if len(self.text) <= ORIG_NUMBER_OF_TEXTS:
+            self.write_int32s(ORIG_TEXT_PTRS_START, new_text_ptrs)
+        # Otherwise, meaning we have more strings than vanilla, find a new free space for the pointer array and write
+        # it there instead.
+        else:
+            new_text_ptr_buffer = bytearray(0)
+            for text_ptr in new_text_ptrs:
+                new_text_ptr_buffer += struct.pack("<I", text_ptr)
+            new_text_ptrs_start = self.find_space_and_write_buffer(new_text_ptr_buffer) | GBA_ROM_START
+            # Update EVERY pointer to the start of the text pointers array in the ROM
+            # to be where the new text pointers array starts.
+            self.write_int32(0x339C, new_text_ptrs_start)
+            self.write_int32(0x3454, new_text_ptrs_start)
+            self.write_int32(0x3E3C, new_text_ptrs_start)
+            self.write_int32(0x70E4, new_text_ptrs_start)
+            self.write_int32(0x7158, new_text_ptrs_start)
+            self.write_int32(0x8498, new_text_ptrs_start)
+            self.write_int32(0x8AF0, new_text_ptrs_start)
+            self.write_int32(0x1B1FC, new_text_ptrs_start)
+            self.write_int32(0x1B56C, new_text_ptrs_start)
+            self.write_int32(0x1B5F0, new_text_ptrs_start)
+            self.write_int32(0x2784C, new_text_ptrs_start)
+            self.write_int32(0x2873C, new_text_ptrs_start)
+            self.write_int32(0x28798, new_text_ptrs_start)
+            self.write_int32(0x2889C, new_text_ptrs_start)
+            self.write_int32(0x289A8, new_text_ptrs_start)
+            self.write_int32(0x28A08, new_text_ptrs_start)
+            self.write_int32(0x28B58, new_text_ptrs_start)
+            self.write_int32(0x298D0, new_text_ptrs_start)
+            self.write_int32(0x29CF0, new_text_ptrs_start)
+            self.write_int32(0x29EF8, new_text_ptrs_start)
+            self.write_int32(0x2A548, new_text_ptrs_start)
+            self.write_int32(0x2A928, new_text_ptrs_start)
+            self.write_int32(0x2ACD0, new_text_ptrs_start)
+            self.write_int32(0x2B010, new_text_ptrs_start)
+            self.write_int32(0x2B078, new_text_ptrs_start)
+            self.write_int32(0x2B180, new_text_ptrs_start)
+            self.write_int32(0x2B464, new_text_ptrs_start)
+            self.write_int32(0x2B4D4, new_text_ptrs_start)
+            self.write_int32(0x2B564, new_text_ptrs_start)
+            self.write_int32(0x2B5D0, new_text_ptrs_start)
+            self.write_int32(0x2B928, new_text_ptrs_start)
+            self.write_int32(0x2BC58, new_text_ptrs_start)
+            self.write_int32(0x2BCF8, new_text_ptrs_start)
+            self.write_int32(0x2C72C, new_text_ptrs_start)
 
         # # # ACTOR LISTS # # #
         # Loop over all the actor lists and reinsert them in the ROM.

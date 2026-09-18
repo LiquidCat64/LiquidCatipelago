@@ -18,7 +18,7 @@ from .entrances import SHUFFLEABLE_TRANSITIONS, VERTICAL_GROUPS, VERTICAL_SHAFT_
 from .items import EQUIPMENT
 from .locations import CVHODIS_LOCATIONS_INFO
 from .options import CastleWarpCondition
-from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_DESCRIPTION, DESCRIPTION_DISPLAY_LINES
+from .cvhodis_text import LEN_LIMIT_MENU_DESCRIPTION, DESCRIPTION_DISPLAY_LINES, cvhodis_text_wrap
 from .patcher import CVHoDisRomPatcher, CVHoDisActorEntry, GBA_ROM_START
 from settings import get_settings
 
@@ -139,6 +139,9 @@ class CVHoDisPatchExtensions(APPatchExtension):
                                      patches.item_palette_defaulter_ldr,
                                      hook_addr=0x197D0, hook_register=1)
 
+        # Allow the corner name textboxes to extend all the way across the screen.
+        patcher.write_byte(0x889A, 0x26)
+
         # Fix the MK's Bracelet check cutscene softlocking you if it gives you something that isn't MK's Bracelet.
         # NOP the calls to the spawn pickup function so that the cutscene spawns nothing.
         # Useless fun fact: you can get two MK Bracelets in the vanilla game by only skipping the cutscene after the
@@ -197,12 +200,12 @@ class CVHoDisPatchExtensions(APPatchExtension):
         for offset, data in patches.extra_item_sprites.items():
             patcher.write_bytes(offset, data)
 
-        # Add the "Archipelago Item" text over one of the NULL enemy names.
-        patcher.write_bytes(0xD8FEC, cvhodis_string_to_bytearray("Filler Item\n\t"))
-        patcher.write_bytes(0xD900C, cvhodis_string_to_bytearray("Useful Item\n\t"))
-        patcher.write_bytes(0xD902C, cvhodis_string_to_bytearray("Trap Item\n\t"))
-        patcher.write_bytes(0xD904C, cvhodis_string_to_bytearray("Progression Item\n\t"))
-        patcher.write_bytes(0xD907C, cvhodis_string_to_bytearray("Prog-Useful Item\n\t"))
+        # Add the "Archipelago Item" text over the NULL enemy names.
+        patcher.text[0x230] = "Filler Item\n"
+        patcher.text[0x231] = "Useful Item\n"
+        patcher.text[0x232] = "Trap Item\n"
+        patcher.text[0x233] = "Progression Item\n"
+        patcher.text[0x234] = "Prog-Useful Item\n"
 
         # Move the Spell Book info table and expand it with an extra entry for our Progression item.
         new_book_info_start = patcher.find_space_and_write_buffer(
@@ -323,11 +326,11 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Prevent starting with JB's Bracelet already equipped.
         patcher.write_byte(0x6B76E, 0xFF)
 
+        # Insert the card text, wrapped to the game's INFORMATION description textbox specifications.
         for i in range(6):
-            patcher.write_int32(TEXT_POINTERS_START + ((0x107 + i) * 4),
-                                GBA_ROM_START | patcher.find_space_and_write_buffer(cvhodis_string_to_bytearray(
-                                    slot_patch_info["card text"][i], len_limit=LEN_LIMIT_DESCRIPTION,
-                                    max_lines=DESCRIPTION_DISPLAY_LINES, textbox_advance=False)))
+            patcher.text[0x107 + i] = cvhodis_text_wrap(slot_patch_info["card text"][i], large_font=True,
+                                                        textbox_len_limit=LEN_LIMIT_MENU_DESCRIPTION,
+                                                        max_lines=DESCRIPTION_DISPLAY_LINES, textbox_advance=False)
 
         # Add the ability to set your spawn location to the start while saving.
         patcher.generate_dynamic_asm(patches.start_spawn_setter_asm,
@@ -337,19 +340,15 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Change the "Quick Save now?" text to tell the player about the new start spawn setter.
         # NOTE: For some reason, this pause screen INFORMATION textbox doesn't support placing newlines manually, so we
         # have to rely on the game's own text auto-wrap feature to get text onto the second line.
-        patcher.write_int32(0x495E70, GBA_ROM_START | patcher.find_space_and_write_buffer(
-            cvhodis_string_to_bytearray("Hold R while the game saves to set your   "
-                                        "spawn location back to start.\t",
-                                        len_limit=LEN_LIMIT_DESCRIPTION, wrap=False,
-                                        max_lines=DESCRIPTION_DISPLAY_LINES, textbox_advance=False)
-        ))
+        patcher.text[0x25C] = ("Hold R while the game saves to set your   "
+                               "spawn location back to start.")
 
         # Make the game auto-save after the intro with Talos.
         patcher.generate_dynamic_asm(patches.post_intro_autosave_asm,
                                      patches.post_intro_autosave_ldr,
                                      hook_addr=0x9554C, hook_register=1)
         # Custom autosave message.
-        patcher.write_bytes(0xD91B4, cvhodis_string_to_bytearray("Autosaved\n\t"))
+        patcher.text[0x246] = "Autosaved\n"
 
         # Give the player their Start Inventory upon starting a new game.
         # Write the player start inventories and record where they start.
@@ -509,8 +508,8 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # rom_data.write_bytes(0xCAA16, cvhodis_string_to_bytearray("❖1/⬘0      Howdy ✨6/@everyone✨8/!\nHow do you do?\nNice\n✨12/weather✨8/\ntoday!\nPretty\ngr8\nm8\nI\nr8\n8/8\rHave a free🅰 trial of the critically acclamied MMORPG ✨13/Final Fantasy XIV✨8/,🅰\rincluding the entirety🅰\rof ✨14/A Realm Reborn✨8/ and the award-winning ✨4/Heavansward✨8/ ~and~ ✨4/Stormblood✨8/ expansions up to ✨10/level 70✨8/ with ✨13/no restrictions on playtime✨8/! REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE▶1/EEEEEEEE✨2/EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE✨6/EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE✨9/EEEEEEE✨15/EEEEE✨3/EEEEEEEEEEEEEEEEEEEE✨5/EEEEEEE✨7/EEEEEE✨13/EEEEEEEEEEEEEE!!!✨6/!!!✨7/!!!!✨6/1✨8/🅰\f❖2/⬘1/Okay, Juste, I get it! Are you done now? Take a \b22/ or something!🅰\f\t"))
 
         # Go anywhere
-        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084A9FFC
-        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
+        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084A9FFC
+        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
 
         return patcher.get_output_rom()
 

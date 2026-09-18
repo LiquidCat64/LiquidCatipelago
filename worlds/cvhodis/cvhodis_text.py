@@ -1,35 +1,43 @@
 import logging
+import struct
 
-CVHODIS_UNIQUE_WIDTH_CHARS = {" ": (0x40, 4), ",": (0x41, 4), ".": (0x42, 4), "•": (0x43, 5), ":": (0x44, 4),
-                              ";": (0x45, 4), "!": (0x46, 4), "I": (0x47, 4), "a": (0x48, 6), "b": (0x49, 6),
-                              "c": (0x4A, 6), "d": (0x4B, 6), "e": (0x4C, 6), "f": (0x4D, 6), "g": (0x4E, 6),
-                              "h": (0x4F, 6), "i": (0x50, 2), "j": (0x51, 6), "k": (0x52, 6), "l": (0x53, 3),
-                              "m": (0x54, 6), "n": (0x55, 6), "o": (0x56, 6), "p": (0x57, 6), "q": (0x58, 6),
-                              "r": (0x59, 5), "s": (0x5A, 6), "t": (0x5B, 5), "u": (0x5C, 6), "v": (0x5D, 6),
-                              "w": (0x5E, 6), "x": (0x5F, 6), "y": (0x60, 6), "z": (0x61, 6), "'": (0x62, 4),
-                              "(": (0x63, 4), ")": (0x64, 4), "$": (0x65, 6)}
-# [0] = CVHoD's in-game ID for the unique width version of that text character.
-# [1] = The width (in pixels) that the character contributes towards the line length.
+CVHODIS_VAR_WIDTH_CHARS = {" ": (0x40, 4, 4), ",": (0x41, 4, 4), ".": (0x42, 4, 4), "•": (0x43, 5, 4),
+                           ":": (0x44, 4, 4), ";": (0x45, 4, 4), "!": (0x46, 4, 3), "I": (0x47, 4, 3),
+                           "a": (0x48, 6, 5), "b": (0x49, 6, 5), "c": (0x4A, 6, 5), "d": (0x4B, 6, 5),
+                           "e": (0x4C, 6, 5), "f": (0x4D, 6, 4), "g": (0x4E, 6, 6), "h": (0x4F, 6, 5),
+                           "i": (0x50, 2, 2), "j": (0x51, 6, 5), "k": (0x52, 6, 5), "l": (0x53, 3, 3),
+                           "m": (0x54, 6, 6), "n": (0x55, 6, 5), "o": (0x56, 6, 5), "p": (0x57, 6, 5),
+                           "q": (0x58, 6, 5), "r": (0x59, 5, 5), "s": (0x5A, 6, 5), "t": (0x5B, 5, 4),
+                           "u": (0x5C, 6, 5), "v": (0x5D, 6, 6), "w": (0x5E, 6, 6), "x": (0x5F, 6, 6),
+                           "y": (0x60, 6, 5), "z": (0x61, 6, 5), "'": (0x62, 4, 3), "(": (0x63, 4, 3),
+                           ")": (0x64, 4, 3), "$": (0x65, 6, 6)}
+CVHODIS_VAR_WIDTH_CHARS_INV = {value[0]: key for key, value in CVHODIS_VAR_WIDTH_CHARS.items()}
+# [0] = CVHoD's in-game ID for the variable width version of that text character.
+# [1] = The width (in pixels) of the character in the large font (dialogue boxes, menu descriptions, etc.).
+# [2] = The width (in pixels) of the character in the small font (item/enemy name corner textboxes, menu names, etc.).
 
-CVHODIS_DEFAULT_CHAR = [0x48, 0x81]  # "?"
-CVHODIS_DEFAULT_CHAR_WIDTH = 6
+CVHODIS_DEFAULT_CHAR = "?"
+CVHODIS_DEFAULT_CHAR_BYTES = b"\x48\x81"
+CVHODIS_DEFAULT_CHAR_WIDTH = 6  # For both the large and small fonts.
 CVHODIS_WIDTH_CHAR_BYTE = 0x85
 CVHODIS_HIGHEST_SHIFT_JIS_CHAR = 0x84BE
+CVHODIS_STRING_END_CHARACTER = b"\x0A\xF0"
 
-CVHODIS_COMMAND_CHARS = {"\b": 0x01,  # Insert a separate string here. Param = ID of string to insert. WARNING: The text
+CVHODIS_COMMAND_CHARS = {"\b": 0x01,  # Insert a separate string here. Arg = ID of string to insert. WARNING: The text
                                       # wrap stuff here does NOT account for strings inserted using this!
-                         "▶":  0x02,  # Play cutscene-specific action. Param = what to play (1 = next action).
-                         "❖":  0x03,  # Open a textbox. Param = ID of portrait to insert on the left side.
+                         "▶":  0x02,  # Play cutscene-specific action. Arg = what to play (1 = next action).
+                         "❖":  0x03,  # Open a textbox. Arg = ID of portrait to insert on the left side.
                          "\f": 0x04,  # Close the current textbox.
                          "🅰":  0x05,  # Make the player press A to advance past here.
                          "\n": 0x06,  # Insert newline.
-                         "⬘":  0x07,  # Add name string at the top of the textbox. Param = ID of string to add.
-                         "✨":  0x08,  # Change text color. Param = Index in the BGP F palette to change the color to.
+                         "⬘":  0x07,  # Add name string at the top of the textbox. Arg = ID of string to add.
+                         "✨":  0x08,  # Change text color. Arg = Index in the BGP F palette to change the color to.
                          "\r": 0x09,  # Clear the current textbox and start drawing the next set of characters.
                          "\t": 0x0A}  # Terminate the entire string.
+CVHODIS_COMMAND_CHARS_INV = {value: key for key, value in CVHODIS_COMMAND_CHARS.items()}
 
-PARAM_CHARS = {"\b", "▶", "❖", "⬘", "✨"}
-PARAM_END_CHAR = "/"
+ARG_CHARS = {"\b", "▶", "❖", "⬘", "✨"}
+ARG_END_CHAR = "/"
 # Example of a control character that changes the text color to yellow: "✨4/"
 
 # Half-width to ｆｕｌｌ－ｗｉｄｔｈ Katakana mappings as well as a few other weird UTF-8 characters likely to be used that
@@ -45,8 +53,9 @@ OTHER_SHIFT_JIS_ENCODINGS = {
     "ﾄ": "ト", "ﾅ": "ナ", "ﾆ": "ニ", "ﾇ": "ヌ", "ﾈ": "ネ", "ﾉ": "ノ", "ﾊ": "ハ", "ﾋ": "ヒ", "ﾌ": "フ", "ﾍ": "ヘ", "ﾎ": "ホ",
     "ﾏ": "マ", "ﾐ": "ミ", "ﾑ": "ム", "ﾒ": "メ", "ﾓ": "モ", "ﾔ": "ヤ", "ﾕ": "ユ", "ﾖ": "ヨ", "ﾗ": "ラ", "ﾘ": "リ", "ﾙ": "ル",
     "ﾚ": "レ", "ﾛ": "ロ", "ﾜ": "ワ", "ﾝ": "ン", "ﾞ": "゛", "ﾟ": "゜"}
+OTHER_SHIFT_JIS_ENCODINGS_INV = {value: key for key, value in OTHER_SHIFT_JIS_ENCODINGS.items()}
 
-NEWLINE_CHARS = {"\n", "\r", "\f"}
+LINE_RESET_CHARS = {"\n", "\r", "\f"}
 
 CVHODIS_COMMAND_CHAR_BYTE = 0xF0
 
@@ -54,16 +63,22 @@ UNICODE_ASCII_START = 0x21
 UNICODE_ASCII_END = 0x7E
 UNICODE_ASCII_FULL_AND_HALF_DIFFERENCE = 0xFEE0
 
+# Large font length limits
 LEN_LIMIT_EVENT = 240
 LEN_LIMIT_DIALOGUE = 168
-LEN_LIMIT_DESCRIPTION = 206
+LEN_LIMIT_MENU_DESCRIPTION = 206
+# Small font length limits
+LEN_LIMIT_MENU_NAME = 80
+LEN_LIMIT_CORNER_TEXTBOX_ORIG = 140
+LEN_LIMIT_CORNER_TEXTBOX_CUSTOM = 208
 
 DIALOGUE_DISPLAY_LINES = 3
 DESCRIPTION_DISPLAY_LINES = 2
 
-def cvhodis_string_to_bytearray(cvhodis_text: str, len_limit: int = LEN_LIMIT_DIALOGUE,
-                                max_lines: int = DIALOGUE_DISPLAY_LINES, wrap: bool = True,
-                                textbox_advance: bool = True, add_start_zeros = True) -> bytearray:
+def cvhodis_string_to_bytearray(cvhodis_text: str, large_font: bool = True, len_limit: int = LEN_LIMIT_DIALOGUE,
+                                max_lines: int = DIALOGUE_DISPLAY_LINES, wrap: bool = False,
+                                textbox_advance: bool = False, add_start_zeros = True,
+                                add_end_char: bool = True) -> bytearray:
     """
     Converts a string into a bytearray following Castlevania: Harmony of Dissonance's text format.
 
@@ -77,20 +92,20 @@ def cvhodis_string_to_bytearray(cvhodis_text: str, len_limit: int = LEN_LIMIT_DI
     Shift JIS encodings do exist in-game for every character, but those variants all use the max width of 6 pixels
     across. Command characters all exist in the 0xF0xx range. Single-byte half-width characters are NOT supported by the
     game at all, so any half-width Katakana and Latin characters MUST be converted to ｆｕｌｌ－ｗｉｄｔｈ to then encode
-    properly (if they don't already have a unique width character in-game that we can just convert directly to).
+    properly (if they don't already have a variable width character in-game that we can just convert directly to).
 
     I spent way too long going down the rabbit hole of Japanese character encodings just to be able to write all this,
     if you haven't been able to tell already...
     """
     # Wrap the text if we are opting to do so.
     if wrap:
-        refined_text = cvhodis_text_wrap(cvhodis_text, len_limit, max_lines, textbox_advance)
+        refined_text = cvhodis_text_wrap(cvhodis_text, large_font, len_limit, max_lines, textbox_advance)
     else:
         refined_text = cvhodis_text
 
     text_bytes = bytearray(0)
-    ctrl_param_mode = False
-    param_number = "0"
+    ctrl_arg_mode = False
+    arg_number = "0"
 
     # Add the start 0000 bytes if we are opting to do so.
     if add_start_zeros:
@@ -98,35 +113,35 @@ def cvhodis_string_to_bytearray(cvhodis_text: str, len_limit: int = LEN_LIMIT_DI
 
     # Convert the string into CVHoD's text string format.
     for i, char in enumerate(refined_text):
-        # If ctrl param mode is on, then we should currently be iterating through a command character's parameter
-        # enclosed in parentheses. Handle things appropriately.
-        if ctrl_param_mode:
-            # If the current character is a number digit, add it to the param number string.
+        # If ctrl arg mode is on, then we should currently be iterating through a command character's argument number.
+        # Handle things appropriately.
+        if ctrl_arg_mode:
+            # If the current character is a number digit, add it to the arg number string.
             if refined_text[i].isnumeric():
-                param_number += refined_text[i]
+                arg_number += refined_text[i]
                 continue
-            # If the current character is the param end character, and number digits were added to the param number
-            # string, convert the param number string into a 2-byte number, add it to the text bytearray, disable ctrl
-            # param mode, and reset the param number string.
-            if refined_text[i] == PARAM_END_CHAR and int(param_number) <= 0xFFFF:
-                text_bytes.extend(int.to_bytes(int(param_number), 2, "little"))
-                ctrl_param_mode = False
-                param_number = "0"
+            # If the current character is the arg end character, and number digits were added to the arg number
+            # string, convert the arg number string into a 2-byte number, add it to the text bytearray, disable ctrl
+            # arg mode, and reset the arg number string.
+            if refined_text[i] == ARG_END_CHAR and int(arg_number) <= 0xFFFF:
+                text_bytes.extend(int.to_bytes(int(arg_number), 2, "little"))
+                ctrl_arg_mode = False
+                arg_number = "0"
                 continue
-            # If we made it here, then there is something off about the parameter. Make the parameter 0000 by default,
-            # throw an error explaining what went wrong, disable ctrl param mode, and reset the param number string.
+            # If we made it here, then there is something off about the argument. Make the argument 0000 by default,
+            # throw an error explaining what went wrong, disable ctrl arg mode, and reset the arg number string.
             text_bytes.extend([0x00, 0x00])
-            # If the param number is higher than 0xFFFF, throw an error explaining that it can't be that high.
-            if int(param_number) > 0xFFFF:
-                logging.error(f"{param_number} is too high to be a CVHoDis control character parameter. "
+            # If the arg number is higher than 0xFFFF, throw an error explaining that it can't be that high.
+            if int(arg_number) > 0xFFFF:
+                logging.error(f"{arg_number} is too high to be a CVHoDis control character argument. "
                               f"It needs to be 65535 or less.")
-            # Otherwise, throw an error explaining that the parameter was incorrectly formatted with characters other
-            # than number digits or the param end character.
+            # Otherwise, throw an error explaining that the argument was incorrectly formatted with characters other
+            # than number digits or the arg end character.
             else:
-                logging.error("CVHoDis control character parameter is incorrectly formatted. It must be numbers "
-                              "followed by a \"/\".")
-            ctrl_param_mode = False
-            param_number = "0"
+                logging.error('CVHoDis control character argument is incorrectly formatted. It must be numbers '
+                              'followed by a "/".')
+            ctrl_arg_mode = False
+            arg_number = "0"
             continue
 
 
@@ -134,15 +149,15 @@ def cvhodis_string_to_bytearray(cvhodis_text: str, len_limit: int = LEN_LIMIT_DI
         # dict plus the byte signifying it's a command character.
         if char in CVHODIS_COMMAND_CHARS:
             text_bytes.extend([CVHODIS_COMMAND_CHARS[char], CVHODIS_COMMAND_CHAR_BYTE])
-            # If it's a command character followed by a parameter, turn on ctrl param mode for the next few loops.
-            if char in PARAM_CHARS:
-                ctrl_param_mode = True
+            # If it's a command character followed by a argument, turn on ctrl arg mode for the next few loops.
+            if char in ARG_CHARS:
+                ctrl_arg_mode = True
             continue
 
-        # If the current character is a unique width character, append that character's mapping in the unique width
-        # characters plus the byte signifying it's a unique width character.
-        if char in CVHODIS_UNIQUE_WIDTH_CHARS:
-            text_bytes.extend([CVHODIS_UNIQUE_WIDTH_CHARS[char][0], CVHODIS_WIDTH_CHAR_BYTE])
+        # If the current character is a variable width character, append that character's mapping in the variable width
+        # characters plus the byte signifying it's a variable width character.
+        if char in CVHODIS_VAR_WIDTH_CHARS:
+            text_bytes.extend([CVHODIS_VAR_WIDTH_CHARS[char][0], CVHODIS_WIDTH_CHAR_BYTE])
             continue
 
         # If the character didn't have a mapping in either dict, append its standard Shift JIS double byte encoding.
@@ -151,7 +166,7 @@ def cvhodis_string_to_bytearray(cvhodis_text: str, len_limit: int = LEN_LIMIT_DI
         char_to_encode = char
         if UNICODE_ASCII_START <= ord(char) <= UNICODE_ASCII_END:
             # NOTE: This adding method doesn't work for the ASCII space specifically, but it doesn't matter because the
-            # space is already accounted for by the unique width characters' handling.
+            # space should be caught and handled by the variable width characters' handling.
             char_to_encode = chr(UNICODE_ASCII_FULL_AND_HALF_DIFFERENCE + ord(char))
 
         # Check to see if the character has a mapping in the other Shift-JIS encodings dict. If it does, use the
@@ -165,18 +180,109 @@ def cvhodis_string_to_bytearray(cvhodis_text: str, len_limit: int = LEN_LIMIT_DI
             # that didn't get caught in any of the above checks, then consider it an unsupported character that we will
             # replace with the default character. Otherwise, go ahead and append it.
             if 0xFF >= int.from_bytes(jis_char, "big") > CVHODIS_HIGHEST_SHIFT_JIS_CHAR:
-                text_bytes.extend(CVHODIS_DEFAULT_CHAR)
+                text_bytes.extend(CVHODIS_DEFAULT_CHAR_BYTES)
             else:
                 text_bytes.extend([jis_char[1], jis_char[0]])
         # If it didn't encode at all, then it's (probably) an unsupported character that we will replace with the
         # default character.
         except UnicodeEncodeError:
-            text_bytes.extend(CVHODIS_DEFAULT_CHAR)
+            text_bytes.extend(CVHODIS_DEFAULT_CHAR_BYTES)
+
+    # Return the final in-game bytes string with or without the end character depending on whether we opted to add it,
+    # plus an additional 0000 to be accurate to the game.
+    if add_end_char:
+        text_bytes.extend(CVHODIS_STRING_END_CHARACTER + b'\x00\x00')
+        # Pad the text data to be 4-aligned.
+        if len(text_bytes) % 4:
+            text_bytes += b'\x00\x00'
 
     return text_bytes
 
 
-def cvhodis_text_wrap(cvhodis_text: str, textbox_len_limit: int, max_lines: int, textbox_advance: bool) -> str:
+def cvhodis_bytes_to_string(cvhodis_str_bytes: bytes) -> str:
+    """Converts a given bytes sequence following HoD's string format (probably one extracted from the game itself)
+    into a UTF-8 string Python can use."""
+    converted_str = ""
+    ctrl_arg_mode = False
+
+    for char_start in range(0, len(cvhodis_str_bytes), 2):
+        # Check the remaining string length to see if there are at least two bytes ahead. If there's not, meaning
+        # there's only one, then throw an error and break the loop; the input string bytes should REALLY be an even
+        # length!
+        if len(cvhodis_str_bytes[char_start:]) % 2:
+            logging.error(f"The following CVHoDis string bytes are of an odd length when they should be even: "
+                          f"{cvhodis_str_bytes}")
+            break
+
+        char_bytes = cvhodis_str_bytes[char_start: char_start + 2]
+
+        # If the character is 0000, and we are not in ctrl arg mode, skip processing it.
+        # This is almost certainly the start-of-string character.
+        if char_bytes == b'\00\00' and not ctrl_arg_mode:
+            continue
+
+        # If ctrl arg mode is on, then we are currently looking at the argument number value for a command character.
+        # In which case, add the arg number followed by the arg end character.
+        if ctrl_arg_mode:
+            converted_str += f"{struct.unpack('<H', char_bytes)[0]}{ARG_END_CHAR}"
+            # Turn off ctrl arg mode so we will go back to checking for regular characters on the next iteration.
+            ctrl_arg_mode = False
+            continue
+
+        # If the character is the end character, return early because we've reached the end of the string.
+        if char_bytes == CVHODIS_STRING_END_CHARACTER:
+            return converted_str
+
+        # Check if the lower byte is the command character byte and that the upper byte is in the command chars dict.
+        # If both are true, get the Python string character that we are using for that command character.
+        if char_bytes[0] in CVHODIS_COMMAND_CHARS_INV and char_bytes[1] == CVHODIS_COMMAND_CHAR_BYTE:
+            command_char = CVHODIS_COMMAND_CHARS_INV[char_bytes[0]]
+
+            # If the command character has an argument, turn on ctrl arg mode for the next iteration.
+            if command_char in ARG_CHARS:
+                ctrl_arg_mode = True
+
+            converted_str += command_char
+            continue
+
+        # If we made it all the way here, then it's not a command character.
+        # In which case, see if we can determine which standard character it is.
+
+        # If the high byte is the value indicating it's a variable width character, see if it has a mapping in the
+        # inverted variable width characters dict. And if it does, take that mapping.
+        if char_bytes[1] == CVHODIS_WIDTH_CHAR_BYTE:
+            if char_bytes[0] in CVHODIS_VAR_WIDTH_CHARS_INV:
+                converted_str += CVHODIS_VAR_WIDTH_CHARS_INV[char_bytes[0]]
+            # If it did not have a mapping in the inverted variable widths dict, use the default character.
+            else:
+                converted_str += CVHODIS_DEFAULT_CHAR
+            continue
+
+        # If the high byte was NOT the variable width value, then try decoding it as a regular Shift-JIS character.
+        try:
+            decoded_char = char_bytes[::-1].decode("Shift-JIS")
+            # Get the character's half-width form, because we decoded from double-byte Shift-JIS.
+            # If it's in the inverted dictionary of misc. non-ASCII full width characters, use the mapping from that.
+            if decoded_char in OTHER_SHIFT_JIS_ENCODINGS_INV:
+                converted_str += OTHER_SHIFT_JIS_ENCODINGS_INV[decoded_char]
+            # If not, check if it's ASCII full width. If it is, subtract the Unicode full and half width ASCII
+            # difference from the chracter's ord value to get the ASCII half width version and append that.
+            elif UNICODE_ASCII_START <= ord(decoded_char) - UNICODE_ASCII_FULL_AND_HALF_DIFFERENCE <= UNICODE_ASCII_END:
+                converted_str += chr(ord(decoded_char) - UNICODE_ASCII_FULL_AND_HALF_DIFFERENCE)
+            # Otherwise, meaning it wasn't an ASCII full width character, append the character as-is.
+            else:
+                converted_str += decoded_char
+
+        # If it failed to decode, consider it a completely unknown character that we will use the default character for.
+        except UnicodeDecodeError:
+            converted_str += CVHODIS_DEFAULT_CHAR
+
+    # Return the final UTF-8 string.
+    return converted_str
+
+
+def cvhodis_text_wrap(cvhodis_text: str, large_font: bool, textbox_len_limit: int, max_lines: int,
+                      textbox_advance: bool) -> str:
     """Rebuilds a string with some of its spaces replaced with newlines to ensure the text wraps properly in an in-game
     textbox of a given length."""
     num_lines = 1
@@ -185,37 +291,42 @@ def cvhodis_text_wrap(cvhodis_text: str, textbox_len_limit: int, max_lines: int,
     current_word_len = 0
     last_space_index = -1
     prev_character = ""
-    ctrl_param_mode = False
+    ctrl_arg_mode = False
 
     for i in range(len(cvhodis_text)):
         # Reset the newline insertion index to -1 to indicate no newline placement was decided for this loop (yet).
         newline_insertion_index = -1
 
-        # If we are in ctrl param mode, add the character and continue to the next loop.
-        if ctrl_param_mode:
+        # If we are in ctrl arg mode, add the character and continue to the next loop.
+        if ctrl_arg_mode:
             new_text += cvhodis_text[i]
-            # If the character is the param end character, turn off ctrl param mode for the subsequent loops because
-            # we've reached the end of the parameter.
-            if cvhodis_text[i] == PARAM_END_CHAR:
-                ctrl_param_mode = False
+            # If the character is the arg end character, turn off ctrl arg mode for the subsequent loops because
+            # we've reached the end of the argument.
+            if cvhodis_text[i] == ARG_END_CHAR:
+                ctrl_arg_mode = False
             continue
 
-        # Determine how much width to increase the word and line length counters by. If the character is in the unique
+        # Determine how much width to increase the word and line length counters by. If the character is in the variable
         # widths dict, use its defined width from that.
-        if cvhodis_text[i] in CVHODIS_UNIQUE_WIDTH_CHARS:
-            width_to_add = CVHODIS_UNIQUE_WIDTH_CHARS[cvhodis_text[i]][1]
-        # If it's not in the unique widths dict, then check to see if it's in the command characters' dict. If it isn't,
-        # it's a standard character with the default width.
+        if cvhodis_text[i] in CVHODIS_VAR_WIDTH_CHARS:
+            # If we're dealing with the large font, use the large font width.
+            if large_font:
+                width_to_add = CVHODIS_VAR_WIDTH_CHARS[cvhodis_text[i]][1]
+            # Otherwise, meaning we're dealing with the small font, use the small font width.
+            else:
+                width_to_add = CVHODIS_VAR_WIDTH_CHARS[cvhodis_text[i]][2]
+        # If it's not in the variable widths dict, then check to see if it's in the command characters' dict. If it
+        # isn't, it's a standard character with the default width. The default char width is the same for both fonts.
         elif cvhodis_text[i] not in CVHODIS_COMMAND_CHARS:
             width_to_add = CVHODIS_DEFAULT_CHAR_WIDTH
         # If it was, however, then it's a special command character with no width at all. Neither the current line nor
         # word length counters should increase on this loop.
         else:
             width_to_add = 0
-            # Check to see if it's one of the command characters followed by a param. If it is, turn on ctrl param mode
-            # for the next few loops until we have made it past the param.
-            if cvhodis_text[i] in PARAM_CHARS:
-                ctrl_param_mode = True
+            # Check to see if it's one of the command characters followed by a arg. If it is, turn on ctrl arg mode
+            # for the next few loops until we have made it past the arg.
+            if cvhodis_text[i] in ARG_CHARS:
+                ctrl_arg_mode = True
 
         # If the character we are adding is a space that would put us over the line limit, and the previously-placed
         # character was also a space, don't change anything on this loop and continue to the next one.
@@ -238,7 +349,7 @@ def cvhodis_text_wrap(cvhodis_text: str, textbox_len_limit: int, max_lines: int,
 
         # If the character we placed is a manually-placeable newline character, record its insertion index now and set
         # the current word and line lengths to the chosen width.
-        if cvhodis_text[i] in NEWLINE_CHARS:
+        if cvhodis_text[i] in LINE_RESET_CHARS:
             newline_insertion_index = len(new_text) - 1
             current_word_len = width_to_add
             current_line_len = width_to_add
