@@ -1,4 +1,4 @@
-# Castlevania: Circle of the Moon Setup Guide
+# Castlevania: Harmony of Dissonance Setup Guide
 
 ## Required Software
 
