@@ -1,7 +1,7 @@
 from BaseClasses import ItemClassification, Location, Item
 #from .options import Countdown
 #from .locations import CVHODIS_LOCATIONS_INFO, ALT_PICKUP_OFFSETS, GUARDIAN_GRINDER_LOCATIONS
-#from .items import ALL_CVHODIS_ITEMS
+from .items import FURNITURE, SPELLBOOKS, RELICS
 #from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_DESCRIPTION, DESCRIPTION_DISPLAY_LINES
 from .data import item_names
 from .data.enums import PickupTypes
@@ -12,11 +12,11 @@ from typing import TYPE_CHECKING, Iterable, TypedDict, NamedTuple
 if TYPE_CHECKING:
     from . import CVHoDisWorld
 
-FURN_AP_FILLER_INDEX = 0x1F
-FURN_AP_USEFUL_INDEX = 0x20
-FURN_AP_TRAP_INDEX = 0x21
-BOOK_AP_PROGRESSION_INDEX = 0x05
-RELIC_AP_PROG_USEFUL_INDEX = 0x0C
+FURN_AP_FILLER_INDEX = len(FURNITURE)
+FURN_AP_USEFUL_INDEX = len(FURNITURE) + 1
+FURN_AP_TRAP_INDEX = len(FURNITURE) + 2
+BOOK_AP_PROGRESSION_INDEX = len(SPELLBOOKS)
+RELIC_AP_PROG_USEFUL_INDEX = len(RELICS)
 
 MAX_STAT_VALUE = 999
 MAX_ITEMS_VALUE = 99
@@ -161,8 +161,8 @@ def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Locati
     if not world.options.hint_card_hints:
         return []
 
-    # Get out all the world's selectable Progression Items
-    selectable_prog_items = world.possible_hint_card_items.copy()
+    # Get out all the world's selectable Progression Items that have Locations post-generation.
+    selectable_prog_items = [item for item in world.possible_hint_card_items if item.location]
 
     # Get out all the Locations with Progression Items on them that are also not Skip Balancing without Useful.
     selectable_prog_locs = [loc for loc in active_locations if loc.advancement and
@@ -174,31 +174,38 @@ def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Locati
     for card_number in range(1, 7):
         # If the card number is odd, generate a hint for one of this world's Items.
         if card_number % 2:
-            # Grab a random non-furniture progression Item that we created and saved earlier.
-            own_hint_item = selectable_prog_items.pop(world.random.randrange(len(selectable_prog_items)))
-
-            # If the drawn Item is local in the player's own world, use a blank player name.
-            if own_hint_item.location.player == world.player:
-                other_player_name = ""
-            # Otherwise, get the name of that other player.
+            # If we're out of viable placed Items (which can happen if we go crazy with, say, start_inventory_from_pool
+            # or item links), make the card hint a message telling the player how few Items.
+            if not selectable_prog_items:
+                card_strings.append("This world has almost, if not nothing to find for it...")
+            # Otherwise, select an Item and continue on as normal.
             else:
-                other_player_name = f"{world.multiworld.get_player_name(own_hint_item.location.player)}'s "
+                # Grab a random non-furniture progression Item that we created and saved earlier.
+                own_hint_item = selectable_prog_items.pop(world.random.randrange(len(selectable_prog_items)))
 
-            # Figure out what Location groups in the other player's game the Item's Location is a part of. Don't take
-            # the "Everywhere" group as that just includes everything.
-            other_world_loc_groups = world.multiworld.worlds[own_hint_item.location.player].location_name_groups
-            selectable_loc_groups = [loc_group for loc_group in other_world_loc_groups if own_hint_item.location.name in
-                                     other_world_loc_groups[loc_group] and loc_group != "Everywhere"]
+                # If the drawn Item is local in the player's own world, use a blank player name.
+                if own_hint_item.location.player == world.player:
+                    other_player_name = ""
+                # Otherwise, get the name of that other player.
+                else:
+                    other_player_name = f"{world.multiworld.get_player_name(own_hint_item.location.player)}'s "
 
-            # If no valid group was found, use "world somewhere" as the generic group name.
-            if not selectable_loc_groups:
-                chosen_loc_group_name = "world somewhere"
-            # Otherwise, choose one of our found Location group names at random and build a string with that.
-            else:
-                chosen_loc_group_name = world.random.choice(selectable_loc_groups)
+                # Figure out what Location groups in the other player's game the Item's Location is a part of. Don't
+                # take the "Everywhere" group as that just includes everything.
+                other_world_loc_groups = world.multiworld.worlds[own_hint_item.location.player].location_name_groups
+                selectable_loc_groups = [loc_group for loc_group in other_world_loc_groups
+                                         if own_hint_item.location.name in other_world_loc_groups[loc_group] and
+                                         loc_group != "Everywhere"]
 
-            # Create the hint text and add it to the end of the card strings list.
-            card_strings.append(f"{own_hint_item.name} is in {other_player_name}{chosen_loc_group_name}.\t")
+                # If no valid group was found, use "world somewhere" as the generic group name.
+                if not selectable_loc_groups:
+                    chosen_loc_group_name = "world somewhere"
+                # Otherwise, choose one of our found Location group names at random and build a string with that.
+                else:
+                    chosen_loc_group_name = world.random.choice(selectable_loc_groups)
+
+                # Create the hint text and add it to the end of the card strings list.
+                card_strings.append(f"{own_hint_item.name} is in {other_player_name}{chosen_loc_group_name}.")
 
         # Otherwise, meaning the card number is even, generate a hint for a progression item of a different world.
         else:
@@ -225,7 +232,7 @@ def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Locati
                                 world.location_name_groups[loc_group] and loc_group != "Everywhere"][0]
 
                 # Create the hint text and add it to the end of the card strings list.
-                card_strings.append(f"{own_loc_group} contains {other_player_name}{own_hint_loc.item.name}.\t")
+                card_strings.append(f"{own_loc_group} contains {other_player_name}{own_hint_loc.item.name}.")
 
     return card_strings
 
@@ -233,12 +240,12 @@ def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Locati
 def get_start_inventory_data(precollected_items: list[Item]) -> dict[str, dict[int, str] | int]:
     """Calculate and return the starting inventory values. Not every Item goes into a menu inventory, so they all have
     to be handled accordingly."""
-    start_inventory_data = {"inv arrays": {inv_id: bytearray(CVHODIS_INVENTORIES[inv_id].length)
-                                           for inv_id in CVHODIS_INVENTORIES},
-                            "spellbook": 0,
-                            "extra life": 0,
-                            "extra magic": 0,  # MP is not currently supported, but it's here just in case!
-                            "extra hearts": 0}
+    start_inventory_data: dict[str, any] = {"inv arrays": {inv_id: bytearray(CVHODIS_INVENTORIES[inv_id].length)
+                                            for inv_id in CVHODIS_INVENTORIES},
+                                            "spellbook": 0,
+                                            "extra life": 0,
+                                            "extra magic": 0,  # MP is not currently supported, but it's here if needed!
+                                            "extra hearts": 0}
 
     # Loop over every Item in our pre-collected Items list.
     for item in precollected_items:

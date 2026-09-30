@@ -3,8 +3,8 @@ from typing import Dict, TYPE_CHECKING
 from BaseClasses import CollectionState
 from worlds.generic.Rules import CollectionRule
 from .data import item_names, loc_names,  ent_names
-from .items import FURNITURE, SPELLBOOKS
-from .options import SpellboundBossLogic, CastleWarpCondition
+from .items import FURNITURE, SPELLBOOKS, HINT_CARDS
+from .options import SpellboundBossLogic, CardboundBossLogic
 
 if TYPE_CHECKING:
     from . import CVHoDisWorld
@@ -19,6 +19,7 @@ class CVHoDisRules:
     worst_ending_required: int
     best_ending_required: int
     spellbound_bosses: int
+    cardbound_bosses: int
 
     def __init__(self, world: "CVHoDisWorld") -> None:
         self.player = world.player
@@ -28,7 +29,10 @@ class CVHoDisRules:
         self.worst_ending_required = world.options.worst_ending_required.value
         self.best_ending_required = world.options.best_ending_required.value
         self.spellbound_bosses = world.options.spellbound_boss_logic.value
-        self.castle_warp_condition = world.options.castle_warp_condition.value
+        self.cardbound_bosses = world.options.cardbound_boss_logic.value
+        self.card_amount_warp_requirement = world.options.card_amount_warp_requirement.value
+        self.death_warp_requirement = world.options.death_warp_requirement.value
+        self.bracelet_warp_requirement = world.options.bracelet_warp_requirement.value
 
         self.location_rules = {
             # Entrance A
@@ -146,6 +150,8 @@ class CVHoDisRules:
             ent_names.ria_slide_r: self.can_slide,
             ent_names.ria_slide_l: self.can_slide,
             ent_names.wwa_exit_cya: self.can_open_skull_doors,
+            ent_names.saa_button_l: self.can_pass_shine_gate,
+            ent_names.saa_button_r: self.can_pass_shine_gate,
             ent_names.cya_warp:  lambda state: self.can_open_lure_doors(state) and self.can_warp_castles(state),
             ent_names.cya_djumps: self.can_double_jump,
             ent_names.cya_exit_wwa: self.can_open_skull_doors,
@@ -170,6 +176,8 @@ class CVHoDisRules:
             ent_names.ada_djump_r: lambda state: self.can_double_jump(state) and self.can_beat_medium_bosses(state),  # VS Giant Merman
             ent_names.ada_down_m: self.can_beat_medium_bosses,  # VS Giant Merman
             ent_names.ada_cstone_l: lambda state: self.can_break_walls(state) and self.can_double_jump(state),
+            ent_names.cra_button_l: self.can_pass_clock_gates,
+            ent_names.cra_button_r: self.can_pass_clock_gates,
             ent_names.cra_djump_l: self.can_double_jump,
             ent_names.cra_djump_p: self.can_double_jump,
             ent_names.cra_slide: lambda state: self.can_pass_clock_a_wall(state) and self.can_slide(state),
@@ -181,7 +189,11 @@ class CVHoDisRules:
             ent_names.tfa_cboots: self.can_break_ceilings,
             ent_names.tfa_cstone_l: self.can_break_walls,
             ent_names.tfa_warp: self.can_warp_castles,
-            ent_names.tfa_pazuzu: self.can_beat_hard_bosses,  # VS Pazuzu
+            ent_names.tfa_pazuzu_l: self.can_beat_hard_bosses,  # VS Pazuzu
+            ent_names.tfa_pazuzu_r: self.can_beat_hard_bosses,  # VS Pazuzu
+            ent_names.tfa_button_t: self.can_pass_top_gates,
+            ent_names.tfa_button_b: self.can_pass_top_gates,
+            ent_names.tfa_djumps: self.can_double_jump,
             ent_names.tfa_sjump_r: self.can_super_jump,
             ent_names.tfa_exit_mca: self.can_open_skull_doors,
             ent_names.tfa_sjump_l: self.can_super_jump,
@@ -215,8 +227,8 @@ class CVHoDisRules:
             ent_names.adb_djump_r: self.can_double_jump,
             ent_names.adb_cstone_l: lambda state: self.can_break_walls(state) and self.can_double_jump(state),
             ent_names.crb_djump_l: self.can_double_jump,
-            ent_names.crb_abutton_b: self.can_pass_clock_b_gate,
-            ent_names.crb_abutton_t: self.can_pass_clock_b_gate,
+            ent_names.crb_abutton_l: self.can_pass_clock_gates,
+            ent_names.crb_abutton_r: self.can_pass_clock_gates,
             ent_names.crb_djump_p: self.can_double_jump,
             ent_names.crb_peep_l: self.can_beat_medium_bosses,  # VS Peeping Big
             ent_names.crb_peep_r: self.can_beat_medium_bosses,  # VS Peeping Big
@@ -225,21 +237,23 @@ class CVHoDisRules:
             ent_names.tfb_exit_cdb: self.can_open_mk_doors,
             ent_names.tfb_cboots: self.can_break_ceilings,
             ent_names.tfb_warp: self.can_warp_castles,
-            ent_names.tfb_abutton_t: self.can_pass_top_b_gate,
-            ent_names.tfb_abutton_b: self.can_pass_top_b_gate,
+            ent_names.tfb_abutton_t: self.can_pass_top_gates,
+            ent_names.tfb_abutton_b: self.can_pass_top_gates,
+            ent_names.tfb_djumps: self.can_double_jump,
             ent_names.tfb_sjump_r: self.can_super_jump,
             ent_names.tfb_exit_mcb: self.can_open_skull_doors,
             ent_names.tfb_sjump_l: self.can_super_jump,
         }
 
     def can_double_jump(self, state: CollectionState) -> bool:
-        """Sylph Feather or any item that lets you gain infinite height."""
-        return state.has_any([item_names.relic_feather, item_names.relic_wing, item_names.equip_boots_in,
-                              item_names.equip_boots_f], self.player)
+        """Sylph Feather or any item that lets you gain infinite height.
+        Infinite Boots are not applicable here because they need Sylph Feather with them."""
+        return state.has_any([item_names.relic_feather, item_names.relic_wing, item_names.equip_boots_f], self.player)
 
     def can_super_jump(self, state: CollectionState) -> bool:
-        """Any item that lets you gain infinite height."""
-        return state.has_any([item_names.relic_wing, item_names.equip_boots_in, item_names.equip_boots_f], self.player)
+        """Any item that lets you gain infinite height. Note that Infinite Boots require Sylph Feather with them."""
+        return state.has_any([item_names.relic_wing, item_names.equip_boots_f], self.player) or \
+            state.has_all([item_names.relic_feather, item_names.equip_boots_in], self.player)
 
     def can_break_ceilings(self, state: CollectionState) -> bool:
         """Griffin's Wing and Crush Boots specifically."""
@@ -274,34 +288,68 @@ class CVHoDisRules:
         return state.has(item_names.equip_goggles, self.player)
 
     def can_warp_castles(self, state: CollectionState) -> bool:
-        """JB's Bracelet, met Death at Clock Tower, or nothing depending on the Castle Warp Condition option."""
-        if self.castle_warp_condition == CastleWarpCondition.option_bracelet:
-            return state.has(item_names.equip_bracelet_jb, self.player)
-        elif self.castle_warp_condition == CastleWarpCondition.option_death:
-            return state.has(item_names.event_death, self.player)
-        return True
+        """JB's Bracelet, met Death at Clock Tower A, and/or has the required Hint Cards. Or nothing, depending on the Castle Warp Requirements options."""
+
+        # If Hint Cards are required, set the card rule. Otherwise, leave it as always True.
+        card_rule = True
+        if self.card_amount_warp_requirement:
+            card_rule = state.has_from_list_unique(HINT_CARDS, self.player, self.card_amount_warp_requirement)
+
+        # If the Clock A Death cutscene is required, set the Death rule. Otherwise, leave it as always True.
+        death_rule = True
+        if self.death_warp_requirement:
+            death_rule = state.has(item_names.event_death, self.player)
+
+        # If JB's Bracelet is required, set the Bracelet rule. Otherwise, leave it as always True.
+        bracelet_rule = True
+        if self.bracelet_warp_requirement:
+            bracelet_rule = state.has(item_names.equip_bracelet_jb, self.player)
+
+        return card_rule and death_rule and bracelet_rule
 
     def can_win_ball_race_a(self, state: CollectionState) -> bool:
-        """Specifically Sylph Feather; Griffin's Wing makes this challenge way too hard."""
+        """Specifically Sylph Feather; Griffin's Wing or Floating Boots make this challenge way too hard."""
         return state.has(item_names.relic_feather, self.player)
 
     def can_beat_medium_bosses(self, state: CollectionState) -> bool:
-        """1 spell book if Spellbound Boss Logic is Normal, 2 if Easy, or none if Disabled."""
+        """1 spell book if Spellbound Boss Logic is Normal, 2 if Easy, or none if Disabled.
+        Also, 1 hint card if Cardbound Boss Logic is Normal, 2 if Easy, or none if Disabled."""
+
+        # If spellbound logic is on, set the book rule. Otherwise, leave it as always True.
+        book_rule = True
         if self.spellbound_bosses == SpellboundBossLogic.option_normal:
-            return state.has_from_list_unique([book for book in SPELLBOOKS], self.player, 1)
+            book_rule = state.has_from_list_unique([book for book in SPELLBOOKS], self.player, 1)
         elif self.spellbound_bosses == SpellboundBossLogic.option_easy:
-            return state.has_from_list_unique([book for book in SPELLBOOKS], self.player, 2)
-        else:
-            return True
+            book_rule = state.has_from_list_unique([book for book in SPELLBOOKS], self.player, 2)
+
+        # If cardbound logic is on, set the card rule. Otherwise, leave it as always True.
+        card_rule = True
+        if self.cardbound_bosses == CardboundBossLogic.option_normal:
+            card_rule = state.has_from_list_unique(HINT_CARDS, self.player, 1)
+        elif self.cardbound_bosses == CardboundBossLogic.option_easy:
+            card_rule = state.has_from_list_unique(HINT_CARDS, self.player, 2)
+
+        return book_rule and card_rule
 
     def can_beat_hard_bosses(self, state: CollectionState) -> bool:
-        """2 spell books if Spellbound Boss Logic is Normal, 3 if Easy, or none if Disabled."""
+        """2 spell books if Spellbound Boss Logic is Normal, 3 if Easy, or none if Disabled.
+        Also, 2 hint card if Cardbound Boss Logic is Normal, 3 if Easy, or none if Disabled."""
+
+        # If spellbound logic is on, set the book rule. Otherwise, leave it as always True.
+        book_rule = True
         if self.spellbound_bosses == SpellboundBossLogic.option_normal:
-            return state.has_from_list_unique([book for book in SPELLBOOKS], self.player, 2)
+            book_rule = state.has_from_list_unique([book for book in SPELLBOOKS], self.player, 2)
         elif self.spellbound_bosses == SpellboundBossLogic.option_easy:
-            return state.has_from_list_unique([book for book in SPELLBOOKS], self.player, 3)
-        else:
-            return True
+            book_rule = state.has_from_list_unique([book for book in SPELLBOOKS], self.player, 3)
+
+        # If cardbound logic is on, set the card rule. Otherwise, leave it as always True.
+        card_rule = True
+        if self.cardbound_bosses == CardboundBossLogic.option_normal:
+            card_rule = state.has_from_list_unique(HINT_CARDS, self.player, 2)
+        elif self.cardbound_bosses == CardboundBossLogic.option_easy:
+            card_rule = state.has_from_list_unique(HINT_CARDS, self.player, 3)
+
+        return book_rule and card_rule
 
     def can_open_center_a_gate(self, state: CollectionState) -> bool:
         """Broke the hand statue in the Castle Top Floor A attic."""
@@ -338,13 +386,17 @@ class CVHoDisRules:
         """Raised the crankshaft in Clock Tower B and can slide under it."""
         return state.has_all([item_names.event_crank and item_names.relic_tail], self.player)
 
-    def can_pass_clock_b_gate(self, state: CollectionState) -> bool:
-        """Pressed the gate button in Clock Tower A."""
-        return state.has(item_names.event_button_clock, self.player)
+    def can_pass_shine_gate(self, state: CollectionState) -> bool:
+        """Pressed the gate button in Shrine of the Apostates A (Living Armor Key)."""
+        return state.has(item_names.misc_key_la, self.player)
 
-    def can_pass_top_b_gate(self, state: CollectionState) -> bool:
-        """Pressed the gate button in Castle Top Floor A."""
-        return state.has(item_names.event_button_top, self.player)
+    def can_pass_clock_gates(self, state: CollectionState) -> bool:
+        """Pressed the gate button in Clock Tower A (Clock Key)."""
+        return state.has(item_names.misc_key_c, self.player)
+
+    def can_pass_top_gates(self, state: CollectionState) -> bool:
+        """Pressed the gate button in Castle Top Floor A (Throne Key)."""
+        return state.has(item_names.misc_key_t, self.player)
 
     def can_cross_drawbridges(self, state: CollectionState) -> bool:
         """Defeated Giant Bat in Marble Corridor A."""

@@ -227,6 +227,11 @@ furn_closet =    "Closet"
 max_life =  "Life Max Up"
 max_heart = "Heart Max Up"
 
+# Misc definitions
+misc_key_la = "Living Armor Key"
+misc_key_c =  "Clock Key"
+misc_key_t =  "Throne Key"
+
 # Event definitions
 event_ending_m = "Lydie All To Yourself"
 event_ending_b = "Everyone Dies, The End"
@@ -236,8 +241,6 @@ event_death = "We Need to Talk About Parallel Universes"
 event_wall_skeleton = "Your Friendly Neighborhood Skelly-men"
 event_wall_sky = "Shadow-play with Maxim"
 event_crank = "Don't Screw It Up Now"
-event_button_clock = "Door of Time Opened"
 event_guarder = "Hammer of Justice"
 event_hand = "Dracula Could Use a Hand"
-event_button_top = "Loosing the Girl Immediately"
 event_giant_bat = "The Joker Has Won"

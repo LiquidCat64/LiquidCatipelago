@@ -98,12 +98,14 @@ ALL_CVHODIS_REGIONS: dict[str, CVHoDisRegionData] = {
                                                      loc_names.saa6a,
                                                      loc_names.saa7,
                                                      loc_names.saa12,
-                                                     loc_names.saa15],
+                                                     loc_names.saa15b,
+                                                     loc_names.saa15a],
                                           entrances=[ent_names.saa_exit_wwa,
-                                                     ent_names.saa_button]),
+                                                     ent_names.saa_button_r]),
 
     reg_names.saa_end: CVHoDisRegionData(locations=[],
-                                         entrances=[ent_names.saa_exit_eta]),
+                                         entrances=[ent_names.saa_exit_eta,
+                                                    ent_names.saa_button_l]),
 
     # Castle Treasury A regions
     reg_names.cya_lower: CVHoDisRegionData(locations=[loc_names.cya6,
@@ -252,12 +254,14 @@ ALL_CVHODIS_REGIONS: dict[str, CVHoDisRegionData] = {
                                                            ent_names.cra_djump_l]),
 
     reg_names.cra_lower: CVHoDisRegionData(locations=[loc_names.cra9,
-                                                      loc_names.event_button_clock],
-                                           entrances=[ent_names.cra_button]),
+                                                      loc_names.cra7],
+                                           entrances=[ent_names.cra_button_l,
+                                                      ent_names.cra_down_door]),
 
     reg_names.cra_pendulums: CVHoDisRegionData(locations=[loc_names.cra10,
                                                           loc_names.cra0],
                                                entrances=[ent_names.cra_exit_swa,
+                                                          ent_names.cra_button_r,
                                                           ent_names.cra_djump_p]),
 
     reg_names.cra_main: CVHoDisRegionData(locations=[loc_names.cra1,
@@ -268,7 +272,7 @@ ALL_CVHODIS_REGIONS: dict[str, CVHoDisRegionData] = {
                                                      loc_names.cra17b,
                                                      loc_names.cra17c,
                                                      loc_names.cra17d],
-                                          entrances=[ent_names.cra_down,
+                                          entrances=[ent_names.cra_down_m,
                                                      ent_names.cra_slide,
                                                      ent_names.cra_slimer_l]),
 
@@ -293,12 +297,13 @@ ALL_CVHODIS_REGIONS: dict[str, CVHoDisRegionData] = {
                                             entrances=[ent_names.tfa_warp,
                                                        ent_names.tfa_cboots,
                                                        ent_names.tfa_cstone_l,
-                                                       ent_names.tfa_pazuzu]),
+                                                       ent_names.tfa_pazuzu_r]),
 
-    reg_names.tfa_lydie: CVHoDisRegionData(locations=[loc_names.event_button_top,
+    reg_names.tfa_lydie: CVHoDisRegionData(locations=[loc_names.tfa1c,
                                                       loc_names.tfa1a,
                                                       loc_names.tfa1b],
-                                           entrances=[ent_names.tfa_button]),
+                                           entrances=[ent_names.tfa_button_t,
+                                                      ent_names.tfa_pazuzu_l]),
 
     reg_names.tfa_attic: CVHoDisRegionData(locations=[loc_names.tfa0b,
                                                       loc_names.tfa0e,
@@ -309,12 +314,14 @@ ALL_CVHODIS_REGIONS: dict[str, CVHoDisRegionData] = {
                                            entrances=[]),
 
     reg_names.tfa_middle: CVHoDisRegionData(locations=[],
-                                            entrances=[ent_names.tfa_down]),
+                                            entrances=[ent_names.tfa_button_b,
+                                                       ent_names.tfa_down]),
 
     reg_names.tfa_lower: CVHoDisRegionData(locations=[loc_names.tfa7,
                                                       loc_names.tfa8,
                                                       loc_names.tfa11],
                                            entrances=[ent_names.tfa_exit_cya,
+                                                      ent_names.tfa_djumps,
                                                       ent_names.tfa_sjump_r]),
 
     reg_names.tfa_sjumps: CVHoDisRegionData(locations=[loc_names.tfa9],
@@ -515,20 +522,21 @@ ALL_CVHODIS_REGIONS: dict[str, CVHoDisRegionData] = {
 
     reg_names.crb_lower: CVHoDisRegionData(locations=[loc_names.crb8,
                                                       loc_names.event_crank],
-                                           entrances=[ent_names.crb_abutton_b]),
+                                           entrances=[ent_names.crb_abutton_l,
+                                                      ent_names.crb_down_door]),
 
     reg_names.crb_pendulums: CVHoDisRegionData(locations=[loc_names.crb6b,
                                                           loc_names.crb6a,
                                                           loc_names.crb10],
                                                entrances=[ent_names.crb_exit_swb,
-                                                          ent_names.crb_abutton_t,
+                                                          ent_names.crb_abutton_r,
                                                           ent_names.crb_djump_p]),
 
     reg_names.crb_main: CVHoDisRegionData(locations=[loc_names.crb1,
                                                      loc_names.crb3,
                                                      loc_names.crb2,
                                                      loc_names.crb4],
-                                          entrances=[ent_names.crb_down,
+                                          entrances=[ent_names.crb_down_m,
                                                      ent_names.crb_peep_l]),
 
     reg_names.crb_peeper: CVHoDisRegionData(locations=[loc_names.crb13,
@@ -567,6 +575,7 @@ ALL_CVHODIS_REGIONS: dict[str, CVHoDisRegionData] = {
                                                       loc_names.tfb11a,
                                                       loc_names.tfb11b],
                                            entrances=[ent_names.tfb_exit_cyb,
+                                                      ent_names.tfb_djumps,
                                                       ent_names.tfb_sjump_r]),
 
     reg_names.tfb_sjumps: CVHoDisRegionData(locations=[],

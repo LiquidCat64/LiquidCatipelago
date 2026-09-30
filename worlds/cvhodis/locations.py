@@ -3,7 +3,7 @@ import logging
 from BaseClasses import Location
 from .data.misc_names import GAME_NAME
 from .data import loc_names, item_names
-from .options import CVHoDisOptions, CastleWarpCondition
+from .options import CVHoDisOptions, GateItems
 
 from typing import NamedTuple
 
@@ -102,7 +102,8 @@ CVHODIS_LOCATIONS_INFO: dict[str, CVHoDisLocationData] = {
     loc_names.saa7:   CVHoDisLocationData(0x2C, item_names.whip_circle),
     loc_names.saa10:  CVHoDisLocationData(0xBD, item_names.use_potion),
     loc_names.saa12:  CVHoDisLocationData(0x4A, item_names.max_life),
-    loc_names.saa15:  CVHoDisLocationData(0x01, item_names.relic_tail),
+    loc_names.saa15a: CVHoDisLocationData(0x8B, item_names.misc_key_la),
+    loc_names.saa15b: CVHoDisLocationData(0x01, item_names.relic_tail),
     loc_names.saa16:  CVHoDisLocationData(0x4B, item_names.max_life),
 
     # The Wailing Way B
@@ -267,6 +268,7 @@ CVHODIS_LOCATIONS_INFO: dict[str, CVHoDisLocationData] = {
     loc_names.cra1:   CVHoDisLocationData(0x20, item_names.use_hint_4),
     loc_names.cra2:   CVHoDisLocationData(0x55, item_names.max_life),
     loc_names.cra3:   CVHoDisLocationData(0x89, item_names.equip_armor_sc),
+    loc_names.cra7:   CVHoDisLocationData(0x8D, item_names.misc_key_c),
     loc_names.cra9:   CVHoDisLocationData(0x73, item_names.max_heart),
     loc_names.cra10:  CVHoDisLocationData(0x25, item_names.use_map_3),
     loc_names.cra14:  CVHoDisLocationData(0xDE, item_names.furn_table_a),
@@ -308,6 +310,7 @@ CVHODIS_LOCATIONS_INFO: dict[str, CVHoDisLocationData] = {
     loc_names.tfa0e: CVHoDisLocationData(0xC3, item_names.use_prism_b),
     loc_names.tfa1a: CVHoDisLocationData(0x51, item_names.max_life),
     loc_names.tfa1b: CVHoDisLocationData(0x70, item_names.max_heart),
+    loc_names.tfa1c: CVHoDisLocationData(0x91, item_names.misc_key_t),
     loc_names.tfa7:  CVHoDisLocationData(0xC4, item_names.furn_drawing),
     loc_names.tfa8:  CVHoDisLocationData(0xC5, item_names.use_elixir),
     loc_names.tfa9:  CVHoDisLocationData(0x8E, item_names.equip_armor_si),
@@ -337,13 +340,13 @@ CVHODIS_EVENT_MAPPING: dict[str, str] = {
     loc_names.event_death: item_names.event_death,
     loc_names.event_wall_skeleton: item_names.event_wall_skeleton,
     loc_names.event_wall_sky: item_names.event_wall_sky,
-    loc_names.event_button_clock: item_names.event_button_clock,
     loc_names.event_crank: item_names.event_crank,
     loc_names.event_guarder: item_names.event_guarder,
     loc_names.event_hand: item_names.event_hand,
-    loc_names.event_button_top: item_names.event_button_top,
     loc_names.event_giant_bat: item_names.event_giant_bat,
 }
+
+GATE_LOCATIONS = frozenset[{loc_names.saa15a, loc_names.cra7, loc_names.tfa1c}]
 
 def get_location_names_to_ids() -> dict[str, int]:
     return {name: CVHODIS_LOCATIONS_INFO[name].code for name in CVHODIS_LOCATIONS_INFO}
@@ -391,8 +394,8 @@ def get_locations_to_create(locations: list[str], options: CVHoDisOptions) -> \
         if loc == loc_names.event_furniture and not options.furniture_amount_required:
             continue
 
-        # Don't place the Death Event Location if the Castle Warp Condition is not Death.
-        if loc == loc_names.event_death and options.castle_warp_condition != CastleWarpCondition.option_death:
+        # Don't place the Death Event Location if the Death Warp Requirement is not enabled.
+        if loc == loc_names.event_death and not options.death_warp_requirement:
             continue
 
         # Check to see if the Location is in the Locations Info dict.
@@ -400,6 +403,10 @@ def get_locations_to_create(locations: list[str], options: CVHoDisOptions) -> \
         if loc in CVHODIS_LOCATIONS_INFO:
             # Grab its code from the Locations Info and add the base ID to it.
             loc_code = CVHODIS_LOCATIONS_INFO[loc].code
+            # If we're creating a gate button Location, check if Gate Items is not Buttonsanity.
+            # If so, lock the Location's respective key to it.
+            if options.gate_items != GateItems.option_buttonsanity and loc in GATE_LOCATIONS:
+                locked_pairs[loc] = CVHODIS_LOCATIONS_INFO[loc].item
         # Check to see if the Location is in the Events Mapping dict.
         # If it is, then handle it like an event Location.
         elif loc in CVHODIS_EVENT_MAPPING:

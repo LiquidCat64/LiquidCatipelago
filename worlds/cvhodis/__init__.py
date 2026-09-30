@@ -7,16 +7,17 @@ import json
 
 from BaseClasses import Tutorial, ItemClassification, EntranceType
 from entrance_rando import disconnect_entrance_for_randomization, randomize_entrances
-from .items import CVHoDisItem, POSSIBLE_EXTRA_FILLER, ALL_CVHODIS_ITEMS, FURNITURE, get_item_names_to_ids, \
-    get_item_pool, get_pickup_type
+from .data.enums import FillerTypes
+from .items import CVHoDisItem, ALL_CVHODIS_ITEMS, FURNITURE, get_item_names_to_ids, get_item_pool, get_pickup_type, \
+    CVHODIS_FILLER_CATEGORIES
 from .locations import CVHoDisLocation, get_location_names_to_ids, get_locations_to_create, \
     get_location_name_groups
 from .options import cvhodis_option_groups, CVHoDisOptions, SubWeaponShuffle, TransitionShuffler, CastleSwapper, \
-    AreaDivisions
+    AreaDivisions, FillerPool, cvhodis_map_presets
 from .regions import get_all_region_names, CVHoDisRegion, ALL_CVHODIS_REGIONS
 from .entrances import SHUFFLEABLE_TRANSITIONS, ERGroups, TARGET_GROUP_RELATIONSHIPS, cvhodis_on_connect, \
-    link_room_transitions, SORTED_TRANSITIONS, SKULL_DOOR_GROUPS, MK_DOOR_GROUPS, CVHoDisEntrance, \
-    invert_castle_transitions, verify_entrances, MAIN_SUB_AREAS, get_er_group
+    SORTED_TRANSITIONS, SKULL_DOOR_GROUPS, MK_DOOR_GROUPS, CVHoDisEntrance, invert_castle_transitions, \
+    verify_entrances, MAIN_SUB_AREAS, get_er_group
 from .rules import CVHoDisRules
 from .data import item_names, loc_names
 from .data.misc_names import GAME_NAME
@@ -84,6 +85,7 @@ class CVHoDisWorld(World):
     transition_pairings: list[tuple]
     inverted_groups: dict[str, bool]
     inverted_transitions: dict[str, bool]
+    unchosen_filler_lists: dict[str, list[str]]
 
     # Default values to possibly be updated in generate_early
     furniture_amount_required: int = 0
@@ -94,21 +96,48 @@ class CVHoDisWorld(World):
     web = CVHoDisWeb()
 
     def generate_early(self) -> None:
+        # Check if we are using a Map Preset. If we are, change the Castle Swapper, Transition Shuffler, and
+        # Castle Symmetry options to what they should be in accordance to the preset.
+        if self.options.map_preset:
+            # If the preset is not defined at all, raise an exception that lets us know to fix it!
+            if self.options.map_preset.value not in cvhodis_map_presets:
+                raise Exception(f"{self.options.map_preset.get_option_name(self.options.map_preset.value)} is not "
+                                f"defined in cvhodis_map_presets. Please add it!")
+            # Otherwise, set Castle Swapper, Transition Shuffler, and Castle Symmetry to the first, second, and third
+            # choices in the preset's tuple, respectively.
+            self.options.castle_swapper.value = cvhodis_map_presets[self.options.map_preset.value][0]
+            self.options.transition_shuffler.value = cvhodis_map_presets[self.options.map_preset.value][1]
+            self.options.castle_symmetry.value = cvhodis_map_presets[self.options.map_preset.value][2]
+
         self.possible_hint_card_items = []
         self.transition_pairings = []
         self.inverted_transitions, self.inverted_groups = invert_castle_transitions(self)
+        # Get the initial lists of nonrenewable filler type choices for when we create random filler.
+        self.unchosen_filler_lists = {name: category_data.choices.copy() for name, category_data in
+                                      CVHODIS_FILLER_CATEGORIES.items() if not category_data.renewable}
 
         # Generate the player's unique authentication
         self.auth = bytearray(self.random.getrandbits(8) for _ in range(16))
 
         self.furniture_amount_required = self.options.furniture_amount_required.value
+        # If Remove Furniture is on when we require more than 0 furniture, force the former to be off.
+        if self.furniture_amount_required and self.options.remove_furniture:
+            self.options.remove_furniture.value = False
+            logging.warning(f"{self.player_name} requires more than 0 furniture to goal. The Remove Furniture option "
+                            "cannot be enabled.")
 
         # If the player has no goal requirements enabled at all, throw a warning and enable the Best Ending requirement.
         if not self.furniture_amount_required and not self.options.best_ending_required and not \
                 self.options.worst_ending_required and not self.options.medium_ending_required:
             logging.warning(f"{self.player_name} has no goal requirements enabled. The Best Ending requirement will be "
-                            f"enabled for them.")
+                            "enabled for them.")
             self.options.best_ending_required.value = True
+
+        # Force the Add JB's Bracelet option on if Bracelet Warp Requirement is also on.
+        if not self.options.add_jbs_bracelet and self.options.bracelet_warp_requirement:
+            logging.warning(f"{self.player_name} enabled the bracelet warp requirement. JB's Bracelet will be added "
+                            f"to the pool as well.")
+            self.options.add_jbs_bracelet.value = True
 
         # Place the Lizard Tail in early_items if the Early Lizard option is enabled.
         if self.options.early_lizard:
@@ -184,16 +213,8 @@ class CVHoDisWorld(World):
         return created_item
 
     def create_items(self) -> None:
-        # Set up the Items correctly.
-        own_itempool = get_item_pool(self)
-
-        # Save the created progression Items that are not furniture for the later possibility of being the subject of a
-        # Hint Card hint.
-        self.possible_hint_card_items = [item for item in own_itempool if item.advancement and item.name not in
-                                         FURNITURE]
-
-        # Submit the created Items to the multiworld's itempool.
-        self.multiworld.itempool += own_itempool
+        # Set up the Items correctly and submit them to the multiworld's Item pool.
+        self.multiworld.itempool += get_item_pool(self)
 
     def set_rules(self) -> None:
         # Set all the Entrance and Location rules properly.
@@ -241,7 +262,9 @@ class CVHoDisWorld(World):
 
         # Prepare the slot info to write to a JSON inside the AP patch file.
         slot_patch_info = {"options":
-                               {"castle_warp_condition": self.options.castle_warp_condition.value,
+                               {"card_amount_warp_requirement": self.options.card_amount_warp_requirement.value,
+                                "death_warp_requirement": self.options.death_warp_requirement.value,
+                                "bracelet_warp_requirement": self.options.bracelet_warp_requirement.value,
                                 "double_sided_warps": self.options.double_sided_warps.value,
                                 "death_link": self.options.death_link.value},
                            "start inventory": get_start_inventory_data(self.multiworld.precollected_items[self.player]),
@@ -268,16 +291,52 @@ class CVHoDisWorld(World):
                 "best_ending_required": self.options.best_ending_required.value,
                 "furniture_amount_required": self.furniture_amount_required,
                 "spellbound_boss_logic": self.options.spellbound_boss_logic.value,
+                "cardbound_boss_logic": self.options.cardbound_boss_logic.value,
                 "area_divisions": self.options.area_divisions.value,
                 "castle_swapper": self.options.castle_swapper.value,
                 "transition_shuffler": self.options.transition_shuffler.value,
                 "castle_symmetry": self.options.castle_symmetry.value,
                 "link_door_types": self.options.link_door_types.value,
-                "castle_warp_condition": self.options.castle_warp_condition.value,
+                "card_amount_warp_requirement": self.options.card_amount_warp_requirement.value,
+                "death_warp_requirement": self.options.death_warp_requirement.value,
+                "bracelet_warp_requirement": self.options.bracelet_warp_requirement.value,
                 "transition_pairings": self.transition_pairings}
 
     def get_filler_item_name(self) -> str:
-        return self.random.choice(POSSIBLE_EXTRA_FILLER)
+        # If the Filler Pool is vanilla, return a random low-tier consumable. Otherwise, proceed to the FUN =) part!
+        if self.options.filler_pool == FillerPool.option_vanilla:
+            return self.random.choice(CVHODIS_FILLER_CATEGORIES[FillerTypes.CONSUMABLE].choices)
+
+        # Get the weights and lists of each filler category's possible choices that we will use for
+        # this random item draw.
+        filler_type_choices = {}
+        filler_type_weights = {}
+        for name, category_data in CVHODIS_FILLER_CATEGORIES.items():
+            # If the category is nonrenewable, use the world's list of currently unchosen choices for the category.
+            if name in self.unchosen_filler_lists:
+                # If the list is empty and fully exhausted, don't take the list and don't take the category's weight.
+                # It will not be involved in this draw at all.
+                if not self.unchosen_filler_lists[name]:
+                    continue
+                filler_type_choices[name] = self.unchosen_filler_lists[name]
+            # Otherwise, if it is renewable, use the category's unmodified list of possible choices.
+            else:
+                filler_type_choices[name] = category_data.choices
+            # Take the weight defined for the category.
+            filler_type_weights[name] = CVHODIS_FILLER_CATEGORIES[name].weight
+
+        # Pick a filler type at random, using the weight defined for each one to affect its chance of being picked.
+        filler_type = self.random.choices(list(filler_type_weights), weights=list(filler_type_weights.values()), k=1)[0]
+        # Draw a random Item from our chosen filler type's list of possible choices.
+        filler_item = self.random.choice(filler_type_choices[filler_type])
+
+        # If the filler type is nonrenewable, remove the Item we just drew from the world's unchosen choices list
+        # so it won't be drawn again.
+        if filler_type in self.unchosen_filler_lists:
+            self.unchosen_filler_lists[filler_type].remove(filler_item)
+
+        # Return the name of the Item we drew.
+        return filler_item
 
     def modify_multidata(self, multidata: typing.Dict[str, typing.Any]):
         # Put the player's unique authentication in connect_names.
@@ -297,8 +356,9 @@ class CVHoDisWorld(World):
         if self.options.castle_swapper and (self.options.castle_swapper.value != CastleSwapper.option_transitions or
                                             not self.options.transition_shuffler):
             spoiler_handle.write(
-                f"\n{self.player_name}'s Castle Swapper "
-                f"{'areas' if self.options.castle_swapper.value == CastleSwapper.option_areas else 'transitions'}:\n"
+                f"\n{self.player_name}'s castle "
+                f"{'area' if self.options.castle_swapper.value == CastleSwapper.option_areas else 'transition'} "
+                f"swap statuses:\n"
             )
             # Loop over each Area and write it.
             for area_name, inverted in self.inverted_groups.items():

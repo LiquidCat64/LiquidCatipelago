@@ -1,4 +1,4 @@
-from enum import IntEnum, IntFlag, StrEnum
+from enum import IntEnum, StrEnum  # IntFlag
 
 
 class Players(IntEnum):
@@ -413,6 +413,7 @@ class EventFlags(IntEnum):
     PRESSED_CLOCK_A_BUTTON = 0x01
     PRESSED_TOP_A_BUTTON = 0x02
     PRESSED_SKELETON_A_MIMIC_BUTTON = 0x03
+    CAN_WARP_CASTLES = 0x1D  # Rando Exclusive(tm)
     HARD_MODE = 0x1E
     DEFEATED_DRACULA_WRAITH_2 = 0x1F
     UNLOCKED_FLOODGATE = 0x20
@@ -477,3 +478,11 @@ class EventFlags(IntEnum):
     DEFEATED_WALKWAY_B_SPRIGGAN = 0x67
     DEFEATED_TREASURY_B_FEATHER_DEMON = 0x68
     MAXIM_MODE = 0x7F
+
+class FillerTypes(StrEnum):
+    ARMOR = "armor"
+    GOOD_ARMOR = "good armor"
+    ACCESSORY = "accessory"
+    MONEY = "money"
+    CONSUMABLE = "consumable"
+    GOOD_CONSUMABLE = "good consumable"

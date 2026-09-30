@@ -222,8 +222,7 @@ remote_textbox_shower_ldr = [
 
 furniture_pickup_customizer_asm = [
     # Blocks putting furniture with an index higher than 0x1E in the inventory upon picking one up; all furniture with
-    # an index higher than that are AP off-world items. In addition, if the index is 0x21 (our AP Trap item), the pickup
-    # sound effect will be changed to a specific "trap" sound.
+    # an index higher than that are new items with custom behaviors and off-world items.
     0xB410,  # push r4
     0x1C0C,  # add  r4, r1, 0x00
     0x4001,  # and  r1, r0
@@ -231,7 +230,14 @@ furniture_pickup_customizer_asm = [
     0x4088,  # lsl  r0, r1
     0x7811,  # ldrb r1, [r2]
     0xB404,  # push r2
-    0x2C21,  # cmp  r4, 0x21
+    # If the index is 0x1F (the Living Armor Key), set the flag that opens the Shrine A post-Living Armor gate and play
+    # the "button pressed" sound.
+    # If the index is 0x20 (the Clock Key), set the flag that opens the Clock A/B basement gate and play the "button
+    # pressed" sound.
+    # If the index is 0x21 (the Throne Key), set the flag that opens the Top Floor A/B post-throne room gate and play
+    # the "button pressed" sound.
+    # If the index is 0x24 (our AP Trap item), the pickup sound effect will be changed to a specific "trap" sound.
+    0x2C24,  # cmp  r4, 0x24
     0xD101,  # bne  [forward 0x02]
     0x228F,  # mov  r2, 0x8F
     0x4690,  # mov  r2, r8
@@ -375,13 +381,16 @@ major_pickup_sound_player_ldr = [
     0x08019F8C
 ]
 
-jb_bracelet_checker_asm = [
-    # When the round gate update code runs, this will check to see if JB's Bracelet is equipped or in the inventory. If
-    # it is, the "can warp between castles" flag will be set, allowing warping between castles and warping to unvisited
-    # warp rooms in the same castle that were visited in the other castle.
+warp_conditions_checker_asm = [
+    # When the round gate update code runs, this will check ALL warp conditions to see if they are all satisfied. If
+    # they are, the "can warp between castles" flag will be set, allowing warping between castles and warping to
+    # unvisited warp rooms in the same castle that were visited in the other castle.
 
+    # Set r5 to 1 by default so we know none of the warp conditions failed.
+    0xB431,  # push r0, r4, r5
+    0x2501,  # mov  r5, 0x01
     # Check if JB's Bracelet is in the inventory.
-    0xB401,  # push r0
+    0xE012,  # B    [forward 0x13]   <- NOP if the condition applies.
     0x2000,  # mov  r0, 0x00
     0x4902,  # ldr  r1, 0x20187E8
     0x7808,  # ldrb r0, [r1]
@@ -399,104 +408,41 @@ jb_bracelet_checker_asm = [
     0x2A2A,  # cmp  r2, 0x2A
     0xD100,  # bne  [forward 0x01]
     0x3001,  # add  r0, 0x01
-    # If JB's Bracelet was in any of the above, set the "can warp between castles" flag. Otherwise, un-set it.
+    # If JB's Bracelet wasn't in any of the above, set r5 to 0 to later indicate a warp condition failed.
+    # Do nothing otherwise.
+    0x2800,  # cmp  r0, 0x00
+    0xD100,  # bne  [forward 0x01]
+    0x2500,  # mov  r5, 0x00
+    # Check how many unique Hint Cards we have.
+    0xE00D,  # B    [forward 0x0E]   <- NOP if the condition applies.
+    0x2000,  # mov  r0, 0x00
+    0x4903,  # ldr  r1, 0x20187B0
+    0x2200,  # mov  r2, 0x00
+    0x780B,  # ldrb r3, [r1]
+    0x2B00,  # cmp  r3, 0x00
+    0xD000,  # beq  [forward 0x01]
+    0x3001,  # add  r0, 0x01
+    0x3101,  # add  r1, 0x01
+    0x3201,  # add  r2, 0x01
+    0x2A06,  # cmp  r2, 0x06
+    0xDBF7,  # blt  [backward 0x08]
+    # If we didn't have the expected amount or more, set r5 to 0 to indicate a warp condition failed.
+    0x2805,  # cmp  r0, 0x05
+    0xDC00,  # bgt  [forward 0x01]
+    0x2500,  # mov  r5, 0x00
+    # Check the Clock A Death cutscene flag to see if we triggered it.
+    # If we did not, set r5 to 0 to indicate a warp condition failed.
+    0xE006,  # B    [forward 0x07]   <- NOP if the condition applies.
     0x4901,  # ldr  r1, 0x200031B
     0x780A,  # ldrb r2, [r1]
-    0x2800,  # cmp  r0, 0x00
-    0xD102,  # bne  [forward 0x03]
-    0x23DF,  # mov  r3, 0xDF
-    0x401A,  # and  r2, r3
-    0xE001,  # b    [forward 0x02]
     0x2320,  # mov  r3, 0x20
-    0x431A,  # orr  r2, r3
-    0x700A,  # strb r2, [r1]
-    # Go to and run the round gate's regular update code like normal.
-    0xBC01,  # pop  r0
-    0x4B00,  # ldr  r3, 0x801BB58
-    0x469F,  # mov  r15, r3
-]
-jb_bracelet_checker_ldr = [
-    0x0801BB58,
-    0x0200031B,
-    0x020187E8,
-]
-
-portal_death_room_checker_asm = [
-    # When a warp room gate initializes, this will run to see if we are currently in Death's room in Clock Tower and,
-    # if we are, start the gate in its open state. Should be skipped entirely if the death cutscene flag is set.
-
-    # Check to see if the player's room coordinates are 70, 0C.
-    0x2102,  # mov  r1, 0x02
-    0x0609,  # lsl  r1, r1, 0x18
-    0x3170,  # add  r1, 0x70
-    0x8809,  # ldrh r1, [r1]
-    0x220C,  # mov  r2, 0x0C
-    0x0212,  # lsl  r2, r2, 0x08
-    0x3270,  # add  r2, 0x70
-    0x4291,  # cmp  r1, r2
-    0xD001,  # beq  [forward 0x02]
-    # If they aren't, jump to the "close gates" part of the code.
-    0x4900,  # ldr  r1, 0x801BB18
-    0x468F,  # mov  r15, r1
-    # If they are, jump to the "open gates" part of the code.
-    0x0380,  # lsl  r0, r0, 0x0E
-    0x6160,  # str  r0, [r4, 0x14]
-    0x201E,  # mov  r0, 0x1E
-    0x72A0,  # strb r0, [r4, 0x0A]
-    0x4901,  # ldr  r1, 0x801BB44
-    0x468F,  # mov  r15, r1
-]
-portal_death_room_checker_ldr = [
-    0x0801BB18,
-    0x0801BB44,
-]
-
-cross_castle_warp_blocker_asm = [
-    # Blocks usage of the warp room cross-castle warp gates if the player doesn't have the cross-castle condition
-    # satisfied. This is necessary to have due to the change of making said gate always spawn in its closed state.
-
-    # Check to see if the "can warp castles" flag is set. If the cross-castle warp condition is satisfied, it should
-    # be set.
-    0x4803,  # ldr  r0, 0x200031B
-    0x7800,  # ldrb r0, [r0]
-    0x2120,  # mov  r1, 0x20
-    0x4008,  # and  r0, r1
-    0x2800,  # cmp  r0, 0x00
-    0xD101,  # bne  [forward 0x02]
-    # Abort the "activate round gate" function.
-    0x4902,  # ldr  r1, 0x801BCB8
-    0x468F,  # mov  r15, r1
-    # Return to the function like normal.
-    0x4901,  # ldr  r1, 0x1848C
-    0x1858,  # add  r0, r3, r1
-    0x6802,  # ldr  r2, [r0]
-    0x7A90,  # ldrb r0, [r2, 0x0A]
-    0x4900,  # ldr  r1, 0x801BC3C
-    0x468F,  # mov  r15, r1
-]
-cross_castle_warp_blocker_ldr = [
-    0x0801BC3C,
-    0x0001848C,
-    0x0801BCB8,
-    0x0200031B,
-]
-
-double_sided_cross_castle_warp_blocker_asm = [
-    # Similar to the above, except this one WILL allow the warp without the cross-castle condition satisfied on the
-    # condition that the warp room on the other side has been visited. If the Double-Sided Warps option is enabled, this
-    # will be injected instead.
-
-    # Check to see if the "can warp castles" flag is set. If the cross-castle warp condition is satisfied, it should
-    # be set.
-    0x4803,  # ldr  r0, 0x200031B
-    0x7800,  # ldrb r0, [r0]
-    0x2120,  # mov  r1, 0x20
-    0x4008,  # and  r0, r1
-    0x2800,  # cmp  r0, 0x00
-    0xD11D,  # bne  [forward 0x1E]
-    # If it wasn't set, check to see if the player has the map square for the other castle's equivalent warp room.
-    # If they do, then allow the warp anyway.
-    0xB418,  # push r3, r4
+    0x401A,  # and  r2, r3
+    0x2A00,  # cmp  r2, 0x00
+    0xD100,  # bne  [forward 0x01]
+    0x2500,  # mov  r5, 0x00
+    # Check to see if the player has the map square for the other castle's equivalent warp room, for a shot at
+    # redemption if Double-Sided Warps are on. If they do, then allow the warp anyway.
+    0xE036,  # B    [forward 0x37]   <- NOP if Double Sided Warps are on.
     0x2002,  # mov  r0, 0x02
     0x0600,  # lsl  r0, r0, 0x18
     0x3070,  # add  r0, 0x70
@@ -531,8 +477,150 @@ double_sided_cross_castle_warp_blocker_asm = [
     0xD000,  # beq  [forward 0x01]
     0x3404,  # add  r4, 0x04
     0x6820,  # ldr  r0, [r4]
+    # If we have the other room, set r5 to 1 regardless of the status of the prior warp requirements.
     0x4018,  # and  r0, r3
-    0xBC18,  # pop  r3, r4
+    0x2800,  # cmp  r0, 0x00
+    0xD000,  # beq  [forward 0x01]
+    0x2501,  # mov  r5, 0x01
+    # ...but not so fast, don't do it if we're in Death's Clock A room and haven't watched his cutscene yet! It is
+    # important that we don't set the flag until the moment Death's cutscene flag sets due to the jank way the cutscene
+    # is all set up and timed around the flag setting, and other external things that check that flag...
+    # Check the current room's actor list to see if the Death cutscene event actor is in it.
+    0x4905,  # ldr  r1, 0x20003B8
+    0x6809,  # ldr  r1, [r1]
+    0xE000,  # b    [forward 0x01]
+    0x310C,  # add  r1, 0x0C
+    0x680A,  # ldr  r2, [r1]
+    # If the current actor we're looking at has both an X and Y pos of 0x7FFF, then we've reached the end of the list
+    # without finding the Death event.
+    0x4B06,  # ldr  r3, 0x7FFF7FFF
+    0x429A,  # cmp  r2, r3
+    0xD013,  # beq  [forward 0x14]
+    # If the actor doesn't have a Type ID of 1, it's not a Special Object that cutscene events fall under.
+    # Go to the next one.
+    0x790A,  # ldrb r2, [r1, 0x04]
+    0x2340,  # mov  r3, 0x40
+    0x401A,  # and  r2, r3
+    0x2A00,  # cmp  r2, 0x00
+    0xD0F5,  # beq  [backward 0x0A]
+    # If it doesn't have a subtype of 0x26, it's not a cutscene event. Go to the next one.
+    0x794A,  # ldrb r2, [r1, 0x05]
+    0x2326,  # mov  r3, 0x26
+    0x429A,  # cmp  r2, r3
+    0xD1F1,  # bne  [backward 0x0E]
+    # If it doesn't have a Var B of 0x3D, it's not Death's Clock A cutscene event. Go to the next one.
+    0x894A,  # ldrh r2, [r1, 0x0A]
+    0x233D,  # mov  r3, 0x3D
+    0x429A,  # cmp  r2, r3
+    0xD1ED,  # bne  [backward 0x12]
+    # If we made it here, we found the Death cutscene event. At which point, check if Death's cutscene flag is set.
+    0x4901,  # ldr  r1, 0x200031B
+    0x7809,  # ldrb r1, [r1]
+    0x2220,  # mov  r2, 0x20
+    0x4011,  # and  r1, r2
+    0x2900,  # cmp  r1, 0x00
+    0xD100,  # bne  [forward 0x01]
+    # If it's un-set, then we should be watching his cutscene prior to the flag setting. In which case, force r5 at 0.
+    0x2500,  # mov  r5, 0x00
+    # Check r5 to see if any warp conditions failed. If any didn't, set the "can warp between castles" flag.
+    # Otherwise, un-set it. The rando has this decoupled from the Death cutscene flag.
+    0x4904,  # ldr  r1, 0x2000317
+    0x780A,  # ldrb r2, [r1]
+    0x2D01,  # cmp  r5, 0x01
+    0xD002,  # beq  [forward 0x03]
+    0x23DF,  # mov  r3, 0xDF
+    0x401A,  # and  r2, r3
+    0xE001,  # b    [forward 0x02]
+    0x2320,  # mov  r3, 0x20
+    0x431A,  # orr  r2, r3
+    0x700A,  # strb r2, [r1]
+    # Go to and run the round gate's regular update code like normal.
+    0xBC31,  # pop  r0, r4, r5
+    0x4B00,  # ldr  r3, 0x801BB58
+    0x469F,  # mov  r15, r3
+]
+warp_conditions_checker_ldr = [
+    0x0801BB58,
+    0x0200031B,
+    0x020187E8,
+    0x020187B0,
+    0x02000317,
+    0x020003B8,
+    0x7FFF7FFF,
+]
+
+portal_death_room_checker_asm = [
+    # When a warp room gate initializes, this will run to see if we are currently in Death's room in Clock Tower and,
+    # if we are, start the gate in its open state. Should be skipped entirely if the death cutscene flag is set.
+
+    # Check the current room's actor list to see if the Death cutscene event actor is in it.
+    0xB408,  # push r3
+    0x4903,  # ldr  r1, 0x20003B8
+    0x6809,  # ldr  r1, [r1]
+    0xE000,  # b    [forward 0x01]
+    0x310C,  # add  r1, 0x0C
+    0x680A,  # ldr  r2, [r1]
+    # If the current actor we're looking at has both an X and Y pos of 0x7FFF, then we've reached the end of the list
+    # without finding the Death event.
+    0x4B04,  # ldr  r3, 0x7FFF7FFF
+    0x429A,  # cmp  r2, r3
+    0xD012,  # beq  [forward 0x13]
+    # If the actor doesn't have a Type ID of 1, it's not a Special Object that cutscene events fall under.
+    # Go to the next one.
+    0x790A,  # ldrb r2, [r1, 0x04]
+    0x2340,  # mov  r3, 0x40
+    0x401A,  # and  r2, r3
+    0x2A00,  # cmp  r2, 0x00
+    0xD0F5,  # beq  [backward 0x0A]
+    # If it doesn't have a subtype of 0x26, it's not a cutscene event. Go to the next one.
+    0x794A,  # ldrb r2, [r1, 0x05]
+    0x2326,  # mov  r3, 0x26
+    0x429A,  # cmp  r2, r3
+    0xD1F1,  # bne  [backward 0x0E]
+    # If it doesn't have a Var B of 0x3D, it's not Death's Clock A cutscene event. Go to the next one.
+    0x894A,  # ldrh r2, [r1, 0x0A]
+    0x233D,  # mov  r3, 0x3D
+    0x429A,  # cmp  r2, r3
+    0xD1ED,  # bne  [backward 0x12]
+    # If we made it here, we found the Death cutscene event. At which point, check if Death's cutscene flag is set.
+    0x4902,  # ldr  r1, 0x200031B
+    0x7809,  # ldrb r1, [r1]
+    0x2220,  # mov  r2, 0x20
+    0x4011,  # and  r1, r2
+    0x2900,  # cmp  r1, 0x00
+    0xD002,  # beq  [forward 0x03]
+    # If we couldn't find the Death cutscene event, or we did but Death's cutscene flag was set, jump to the
+    # "close gates" part of the code. There's no Death cutscene to worry about.
+    0xBC08,  # pop  r3
+    0x4900,  # ldr  r1, 0x801BB18
+    0x468F,  # mov  r15, r1
+    # Otherwise, jump to the "open gates" part of the code so the cutscene can start properly.
+    0xBC08,  # pop  r3
+    0x0380,  # lsl  r0, r0, 0x0E
+    0x6160,  # str  r0, [r4, 0x14]
+    0x201E,  # mov  r0, 0x1E
+    0x72A0,  # strb r0, [r4, 0x0A]
+    0x4901,  # ldr  r1, 0x801BB44
+    0x468F,  # mov  r15, r1
+]
+portal_death_room_checker_ldr = [
+    0x0801BB18,
+    0x0801BB44,
+    0x0200031B,
+    0x020003B8,
+    0x7FFF7FFF,
+]
+
+cross_castle_warp_blocker_asm = [
+    # Blocks usage of the warp room cross-castle warp gates if the player doesn't have the cross-castle condition
+    # satisfied. This is necessary to have due to the change of making said gate always spawn in its closed state.
+
+    # Check to see if the "can warp castles" flag is set. If the cross-castle warp condition is satisfied, it should
+    # be set.
+    0x4803,  # ldr  r0, 0x2000317
+    0x7800,  # ldrb r0, [r0]
+    0x2120,  # mov  r1, 0x20
+    0x4008,  # and  r0, r1
     0x2800,  # cmp  r0, 0x00
     0xD101,  # bne  [forward 0x02]
     # Abort the "activate round gate" function.
@@ -546,11 +634,11 @@ double_sided_cross_castle_warp_blocker_asm = [
     0x4900,  # ldr  r1, 0x801BC3C
     0x468F,  # mov  r15, r1
 ]
-double_sided_cross_castle_warp_blocker_ldr = [
+cross_castle_warp_blocker_ldr = [
     0x0801BC3C,
     0x0001848C,
     0x0801BCB8,
-    0x0200031B,
+    0x02000317,
 ]
 
 unvisited_warp_destination_blocker_asm = [
@@ -559,7 +647,7 @@ unvisited_warp_destination_blocker_asm = [
     # whether they've actually been in it in the current castle or not. This will prevent that if the cross-castle warp
     # condition is not satisfied yet, continuing the destination search loop if the player hasn't been to the chosen
     # destination room in the castle they are currently in.
-    0x4802,  # ldr  r0, 0x200031B
+    0x4802,  # ldr  r0, 0x2000317
     0x7800,  # ldrb r0, [r0]
     0x2120,  # mov  r1, 0x20
     0x4008,  # and  r0, r1
@@ -592,7 +680,7 @@ unvisited_warp_destination_blocker_asm = [
 unvisited_warp_destination_blocker_ldr = [
     0x08009C38,
     0x08009BD4,
-    0x0200031B,
+    0x02000317,
     0x02000070,
 ]
 

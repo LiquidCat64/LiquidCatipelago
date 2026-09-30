@@ -17,7 +17,6 @@ from .entrances import SHUFFLEABLE_TRANSITIONS, VERTICAL_GROUPS, VERTICAL_SHAFT_
     LEFT_GROUPS, RIGHT_GROUPS, TOP_GROUPS, BOTTOM_GROUPS
 from .items import EQUIPMENT
 from .locations import CVHODIS_LOCATIONS_INFO
-from .options import CastleWarpCondition
 from .cvhodis_text import LEN_LIMIT_MENU_DESCRIPTION, DESCRIPTION_DISPLAY_LINES, cvhodis_text_wrap
 from .patcher import CVHoDisRomPatcher, CVHoDisActorEntry, GBA_ROM_START
 from settings import get_settings
@@ -200,12 +199,15 @@ class CVHoDisPatchExtensions(APPatchExtension):
         for offset, data in patches.extra_item_sprites.items():
             patcher.write_bytes(offset, data)
 
-        # Add the "Archipelago Item" text over the NULL enemy names.
+        # Add the custom pickups' text.
         patcher.text[0x230] = "Filler Item\n"
         patcher.text[0x231] = "Useful Item\n"
         patcher.text[0x232] = "Trap Item\n"
         patcher.text[0x233] = "Progression Item\n"
         patcher.text[0x234] = "Prog-Useful Item\n"
+        patcher.text[0x235] = "Living Armor Key\n"
+        patcher.text[0x236] = "Clock Key\n"
+        patcher.text[0x237] = "Throne Key\n"
 
         # Move the Spell Book info table and expand it with an extra entry for our Progression item.
         new_book_info_start = patcher.find_space_and_write_buffer(
@@ -228,9 +230,13 @@ class CVHoDisPatchExtensions(APPatchExtension):
 
         # Move the furniture info table and expand it with three more entries for our Filler, Useful, and Trap items.
         new_furniture_info_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
-            patcher.read_bytes(FURNITURE_INFO_START, FURNITURE_INFO_LENGTH) + bytes([0xD5, 0x00, 0xDF, 0x01,  # Filler
-                                                                                     0xD6, 0x00, 0xE1, 0x01,  # Useful
-                                                                                     0xD7, 0x00, 0xE3, 0x01]))  # Trap
+            patcher.read_bytes(FURNITURE_INFO_START, FURNITURE_INFO_LENGTH) + \
+            bytes([0xDA, 0x00, 0xE4, 0x02,  # Living Armor key
+                   0xDB, 0x00, 0xE5, 0x02,  # Clock key
+                   0xDC, 0x00, 0xE6, 0x02,  # Throne key
+                   0xD5, 0x00, 0xDF, 0x01,  # Filler
+                   0xD6, 0x00, 0xE1, 0x01,  # Useful
+                   0xD7, 0x00, 0xE3, 0x01]))  # Trap
         patcher.write_int32(0x197E4, new_furniture_info_start)
         patcher.write_int32(0x19E30, new_furniture_info_start)
         patcher.write_int32(0x19EE8, new_furniture_info_start)
@@ -244,10 +250,11 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.write_int32(0x2AAD0, new_furniture_info_start)
 
         # Move the array of string IDs that the pickup textbox can normally access and add the extra IDs for the
-        # multiworld item pickups.
+        # extra item pickups.
         new_item_text_ids_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
             patcher.read_bytes(ITEM_TEXT_IDS_START, ITEM_TEXT_IDS_LENGTH) + bytes([0x30, 0x02, 0x32, 0x02, 0x34, 0x02,
-                                                                                   0x36, 0x02, 0x39, 0x02]))
+                                                                                   0x36, 0x02, 0x39, 0x02, 0x3A, 0x02,
+                                                                                   0x3C, 0x02, 0x3E, 0x02]))
         # Update all the pointers to the above array of string IDs.
         patcher.write_int32(0x19E34, new_item_text_ids_start)
         patcher.write_int32(0x19FA8, new_item_text_ids_start)
@@ -265,8 +272,8 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.write_int32(0x2B568, new_item_text_ids_start)
         patcher.write_int32(0x2C730, new_item_text_ids_start)
 
-        # Prevent furniture pickups with indexes over 0x1E from going into the inventory and play a different sound with
-        # Trap items being picked up.
+        # Prevent furniture pickups with indexes over 0x1E from going into the inventory and perform custom behaviors
+        # depending on what we picked up.
         patcher.generate_dynamic_asm(patches.furniture_pickup_customizer_asm,
                                      patches.furniture_pickup_customizer_ldr,
                                      hook_addr=0x1A1D0, hook_register=3)
@@ -281,41 +288,61 @@ class CVHoDisPatchExtensions(APPatchExtension):
 
         # Block usage of the cross-castle round gate if they don't have the "cross-castle warp condition satisfied"
         # flag set.
-        if slot_patch_info["options"]["castle_warp_condition"] != CastleWarpCondition.option_none:
-            if slot_patch_info["options"]["double_sided_warps"]:
-                patcher.generate_dynamic_asm(patches.double_sided_cross_castle_warp_blocker_asm,
-                                             patches.double_sided_cross_castle_warp_blocker_ldr,
-                                             hook_addr=0x1BC34, hook_register=2)
-            else:
-                patcher.generate_dynamic_asm(patches.cross_castle_warp_blocker_asm,
-                                             patches.cross_castle_warp_blocker_ldr,
-                                             hook_addr=0x1BC34, hook_register=2)
+        patcher.generate_dynamic_asm(patches.cross_castle_warp_blocker_asm,
+                                     patches.cross_castle_warp_blocker_ldr,
+                                     hook_addr=0x1BC34, hook_register=2)
 
-            # Block warping to a warp room the player hasn't been to yet in the current castle if they don't have the
-            # cross-castle warp condition satisfied.
-            patcher.generate_dynamic_asm(patches.unvisited_warp_destination_blocker_asm,
-                                         patches.unvisited_warp_destination_blocker_ldr,
-                                         hook_addr=0x9C30, hook_register=0)
+        # Block warping to a warp room the player hasn't been to yet in the current castle if they don't have the
+        # cross-castle warp condition(s) satisfied.
+        patcher.generate_dynamic_asm(patches.unvisited_warp_destination_blocker_asm,
+                                     patches.unvisited_warp_destination_blocker_ldr,
+                                     hook_addr=0x9C30, hook_register=0)
 
-        # Make the round warp gates set the "can warp castles" flag if the player has JB's Bracelet.
-        if slot_patch_info["options"]["castle_warp_condition"] == CastleWarpCondition.option_bracelet:
-            patcher.write_int32(0x494F70, patcher.generate_dynamic_asm(patches.jb_bracelet_checker_asm,
-                                                                       patches.jb_bracelet_checker_ldr))
+        # Make the round warp gates set the "can warp castles" flag if all the warp conditions are satisfied.
+        warp_conditions_check_start = patcher.generate_dynamic_asm(patches.warp_conditions_checker_asm,
+                                                                   patches.warp_conditions_checker_ldr)
+        patcher.write_int32(0x494F70, GBA_ROM_START | warp_conditions_check_start + 1)
+        # Move the flag checks that occur while Juste is warping onto the new "can warp" flag, decoupled from the
+        # Clock Tower Death cutscene's flag. These affect behavior.
+        patcher.write_byte(0x1C072, 0xC5)  # Freezes Juste in place.
+        #patcher.write_byte(0x1BAE8, 0xC5)  # Starts the gate-closing animation and plays/stops the appropriate sounds.
+
+        # If JB's Bracelet is a warp requirement, NOP the branch in the warp condition checker hack that skips the
+        # bracelet check.
+        if slot_patch_info["options"]["bracelet_warp_requirement"]:
+            patcher.write_int16(warp_conditions_check_start + 0x4, 0x0000)
+
+        # If Hint Cards are a warp requirement, NOP the branch in the warp condition checker hack that skips the cards
+        # check and also write the number of unique cards to check for in the inventory.
+        if slot_patch_info["options"]["card_amount_warp_requirement"]:
+            patcher.write_int16(warp_conditions_check_start + 0x2C, 0x0000)
+            patcher.write_byte(warp_conditions_check_start + 0x44,
+                               slot_patch_info["options"]["card_amount_warp_requirement"] - 1)
 
         # Nuke the Clock Tower Death cutscene event and the text when changing castles through a warp room for the
-        # first time if the Castle Warp Condition is not Death. Otherwise, keep them.
-        if slot_patch_info["options"]["castle_warp_condition"] != CastleWarpCondition.option_death:
+        # first time if Death is not a warp requirment. Removing Death when he's not required will ensure we cannot
+        # warp into his cutscene from the Clock B warp room, which can cause all sorts of problems.
+        if not slot_patch_info["options"]["death_warp_requirement"]:
             patcher.write_int16(0x1BEC8, 0x0000)
             patcher.areas[Areas.CLOCK_A][27][0]["actor_list"][2]["delete"] = True
             # Make the warp room round gates always spawn in their closed states regardless of the Clock Tower Death
             # cutscene flag being set or not.
             patcher.write_byte(0x1BAF9, 0xE0)
+        # Otherwise, keep Death with an added check for the round gates to spawn open or closed depending on whether we
+        # determine we are about to watch his cutscene upon entering a warp room. Warping into the cutscene from the
+        # Clock B warp room is not a concern when Death is required because under no circumstances can the gate be used
+        # without being in the Clock A warp room to watch the cutscene normally first.
         else:
-            # If the warp condition is Death, make the gates check to see if we're in Death's room upon
-            # initialization.
             patcher.generate_dynamic_asm(patches.portal_death_room_checker_asm,
                                          patches.portal_death_room_checker_ldr,
                                          hook_addr=0x1BAFC, hook_register=1)
+            # NOP the branch in the warp condition checker hack that skips past the Death cutscene checks.
+            patcher.write_int16(warp_conditions_check_start + 0x4A, 0x0000)
+
+        # If Double-Sided Warps is on, allow warping regardless of the warp requirements if the player has been in the
+        # warp room in the other castle.
+        if slot_patch_info["options"]["double_sided_warps"]:
+            patcher.write_int16(warp_conditions_check_start + 0x5A, 0x0000)
 
         # Make MK's Bracelet doors unlockable in Castle B.
         patcher.write_byte(0x1CD09, 0xE0)
@@ -504,12 +531,9 @@ class CVHoDisPatchExtensions(APPatchExtension):
             else:
                 source_zone["player_x_offset"] = 0
 
-        # Test
-        # rom_data.write_bytes(0xCAA16, cvhodis_string_to_bytearray("❖1/⬘0      Howdy ✨6/@everyone✨8/!\nHow do you do?\nNice\n✨12/weather✨8/\ntoday!\nPretty\ngr8\nm8\nI\nr8\n8/8\rHave a free🅰 trial of the critically acclamied MMORPG ✨13/Final Fantasy XIV✨8/,🅰\rincluding the entirety🅰\rof ✨14/A Realm Reborn✨8/ and the award-winning ✨4/Heavansward✨8/ ~and~ ✨4/Stormblood✨8/ expansions up to ✨10/level 70✨8/ with ✨13/no restrictions on playtime✨8/! REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE▶1/EEEEEEEE✨2/EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE✨6/EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE✨9/EEEEEEE✨15/EEEEE✨3/EEEEEEEEEEEEEEEEEEEE✨5/EEEEEEE✨7/EEEEEE✨13/EEEEEEEEEEEEEE!!!✨6/!!!✨7/!!!!✨6/1✨8/🅰\f❖2/⬘1/Okay, Juste, I get it! Are you done now? Take a \b22/ or something!🅰\f\t"))
-
         # Go anywhere
-        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084A9FFC
-        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
+        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084AA128
+        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
 
         return patcher.get_output_rom()
 
@@ -528,30 +552,6 @@ class CVHoDisProcedurePatch(APProcedurePatch):
     @classmethod
     def get_source_data(cls) -> bytes:
         return get_base_rom_bytes()
-
-
-#def patch_rom(world: "CVHoDisWorld", patch: CVHoDisProcedurePatch, offset_data: Dict[int, bytes]) -> None:
-    # Write all the new item values
-#    for offset, data in offset_data.items():
-#        patch.write_token(APTokenTypes.WRITE, offset, data)
-
-    # Write the secondary name the client will use to distinguish a vanilla ROM from an AP one.
-#    patch.write_token(APTokenTypes.WRITE, ARCHIPELAGO_IDENTIFIER_START, ARCHIPELAGO_CLIENT_COMPAT_VER.encode("utf-8"))
-    # Write the slot authentication
-#    patch.write_token(APTokenTypes.WRITE, AUTH_NUMBER_START, bytes(world.auth))
-
-#    patch.write_file("token_data.bin", patch.get_token_binary())
-
-    # Write these slot options to a JSON.
-#    options_dict = {
-#        "required_furniture": world.furniture_amount_required,
-#        "double_sided_warps": world.options.double_sided_warps.value,
-#        "castle_warp_condition": world.options.castle_warp_condition.value,
-#        "seed": world.multiworld.seed,
-#        "compat_identifier": ARCHIPELAGO_CLIENT_COMPAT_VER
-#    }
-
-#    patch.write_file("options.json", json.dumps(options_dict).encode('utf-8'))
 
 
 def get_base_rom_bytes(file_name: str = "") -> bytes:

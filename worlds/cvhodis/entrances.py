@@ -4,8 +4,7 @@ from Options import Accessibility
 from .data import ent_names, reg_names
 from .data.ent_names import tfa_exit_mca
 from .data.enums import AreaNames, TransitionNames, Areas
-from .options import CVHoDisOptions, TransitionShuffler, CastleSwapper, AreaDivisions, CastleWarpCondition
-from .patcher import CVHoDisLoadingZoneEntry
+from .options import CVHoDisOptions, TransitionShuffler, CastleSwapper, AreaDivisions
 from enum import IntEnum
 from BaseClasses import Entrance
 from entrance_rando import ERPlacementState
@@ -416,7 +415,8 @@ NORMAL_ENTRANCE_DESTINATIONS: dict[str, str] = {
     ent_names.wwa_exit_cya: reg_names.cya_upper,
     ent_names.wwa_exit_saa: reg_names.saa_main,
     ent_names.saa_exit_wwa: reg_names.wwa,
-    ent_names.saa_button: reg_names.saa_end,
+    ent_names.saa_button_r: reg_names.saa_end,
+    ent_names.saa_button_l: reg_names.saa_main,
     ent_names.saa_exit_eta: reg_names.eta_main,
     ent_names.cya_warp: reg_names.cyb_lower,
     ent_names.cya_exit_sca: reg_names.sca_right,
@@ -465,10 +465,11 @@ NORMAL_ENTRANCE_DESTINATIONS: dict[str, str] = {
     ent_names.cra_exit_ada: reg_names.ada_merman,
     ent_names.cra_djump_l: reg_names.cra_lower,
     ent_names.cra_down_door: reg_names.cra_lower_exit,
-    ent_names.cra_button: reg_names.cra_pendulums,
+    ent_names.cra_button_l: reg_names.cra_pendulums,
+    ent_names.cra_button_r: reg_names.cra_lower,
     ent_names.cra_exit_swa: reg_names.swa_right_exit,
     ent_names.cra_djump_p: reg_names.cra_main,
-    ent_names.cra_down: reg_names.cra_pendulums,
+    ent_names.cra_down_m: reg_names.cra_pendulums,
     ent_names.cra_slide: reg_names.cra_ball,
     ent_names.cra_slimer_l: reg_names.cra_slimer,
     ent_names.cra_slimer_r: reg_names.cra_main,
@@ -478,9 +479,12 @@ NORMAL_ENTRANCE_DESTINATIONS: dict[str, str] = {
     ent_names.tfa_warp: reg_names.tfb_throne,
     ent_names.tfa_cboots: reg_names.tfa_attic,
     ent_names.tfa_cstone_l: reg_names.tfa_throne_door,
-    ent_names.tfa_pazuzu: reg_names.tfa_lydie,
-    ent_names.tfa_button: reg_names.tfa_middle,
+    ent_names.tfa_pazuzu_r: reg_names.tfa_lydie,
+    ent_names.tfa_pazuzu_l: reg_names.tfa_throne,
+    ent_names.tfa_button_t: reg_names.tfa_middle,
+    ent_names.tfa_button_b: reg_names.tfa_lydie,
     ent_names.tfa_down: reg_names.tfa_lower,
+    ent_names.tfa_djumps: reg_names.tfa_middle,
     ent_names.tfa_exit_cya: reg_names.cya_upper,
     ent_names.tfa_sjump_r: reg_names.tfa_sjumps,
     ent_names.tfa_exit_mca: reg_names.mca,
@@ -550,11 +554,11 @@ NORMAL_ENTRANCE_DESTINATIONS: dict[str, str] = {
     ent_names.crb_exit_adb: reg_names.adb_merman,
     ent_names.crb_djump_l: reg_names.crb_lower,
     ent_names.crb_down_door: reg_names.crb_lower_exit,
-    ent_names.crb_abutton_b: reg_names.crb_pendulums,
+    ent_names.crb_abutton_l: reg_names.crb_pendulums,
     ent_names.crb_exit_swb: reg_names.swb_right_exit,
-    ent_names.crb_abutton_t: reg_names.crb_lower,
+    ent_names.crb_abutton_r: reg_names.crb_lower,
     ent_names.crb_djump_p: reg_names.crb_main,
-    ent_names.crb_down: reg_names.crb_pendulums,
+    ent_names.crb_down_m: reg_names.crb_pendulums,
     ent_names.crb_peep_l: reg_names.crb_peeper,
     ent_names.crb_peep_r: reg_names.crb_main,
     ent_names.crb_slide: reg_names.crb_ball,
@@ -565,6 +569,7 @@ NORMAL_ENTRANCE_DESTINATIONS: dict[str, str] = {
     ent_names.tfb_abutton_t: reg_names.tfb_middle,
     ent_names.tfb_abutton_b: reg_names.tfb_throne,
     ent_names.tfb_down: reg_names.tfb_lower,
+    ent_names.tfb_djumps: reg_names.tfb_middle,
     ent_names.tfb_exit_cyb: reg_names.cyb_upper,
     ent_names.tfb_sjump_r: reg_names.tfb_sjumps,
     ent_names.tfb_exit_mcb: reg_names.mcb,
@@ -576,91 +581,6 @@ NORMAL_ENTRANCE_DESTINATIONS: dict[str, str] = {
     ent_names.lw_portal_exit_l: reg_names.lcb_main,
     ent_names.lw_portal_exit_w: reg_names.swa_portal
 }
-
-def link_room_transitions(transition_pairings: list[tuple]) -> dict[int, bytes]:
-    """Gets all ER-related data to go into the ROM. Including what room each altered transition should send the player
-    to, where to place the camera, and how much to offset the player on-screen in said destination room."""
-
-    transition_bytes = {}
-
-    for pair in transition_pairings:
-        # For each entrance, get the room pointer and camera X and Y positions of the exit and write them in the
-        # entrance's transition.
-        transition_bytes[SHUFFLEABLE_TRANSITIONS[pair[0]].transition_offset] = \
-            int.to_bytes(SHUFFLEABLE_TRANSITIONS[pair[1]].room_ptr, 4, "little")
-        transition_bytes[SHUFFLEABLE_TRANSITIONS[pair[0]].transition_offset + 0x8] = \
-            int.to_bytes(SHUFFLEABLE_TRANSITIONS[pair[1]].camera_x_pos, 2, "little")
-        transition_bytes[SHUFFLEABLE_TRANSITIONS[pair[0]].transition_offset + 0xA] = \
-            int.to_bytes(SHUFFLEABLE_TRANSITIONS[pair[1]].camera_y_pos, 2, "little")
-
-        # The player offsets are way trickier; we need to take where on-screen they would be both before and after the
-        # transition and shift them accordingly. Unless it's a top transition connected to a bottom, in which case we
-        # shift by 0.
-        if SHUFFLEABLE_TRANSITIONS[pair[0]].er_group in VERTICAL_GROUPS and \
-             SHUFFLEABLE_TRANSITIONS[pair[1]].er_group in VERTICAL_GROUPS:
-            transition_bytes[SHUFFLEABLE_TRANSITIONS[pair[0]].transition_offset + 0x7] = b"\x00"
-        else:
-            # Take the lowest byte of the camera position plus the player's departing Y position to get the "true"
-            # position to calculate from.
-            player_y_entrance = (SHUFFLEABLE_TRANSITIONS[pair[0]].player_depart_y_pos +
-                                 SHUFFLEABLE_TRANSITIONS[pair[0]].camera_y_pos) & 0xFF
-
-            # If the position is or greater than or equal to 0xA0 (the very bottom-of-screen subpixel), "Pacman" the
-            # value back around to the top.
-            if player_y_entrance >= 0xA0:
-                player_y_entrance -= 0xA0
-
-            # Take the difference between this value and the destination Y position to get the Y shift value to put in
-            # for that transition.
-            player_y_shift = SHUFFLEABLE_TRANSITIONS[pair[1]].player_arrive_y_pos - player_y_entrance
-
-            # If the value is outside the (-)128-(+)127 range, set it to the edges of those ranges as that's as far as
-            # we are allowed to go.
-            if player_y_shift > 127:
-                player_y_shift = 0x7F
-            elif player_y_shift < -128:
-                player_y_shift = 0x80
-            # Otherwise, if the value is negative within that range, make it the proper signed negative byte the game
-            # expects it to be.
-            elif player_y_shift < 0:
-                player_y_shift += 0x100
-
-            transition_bytes[SHUFFLEABLE_TRANSITIONS[pair[0]].transition_offset + 0x7] = \
-                int.to_bytes(player_y_shift, 1, "little")
-
-        # If the entrance is a vertical transition and the exit is in a 1-wide vertical room,
-        # set 0xF8 as the player X offset.
-        if SHUFFLEABLE_TRANSITIONS[pair[0]].er_group in VERTICAL_GROUPS and pair[1] in VERTICAL_SHAFT_EXITS:
-            transition_bytes[SHUFFLEABLE_TRANSITIONS[pair[0]].transition_offset + 0x6] = b"\xF8"
-        # If the entrance is a vertical transition and the exit is on the left, set 0x98 as the player X offset.
-        elif SHUFFLEABLE_TRANSITIONS[pair[0]].er_group in VERTICAL_GROUPS and \
-                SHUFFLEABLE_TRANSITIONS[pair[1]].er_group in LEFT_GROUPS:
-            transition_bytes[SHUFFLEABLE_TRANSITIONS[pair[0]].transition_offset + 0x6] = b"\x98"
-        # If the entrance is a vertical transition and the exit is on the right, set 0x58 as the player X offset.
-        elif SHUFFLEABLE_TRANSITIONS[pair[0]].er_group in VERTICAL_GROUPS and \
-                SHUFFLEABLE_TRANSITIONS[pair[1]].er_group in RIGHT_GROUPS:
-            transition_bytes[SHUFFLEABLE_TRANSITIONS[pair[0]].transition_offset + 0x6] = b"\x58"
-        # If the entrance is on the right and the exit is on the top, set 0x7F as the player X offset.
-        elif SHUFFLEABLE_TRANSITIONS[pair[0]].er_group in RIGHT_GROUPS and \
-                SHUFFLEABLE_TRANSITIONS[pair[1]].er_group in TOP_GROUPS:
-            transition_bytes[SHUFFLEABLE_TRANSITIONS[pair[0]].transition_offset + 0x6] = b"\x7F"
-        # If the entrance is on the left and the exit is on the top, set 0x80 as the player X offset.
-        elif SHUFFLEABLE_TRANSITIONS[pair[0]].er_group in LEFT_GROUPS and \
-                SHUFFLEABLE_TRANSITIONS[pair[1]].er_group in TOP_GROUPS:
-            transition_bytes[SHUFFLEABLE_TRANSITIONS[pair[0]].transition_offset + 0x6] = b"\x80"
-        # If the entrance is on the right and the exit is on the bottom, set 0x4F as the player X offset.
-        elif SHUFFLEABLE_TRANSITIONS[pair[0]].er_group in RIGHT_GROUPS and \
-                SHUFFLEABLE_TRANSITIONS[pair[1]].er_group in BOTTOM_GROUPS:
-            transition_bytes[SHUFFLEABLE_TRANSITIONS[pair[0]].transition_offset + 0x6] = b"\x4F"
-        # If the entrance is on the left and the exit is on the bottom, set 0xB0 as the player X offset.
-        elif SHUFFLEABLE_TRANSITIONS[pair[0]].er_group in LEFT_GROUPS and \
-                SHUFFLEABLE_TRANSITIONS[pair[1]].er_group in BOTTOM_GROUPS:
-            transition_bytes[SHUFFLEABLE_TRANSITIONS[pair[0]].transition_offset + 0x6] = b"\xB0"
-        # Otherwise, the player X offset should be 0.
-        else:
-            transition_bytes[SHUFFLEABLE_TRANSITIONS[pair[0]].transition_offset + 0x6] = b"\x00"
-
-    return transition_bytes
 
 def invert_castle_transitions(world: "CVHoDisWorld") -> tuple[dict[str: bool], dict[str: bool]]:
     """Figures out which area transitions link across the two castles.
@@ -679,9 +599,10 @@ def invert_castle_transitions(world: "CVHoDisWorld") -> tuple[dict[str: bool], d
             if world.random.randint(0, 1) and area != AreaNames.ENTRANCE:
                 inverted_groups[area] = True
 
-        # If Death is our Castle Warp Condition, and Clock Tower is inverted, we'll need to ensure at least one keyhole
-        # portal set goes across the slot's castles. If not, the slot could very well be unwinnable.
-        if world.options.castle_warp_condition == CastleWarpCondition.option_death and inverted_groups[AreaNames.CLOCK]:
+        # If Death is a Castle Warp Requirement, and Clock Tower is inverted, we'll need to ensure at least one keyhole
+        # portal set goes across the slot's castles so that the Clock A Death cutscene is reachable.
+        # Otherwise, the slot will become unwinnable.
+        if world.options.death_warp_requirement and inverted_groups[AreaNames.CLOCK]:
             # Check the main areas the portals are in if Area Divisions are Doors Only, or the sub areas if not.
             if world.options.area_divisions == AreaDivisions.option_doors_only:
                 portal_1_areas = [AreaNames.MARBLE, AreaNames.TREASURY]

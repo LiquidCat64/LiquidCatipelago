@@ -45,9 +45,85 @@ class MapPercentRequired(Range):
     display_name = "Map Percent Required"
 
 
+class FillerPool(Choice):
+    """
+    How the item pool should be populated with non-progression equipment and consumables. All other items will always be created no matter what.
+    Vanilla = The pool will be filled with what's on each location from the vanilla game always, with a few notable exceptions.
+    Mystery = The pool will be filled with random equipment/consumables with varying weights.
+    """
+    option_vanilla = 0
+    option_mystery = 1
+    default = 1
+    display_name = "Filler Pool"
+
+
+class AddJBsBracelet(Toggle):
+    """
+    Adds JB's Bracelet to the item pool, which is required for the best ending and, optionally, activating all round warp gates.
+    You will not start with it. Will be forced on if Bracelet Warp Condition is on.
+    """
+    display_name = "Add JB's Bracelet"
+
+
+class GateItems(Choice):
+    """
+    Defines how the 3 one-way switch gates act.
+    Normal: Normal behavior. Gates can only be opened by pressing the respective button.
+    Add Keys: The same as normal behavior, but also adds keys to the item pool that can open the gate from the other side.
+    Buttonsanity: Adds keys to each gate, and the corresponding button will grant a check.
+
+    The following keys correspond to the following gates:
+    Living Armor Key -> Shrine A post-Living Armor gate
+    Clock Key -> Clock Tower A/B basement gate
+    Throne Key -> Top Floor A/B throne room rear gate
+    """
+    option_normal = 0
+    option_add_keys = 1
+    option_buttonsanity = 2
+    default = 0
+    display_name = "Gate Items"
+
+
+class AddFloatingBoots(Toggle):
+    """
+    Adds Floating Boots to the item pool. These allow you to float freely in midair and can be logically expected for flight in lieu of the Griffin's Wing.
+    The Griffin's Wing is still needed to break ceilings with the Crush Boots.
+    """
+    display_name = "Add Floating Boots"
+
+
+class AddInfiniteBoots(Toggle):
+    """
+    Adds Infinite Boots to the item pool. These allow infinite midair jumps when found along with the Sylph Feather and can be logically expected for flight in lieu of the Griffin's Wing.
+    The Griffin's Wing is still needed to break ceilings with the Crush Boots.
+    """
+    display_name = "Add Infinite Boots"
+
+
+class AddNoonStar(Toggle):
+    """
+    Adds the Noon Star to the item pool, which allows shopping at the Merchant's shops in Clock Tower A/B on the path to the ball race.
+    """
+    display_name = "Add Noon Star"
+
+
+class StartWithLureKey(Toggle):
+    """
+    Starts you with the Lure Key in your inventory already. It won't be added to the pool.
+    """
+    display_name = "Start With Lure Key"
+
+
+class RemoveFurniture(Toggle):
+    """
+    Removes all furniture from the pool and replaces them with other random filler. Will be ignored if placing more than 0 furniture is a required goal condition.
+    """
+    display_name = "Remove Furniture"
+
+
 class EarlyLizard(DefaultOnToggle):
     """
-    Ensures you will find Lizard Tail in the multiworld's Sphere 1 somewhere, making the harder paths out less likely.
+    Ensures you will find Lizard Tail in the multiworld's Sphere 1 somewhere, making the harder paths out less likely. Disabling recommended with entrance randomization.
     """
     display_name = "Early Lizard"
 
@@ -56,34 +132,62 @@ class SpellboundBossLogic(Choice):
     """
     Makes certain bosses that are considered "medium" or "hard" in difficulty logically expect spell books to get past. See the Game Page for information on which bosses are considered what difficulty.
     None: No boss expects any number of spell books.
-    Easy: Medium bosses expect 2 spell books and hard bosses expect 3 spell books.
     Normal: Medium bosses expect 1 spell book and hard bosses expect 2 spell books.
+    Easy: Medium bosses expect 2 spell books and hard bosses expect 3 spell books.
     """
     display_name = "Spellbound Boss Logic"
     option_none = 0
-    option_easy = 1
-    option_normal = 2
-    default = 2
-
-
-class CastleWarpCondition(Choice):
-    """
-    The condition for allowing usage of all the warp room round gates to travel between castles.
-    None: No condition; the gates are all usable from the beginning.
-    Bracelet: The gates will unlock upon finding JB's Bracelet. There's no need to equip it.
-    Death: The gates will unlock after talking to Death at Clock Tower A like in the vanilla game.
-    """
-    display_name = "Castle Warp Condition"
-    option_none = 0
-    option_bracelet = 1
-    option_death = 2
+    option_normal = 1
+    option_easy = 2
     default = 1
+
+
+class CardboundBossLogic(Choice):
+    """
+    Makes certain bosses that are considered "medium" or "hard" in difficulty logically expect Hint Cards to get past. See the Game Page for information on which bosses are considered what difficulty.
+    None: No boss expects any number of spell books.
+    Normal: Medium bosses expect 1 Hint Card and hard bosses expect 2 Hint Cards.
+    Easy: Medium bosses expect 2 Hint Cards and hard bosses expect 3 Hint Cards.
+    """
+    display_name = "Cardbound Boss Logic"
+    option_none = 0
+    option_normal = 1
+    option_easy = 2
+    default = 1
+
+
+class CardAmountWarpRequirement(Range):
+    """
+    How many Hint Cards are required to activate all the warp room round gates to travel between castles.
+    Can be mixed with other Warp Requirement options.
+    """
+    display_name = "Card Amount Warp Requirement"
+    range_start = 0
+    range_end = 6
+    default = 4
+
+
+class DeathWarpRequirement(Toggle):
+    """
+    Whether talking to Death at Clock Tower A like in the vanilla game is required to activate all the warp room round gates to travel between castles.
+    Can be mixed with other Warp Requirement options.
+    """
+    display_name = "Death Warp Requirement"
+
+
+class BraceletWarpRequirement(Toggle):
+    """
+    Whether finding JB's Bracelet is required to activate all the warp room round gates to travel between castles. There's no need to equip it.
+    If this is enabled, Add JB's Bracelet will be forced on as well.
+    Can be mixed with other Warp Requirement options.
+    """
+    display_name = "Bracelet Warp Requirement"
 
 
 class AreaDivisions(Choice):
     """
-    Where the divisions between areas should be considered for the purposes of the Transition Shuffler and Castle Swapper options.
-    Areas can be split at either doors only or at every single transition to a differently-named place.
+    Where the divisions between areas should be considered for the purposes of the map randomization options.
+    Areas can be split at either doors only or at every transition to a differently-named place.
     """
     display_name = "Area Divisions"
     option_doors_only = 0
@@ -123,9 +227,35 @@ class TransitionShuffler(Choice):
 
 class CastleSymmetry(DefaultOnToggle):
     """
-    Whether shuffled transitions should lead to the same corresponding area in both castles. This is not applicable if Castle Swapper is set to Transitions.
+    Whether transitions shuffled with Transition Shuffler should lead to the same corresponding area in both castles. This is not applicable if Castle Swapper is set to Transitions.
     """
     display_name = "Castle Symmetry"
+
+
+class MapPreset(Choice):
+    """
+    Option presets that apply specifically to the Castle Swapper, Transition Shuffler, and Castle Symmetry options.
+    This is intended for those familiar with the standalone randomizer's map options.
+    If you are unsure what these mean, leaving this on None and setting the aforementioned options is recommended; otherwise, you may set only this and ignore the other three.
+    The Chaos presets are the regular Area presets but with decoupled transitions (see the Transition Shuffler description).
+    If you want it to randomly pick from a specific set of choices, use the choice weight feature.
+    """
+    display_name = "Map Preset"
+    option_none = 0
+    option_vanilla = 1
+    option_area_single = 2
+    option_area_double = 3
+    option_area_mix_single = 4
+    option_area_mix_double = 5
+    option_area_hybrid = 6
+    option_mix_vanilla = 7
+    option_hybrid_vanilla = 8
+    option_chaos_area_single = 9
+    option_chaos_area_double = 10
+    option_chaos_area_mix_single = 11
+    option_chaos_area_mix_double = 12
+    option_chaos_area_hybrid = 13
+    default = 0
 
 
 class LinkDoorTypes(Toggle):
@@ -191,27 +321,73 @@ class CVHoDisOptions(PerGameCommonOptions):
     area_divisions: AreaDivisions
     castle_swapper: CastleSwapper
     transition_shuffler: TransitionShuffler
+    map_preset: MapPreset
     castle_symmetry: CastleSymmetry
     link_door_types: LinkDoorTypes
+    filler_pool: FillerPool
+    gate_items: GateItems
+    add_jbs_bracelet: AddJBsBracelet
+    add_floating_boots: AddFloatingBoots
+    add_infinite_boots: AddInfiniteBoots
+    add_noon_star: AddNoonStar
+    remove_furniture: RemoveFurniture
+    start_with_lure_key: StartWithLureKey
     early_lizard: EarlyLizard
     spellbound_boss_logic: SpellboundBossLogic
-    castle_warp_condition: CastleWarpCondition
+    cardbound_boss_logic: CardboundBossLogic
+    card_amount_warp_requirement: CardAmountWarpRequirement
+    death_warp_requirement: DeathWarpRequirement
+    bracelet_warp_requirement: BraceletWarpRequirement
     hint_card_hints: HintCardHints
     death_link: DeathLink
     double_sided_warps: DoubleSidedWarps
 
 
 cvhodis_option_groups = [
-    OptionGroup("Goal Requirements", [
+    OptionGroup("Goal Options", [
         MediumEndingRequired, WorstEndingRequired, BestEndingRequired, FurnitureAmountRequired,
         # MapPercentRequired
     ]),
-    OptionGroup("Entrance Randomizer", [
-        CastleSwapper, TransitionShuffler, CastleSymmetry, AreaDivisions, LinkDoorTypes]),
-    OptionGroup("Difficulty", [
-        EarlyLizard, SpellboundBossLogic, CastleWarpCondition, HintCardHints, DeathLink]),
+    OptionGroup("Entrance Randomization", [
+        MapPreset, CastleSwapper, TransitionShuffler, CastleSymmetry, AreaDivisions, LinkDoorTypes
+    ]),
+    OptionGroup("Castle Warp Requirements", [
+        CardAmountWarpRequirement, DeathWarpRequirement, BraceletWarpRequirement
+    ]),
+    OptionGroup("Item Options", [
+        FillerPool, GateItems, AddJBsBracelet, AddFloatingBoots, AddInfiniteBoots, AddNoonStar, RemoveFurniture, StartWithLureKey
+    ]),
     OptionGroup("Quality of Life", [
-        DoubleSidedWarps,
+        SpellboundBossLogic, CardboundBossLogic, EarlyLizard, HintCardHints, DoubleSidedWarps,
     #    Countdown
-    ])
+    ]),
 ]
+
+cvhodis_map_presets: dict[int, tuple[int, int, int]] = {
+    MapPreset.option_vanilla:
+        (CastleSwapper.option_off,         TransitionShuffler.option_off,       CastleSymmetry.option_false),
+    MapPreset.option_area_single:
+        (CastleSwapper.option_off,         TransitionShuffler.option_coupled,   CastleSymmetry.option_true),
+    MapPreset.option_area_double:
+        (CastleSwapper.option_off,         TransitionShuffler.option_coupled,   CastleSymmetry.option_false),
+    MapPreset.option_area_mix_single:
+        (CastleSwapper.option_areas,       TransitionShuffler.option_coupled,   CastleSymmetry.option_true),
+    MapPreset.option_area_mix_double:
+        (CastleSwapper.option_areas,       TransitionShuffler.option_coupled,   CastleSymmetry.option_false),
+    MapPreset.option_area_hybrid:
+        (CastleSwapper.option_transitions, TransitionShuffler.option_coupled,   CastleSymmetry.option_false),
+    MapPreset.option_mix_vanilla:
+        (CastleSwapper.option_areas,       TransitionShuffler.option_off,       CastleSymmetry.option_false),
+    MapPreset.option_hybrid_vanilla:
+        (CastleSwapper.option_transitions, TransitionShuffler.option_off,       CastleSymmetry.option_false),
+    MapPreset.option_chaos_area_single:
+        (CastleSwapper.option_off,         TransitionShuffler.option_decoupled, CastleSymmetry.option_true),
+    MapPreset.option_chaos_area_double:
+        (CastleSwapper.option_off,         TransitionShuffler.option_decoupled, CastleSymmetry.option_false),
+    MapPreset.option_chaos_area_mix_single:
+        (CastleSwapper.option_areas,       TransitionShuffler.option_decoupled, CastleSymmetry.option_true),
+    MapPreset.option_chaos_area_mix_double:
+        (CastleSwapper.option_areas,       TransitionShuffler.option_decoupled, CastleSymmetry.option_false),
+    MapPreset.option_chaos_area_hybrid:
+        (CastleSwapper.option_transitions, TransitionShuffler.option_decoupled, CastleSymmetry.option_false)
+}
