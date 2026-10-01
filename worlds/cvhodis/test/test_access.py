@@ -36,7 +36,8 @@ class Sphere1FromEntranceATest(CVHoDisTestBase):
         self.assertTrue(self.can_reach_location(loc_names.saa7))
         self.assertTrue(self.can_reach_location(loc_names.saa10))
         self.assertTrue(self.can_reach_location(loc_names.saa12))
-        self.assertTrue(self.can_reach_location(loc_names.saa15))
+        self.assertTrue(self.can_reach_location(loc_names.saa15a))
+        self.assertTrue(self.can_reach_location(loc_names.saa15b))
 
 
 class TreasuryAAccessibilityTest(CVHoDisTestBase):

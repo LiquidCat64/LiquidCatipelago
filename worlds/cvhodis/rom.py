@@ -285,7 +285,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
                                      patches.major_pickup_sound_player_ldr,
                                      hook_addr=0x19F84, hook_register=3)
 
-        # If Gate Items is set to Buttonsanity, place new pickups where every button would be.
+        # If Gate Items is set to Buttonsanity, place new pickups where every button affected by the option would be.
         if slot_patch_info["options"]["gate_items"] == GateItems.option_buttonsanity:
             patcher.areas[Areas.SHRINE_A][15][0]["actor_list"][2]["type_id"] = ActorTypes.PICKUP
             patcher.areas[Areas.SHRINE_A][15][0]["actor_list"][2]["subtype_id"] = PickupTypes.FURNITURE
