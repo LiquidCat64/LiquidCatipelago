@@ -10,6 +10,7 @@ from worlds.Files import APProcedurePatch, APPatchExtension
 import hashlib
 import os
 
+from . import ALL_CVHODIS_ITEMS
 from .data import patches, loc_names, item_names
 from .data.enums import ActorTypes, PickupTypes, Areas
 from .data.misc_names import GAME_NAME
@@ -18,6 +19,7 @@ from .entrances import SHUFFLEABLE_TRANSITIONS, VERTICAL_GROUPS, VERTICAL_SHAFT_
 from .items import EQUIPMENT
 from .locations import CVHODIS_LOCATIONS_INFO
 from .cvhodis_text import LEN_LIMIT_MENU_DESCRIPTION, DESCRIPTION_DISPLAY_LINES, cvhodis_text_wrap
+from .options import GateItems
 from .patcher import CVHoDisRomPatcher, CVHoDisActorEntry, GBA_ROM_START
 from settings import get_settings
 
@@ -205,9 +207,9 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.text[0x232] = "Trap Item\n"
         patcher.text[0x233] = "Progression Item\n"
         patcher.text[0x234] = "Prog-Useful Item\n"
-        patcher.text[0x235] = "Living Armor Key\n"
-        patcher.text[0x236] = "Clock Key\n"
-        patcher.text[0x237] = "Throne Key\n"
+        patcher.text[0x235] = item_names.misc_key_la + "\n"
+        patcher.text[0x236] = item_names.misc_key_c + "\n"
+        patcher.text[0x237] = item_names.misc_key_t + "\n"
 
         # Move the Spell Book info table and expand it with an extra entry for our Progression item.
         new_book_info_start = patcher.find_space_and_write_buffer(
@@ -252,9 +254,9 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Move the array of string IDs that the pickup textbox can normally access and add the extra IDs for the
         # extra item pickups.
         new_item_text_ids_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
-            patcher.read_bytes(ITEM_TEXT_IDS_START, ITEM_TEXT_IDS_LENGTH) + bytes([0x30, 0x02, 0x32, 0x02, 0x34, 0x02,
-                                                                                   0x36, 0x02, 0x39, 0x02, 0x3A, 0x02,
-                                                                                   0x3C, 0x02, 0x3E, 0x02]))
+            patcher.read_bytes(ITEM_TEXT_IDS_START, ITEM_TEXT_IDS_LENGTH) + bytes([0x30, 0x02, 0x31, 0x02, 0x32, 0x02,
+                                                                                   0x33, 0x02, 0x34, 0x02, 0x35, 0x02,
+                                                                                   0x36, 0x02, 0x37, 0x02]))
         # Update all the pointers to the above array of string IDs.
         patcher.write_int32(0x19E34, new_item_text_ids_start)
         patcher.write_int32(0x19FA8, new_item_text_ids_start)
@@ -282,6 +284,27 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.generate_dynamic_asm(patches.major_pickup_sound_player_asm,
                                      patches.major_pickup_sound_player_ldr,
                                      hook_addr=0x19F84, hook_register=3)
+
+        # If Gate Items is set to Buttonsanity, place new pickups where every button would be.
+        if slot_patch_info["options"]["gate_items"] == GateItems.option_buttonsanity:
+            patcher.areas[Areas.SHRINE_A][15][0]["actor_list"][2]["type_id"] = ActorTypes.PICKUP
+            patcher.areas[Areas.SHRINE_A][15][0]["actor_list"][2]["subtype_id"] = PickupTypes.FURNITURE
+            patcher.areas[Areas.SHRINE_A][15][0]["actor_list"][2]["var_a"] = \
+                CVHODIS_LOCATIONS_INFO[loc_names.saa15a].code
+            patcher.areas[Areas.SHRINE_A][15][0]["actor_list"][2]["var_b"] = \
+                ALL_CVHODIS_ITEMS[item_names.misc_key_la].pickup_index
+            patcher.areas[Areas.CLOCK_A][7][0]["actor_list"][0]["type_id"] = ActorTypes.PICKUP
+            patcher.areas[Areas.CLOCK_A][7][0]["actor_list"][0]["subtype_id"] = PickupTypes.FURNITURE
+            patcher.areas[Areas.CLOCK_A][7][0]["actor_list"][0]["var_a"] = \
+                CVHODIS_LOCATIONS_INFO[loc_names.cra7].code
+            patcher.areas[Areas.CLOCK_A][7][0]["actor_list"][0]["var_b"] = \
+                ALL_CVHODIS_ITEMS[item_names.misc_key_c].pickup_index
+            patcher.areas[Areas.TOP_A][1][0]["actor_list"][5]["type_id"] = ActorTypes.PICKUP
+            patcher.areas[Areas.TOP_A][1][0]["actor_list"][5]["subtype_id"] = PickupTypes.FURNITURE
+            patcher.areas[Areas.TOP_A][1][0]["actor_list"][5]["var_a"] = \
+                CVHODIS_LOCATIONS_INFO[loc_names.tfa1c].code
+            patcher.areas[Areas.TOP_A][1][0]["actor_list"][5]["var_b"] = \
+                ALL_CVHODIS_ITEMS[item_names.misc_key_t].pickup_index
 
         # Disable the text when using a teleport to Castle B for the first time.
         patcher.write_byte(0x7645, 0xE0)
@@ -532,8 +555,8 @@ class CVHoDisPatchExtensions(APPatchExtension):
                 source_zone["player_x_offset"] = 0
 
         # Go anywhere
-        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084AA128
-        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
+        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x0849D758
+        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
 
         return patcher.get_output_rom()
 

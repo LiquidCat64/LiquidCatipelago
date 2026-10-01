@@ -266,6 +266,7 @@ class CVHoDisWorld(World):
                                 "death_warp_requirement": self.options.death_warp_requirement.value,
                                 "bracelet_warp_requirement": self.options.bracelet_warp_requirement.value,
                                 "double_sided_warps": self.options.double_sided_warps.value,
+                                "gate_items": self.options.gate_items.value,
                                 "death_link": self.options.death_link.value},
                            "start inventory": get_start_inventory_data(self.multiworld.precollected_items[self.player]),
                            # "initial countdowns": get_countdown_numbers(self.options, active_locations),
