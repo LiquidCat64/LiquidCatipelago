@@ -304,14 +304,17 @@ class CVHoDisWorld(World):
                 "transition_pairings": self.transition_pairings}
 
     def get_filler_item_name(self) -> str:
-        # If the Filler Pool is vanilla, return a random low-tier consumable. Otherwise, proceed to the FUN =) part!
-        if self.options.filler_pool == FillerPool.option_vanilla:
+        # If the Filler Pool is vanilla, or if the slot this is being called on is an ItemLink group slot, return a
+        # random low-tier consumable. Otherwise, proceed to the FUN =) part!
+        if self.options.filler_pool == FillerPool.option_vanilla or self.player in self.multiworld.groups:
             return self.random.choice(CVHODIS_FILLER_CATEGORIES[FillerTypes.CONSUMABLE].choices)
 
         # Get the weights and lists of each filler category's possible choices that we will use for
         # this random item draw.
         filler_type_choices = {}
         filler_type_weights = {}
+        if not getattr(self, "unchosen_filler_lists", None):
+            print("uhhuh")
         for name, category_data in CVHODIS_FILLER_CATEGORIES.items():
             # If the category is nonrenewable, use the world's list of currently unchosen choices for the category.
             if name in self.unchosen_filler_lists:
