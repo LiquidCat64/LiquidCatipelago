@@ -1,6 +1,6 @@
 from BaseClasses import Item, ItemClassification
 from .data import item_names
-from .data.enums import PickupTypes, FillerTypes
+from .data.enums import PickupTypes, FillerTypes, EventFlags
 from .data.misc_names import GAME_NAME
 from .locations import CVHODIS_LOCATIONS_INFO
 
@@ -306,6 +306,11 @@ VLADS = frozenset({item_names.relic_v_eye, item_names.relic_v_rib, item_names.re
 HINT_CARDS = frozenset({item_names.use_hint_1, item_names.use_hint_2, item_names.use_hint_3, item_names.use_hint_4,
                         item_names.use_hint_5, item_names.use_hint_6})
 
+# All Gate Keys mapped to the event flags corresponding to them.
+GATE_KEYS = {item_names.misc_key_la: EventFlags.PRESSED_SHRINE_A_BUTTON,
+             item_names.misc_key_c: EventFlags.PRESSED_CLOCK_A_BUTTON,
+             item_names.misc_key_t: EventFlags.PRESSED_TOP_A_BUTTON}
+
 CVHODIS_FILLER_CATEGORIES: dict[str, CVHoDisFillerCategoryData] = {
     FillerTypes.ACCESSORY:       CVHoDisFillerCategoryData(18, [name for name, data in ALL_CVHODIS_ITEMS.items()
                                                                 if data.filler_type == FillerTypes.ACCESSORY]),
@@ -350,7 +355,7 @@ def get_item_pool(world: "CVHoDisWorld") -> list[CVHoDisItem]:
     tier_3_filler = []
     non_filler = []
 
-    def replace_filler(replacement_items: [CVHoDisItem]) -> None:
+    def replace_filler(replacement_items: list[CVHoDisItem]) -> None:
         """Replaces filler Items in the already-created Item pool with specified, different Items. Tier 1 filler will
         be replaced first, and then tier 2 when the less valuable tier 1 has run out, and then tier 3.
         If there's no filler left, the replacement Item(s) will be pushed precollected."""
@@ -364,7 +369,8 @@ def get_item_pool(world: "CVHoDisWorld") -> list[CVHoDisItem]:
             logging.warning(f"[{world.player_name}] Ran out of replaceable filler. The following Items will be forced "
                             "into your starting inventory: "
                             f"{[replacement_item.name for replacement_item in replacement_items]}.")
-            world.push_precollected(replacement_items)
+            for item_to_precollect in replacement_items:
+                world.push_precollected(item_to_precollect)
             return
 
         # Replace the filler Items one by one.
@@ -437,11 +443,6 @@ def get_item_pool(world: "CVHoDisWorld") -> list[CVHoDisItem]:
         # Balancing instead of just Progression.
         elif item_name == item_names.equip_bracelet_jb and not world.options.bracelet_warp_requirement:
             item_class = ItemClassification.progression_skip_balancing
-        # If the Item is a Living Armor Key, Castle Swapper is not Transitions, and Transition Shuffler is off,
-        # classify it as Useful instead of Progression. It's definitely not blocking anything at that point.
-        elif item_name == item_names.misc_key_la and not world.options.transition_shuffler and \
-                world.options.castle_swapper.value != CastleSwapper.option_transitions:
-            item_class = ItemClassification.useful
 
         # Create the Item object.
         item_to_add = world.create_item(item_name, force_classification=item_class)
@@ -470,15 +471,9 @@ def get_item_pool(world: "CVHoDisWorld") -> list[CVHoDisItem]:
     # If Gate Keys is Add Keys (NOT full Buttonsanity, which causes the keys to be added with their unfilled Locations),
     # add a set of gate keys to be in the pool separate from the locked ones we placed on the button Locations.
     if world.options.gate_items == GateItems.option_add_keys:
-        replace_filler([world.create_item(item_names.misc_key_c),
+        replace_filler([world.create_item(item_names.misc_key_la),
+                        world.create_item(item_names.misc_key_c),
                         world.create_item(item_names.misc_key_t)])
-        # Add the Living Armor key with or without the Progression classification depending on the Castle Swapper and
-        # Transition Shuffler options.
-        if not world.options.transition_shuffler and \
-                world.options.castle_swapper.value != CastleSwapper.option_transitions:
-            replace_filler([world.create_item(item_names.misc_key_la, force_classification=ItemClassification.useful)])
-        else:
-            replace_filler([world.create_item(item_names.misc_key_la)])
 
     # If Add Floating Boots is on, add them.
     if world.options.add_floating_boots:

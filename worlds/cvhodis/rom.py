@@ -426,6 +426,17 @@ class CVHoDisPatchExtensions(APPatchExtension):
             bytearray(struct.pack("<H", slot_patch_info["start inventory"]["extra life"]) +
                       struct.pack("<H", slot_patch_info["start inventory"]["extra magic"]) +
                       struct.pack("<H", slot_patch_info["start inventory"]["extra hearts"])))
+        # Starting Flags
+        starting_flag_words = [0 for _ in range(8)]
+        # Loop over each of the starting flag indexes and set them in the above bitfield array.
+        # This is how we set things like, say, the gate key flags at the beginning.
+        for flag_index in slot_patch_info["start inventory"]["starting flags"]:
+            starting_flag_words[(flag_index >> 5) + 1] |= 1 << (flag_index & 0x1F)
+        # Turn the array into a proper bytearray.
+        starting_flags_array = bytearray(0)
+        for word in starting_flag_words:
+            starting_flags_array += struct.pack("<I", word)
+        start_inventory_starting_flags_start = GBA_ROM_START | patcher.find_space_and_write_buffer(starting_flags_array)
         # Write the start inventory giver hack with the above pointers to the start inventory arrays.
         patcher.generate_dynamic_asm(patches.start_inventory_giver_asm,
                                      patches.start_inventory_giver_ldr + [start_inventory_use_start,
@@ -434,7 +445,8 @@ class CVHoDisPatchExtensions(APPatchExtension):
                                                                           start_inventory_relic_start,
                                                                           start_inventory_furn_start,
                                                                           start_inventory_whips_start,
-                                                                          start_inventory_max_start],
+                                                                          start_inventory_max_start,
+                                                                          start_inventory_starting_flags_start],
                                      hook_addr=0x6B730, hook_register=1)
 
         # Terraform the left side of the Entrance -> Skeleton Cave floor transition to allow being placed there in ER.

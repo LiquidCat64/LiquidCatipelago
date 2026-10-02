@@ -197,16 +197,25 @@ class CVHoDisWorld(World):
                 self.get_location(locked_loc).place_locked_item(self.create_item(locked_item,
                                                                                  ItemClassification.progression))
 
-    def create_item(self, name: str, force_classification: typing.Optional[ItemClassification] = None) -> CVHoDisItem:
-        if force_classification is not None:
-            classification = force_classification
-        else:
-            classification = ALL_CVHODIS_ITEMS[name].default_classification
-
+    def create_item(self, name: str, force_classification: ItemClassification | None = None) -> CVHoDisItem:
+        # If the Item is in the All Items dict, grab its default classification and code from there.
+        # Otherwise, we will assume it's an Event Item, in which case we will always classify it Progression.
         if name in ALL_CVHODIS_ITEMS:
             code = ALL_CVHODIS_ITEMS[name].pickup_index + (get_pickup_type(name) << 8)
+            classification = ALL_CVHODIS_ITEMS[name].default_classification
         else:
             code = None
+            classification = ItemClassification.progression
+
+        # If we're opting to force a classification, use that classification instead of the default one we grabbed.
+        if force_classification is not None:
+            classification = force_classification
+
+        # If we're creating a Living Armor Key when Castle Swapper is not Transitions, and Transition Shuffler is off,
+        # classify it as Useful instead of Progression. It's definitely not blocking anything at that point.
+        if name == item_names.misc_key_la and not self.options.transition_shuffler and \
+                self.options.castle_swapper.value != CastleSwapper.option_transitions:
+            classification = ItemClassification.useful
 
         created_item = CVHoDisItem(name, classification, code, self.player)
 
@@ -293,6 +302,7 @@ class CVHoDisWorld(World):
                 "furniture_amount_required": self.furniture_amount_required,
                 "spellbound_boss_logic": self.options.spellbound_boss_logic.value,
                 "cardbound_boss_logic": self.options.cardbound_boss_logic.value,
+                "gate_items": self.options.gate_items.value,
                 "area_divisions": self.options.area_divisions.value,
                 "castle_swapper": self.options.castle_swapper.value,
                 "transition_shuffler": self.options.transition_shuffler.value,
@@ -313,8 +323,6 @@ class CVHoDisWorld(World):
         # this random item draw.
         filler_type_choices = {}
         filler_type_weights = {}
-        if not getattr(self, "unchosen_filler_lists", None):
-            print("uhhuh")
         for name, category_data in CVHODIS_FILLER_CATEGORIES.items():
             # If the category is nonrenewable, use the world's list of currently unchosen choices for the category.
             if name in self.unchosen_filler_lists:
@@ -342,7 +350,7 @@ class CVHoDisWorld(World):
         # Return the name of the Item we drew.
         return filler_item
 
-    def modify_multidata(self, multidata: typing.Dict[str, typing.Any]):
+    def modify_multidata(self, multidata: dict):
         # Put the player's unique authentication in connect_names.
         multidata["connect_names"][base64.b64encode(self.auth).decode("ascii")] = \
             multidata["connect_names"][self.player_name]

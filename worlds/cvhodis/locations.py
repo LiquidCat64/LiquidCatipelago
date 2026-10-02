@@ -346,7 +346,7 @@ CVHODIS_EVENT_MAPPING: dict[str, str] = {
     loc_names.event_giant_bat: item_names.event_giant_bat,
 }
 
-GATE_LOCATIONS = frozenset[{loc_names.saa15a, loc_names.cra7, loc_names.tfa1c}]
+GATE_LOCATIONS = frozenset({loc_names.saa15a, loc_names.cra7, loc_names.tfa1c})
 
 def get_location_names_to_ids() -> dict[str, int]:
     return {name: CVHODIS_LOCATIONS_INFO[name].code for name in CVHODIS_LOCATIONS_INFO}
@@ -405,7 +405,7 @@ def get_locations_to_create(locations: list[str], options: CVHoDisOptions) -> \
             loc_code = CVHODIS_LOCATIONS_INFO[loc].code
             # If we're creating a gate button Location, check if Gate Items is not Buttonsanity.
             # If so, lock the Location's respective key to it.
-            if options.gate_items != GateItems.option_buttonsanity and loc in GATE_LOCATIONS:
+            if options.gate_items.value != GateItems.option_buttonsanity and loc in GATE_LOCATIONS:
                 locked_pairs[loc] = CVHODIS_LOCATIONS_INFO[loc].item
         # Check to see if the Location is in the Events Mapping dict.
         # If it is, then handle it like an event Location.

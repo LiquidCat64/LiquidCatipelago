@@ -288,7 +288,7 @@ start_inventory_giver_asm = [
     0x84A0,  # strh r0, [r4, 0x24]
     # Use Items
     0x4800,  # ldr  r0, 0x20187A0
-    0x490B,  # ldr  r1, start_inventory_use_start
+    0x490C,  # ldr  r1, start_inventory_use_start
     0x2200,  # mov  r2, 0x00
     0x588B,  # ldr  r3, [r1, r2]
     0x5083,  # str  r3, [r0, r2]
@@ -297,7 +297,7 @@ start_inventory_giver_asm = [
     0xDBFA,  # blt [backward 0x05]
     # Equipment
     0x4801,  # ldr  r0, 0x20187BE
-    0x490C,  # ldr  r1, start_inventory_equip_start
+    0x490D,  # ldr  r1, start_inventory_equip_start
     0x2200,  # mov  r2, 0x00
     0x5A8B,  # ldrh r3, [r1, r2]
     0x5283,  # strh r3, [r0, r2]
@@ -306,7 +306,7 @@ start_inventory_giver_asm = [
     0xDBFA,  # blt [backward 0x05]
     # Spell Books
     0x4802,  # ldr  r0, 0x201883E
-    0x490D,  # ldr  r1, start_inventory_book_start
+    0x490E,  # ldr  r1, start_inventory_book_start
     0x780B,  # ldrb r3, [r1]
     0x7003,  # strb r3, [r0]
     0x784B,  # ldrb r3, [r1, 0x01]
@@ -314,7 +314,7 @@ start_inventory_giver_asm = [
     0x7003,  # strb r3, [r0]
     # Relics
     0x4804,  # ldr  r0, 0x201883F
-    0x490E,  # ldr  r1, start_inventory_relic_start
+    0x490F,  # ldr  r1, start_inventory_relic_start
     0x2200,  # mov  r2, 0x00
     0x5C8B,  # ldrb r3, [r1, r2]
     0x5483,  # strb r3, [r0, r2]
@@ -326,7 +326,7 @@ start_inventory_giver_asm = [
     0xDBF7,  # blt [backward 0x08]
     # Furniture
     0x4805,  # ldr  r0, 0x2018843
-    0x490F,  # ldr  r1, start_inventory_furn_start
+    0x4910,  # ldr  r1, start_inventory_furn_start
     0x2200,  # mov  r2, 0x00
     0x5C8B,  # ldrb r3, [r1, r2]
     0x5483,  # strb r3, [r0, r2]
@@ -335,12 +335,12 @@ start_inventory_giver_asm = [
     0xDBFA,  # blt [backward 0x05]
     # Whip attachments
     0x4806,  # ldr  r0, 0x20187BC
-    0x4910,  # ldr  r1, start_inventory_whips_start
+    0x4911,  # ldr  r1, start_inventory_whips_start
     0x880B,  # ldrh r3, [r1]
     0x8003,  # strh r3, [r0]
     # Extra HP, MP, and Hearts
     0x4807,  # ldr  r0, 0x2018786
-    0x4911,  # ldr  r1, start_inventory_max_start
+    0x4912,  # ldr  r1, start_inventory_max_start
     # Max HP
     0x880A,  # ldrh r2, [r1]
     0x8803,  # ldrh r3, [r0]
@@ -360,6 +360,15 @@ start_inventory_giver_asm = [
     0x89C3,  # ldrh r3, [r0, 0x0E]
     0x189B,  # add  r3, r3, r2
     0x81C3,  # strh r3, [r0, 0x0E]
+    # Starting Flags
+    0x480B,  # ldr  r0, 0x2000310
+    0x4913,  # ldr  r1, start_inventory_starting_flags_start
+    0x2200,  # mov  r2, 0x00
+    0x588B,  # ldr  r3, [r1, r2]
+    0x5083,  # str  r3, [r0, r2]
+    0x3204,  # add  r2, 0x04
+    0x2A20,  # cmp  r2, 0x20
+    0xDBFA,  # blt [backward 0x05]
     # Set the "can see Castle A + B maps" flag.
     0x4808,  # ldr  r0, 0x200030D
     0x7801,  # ldrb r1, [r0]
@@ -385,6 +394,7 @@ start_inventory_giver_ldr = [
     0x0200030D,
     0x08494580,
     0x0806B738,
+    0x02000310,
 ]
 
 major_pickup_sound_player_asm = [

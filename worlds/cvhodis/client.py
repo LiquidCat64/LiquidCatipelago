@@ -1,11 +1,13 @@
+import struct
 from typing import TYPE_CHECKING, Set, NamedTuple
-from .locations import get_location_names_to_ids
-# from .items import ALL_CVHODIS_ITEMS
+from .locations import get_location_names_to_ids, CVHODIS_LOCATIONS_INFO
+from .items import GATE_KEYS
+from .options import GateItems
 # from .locations import CVHODIS_LOCATIONS_INFO
 # from .cvhodis_text import cvhodis_string_to_bytearray
 from .rom import ARCHIPELAGO_IDENTIFIER_START, ARCHIPELAGO_CLIENT_COMPAT_VER, AUTH_NUMBER_START, QUEUED_TEXT_STRING_START
 from .data import item_names, loc_names
-from .data.enums import PickupTypes
+from .data.enums import PickupTypes, EventFlags
 from .data.misc_names import GAME_NAME
 from .aesthetics import CVHODIS_INVENTORIES, MAX_STAT_VALUE, MAX_UP_INCREMENT_VALUE
 
@@ -45,6 +47,7 @@ GAME_STATE_CREDITS = 0x09
 FROZEN_TEXTBOX_BITS = 0x03
 CAN_PAUSE_BIT = 0x04
 OUT_OF_MENU_VALUE = 0x01
+FIRST_GATE_KEY_TEXT_ID = 0x235
 TEXT_ID_MULTIWORLD_MESSAGE = b"\xF2\x84"
 SOUND_ID_PICKUP_MINOR = b"\x2D"
 SOUND_ID_PICKUP_MONEY = b"\x2E"
@@ -52,24 +55,19 @@ SOUND_ID_PICKUP_HEART = b"\x2F"
 SOUND_ID_PICKUP_SUB_WEAPON = b"\x30"
 SOUND_ID_PICKUP_MAX_UP = b"\x34"
 SOUND_ID_PICKUP_MAJOR = b"\x36"
+SOUND_ID_BUTTON_ACTIVATED = b"\x50"
 
 ITEM_NAME_LIMIT = 300
 PLAYER_NAME_LIMIT = 50
-
-FLAG_CLOCK_TOWER_DEATH_CUTSCENE = 0x3D
-FLAG_DRACULA_WRAITH_INTRO = 0x48
-FLAG_MEDIUM_ENDING = 0x45
-FLAG_WORST_ENDING = 0x46
-FLAG_BEST_ENDING = 0x1F
 
 INV_NUMBERS = [pickup_type for pickup_type in CVHODIS_INVENTORIES]
 
 # These flags are communicated to the tracker as a bitfield using this order.
 # Modifying the order will cause undetectable autotracking issues.
 EVENT_FLAG_MAP = {
-    FLAG_MEDIUM_ENDING: "FLAG_OBTAINED_MEDIUM_ENDING",
-    FLAG_WORST_ENDING: "FLAG_OBTAINED_WORST_ENDING",
-    FLAG_BEST_ENDING: "FLAG_OBTAINED_BEST_ENDING",
+    EventFlags.CUTSCENE_MEDIUM_ENDING_MAXIMS_DEATH: "FLAG_OBTAINED_MEDIUM_ENDING",
+    EventFlags.CUTSCENE_WORST_ENDING_MAXIMS_DEATH: "FLAG_OBTAINED_WORST_ENDING",
+    EventFlags.DEFEATED_DRACULA_WRAITH_2: "FLAG_OBTAINED_BEST_ENDING",
     0xFF: "FLAG_PLACED_REQUIRED_FURNITURE",
     # Not actually set by the game, but we consider it set when enough furniture
     # is detected as having been placed.
@@ -400,11 +398,16 @@ class CastlevaniaHoDisClient(BizHawkClient):
                 if pickup_type in CVHODIS_INVENTORIES:
                     inv_array = curr_invs[pickup_type]
                     inv_array_start = CVHODIS_INVENTORIES[pickup_type].main_start_addr
-                    text_id = int.to_bytes(CVHODIS_INVENTORIES[pickup_type].text_id_start + pickup_index,
-                                           2, "little")
+                    text_id = struct.pack("<H", CVHODIS_INVENTORIES[pickup_type].text_id_start + pickup_index)
+                    # If the item is a gate key, play the "button activated" sound with the small textbox.
+                    # Also make the text ID the correct ID for the key's name.
+                    if item_name in GATE_KEYS:
+                        mssg_sfx_id = SOUND_ID_BUTTON_ACTIVATED
+                        text_id_buffer_addr = QUEUED_TEXTBOX_SMALL_ADDRESS
+                        text_id = struct.pack("<H", FIRST_GATE_KEY_TEXT_ID + (pickup_index - 0x1F))
                     # If the item is JB or MK's Bracelet, play the major pickup sound with the small textbox. These are
                     # the only two items to use this specific combination.
-                    if item_name in [item_names.equip_bracelet_jb, item_names.equip_bracelet_mk]:
+                    elif item_name in [item_names.equip_bracelet_jb, item_names.equip_bracelet_mk]:
                         mssg_sfx_id = SOUND_ID_PICKUP_MAJOR
                         text_id_buffer_addr = QUEUED_TEXTBOX_SMALL_ADDRESS
                     # If the item normally calls a large textbox when picked up, play the major pickup sound and choose
@@ -444,17 +447,23 @@ class CastlevaniaHoDisClient(BizHawkClient):
                 refill_write = []
                 inv_writes = []
                 inv_guards = []
+                event_flag_indexes = []
+                event_flag_writes = []
+                event_flag_guards = []
 
                 # If the Item is stored in a count and not a bitfield, check to see if the player has 99 of that Item.
                 # If they do, don't increase their count of that Item any further.
                 if pickup_type in CVHODIS_INVENTORIES:
-                    if not CVHODIS_INVENTORIES[pickup_type].is_bitfield:
+                    # If the Item is a Gate Key, set its corresponding event flag.
+                    if pickup_type == PickupTypes.FURNITURE and item_name in GATE_KEYS:
+                        event_flag_indexes.append(GATE_KEYS[item_name])
+                    # If the Item is stored in an array of counts, increment its counter (if it's not at 99 already).
+                    elif not CVHODIS_INVENTORIES[pickup_type].is_bitfield:
                         if inv_array[pickup_index] + 1 <= 99:
                             inv_address = inv_array_start + pickup_index
                             inv_guards += [(inv_address, int.to_bytes(inv_array[pickup_index], 1, "little"), "EWRAM")]
                             inv_writes += [(inv_address, int.to_bytes(inv_array[pickup_index] + 1, 1, "little"),
                                             "EWRAM")]
-
                     # If the Item is stored in a bitfield, set the bit for that Item in the bitfield.
                     else:
                         inv_address = inv_array_start + (pickup_index // 8)
@@ -503,16 +512,24 @@ class CastlevaniaHoDisClient(BizHawkClient):
                         inv_writes += [(MAX_STATS_COUNTS_START + 4, int.to_bytes(new_max_hearts, 2, "little"), "EWRAM")]
                         refill_write = [(CURRENT_HEARTS_ADDRESS, int.to_bytes(new_curr_hearts, 2, "little"), "EWRAM")]
 
+                # If there are event flag values to set, do so here.
+                for flag_index in event_flag_indexes:
+                    word_index = flag_index >> 5
+                    new_word = event_flags_array[word_index] | (1 << flag_index & 0x1F)
+                    flag_address = FLAGS_BITFIELD_START + 0x4 + (word_index * 4)
+                    event_flag_guards += [(flag_address, struct.pack("<I", event_flags_array[word_index]), "EWRAM")]
+                    event_flag_writes += [(flag_address, struct.pack("<I", new_word), "EWRAM")]
+
                 await bizhawk.guarded_write(ctx.bizhawk_ctx,
                                             [(text_id_buffer_addr, text_id, "EWRAM"),
                                              (QUEUED_RECEIVED_INDEX_INCREMENT_ADDRESS, b"\x01", "EWRAM"),
                                              (QUEUED_SOUND_ID_ADDRESS, mssg_sfx_id, "EWRAM")]
-                                            + inv_writes + refill_write,
+                                            + inv_writes + refill_write + event_flag_writes,
                                             # Make sure the number of received items and inventory to overwrite are
                                             # still what we expect them to be.
                                             [(NUM_RECEIVED_ITEMS_ADDRESS, read_state[len(CVHODIS_INVENTORIES) + 3],
                                               "EWRAM")]
-                                            + inv_guards),
+                                            + inv_guards + event_flag_guards),
 
             # Check how many bits are set in the placed furniture flags array to determine whether the player has
             # completed the furniture objective (if more than 0 pieces are required).
@@ -527,6 +544,7 @@ class CastlevaniaHoDisClient(BizHawkClient):
             # B = ID for which bit within the word specified by A should be set, starting from the far right of it
             # (after converting to big endian).
             checked_set_events = {flag_name: False for flag, flag_name in EVENT_FLAG_MAP.items()}
+            locs_to_send = set()
             for word_index, word in enumerate(event_flags_array):
                 for bit_index in range(0x20):
                     and_value = 0x01 << bit_index
@@ -538,25 +556,35 @@ class CastlevaniaHoDisClient(BizHawkClient):
                     # that.
                     flag_id = (word_index << 5) + bit_index
 
+                    # If the flag(s) for pressing the Shrine, Clock, or Top Floor buttons are set, and Gate Items is
+                    # not Buttonsanity, send their corresponding Locations as checked.
+                    if ctx.slot_data["gate_items"] != GateItems.option_buttonsanity:
+                        if flag_id == EventFlags.PRESSED_SHRINE_A_BUTTON:
+                            locs_to_send.add(CVHODIS_LOCATIONS_INFO[loc_names.saa15a].code)
+                        elif flag_id == EventFlags.PRESSED_CLOCK_A_BUTTON:
+                            locs_to_send.add(CVHODIS_LOCATIONS_INFO[loc_names.cra7].code)
+                        elif flag_id == EventFlags.PRESSED_TOP_A_BUTTON:
+                            locs_to_send.add(CVHODIS_LOCATIONS_INFO[loc_names.tfa1c].code)
+
                     # Due to how the sequence of events is set up in-game, the Worst Ending flag should only be
                     # registered if the Dracula Wraith intro flag is not also set.
-                    if flag_id not in EVENT_FLAG_MAP or (flag_id == FLAG_WORST_ENDING and event_flags_array[2] & 0x100):
+                    if flag_id not in EVENT_FLAG_MAP or (flag_id == EventFlags.CUTSCENE_WORST_ENDING_MAXIMS_DEATH and
+                                                         event_flags_array[2] & 0x100):
                         continue
 
                     checked_set_events[EVENT_FLAG_MAP[flag_id]] = True
 
                     # Update the client's statuses for each of the goal objectives.
-                    if flag_id == FLAG_MEDIUM_ENDING:
+                    if flag_id == EventFlags.CUTSCENE_MEDIUM_ENDING_MAXIMS_DEATH:
                         self.got_medium_ending = True
 
-                    if flag_id == FLAG_WORST_ENDING:
+                    if flag_id == EventFlags.CUTSCENE_WORST_ENDING_MAXIMS_DEATH:
                         self.got_worst_ending = True
 
-                    if flag_id == FLAG_BEST_ENDING:
+                    if flag_id == EventFlags.DEFEATED_DRACULA_WRAITH_2:
                         self.got_best_ending = True
 
             # Check the pickup flags for any checked Locations that can be sent.
-            locs_to_send = set()
             for word_index, word in enumerate(pickup_flags_array):
                 for bit_index in range(0x20):
                     and_value = 0x01 << bit_index

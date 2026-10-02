@@ -124,7 +124,7 @@ MK_DOOR_GROUPS = [ERGroups.LEFT_MK_A, ERGroups.LEFT_MK_B, ERGroups.RIGHT_MK_A, E
 #    ERGroups.BOTTOM_B: [ERGroups.RIGHT_B, ERGroups.TOP_B, ERGroups.LEFT_B],
 #}
 
-TARGET_GROUP_RELATIONSHIPS: dict[int: list[int]] = {
+TARGET_GROUP_RELATIONSHIPS: dict[int, list[int]] = {
     # Randomized entrances cannot connect to their same direction and only to their same castle.
     # Castle A
     ERGroups.LEFT_A: [ERGroups.RIGHT_A, ERGroups.TOP_A],

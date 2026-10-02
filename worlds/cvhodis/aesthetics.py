@@ -1,7 +1,7 @@
 from BaseClasses import ItemClassification, Location, Item
 #from .options import Countdown
 #from .locations import CVHODIS_LOCATIONS_INFO, ALT_PICKUP_OFFSETS, GUARDIAN_GRINDER_LOCATIONS
-from .items import FURNITURE, SPELLBOOKS, RELICS
+from .items import FURNITURE, SPELLBOOKS, RELICS, GATE_KEYS
 #from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_DESCRIPTION, DESCRIPTION_DISPLAY_LINES
 from .data import item_names
 from .data.enums import PickupTypes
@@ -240,12 +240,13 @@ def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Locati
 def get_start_inventory_data(precollected_items: list[Item]) -> dict[str, dict[int, str] | int]:
     """Calculate and return the starting inventory values. Not every Item goes into a menu inventory, so they all have
     to be handled accordingly."""
-    start_inventory_data: dict[str, any] = {"inv arrays": {inv_id: bytearray(CVHODIS_INVENTORIES[inv_id].length)
-                                            for inv_id in CVHODIS_INVENTORIES},
-                                            "spellbook": 0,
-                                            "extra life": 0,
-                                            "extra magic": 0,  # MP is not currently supported, but it's here if needed!
-                                            "extra hearts": 0}
+    start_inventory_data: dict[str, int | dict[int, bytearray] | list[int]] = \
+        {"inv arrays": {inv_id: bytearray(CVHODIS_INVENTORIES[inv_id].length) for inv_id in CVHODIS_INVENTORIES},
+         "starting flags": [],
+         "spellbook": 0,
+         "extra life": 0,
+         "extra magic": 0,  # MP is not currently supported, but it's here if needed!
+         "extra hearts": 0}
 
     # Loop over every Item in our pre-collected Items list.
     for item in precollected_items:
@@ -253,8 +254,13 @@ def get_start_inventory_data(precollected_items: list[Item]) -> dict[str, dict[i
         type_byte = (item.code >> 8) & 0xFF
         index_byte = item.code & 0xFF
 
+        # If the Item is a gate key, add the event flag ID it should be setting to the starting flags if it's not there
+        # already.
+        if item.name in GATE_KEYS:
+            if GATE_KEYS[item.name] not in start_inventory_data["starting flags"]:
+                start_inventory_data["starting flags"].append(GATE_KEYS[item.name])
         # If the Item's type byte is a known type of item with an inventory array, handle it here.
-        if type_byte in start_inventory_data["inv arrays"]:
+        elif type_byte in start_inventory_data["inv arrays"]:
             # If the inventory array is a bitfield, set the bit for that Item in that inventory array.
             if CVHODIS_INVENTORIES[type_byte].is_bitfield:
                 start_inventory_data["inv arrays"][type_byte][index_byte // 8] |= 1 << (index_byte % 8)
