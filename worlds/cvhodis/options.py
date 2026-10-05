@@ -121,7 +121,7 @@ class RemoveFurniture(Toggle):
     display_name = "Remove Furniture"
 
 
-class EarlyLizard(DefaultOnToggle):
+class EarlyLizard(Toggle):
     """
     Ensures you will find Lizard Tail in the multiworld's Sphere 1 somewhere, making the harder paths out less likely. Disabling recommended with entrance randomization.
     """
@@ -300,11 +300,12 @@ class SubWeaponShuffle(Toggle):
     display_name = "Sub-weapon Shuffle"
 
 
-class NerfGriffinWing(Toggle):
+class ProgressiveHeights(Toggle):
     """
-    Initially nerfs the Griffin Wing by removing its ability to jump infinitely until the Sylph Feather is obtained.
+    Adds two Progressive Height Relics to the pool instead of the Sylph Feather and Griffin's Wing.
+    The first one found will unlock the former Relic and then the second will unlock the latter.
     """
-    display_name = "Nerf Griffin Wing"
+    display_name = "Progressive Heights"
 
 
 @dataclass
@@ -317,7 +318,6 @@ class CVHoDisOptions(PerGameCommonOptions):
     # map_percent_requirement: MapPercentRequirement
     # countdown: Countdown
     # sub_weapon_shuffle: SubWeaponShuffle
-    # nerf_griffin_wing: NerfGriffinWing
     area_divisions: AreaDivisions
     castle_swapper: CastleSwapper
     transition_shuffler: TransitionShuffler
@@ -325,6 +325,7 @@ class CVHoDisOptions(PerGameCommonOptions):
     castle_symmetry: CastleSymmetry
     link_door_types: LinkDoorTypes
     filler_pool: FillerPool
+    progressive_heights: ProgressiveHeights
     gate_items: GateItems
     add_jbs_bracelet: AddJBsBracelet
     add_floating_boots: AddFloatingBoots
@@ -355,7 +356,8 @@ cvhodis_option_groups = [
         CardAmountWarpRequirement, DeathWarpRequirement, BraceletWarpRequirement
     ]),
     OptionGroup("Item Options", [
-        FillerPool, GateItems, AddJBsBracelet, AddFloatingBoots, AddInfiniteBoots, AddNoonStar, RemoveFurniture, StartWithLureKey
+        FillerPool, ProgressiveHeights, GateItems, AddJBsBracelet, AddFloatingBoots, AddInfiniteBoots, AddNoonStar,
+        RemoveFurniture, StartWithLureKey
     ]),
     OptionGroup("Quality of Life", [
         SpellboundBossLogic, CardboundBossLogic, EarlyLizard, HintCardHints, DoubleSidedWarps,

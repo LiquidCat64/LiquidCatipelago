@@ -189,6 +189,7 @@ relic_v_rib =   "Rib of Vlad"
 relic_v_nail =  "Nail of Vlad"
 relic_v_fang =  "Fang of Vlad"
 relic_v_ring =  "Vlad's Ring"
+relic_height =  "Progressive Height"
 
 # Furniture definitions
 furn_chan =      "Chandelier"

@@ -246,18 +246,23 @@ class CVHoDisRules:
         }
 
     def can_double_jump(self, state: CollectionState) -> bool:
-        """Sylph Feather or any item that lets you gain infinite height.
+        """Sylph Feather, one Progressive Height, or any item that lets you gain infinite height.
         Infinite Boots are not applicable here because they need Sylph Feather with them."""
-        return state.has_any([item_names.relic_feather, item_names.relic_wing, item_names.equip_boots_f], self.player)
+        return state.has_any([item_names.relic_feather, item_names.relic_height, item_names.relic_wing,
+                              item_names.equip_boots_f], self.player)
 
     def can_super_jump(self, state: CollectionState) -> bool:
-        """Any item that lets you gain infinite height. Note that Infinite Boots require Sylph Feather with them."""
+        """Any item or set of items that let you gain infinite height.
+        Note that Infinite Boots require either Sylph Feather or a Progressive Height with them."""
         return state.has_any([item_names.relic_wing, item_names.equip_boots_f], self.player) or \
-            state.has_all([item_names.relic_feather, item_names.equip_boots_in], self.player)
+            state.has_all([item_names.relic_feather, item_names.equip_boots_in], self.player) or \
+            state.has(item_names.relic_height, self.player, 2) or \
+            state.has_all([item_names.relic_height, item_names.equip_boots_in], self.player)
 
     def can_break_ceilings(self, state: CollectionState) -> bool:
-        """Griffin's Wing and Crush Boots specifically."""
-        return state.has_all([item_names.relic_wing, item_names.equip_boots_c], self.player)
+        """Crush Boots and either Griffin's Wing or two Progressive Heights specifically."""
+        return state.has_all([item_names.relic_wing, item_names.equip_boots_c], self.player) or \
+            state.has_all_counts({item_names.relic_height: 2, item_names.equip_boots_c: 1}, self.player)
 
     def can_break_walls(self, state: CollectionState) -> bool:
         """Crushing Stone."""
@@ -308,8 +313,9 @@ class CVHoDisRules:
         return card_rule and death_rule and bracelet_rule
 
     def can_win_ball_race_a(self, state: CollectionState) -> bool:
-        """Specifically Sylph Feather; Griffin's Wing or Floating Boots make this challenge way too hard."""
-        return state.has(item_names.relic_feather, self.player)
+        """Specifically Sylph Feather or a Progressive Height.
+        Griffin's Wing or Floating Boots make this challenge too unreasonable."""
+        return state.has_any([item_names.relic_feather, item_names.relic_height], self.player)
 
     def can_beat_medium_bosses(self, state: CollectionState) -> bool:
         """1 spell book if Spellbound Boss Logic is Normal, 2 if Easy, or none if Disabled.

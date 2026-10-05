@@ -1,5 +1,7 @@
 import struct
 from typing import TYPE_CHECKING, Set, NamedTuple
+
+from . import ALL_CVHODIS_ITEMS
 from .locations import get_location_names_to_ids, CVHODIS_LOCATIONS_INFO
 from .items import GATE_KEYS
 from .options import GateItems
@@ -48,6 +50,7 @@ FROZEN_TEXTBOX_BITS = 0x03
 CAN_PAUSE_BIT = 0x04
 OUT_OF_MENU_VALUE = 0x01
 FIRST_GATE_KEY_TEXT_ID = 0x235
+PROG_JUMP_ITEM_TEXT_ID = b"\xDD"
 TEXT_ID_MULTIWORLD_MESSAGE = b"\xF2\x84"
 SOUND_ID_PICKUP_MINOR = b"\x2D"
 SOUND_ID_PICKUP_MONEY = b"\x2E"
@@ -399,6 +402,18 @@ class CastlevaniaHoDisClient(BizHawkClient):
                     inv_array = curr_invs[pickup_type]
                     inv_array_start = CVHODIS_INVENTORIES[pickup_type].main_start_addr
                     text_id = struct.pack("<H", CVHODIS_INVENTORIES[pickup_type].text_id_start + pickup_index)
+
+                    # If the item is a Progressive Height, change it to a Sylph Feather if we don't have Sylph Feather
+                    # or a Griffin Wing if we do.
+                    if item_name == item_names.relic_height:
+                        text_id = PROG_JUMP_ITEM_TEXT_ID
+                        if curr_invs[PickupTypes.RELIC][0] & 0x2:
+                            item_name = item_names.relic_wing
+                            pickup_index = ALL_CVHODIS_ITEMS[item_names.relic_wing].pickup_index
+                        else:
+                            item_name = item_names.relic_feather
+                            pickup_index = ALL_CVHODIS_ITEMS[item_names.relic_feather].pickup_index
+
                     # If the item is a gate key, play the "button activated" sound with the small textbox.
                     # Also make the text ID the correct ID for the key's name.
                     if item_name in GATE_KEYS:

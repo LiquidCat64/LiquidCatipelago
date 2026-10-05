@@ -210,6 +210,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.text[0x235] = item_names.misc_key_la + "\n"
         patcher.text[0x236] = item_names.misc_key_c + "\n"
         patcher.text[0x237] = item_names.misc_key_t + "\n"
+        patcher.text[0x238] = item_names.relic_height + "\n"
 
         # Move the Spell Book info table and expand it with an extra entry for our Progression item.
         new_book_info_start = patcher.find_space_and_write_buffer(
@@ -226,7 +227,8 @@ class CVHoDisPatchExtensions(APPatchExtension):
 
         # Move the relic info table and expand it with an extra entry for our Prog + Useful item.
         new_relic_info_start = patcher.find_space_and_write_buffer(
-            patcher.read_bytes(RELIC_INFO_START, RELIC_INFO_LENGTH) + bytes([0xD9, 0x00, 0xE2, 0x01]))  # Prog + Useful
+            patcher.read_bytes(RELIC_INFO_START, RELIC_INFO_LENGTH) + bytes([0xDD, 0x00, 0xE7, 0x01,    # Prog Height
+                                                                             0xD9, 0x00, 0xE2, 0x01]))  # Prog + Useful
         patcher.write_int32(0x197A4, new_relic_info_start | GBA_ROM_START)
         patcher.write_int32(0x1A0F0, new_relic_info_start | GBA_ROM_START)
 
@@ -256,7 +258,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
         new_item_text_ids_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
             patcher.read_bytes(ITEM_TEXT_IDS_START, ITEM_TEXT_IDS_LENGTH) + bytes([0x30, 0x02, 0x31, 0x02, 0x32, 0x02,
                                                                                    0x33, 0x02, 0x34, 0x02, 0x35, 0x02,
-                                                                                   0x36, 0x02, 0x37, 0x02]))
+                                                                                   0x36, 0x02, 0x37, 0x02, 0x38, 0x02]))
         # Update all the pointers to the above array of string IDs.
         patcher.write_int32(0x19E34, new_item_text_ids_start)
         patcher.write_int32(0x19FA8, new_item_text_ids_start)
@@ -279,6 +281,12 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.generate_dynamic_asm(patches.furniture_pickup_customizer_asm,
                                      patches.furniture_pickup_customizer_ldr,
                                      hook_addr=0x1A1D0, hook_register=3)
+
+        # Prevent relic pickups with indexes over 0xB from going into the inventory and perform custom behaviors
+        # depending on what we picked up.
+        patcher.generate_dynamic_asm(patches.relic_pickup_customizer_asm,
+                                     patches.relic_pickup_customizer_ldr,
+                                     hook_addr=0x1A100, hook_register=0)
 
         # Play the "major pickup" sound when picking up JB's Bracelet.
         patcher.generate_dynamic_asm(patches.major_pickup_sound_player_asm,

@@ -7,7 +7,7 @@ from .locations import CVHODIS_LOCATIONS_INFO
 import logging
 from typing import TYPE_CHECKING, NamedTuple
 
-from .options import GateItems, FillerPool, CastleSwapper
+from .options import GateItems, FillerPool
 
 if TYPE_CHECKING:
     from . import CVHoDisWorld
@@ -243,6 +243,8 @@ RELICS: dict[str, CVHoDisItemData] = {
                                               ItemClassification.useful),
     item_names.relic_v_ring:  CVHoDisItemData(0x0B, ItemClassification.progression_skip_balancing |
                                               ItemClassification.useful),
+    # Rando exclusive
+    item_names.relic_height:  CVHoDisItemData(0x0C, ItemClassification.progression | ItemClassification.useful),
 }
 
 FURNITURE: dict[str, CVHoDisItemData] = {
@@ -277,6 +279,7 @@ FURNITURE: dict[str, CVHoDisItemData] = {
     item_names.furn_drawing:   CVHoDisItemData(0x1C, ItemClassification.progression_deprioritized_skip_balancing),
     item_names.furn_bed:       CVHoDisItemData(0x1D, ItemClassification.progression_deprioritized_skip_balancing),
     item_names.furn_closet:    CVHoDisItemData(0x1E, ItemClassification.progression_deprioritized_skip_balancing),
+    # Rando exclusive
     item_names.misc_key_la:    CVHoDisItemData(0x1F, ItemClassification.progression),
     item_names.misc_key_c:     CVHoDisItemData(0x20, ItemClassification.progression),
     item_names.misc_key_t:     CVHoDisItemData(0x21, ItemClassification.progression),
@@ -302,6 +305,8 @@ ALL_CVHODIS_ITEMS: dict[str, CVHoDisItemData] = {item: PICKUP_TYPE_MAPPINGS[pick
 
 VLADS = frozenset({item_names.relic_v_eye, item_names.relic_v_rib, item_names.relic_v_fang, item_names.relic_v_nail,
                    item_names.relic_v_heart, item_names.relic_v_ring})
+
+HEIGHTS = frozenset({item_names.relic_feather, item_names.relic_wing})
 
 HINT_CARDS = frozenset({item_names.use_hint_1, item_names.use_hint_2, item_names.use_hint_3, item_names.use_hint_4,
                         item_names.use_hint_5, item_names.use_hint_6})
@@ -412,6 +417,10 @@ def get_item_pool(world: "CVHoDisWorld") -> list[CVHoDisItem]:
         elif not world.options.add_jbs_bracelet and item_name == item_names.equip_bracelet_jb:
             world.push_precollected(world.create_item(item_names.equip_bracelet_jb))
             item_name = world.get_filler_item_name()
+        # If the Item is a Height Relic, check to see if Progressive Heights is on. If it is, add a Progressive Height
+        # to the pool instead.
+        elif world.options.progressive_heights and item_name in HEIGHTS:
+            item_name = item_names.relic_height
 
         # Get the final Item's default classification.
         item_class = ALL_CVHODIS_ITEMS[item_name].default_classification

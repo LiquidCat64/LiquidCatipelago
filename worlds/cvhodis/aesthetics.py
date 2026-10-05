@@ -1,7 +1,7 @@
 from BaseClasses import ItemClassification, Location, Item
 #from .options import Countdown
 #from .locations import CVHODIS_LOCATIONS_INFO, ALT_PICKUP_OFFSETS, GUARDIAN_GRINDER_LOCATIONS
-from .items import FURNITURE, SPELLBOOKS, RELICS, GATE_KEYS
+from .items import FURNITURE, SPELLBOOKS, RELICS, GATE_KEYS, ALL_CVHODIS_ITEMS
 #from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_DESCRIPTION, DESCRIPTION_DISPLAY_LINES
 from .data import item_names
 from .data.enums import PickupTypes
@@ -89,7 +89,8 @@ def get_countdown_flags(world: "CVHoDisWorld", active_locations: Iterable[Locati
     pass
 
 
-def get_location_write_values(world: "CVHoDisWorld", active_locations: Iterable[Location]) -> {int: (int, bool)}:
+def get_location_write_values(world: "CVHoDisWorld", active_locations: Iterable[Location]) -> \
+        dict[int, tuple[int, bool]]:
     """Gets ALL the Item data to go into the ROM. Items consist of four bytes; the first two represent the object ID
     for the "category" of item that it belongs to, the third is the sub-value for which item within that "category" it
     is, and the fourth controls the appearance it takes."""
@@ -247,12 +248,22 @@ def get_start_inventory_data(precollected_items: list[Item]) -> dict[str, dict[i
          "extra life": 0,
          "extra magic": 0,  # MP is not currently supported, but it's here if needed!
          "extra hearts": 0}
+    one_prog_jump = False
 
     # Loop over every Item in our pre-collected Items list.
     for item in precollected_items:
 
         type_byte = (item.code >> 8) & 0xFF
         index_byte = item.code & 0xFF
+
+        # If the Item is a Progressive Height, add Sylph Feather if it's our first one or Griffin's Wing if it's our
+        # second.
+        if item.name == item_names.relic_height:
+            if one_prog_jump:
+                index_byte = ALL_CVHODIS_ITEMS[item_names.relic_wing].pickup_index
+            else:
+                index_byte = ALL_CVHODIS_ITEMS[item_names.relic_feather].pickup_index
+                one_prog_jump = True
 
         # If the Item is a gate key, add the event flag ID it should be setting to the starting flags if it's not there
         # already.
