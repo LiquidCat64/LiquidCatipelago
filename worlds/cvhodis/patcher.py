@@ -21,6 +21,8 @@ LOADING_ZONE_ENTRY_LENGTH = 0xC
 ROM_PADDING_START = 0x69D400
 ROM_PADDING_WORD = bytearray(b'\xFF\xFF\xFF\xFF')
 
+QUEUED_TEXT_STRING_START = 0x18A40
+
 class CVHoDisRoomDataEntry(TypedDict):
     """Base class that all CVHoDis room data entries inherit from."""
 
@@ -591,6 +593,8 @@ class CVHoDisRomPatcher:
         # Otherwise, meaning we have more strings than vanilla, find a new free space for the pointer array and write
         # it there instead.
         else:
+            # Set text 0x2AB to point to the text buffer we will use for incoming multiworld messages.
+            new_text_ptrs[0x2AB] = QUEUED_TEXT_STRING_START | GBA_EWRAM_START
             new_text_ptr_buffer = bytearray(0)
             for text_ptr in new_text_ptrs:
                 new_text_ptr_buffer += struct.pack("<I", text_ptr)

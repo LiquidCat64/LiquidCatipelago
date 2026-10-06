@@ -226,7 +226,7 @@ relic_pickup_customizer_asm = [
     # If the index is 0xC (meaning it's a Progressive Height), check if we have the Sylph Feather. If we don't, give
     # the Sylph Feather. Otherwise, give the Griffin's Wing.
     0x290C,  # cmp  r1, 0x0C
-    0xD10C,  # bne  [forward 0x0D]
+    0xD10E,  # bne  [forward 0x0F]
     0x4802,  # ldr  r0, 0x201883F
     0x7801,  # ldrb r1, [r0]
     0x2202,  # mov  r2, 0x02
@@ -243,11 +243,27 @@ relic_pickup_customizer_asm = [
     # Return to the function at the call to the "update abilities" function, skipping giving any Relics normally.
     0x4A01,  # ldr  r2, 0x801A122
     0x4697,  # mov  r15, r2
+    # If we jumped to here, call the blue corner textbox with an outgoing multiworld item message based on the pickup's
+    # flag and skip calling the gray transparent textbox completely.
+    0x4803,  # ldr  r0, 0x2AB
+    0x2138,  # mov  r1, 0x38
+    0x5A71,  # ldrh r1, [r6, r1]
+    0x1840,  # add  r0, r0, r1
+    0x4A04,  # ldr  r2, 0x8008980
+    0x467B,  # mov  r3, r15
+    0x3305,  # add  r3, 0x05
+    0x469E,  # mov  r14, r3
+    0x4697,  # mov  r15, r2
+    0x4B05,  # ldr  r3, 0x801A1EA
+    0x469F,  # mov  r15, r3
 ]
 relic_pickup_customizer_ldr = [
     0x0801A108,
     0x0801A122,
     0x0201883F,
+    0x000002AB,
+    0x08008980,
+    0x0801A1EA,
 ]
 
 furniture_pickup_customizer_asm = [
@@ -293,21 +309,55 @@ furniture_pickup_customizer_asm = [
     0x7001,  # strb r1, [r0]
     0x2250,  # mov  r2, 0x50
     0x4690,  # mov  r2, r8
-    # If the index is 0x24 (our AP Trap item), the pickup sound effect will be changed to a specific "trap" sound.
+    # If the index is 0x23, the pickup sound effect will be changed to a "major" pickup sound.
+    0x2C23,  # cmp  r4, 0x23
+    0xD101,  # bne  [forward 0x02]
+    0x2236,  # mov  r2, 0x36
+    0x4690,  # mov  r2, r8
+    # If the index is 0x24, the pickup sound effect will be changed to a specific "trap" sound.
     0x2C24,  # cmp  r4, 0x24
     0xD101,  # bne  [forward 0x02]
     0x228F,  # mov  r2, 0x8F
     0x4690,  # mov  r2, r8
+    # If the index is 0x25, the pickup sound effect will be changed to a money pickup sound.
+    0x2C25,  # cmp  r4, 0x25
+    0xD101,  # bne  [forward 0x02]
+    0x222E,  # mov  r2, 0x2E
+    0x4690,  # mov  r2, r8
+    # If the index is 0x26, the pickup sound effect will be changed to a Max Up pickup sound.
+    0x2C26,  # cmp  r4, 0x26
+    0xD101,  # bne  [forward 0x02]
+    0x2234,  # mov  r2, 0x34
+    0x4690,  # mov  r2, r8
+    # Return to the function like normal.
+    # If the index is higher than 0x1E, skip the part that puts the Furniture in the inventory.
     0x4B00,  # ldr  r3, 0x801A1D8
     0x2C1E,  # cmp  r4, 0x1E
     0xDD00,  # ble  [forward 0x01]
     0x3304,  # add  r3, 0x04
+    # If the pickup is an off-world multiworld item, get the text ID associated with the actual item based on the
+    # pickup's flag and call the "prepare blue corner textbox" function with that.
+    0x2C21,  # cmp  r4, 0x21
+    0xDD0A,  # ble  [forward 0x0B]
+    0x4802,  # ldr  r0, 0x2AB
+    0x2138,  # mov  r1, 0x38
+    0x5A71,  # ldrh r1, [r6, r1]
+    0x1840,  # add  r0, r0, r1
+    0x4A03,  # ldr  r2, 0x8008980
+    0x467B,  # mov  r3, r15
+    0x3305,  # add  r3, 0x05
+    0x469E,  # mov  r14, r3
+    0x4697,  # mov  r15, r2
+    0x4B00,  # ldr  r3, 0x801A1D8
+    0x3312,  # add  r3, 0x12
     0xBC17,  # pop  r0-r2, r4
     0x469F,  # mov  r15, r3
 ]
 furniture_pickup_customizer_ldr = [
     0x0801A1D8,
     0x02000314,
+    0x000002AB,  # Base multiworld text ID.
+    0x08008980,
 ]
 
 pickup_sprite_switcher_pt1_asm = [

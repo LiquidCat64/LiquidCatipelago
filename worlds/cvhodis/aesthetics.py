@@ -2,7 +2,7 @@ from BaseClasses import ItemClassification, Location, Item
 #from .options import Countdown
 #from .locations import CVHODIS_LOCATIONS_INFO, ALT_PICKUP_OFFSETS, GUARDIAN_GRINDER_LOCATIONS
 from .items import FURNITURE, SPELLBOOKS, RELICS, GATE_KEYS, ALL_CVHODIS_ITEMS
-#from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_DESCRIPTION, DESCRIPTION_DISPLAY_LINES
+from .cvhodis_text import cvhodis_command_scrubber
 from .data import item_names
 from .data.enums import PickupTypes
 from .data.misc_names import GAME_NAME
@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 FURN_AP_FILLER_INDEX = len(FURNITURE)
 FURN_AP_USEFUL_INDEX = len(FURNITURE) + 1
 FURN_AP_TRAP_INDEX = len(FURNITURE) + 2
+FURN_AP_MONEY_INDEX = len(FURNITURE) + 3
+FURN_AP_MAX_UP_INDEX = len(FURNITURE) + 4
 BOOK_AP_PROGRESSION_INDEX = len(SPELLBOOKS)
 RELIC_AP_PROG_USEFUL_INDEX = len(RELICS)
 AP_FILLER_GFX_ID = 0xDF
@@ -79,15 +81,15 @@ class OtherHoDPlayerPickupInfo(NamedTuple):
     index_value: int
 
 OTHER_HOD_PLAYER_TYPE_BYTES = {
-    PickupTypes.MONEY.value:           OtherHoDPlayerPickupInfo(PickupTypes.FURNITURE, FURN_AP_FILLER_INDEX),
+    PickupTypes.MONEY.value:           OtherHoDPlayerPickupInfo(PickupTypes.FURNITURE, FURN_AP_MONEY_INDEX),
     PickupTypes.SUB_WEAPON.value:      OtherHoDPlayerPickupInfo(PickupTypes.FURNITURE, FURN_AP_FILLER_INDEX),
     PickupTypes.USE_ITEM.value:        OtherHoDPlayerPickupInfo(PickupTypes.FURNITURE, FURN_AP_FILLER_INDEX),
-    PickupTypes.WHIP_ATTACHMENT.value: OtherHoDPlayerPickupInfo(PickupTypes.SPELLBOOK, BOOK_AP_PROGRESSION_INDEX),
+    PickupTypes.WHIP_ATTACHMENT.value: OtherHoDPlayerPickupInfo(PickupTypes.FURNITURE, FURN_AP_USEFUL_INDEX),
     PickupTypes.EQUIPMENT.value:       OtherHoDPlayerPickupInfo(PickupTypes.FURNITURE, FURN_AP_FILLER_INDEX),
-    PickupTypes.SPELLBOOK.value:       OtherHoDPlayerPickupInfo(PickupTypes.SPELLBOOK, BOOK_AP_PROGRESSION_INDEX),
+    PickupTypes.SPELLBOOK.value:       OtherHoDPlayerPickupInfo(PickupTypes.FURNITURE, FURN_AP_USEFUL_INDEX),
     PickupTypes.RELIC.value:           OtherHoDPlayerPickupInfo(PickupTypes.RELIC, RELIC_AP_PROG_USEFUL_INDEX),
     PickupTypes.FURNITURE.value:       OtherHoDPlayerPickupInfo(PickupTypes.FURNITURE, FURN_AP_FILLER_INDEX),
-    PickupTypes.MAX_UP.value:          OtherHoDPlayerPickupInfo(PickupTypes.FURNITURE, FURN_AP_FILLER_INDEX),
+    PickupTypes.MAX_UP.value:          OtherHoDPlayerPickupInfo(PickupTypes.FURNITURE, FURN_AP_MAX_UP_INDEX),
 }
 
 rom_sub_weapon_offsets = {
@@ -126,24 +128,36 @@ def get_location_write_values(world: "CVHoDisWorld", active_locations: Iterable[
             # The upper byte in the Item's AP ID is the type byte. The lower byte is the index byte.
             type_value = (loc.item.code >> 8) & 0xFF
             index_value = loc.item.code & 0xFF
+            # Set the appearance values to the Item's GFX and Palette values so they will actually show up in-game as
+            # that Item. We do this even for local Items so they can be placed properly in some circumstances.
+            type_value |= ALL_CVHODIS_ITEMS[loc.item.name].palette_id << 4
+            index_value |= (ALL_CVHODIS_ITEMS[loc.item.name].gfx_id + 1) << 8
         # If it's not for this player but still a HoD Item, set the type value to the AP Item-enabled type with the
         # behavior closest to what the Item would be. The reason why different AP Items are different pickup types is
         # because each one has different behavior in-game, which we use to reflect its importance.
         elif loc.item.game == GAME_NAME:
             type_value = OTHER_HOD_PLAYER_TYPE_BYTES[(loc.item.code >> 8) & 0xFF].type_value
             index_value = OTHER_HOD_PLAYER_TYPE_BYTES[(loc.item.code >> 8) & 0xFF].index_value
+            # If the other player's Item is JB's or MK's Bracelet, set the index to the major pickup sound item no
+            # matter what.
+            if loc.item.name in [item_names.equip_bracelet_jb, item_names.equip_bracelet_mk]:
+                index_value = FURN_AP_USEFUL_INDEX
+            # Set the appearance values to the Item's GFX and Palette values so they will actually show up in-game as
+            # that Item.
+            type_value |= ALL_CVHODIS_ITEMS[loc.item.name].palette_id << 4
+            index_value |= (ALL_CVHODIS_ITEMS[loc.item.name].gfx_id + 1) << 8
         # Otherwise, if it's not a HoD Item at all, set the type and index bytes entirely depending on the Item's
         # classification.
         else:
             if loc.item.classification & ItemClassification.progression and \
                     loc.item.classification & ItemClassification.useful:
-                type_value = PickupTypes.RELIC  # Displays large center textbox + causes the Item to float.
+                type_value = PickupTypes.RELIC  # Relic causes the Item to float.
                 index_value = RELIC_AP_PROG_USEFUL_INDEX  # Progression + Useful
             elif loc.item.classification & ItemClassification.progression:
-                type_value = PickupTypes.SPELLBOOK  # Displays large center texbox.
-                index_value = BOOK_AP_PROGRESSION_INDEX  # Progression
+                type_value = PickupTypes.FURNITURE
+                index_value = FURN_AP_USEFUL_INDEX  # Progression
             elif loc.item.classification & ItemClassification.useful:
-                type_value = PickupTypes.FURNITURE  # Displays small corner textbox.
+                type_value = PickupTypes.FURNITURE
                 index_value = FURN_AP_USEFUL_INDEX  # Useful
             elif loc.item.classification & ItemClassification.trap:
                 type_value = PickupTypes.FURNITURE
@@ -152,26 +166,53 @@ def get_location_write_values(world: "CVHoDisWorld", active_locations: Iterable[
                 type_value = PickupTypes.FURNITURE
                 index_value = FURN_AP_FILLER_INDEX  # Filler
 
-        # Set the Item's appearance values. If it's an Item for this game, set them to the Item's GFX and Palette values
-        # so they will actually show up in-game as that Item.
-        if loc.item.game == GAME_NAME:
-            type_value |= ALL_CVHODIS_ITEMS[loc.item.name].palette_id << 4
-            index_value |= (ALL_CVHODIS_ITEMS[loc.item.name].gfx_id + 1) << 8
-        # Otherwise, if it's NOT an Item for this game at all, check if the Item's game is in the other game item
-        # appearances' dict, and if so, if the Item is under that game's name. If it is, change the appearance
-        # accordingly. These mostly apply to max ups in other games for now.
-        else:
+            # Check if the Item's game is in the other game item appearances' dict, and if so, if the Item is under that
+            # game's name. If it is, change the appearance accordingly. These mostly apply to max ups in other games
+            # for now.
             other_game_name = world.multiworld.worlds[loc.item.player].game
             if other_game_name in OTHER_GAME_ITEM_APPEARANCES:
                 if loc.item.name in OTHER_GAME_ITEM_APPEARANCES[other_game_name]:
-                    type_value |= OTHER_GAME_ITEM_APPEARANCES[other_game_name][loc.item.name].palette_id << 4
-                    index_value |= (OTHER_GAME_ITEM_APPEARANCES[other_game_name][loc.item.name].gfx_id + 1) << 8
+                    type_value = PickupTypes.FURNITURE | \
+                                 OTHER_GAME_ITEM_APPEARANCES[other_game_name][loc.item.name].palette_id << 4
+                    index_value = FURN_AP_MAX_UP_INDEX | \
+                                  (OTHER_GAME_ITEM_APPEARANCES[other_game_name][loc.item.name].gfx_id + 1) << 8
 
         # Create the final item info tuple and map it to the Location address.
         location_values[loc.address] = (type_value, index_value)
 
     # Return the final dict of Location values.
     return location_values
+
+
+def get_location_text(world: "CVHoDisWorld", active_locations: Iterable[Location]) -> dict[int, tuple[str, str]]:
+    """Gets the patch data for all in-game text specific to every created Location, including the Item's name and the Item's player's name.
+    The data will be returned mapped to their respective Location IDs."""
+    location_text = {}
+
+    for loc in active_locations:
+        # Skip all Event Locations.
+        if not loc.address:
+            continue
+
+        # Truncate the name to inject at 50 characters and scrub all command characters from it in order to be safe.
+        item_name = cvhodis_command_scrubber(loc.item.name[0:50])
+
+        # If the Item is local, put an empty string for the player name. The slot's own name will never be shown in-game
+        # when it comes to local Items, so we'll be using that to determine if it's local while patching.
+        if loc.item.player == world.player:
+            player_name = ""
+        # Otherwise, get the actual player name. Scrub all command characters from it just to be safe.
+        else:
+            player_name = cvhodis_command_scrubber(world.multiworld.get_player_name(loc.item.player))
+            # The player name should not be more than 16 characters. But truncate it at that just to be safe!
+            player_name = player_name[0:16]
+
+        # The location text data format should be (item name string, player name string, progression boolean)
+        location_text[loc.address] = (item_name, player_name)
+
+    # Return the final dict of Location text.
+    return location_text
+
 
 def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Location]) -> list[str]:
     """Creates multiworld-specific hint text to go over the in-game descriptions of the six Hint Cards. There are two

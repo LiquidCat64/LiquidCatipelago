@@ -1,19 +1,19 @@
 import struct
-from typing import TYPE_CHECKING, Set, NamedTuple
+from typing import TYPE_CHECKING, Set
 
 from . import ALL_CVHODIS_ITEMS
 from .locations import get_location_names_to_ids, CVHODIS_LOCATIONS_INFO
 from .items import GATE_KEYS
 from .options import GateItems
 # from .locations import CVHODIS_LOCATIONS_INFO
-# from .cvhodis_text import cvhodis_string_to_bytearray
-from .rom import ARCHIPELAGO_IDENTIFIER_START, ARCHIPELAGO_CLIENT_COMPAT_VER, AUTH_NUMBER_START, QUEUED_TEXT_STRING_START
+from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_CORNER_TEXTBOX_CUSTOM
+from .rom import ARCHIPELAGO_IDENTIFIER_START, ARCHIPELAGO_CLIENT_COMPAT_VER, AUTH_NUMBER_START
+from .patcher import QUEUED_TEXT_STRING_START
 from .data import item_names, loc_names
 from .data.enums import PickupTypes, EventFlags
 from .data.misc_names import GAME_NAME
 from .aesthetics import CVHODIS_INVENTORIES, MAX_STAT_VALUE, MAX_UP_INCREMENT_VALUE, MAX_MONEY_VALUE
 
-from BaseClasses import ItemClassification
 from NetUtils import ClientStatus
 import worlds._bizhawk as bizhawk
 import base64
@@ -53,7 +53,7 @@ OUT_OF_MENU_VALUE = 0x01
 FIRST_GATE_KEY_TEXT_ID = 0x235
 FIRST_MONEY_TEXT_ID = 0x249
 PROG_JUMP_ITEM_TEXT_ID = b"\xDD"
-TEXT_ID_MULTIWORLD_MESSAGE = b"\xF2\x84"
+TEXT_ID_MULTIWORLD_MESSAGE = b"\xAB\x02"
 SOUND_ID_PICKUP_MINOR = b"\x2D"
 SOUND_ID_PICKUP_MONEY = b"\x2E"
 SOUND_ID_PICKUP_HEART = b"\x2F"
@@ -399,75 +399,63 @@ class CastlevaniaHoDisClient(BizHawkClient):
                 next_item = ctx.items_received[num_received_items]
                 pickup_type = (next_item.item & 0xFF00) >> 8
                 pickup_index = next_item.item & 0xFF
+                text_id = TEXT_ID_MULTIWORLD_MESSAGE
+                text_id_buffer_addr = QUEUED_TEXTBOX_SMALL_ADDRESS
 
                 item_name = ctx.item_names.lookup_in_slot(next_item.item)
 
                 if pickup_type in CVHODIS_INVENTORIES:
                     inv_array = curr_invs[pickup_type]
                     inv_array_start = CVHODIS_INVENTORIES[pickup_type].main_start_addr
-                    text_id = struct.pack("<H", CVHODIS_INVENTORIES[pickup_type].text_id_start + pickup_index)
 
-                    # If the item is a Progressive Height, change it to a Sylph Feather if we don't have Sylph Feather
-                    # or a Griffin Wing if we do.
+                    # If the item is a Progressive Height, change the pickup index to that of a Sylph Feather if we
+                    # don't have Sylph Feather or to that of a Griffin Wing if we do.
                     if item_name == item_names.relic_height:
-                        text_id = PROG_JUMP_ITEM_TEXT_ID
                         if curr_invs[PickupTypes.RELIC][0] & 0x2:
-                            item_name = item_names.relic_wing
                             pickup_index = ALL_CVHODIS_ITEMS[item_names.relic_wing].pickup_index
                         else:
-                            item_name = item_names.relic_feather
                             pickup_index = ALL_CVHODIS_ITEMS[item_names.relic_feather].pickup_index
 
                     # If the item is a gate key, play the "button activated" sound with the small textbox.
                     # Also make the text ID the correct ID for the key's name.
                     if item_name in GATE_KEYS:
                         mssg_sfx_id = SOUND_ID_BUTTON_ACTIVATED
-                        text_id_buffer_addr = QUEUED_TEXTBOX_SMALL_ADDRESS
-                        text_id = struct.pack("<H", FIRST_GATE_KEY_TEXT_ID + (pickup_index - 0x1F))
-                    # If the item is JB or MK's Bracelet, play the major pickup sound with the small textbox. These are
-                    # the only two items to use this specific combination.
+
+                    # If the item is JB or MK's Bracelet, play the major pickup sound. These are the only two equipment
+                    # items to normally do this.
                     elif item_name in [item_names.equip_bracelet_jb, item_names.equip_bracelet_mk]:
                         mssg_sfx_id = SOUND_ID_PICKUP_MAJOR
-                        text_id_buffer_addr = QUEUED_TEXTBOX_SMALL_ADDRESS
-                    # If the item normally calls a large textbox when picked up, play the major pickup sound and choose
-                    # the large textbox buffer to write the text ID at.
+                    # If the item normally calls a large textbox when picked up, play the major pickup sound.
                     elif CVHODIS_INVENTORIES[pickup_type].is_large_textbox:
                         mssg_sfx_id = SOUND_ID_PICKUP_MAJOR
-                        text_id_buffer_addr = QUEUED_TEXTBOX_LARGE_ADDRESS
-                    # Otherwise, play the minor pickup sound and choose the small textbox buffer to write the ID at.
+                    # Otherwise, play the minor pickup sound.
                     else:
                         mssg_sfx_id = SOUND_ID_PICKUP_MINOR
-                        text_id_buffer_addr = QUEUED_TEXTBOX_SMALL_ADDRESS
                 # If the pickup is a moneybag, set things accordingly here.
                 elif pickup_type == PickupTypes.MONEY:
                     inv_array = []
                     inv_array_start = 0
-                    text_id = struct.pack("<H", FIRST_MONEY_TEXT_ID + pickup_index)
                     mssg_sfx_id = SOUND_ID_PICKUP_MONEY
-                    text_id_buffer_addr = QUEUED_TEXTBOX_SMALL_ADDRESS
                 # Otherise, if we make it here, assume it's a Max Up and everything that implies.
                 else:
                     inv_array = []
                     inv_array_start = 0
-                    text_id = int.to_bytes(pickup_index + 1, 1, "little")
                     mssg_sfx_id = SOUND_ID_PICKUP_MAX_UP
-                    text_id_buffer_addr = QUEUED_MAX_UP_GRAPHIC_ADDRESS
 
-                player_name = ctx.player_names[next_item.player]
-                # Truncate the player name.
-                if len(player_name) > PLAYER_NAME_LIMIT:
-                    player_name = player_name[:PLAYER_NAME_LIMIT]
+                # Truncate the player name just in case.
+                player_name = ctx.player_names[next_item.player][:PLAYER_NAME_LIMIT]
 
-                # If the Item came from a different player, display a custom received message. Otherwise, display the
-                # vanilla received message for that Item.
-                #if next_item.player != ctx.slot:
-                    # text_id_1 = TEXT_ID_MULTIWORLD_MESSAGE
-                #    received_text = cvhodis_string_to_bytearray(f"「{item_name}」 received from "
-                #                                                f"「{player_name}」◊", "big middle", 0)
-                #    text_write = [(QUEUED_TEXT_STRING_START, bytes(received_text), "ROM")]
-                #else:
-                    # text_id_1 = ALL_CVHODIS_ITEMS[item_name].text_id
-                #    text_write = []
+                # If the Item came from a different player, display a custom received message. Otherwise, we will
+                # display the vanilla received message for that Item.
+                if next_item.player != ctx.slot:
+                    received_text = cvhodis_string_to_bytearray(f"{item_name} from {player_name}", large_font=False,
+                                                                len_limit=LEN_LIMIT_CORNER_TEXTBOX_CUSTOM,
+                                                                max_lines=1, wrap=True, textbox_advance=False)
+                else:
+                    received_text = cvhodis_string_to_bytearray(f"{item_name}", large_font=False,
+                                                                len_limit=LEN_LIMIT_CORNER_TEXTBOX_CUSTOM,
+                                                                max_lines=1, wrap=True, textbox_advance=False)
+                text_write = [(QUEUED_TEXT_STRING_START, bytes(received_text), "EWRAM")]
 
                 refill_write = []
                 inv_writes = []
@@ -527,7 +515,8 @@ class CastlevaniaHoDisClient(BizHawkClient):
                         else:
                             new_hp = MAX_STAT_VALUE
                         inv_guards += [(MAX_STATS_COUNTS_START, int.to_bytes(max_hp, 2, "little"), "EWRAM")]
-                        inv_writes += [(MAX_STATS_COUNTS_START, int.to_bytes(new_hp, 2, "little"), "EWRAM")]
+                        inv_writes += [(MAX_STATS_COUNTS_START, int.to_bytes(new_hp, 2, "little"), "EWRAM"),
+                                       (QUEUED_MAX_UP_GRAPHIC_ADDRESS, int.to_bytes(1, 1, "little"), "EWRAM")]
                         refill_write = [(CURRENT_HP_ADDRESS, int.to_bytes(new_hp, 2, "little"), "EWRAM")]
                     # If it's a Heart Max Up being received, increment the player's max Hearts by 5 (if it's not above
                     # the max already) and increase their current Hearts by 5 (if it's not above the new max).
@@ -542,7 +531,8 @@ class CastlevaniaHoDisClient(BizHawkClient):
                         else:
                             new_curr_hearts = curr_hearts + MAX_UP_INCREMENT_VALUE
                         inv_guards += [(MAX_STATS_COUNTS_START + 4, int.to_bytes(max_hearts, 2, "little"), "EWRAM")]
-                        inv_writes += [(MAX_STATS_COUNTS_START + 4, int.to_bytes(new_max_hearts, 2, "little"), "EWRAM")]
+                        inv_writes += [(MAX_STATS_COUNTS_START + 4, int.to_bytes(new_max_hearts, 2, "little"), "EWRAM"),
+                                       (QUEUED_MAX_UP_GRAPHIC_ADDRESS, int.to_bytes(2, 1, "little"), "EWRAM")]
                         refill_write = [(CURRENT_HEARTS_ADDRESS, int.to_bytes(new_curr_hearts, 2, "little"), "EWRAM")]
 
                 # If there are event flag values to set, do so here.
@@ -557,7 +547,7 @@ class CastlevaniaHoDisClient(BizHawkClient):
                                             [(text_id_buffer_addr, text_id, "EWRAM"),
                                              (QUEUED_RECEIVED_INDEX_INCREMENT_ADDRESS, b"\x01", "EWRAM"),
                                              (QUEUED_SOUND_ID_ADDRESS, mssg_sfx_id, "EWRAM")]
-                                            + inv_writes + refill_write + event_flag_writes,
+                                            + inv_writes + refill_write + event_flag_writes + text_write,
                                             # Make sure the number of received items and inventory to overwrite are
                                             # still what we expect them to be.
                                             [(NUM_RECEIVED_ITEMS_ADDRESS, read_state[len(CVHODIS_INVENTORIES) + 3],

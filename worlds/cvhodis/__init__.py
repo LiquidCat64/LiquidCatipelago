@@ -8,6 +8,8 @@ import json
 from BaseClasses import Tutorial, ItemClassification, EntranceType
 from entrance_rando import disconnect_entrance_for_randomization, randomize_entrances
 from .data.enums import FillerTypes
+from .aesthetics import shuffle_sub_weapons, get_location_write_values, get_countdown_flags, get_start_inventory_data, \
+    get_hint_card_hints, get_location_text
 from .items import CVHoDisItem, ALL_CVHODIS_ITEMS, FURNITURE, get_item_names_to_ids, get_item_pool, get_pickup_type, \
     CVHODIS_FILLER_CATEGORIES
 from .locations import CVHoDisLocation, get_location_names_to_ids, get_locations_to_create, \
@@ -21,13 +23,10 @@ from .entrances import SHUFFLEABLE_TRANSITIONS, ERGroups, TARGET_GROUP_RELATIONS
 from .rules import CVHoDisRules
 from .data import item_names, loc_names
 from .data.misc_names import GAME_NAME
-from worlds.AutoWorld import WebWorld, World
-
-from .aesthetics import shuffle_sub_weapons, get_location_write_values, get_countdown_flags, get_start_inventory_data, \
-    get_hint_card_hints
 from .rom import get_base_rom_path, CVHoDisProcedurePatch, CVHODIS_CT_US_HASH, CVHODIS_AC_US_HASH, \
     ARCHIPELAGO_PATCH_COMPAT_VER
 from .client import CastlevaniaHoDisClient
+from worlds.AutoWorld import WebWorld, World
 
 
 class CVHoDisSettings(settings.Group):
@@ -280,7 +279,7 @@ class CVHoDisWorld(World):
                            "start inventory": get_start_inventory_data(self.multiworld.precollected_items[self.player]),
                            # "initial countdowns": get_countdown_numbers(self.options, active_locations),
                            "location values": get_location_write_values(self, active_locations),
-                           # "location text": get_location_text(self, active_locations),
+                           "location text": get_location_text(self, active_locations),
                            "card text": get_hint_card_hints(self, active_locations),
                            "transition values": self.transition_pairings,
                            "patch compatibility": ARCHIPELAGO_PATCH_COMPAT_VER,

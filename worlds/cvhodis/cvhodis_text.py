@@ -42,8 +42,8 @@ ARG_END_CHAR = "/"
 
 # Half-width to ｆｕｌｌ－ｗｉｄｔｈ Katakana mappings as well as a few other weird UTF-8 characters likely to be used that
 # don't cleanly encode to double-byte Shift-JIS (including a few even after converting to ｆｕｌｌ－ｗｉｄｔｈ Latin in some
-# cases) but have a different equivalent UTF-8 char that does, in fact, encode to double-byte Shift-JIS. These
-# problematic characters are listed at:
+# cases) but have a different equivalent UTF-8 char that does, in fact, encode to double-byte Shift-JIS that HoD
+# understands. These problematic characters are listed at:
 # https://www.ibm.com/docs/en/cognos-analytics/11.1.0?topic=guide-japanese-shift-jis-character-mapping
 OTHER_SHIFT_JIS_ENCODINGS = {
     "－": "−", "～": "〜", "‾": "￣", "—": "—", "∥": "‖", "¢": "￠", "£": "￡", "¥": "￥", "¬": "￢", "｡": "。", "｢": "「",
@@ -400,10 +400,9 @@ def cvhodis_text_wrap(cvhodis_text: str, large_font: bool, textbox_len_limit: in
                     newline_char = "\r"
                 num_lines = 1
             # Otherwise, if we did not opt to auto-advance textboxes (and as such are confined to just that one), return
-            # the final joined string now, with the plain character we just added replaced with the terminate character,
-            # truncating it here.
+            # the final joined string now. The terminate character should be added automatically by the patcher when the
+            # string goes into the game.
             else:
-                new_text[len(new_text) - 1] = "\t"
                 return "".join(new_text)
 
         # Place the chosen newline character at the chosen index.
@@ -411,3 +410,17 @@ def cvhodis_text_wrap(cvhodis_text: str, large_font: bool, textbox_len_limit: in
 
     # Return the final joined, wrapped string.
     return "".join(new_text)
+
+
+def cvhodis_command_scrubber(cvhodis_text: str) -> str:
+    """Scrubs all command characters from a given text string, replacing them with the default text character.
+    Good for any Archipelago player/item names that might try to be sneaky here..."""
+    new_text = ""
+
+    for char in cvhodis_text:
+        if char in CVHODIS_COMMAND_CHARS:
+            new_text += CVHODIS_DEFAULT_CHAR
+        else:
+            new_text += char
+
+    return new_text

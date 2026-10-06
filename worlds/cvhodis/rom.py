@@ -18,7 +18,8 @@ from .entrances import SHUFFLEABLE_TRANSITIONS, VERTICAL_GROUPS, VERTICAL_SHAFT_
     LEFT_GROUPS, RIGHT_GROUPS, TOP_GROUPS, BOTTOM_GROUPS
 from .items import EQUIPMENT
 from .locations import CVHODIS_LOCATIONS_INFO
-from .cvhodis_text import LEN_LIMIT_MENU_DESCRIPTION, DESCRIPTION_DISPLAY_LINES, cvhodis_text_wrap
+from .cvhodis_text import LEN_LIMIT_MENU_DESCRIPTION, LEN_LIMIT_CORNER_TEXTBOX_CUSTOM, DESCRIPTION_DISPLAY_LINES, \
+    cvhodis_text_wrap
 from .options import GateItems
 from .patcher import CVHoDisRomPatcher, CVHoDisActorEntry, GBA_ROM_START
 from settings import get_settings
@@ -44,7 +45,6 @@ ARCHIPELAGO_PATCH_COMPAT_VER = 2
 ARCHIPELAGO_CLIENT_COMPAT_VER = "ARCHIPELAG03"
 AUTH_NUMBER_START = 0x7FFF10
 QUEUED_TEXT_STRING_START = 0x7CEB00
-# MULTIWORLD_TEXTBOX_POINTERS_START = 0x671C10
 ROM_PADDING_START = 0x69D400
 
 # All Location IDs spat out by Guardian Armor when he gets ground up into scrap spaghetti, mapped to their hardcoded
@@ -104,7 +104,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Get the dictionaries of item values mapped to their location IDs and relevant name texts out of the slot
         # patch info and convert each location ID key from a string into an int.
         loc_values = {int(loc_id): item_value for loc_id, item_value in slot_patch_info["location values"].items()}
-        # loc_text = {int(loc_id): item_names for loc_id, item_names in slot_patch_info["location text"].items()}
+        loc_text = {int(loc_id): names for loc_id, names in slot_patch_info["location text"].items()}
 
         # Extract the camera coordinates that are associated with the location of each transition. These are gotten
         # from the other loading zone that normally connects to that transition.
@@ -232,15 +232,17 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.write_int32(0x197A4, new_relic_info_start | GBA_ROM_START)
         patcher.write_int32(0x1A0F0, new_relic_info_start | GBA_ROM_START)
 
-        # Move the furniture info table and expand it with three more entries for our Filler, Useful, and Trap items.
+        # Move the furniture info table and expand it with the extra entries for all our rando-specific items.
         new_furniture_info_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
             patcher.read_bytes(FURNITURE_INFO_START, FURNITURE_INFO_LENGTH) + \
-            bytes([0xDA, 0x00, 0xE4, 0x02,  # Living Armor key
-                   0xDB, 0x00, 0xE5, 0x02,  # Clock key
-                   0xDC, 0x00, 0xE6, 0x02,  # Throne key
-                   0xD5, 0x00, 0xDF, 0x01,  # Filler
-                   0xD6, 0x00, 0xE1, 0x01,  # Useful
-                   0xD7, 0x00, 0xE3, 0x01]))  # Trap
+            bytes([0xDA, 0x00, 0xE4, 0x02,   # Living Armor key
+                   0xDB, 0x00, 0xE5, 0x02,   # Clock key
+                   0xDC, 0x00, 0xE6, 0x02,   # Throne key
+                   0xD5, 0x00, 0xDF, 0x01,   # Filler (plays minor pickup sound)
+                   0xD6, 0x00, 0xE1, 0x01,   # Useful (plays major pickup sound)
+                   0xD7, 0x00, 0xE3, 0x01,   # Trap (plays Juste's "Doh!" voice)
+                   0xD7, 0x00, 0xE3, 0x01,   # Filler (plays money pickup sound)
+                   0xD7, 0x00, 0xE3, 0x01])) # Filler (plays max up pickup sond)
         patcher.write_int32(0x197E4, new_furniture_info_start)
         patcher.write_int32(0x19E30, new_furniture_info_start)
         patcher.write_int32(0x19EE8, new_furniture_info_start)
@@ -585,6 +587,20 @@ class CVHoDisPatchExtensions(APPatchExtension):
             # Otherwise, the player X offset should be 0.
             else:
                 source_zone["player_x_offset"] = 0
+
+        # Write the item/player names for other game items.
+        multi_text_list = ["\n" for _ in range(0x120)]
+        for loc_id, text in loc_text.items():
+            # If the player name text is an empty string, don't write the text for this Location as it has a local Item.
+            if not text[1]:
+                continue
+
+            # Build the final string, properly wrapped and all.
+            multi_text_list[loc_id] = cvhodis_text_wrap(f"{text[0]} ({text[1]})\n", large_font=False,
+                                                        textbox_len_limit=LEN_LIMIT_CORNER_TEXTBOX_CUSTOM,
+                                                        max_lines=1, textbox_advance=False)
+        # Append the final text list onto the list of extracted texts to go back into the game.
+        patcher.text += multi_text_list
 
         # Go anywhere
         #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x0849D758
