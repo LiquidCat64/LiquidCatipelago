@@ -293,6 +293,17 @@ class CVHoDisPatchExtensions(APPatchExtension):
                                      patches.major_pickup_sound_player_ldr,
                                      hook_addr=0x19F84, hook_register=3)
 
+        # Enable changing the item gfx/palette on any item instance.
+        patcher.write_int16(0x8F4E, 0x5BA3)  # ldrh r3, [r4, r6]
+        patcher.generate_dynamic_asm(patches.pickup_sprite_switcher_pt1_asm,
+                                     patches.pickup_sprite_switcher_pt1_ldr,
+                                     hook_addr=0x196DC, hook_register=4)
+        patcher.generate_dynamic_asm(patches.pickup_sprite_switcher_pt2_asm,
+                                     patches.pickup_sprite_switcher_pt2_ldr,
+                                     hook_addr=0x197B8, hook_register=3)
+        # Enable money pickups to be placed via map actor lists normally.
+        patcher.write_int16(0x196E8, 0xE003)  # b    [forward 0x04]
+
         # If Gate Items is set to Buttonsanity, place new pickups where every button affected by the option would be.
         if slot_patch_info["options"]["gate_items"] == GateItems.option_buttonsanity:
             patcher.areas[Areas.SHRINE_A][15][0]["actor_list"][2]["type_id"] = ActorTypes.PICKUP
@@ -446,15 +457,16 @@ class CVHoDisPatchExtensions(APPatchExtension):
             starting_flags_array += struct.pack("<I", word)
         start_inventory_starting_flags_start = GBA_ROM_START | patcher.find_space_and_write_buffer(starting_flags_array)
         # Write the start inventory giver hack with the above pointers to the start inventory arrays.
-        patcher.generate_dynamic_asm(patches.start_inventory_giver_asm,
-                                     patches.start_inventory_giver_ldr + [start_inventory_use_start,
-                                                                          start_inventory_equip_start,
-                                                                          start_inventory_book_start,
-                                                                          start_inventory_relic_start,
-                                                                          start_inventory_furn_start,
-                                                                          start_inventory_whips_start,
-                                                                          start_inventory_max_start,
-                                                                          start_inventory_starting_flags_start],
+        patcher.generate_dynamic_asm(patches.new_game_extras_asm,
+                                     patches.new_game_extras_ldr + [start_inventory_use_start,
+                                                                    start_inventory_equip_start,
+                                                                    start_inventory_book_start,
+                                                                    start_inventory_relic_start,
+                                                                    start_inventory_furn_start,
+                                                                    start_inventory_whips_start,
+                                                                    start_inventory_max_start,
+                                                                    start_inventory_starting_flags_start,
+                                                                    slot_patch_info["start inventory"]["money"]],
                                      hook_addr=0x6B730, hook_register=1)
 
         # Terraform the left side of the Entrance -> Skeleton Cave floor transition to allow being placed there in ER.

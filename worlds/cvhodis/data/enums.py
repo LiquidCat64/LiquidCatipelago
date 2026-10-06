@@ -346,7 +346,7 @@ class Enemies(IntEnum):
 
 class PickupTypes(IntEnum):
     HEART = 0
-    GOLD = 1
+    MONEY = 1
     SUB_WEAPON = 2
     USE_ITEM = 3
     WHIP_ATTACHMENT = 4

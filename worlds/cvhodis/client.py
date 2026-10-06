@@ -11,7 +11,7 @@ from .rom import ARCHIPELAGO_IDENTIFIER_START, ARCHIPELAGO_CLIENT_COMPAT_VER, AU
 from .data import item_names, loc_names
 from .data.enums import PickupTypes, EventFlags
 from .data.misc_names import GAME_NAME
-from .aesthetics import CVHODIS_INVENTORIES, MAX_STAT_VALUE, MAX_UP_INCREMENT_VALUE
+from .aesthetics import CVHODIS_INVENTORIES, MAX_STAT_VALUE, MAX_UP_INCREMENT_VALUE, MAX_MONEY_VALUE
 
 from BaseClasses import ItemClassification
 from NetUtils import ClientStatus
@@ -40,6 +40,7 @@ MAX_STATS_COUNTS_START = 0x18786
 CURRENT_HP_ADDRESS = 0x1854E
 CURRENT_MP_ADDRESS = 0x18550
 CURRENT_HEARTS_ADDRESS = 0x18794
+CURRENT_MONEY_ADDRESS = 0x1879C
 CURRENT_BOOK_ADDRESS = 0x1877F
 # CURRENT_LOCATION_VALUES_START = 0x253FC TODO: Find a good way to tell the player's area.
 ROM_NAME_START = 0xA0
@@ -50,6 +51,7 @@ FROZEN_TEXTBOX_BITS = 0x03
 CAN_PAUSE_BIT = 0x04
 OUT_OF_MENU_VALUE = 0x01
 FIRST_GATE_KEY_TEXT_ID = 0x235
+FIRST_MONEY_TEXT_ID = 0x249
 PROG_JUMP_ITEM_TEXT_ID = b"\xDD"
 TEXT_ID_MULTIWORLD_MESSAGE = b"\xF2\x84"
 SOUND_ID_PICKUP_MINOR = b"\x2D"
@@ -234,7 +236,8 @@ class CastlevaniaHoDisClient(BizHawkClient):
                                                               (CURRENT_BOOK_ADDRESS, 1, "EWRAM"),
                                                               (FURN_PLACED_BITFIELD_START,
                                                                CVHODIS_INVENTORIES[PickupTypes.FURNITURE].length,
-                                                               "EWRAM")])
+                                                               "EWRAM"),
+                                                              (CURRENT_MONEY_ADDRESS, 4, "EWRAM")])
 
             curr_invs = {INV_NUMBERS[i]: bytearray(read_state[i]) for i in range(len(INV_NUMBERS))}
 
@@ -252,6 +255,7 @@ class CastlevaniaHoDisClient(BizHawkClient):
             curr_hearts = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 11]), "little")
             curr_book = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 12]), "little")
             placed_furniture_flags = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 13]), "little")
+            curr_money = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 14]), "little")
 
             # Get out each of the individual max stat values.
             max_hp = int.from_bytes(max_stats_array[0:2], "little")
@@ -434,8 +438,14 @@ class CastlevaniaHoDisClient(BizHawkClient):
                     else:
                         mssg_sfx_id = SOUND_ID_PICKUP_MINOR
                         text_id_buffer_addr = QUEUED_TEXTBOX_SMALL_ADDRESS
-                # If the pickup's type ID had no mapping in the inventory data dict, assume it's a Max Up and everything
-                # that implies.
+                # If the pickup is a moneybag, set things accordingly here.
+                elif pickup_type == PickupTypes.MONEY:
+                    inv_array = []
+                    inv_array_start = 0
+                    text_id = struct.pack("<H", FIRST_MONEY_TEXT_ID + pickup_index)
+                    mssg_sfx_id = SOUND_ID_PICKUP_MONEY
+                    text_id_buffer_addr = QUEUED_TEXTBOX_SMALL_ADDRESS
+                # Otherise, if we make it here, assume it's a Max Up and everything that implies.
                 else:
                     inv_array = []
                     inv_array_start = 0
@@ -498,8 +508,16 @@ class CastlevaniaHoDisClient(BizHawkClient):
                         # it is the first one received), equip that Spell Book automatically without turning it on.
                         elif pickup_type == PickupTypes.SPELLBOOK and not curr_book:
                             inv_writes += [(CURRENT_BOOK_ADDRESS, int.to_bytes(pickup_index + 1, 1, "little"),"EWRAM")]
-                # If the Item's pickup type was not in the inventory data dict, meaning it is a Max Up, handle that
-                # behavior here.
+                # If the Item's pickup type is a moneybag, handle incrementing the money counter here.
+                elif pickup_type == PickupTypes.MONEY:
+                    # The number following the dollar sign in the Item's name is the amount of money to give.
+                    if curr_money + int(item_name[1:]) <= MAX_MONEY_VALUE:
+                        new_money = curr_money + int(item_name[1:])
+                    else:
+                        new_money = MAX_MONEY_VALUE
+                    inv_guards += [(CURRENT_MONEY_ADDRESS, int.to_bytes(curr_money, 4, "little"), "EWRAM")]
+                    inv_writes += [(CURRENT_MONEY_ADDRESS, int.to_bytes(new_money, 4, "little"), "EWRAM")]
+                # Otherwise, meaning it is a Max Up, handle that behavior here.
                 else:
                     # If it's a Life Max Up being received, increment the player's max HP by 5 (if it's not above the
                     # max already) and give them a full health refill.

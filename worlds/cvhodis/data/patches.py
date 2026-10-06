@@ -1,13 +1,3 @@
-
-class DynamicGBAAsmPatch:
-    assembly: list[int]
-    ldr_numbers: list[int]
-    input_ptrs: list[int]
-
-    def __init__(self, assembly: list[int], ldr_numbers: list[int]):
-        self.assembly = assembly
-        self.ldr_numbers = ldr_numbers
-
 item_palette_defaulter_asm = [
     # So normally, item pickup sprites in the game have a choice of either using a palette that the game always keeps
     # loaded, or a custom one that is dynamically loaded in with the item sprite. Up to two custom item palettes can be
@@ -320,7 +310,83 @@ furniture_pickup_customizer_ldr = [
     0x02000314,
 ]
 
-start_inventory_giver_asm = [
+pickup_sprite_switcher_pt1_asm = [
+    # Part 1 of the hack that allows us to switch any pickup's sprite GFX and palette IDs independent of what it
+    # actually is. Or at least, all the pickups that spawn through function 080196D4, which should cover all pickups
+    # that we care to do this with. The high byte in the pickup sub ID (Var B in the actor list) +1 will serve as the
+    # GFX ID to change it to, and the high nybble in the pickup type ID (Subtype in the actor list) is the palette ID.
+    0xB4E3,  # push r0, r1, r5-r7
+    0x4680,  # mov  r8, r0
+    0x4689,  # mov  r9, r1
+    # If the pickup type is a moneybag (0x01) with NO palette change at all, abort the function. Enemies call this when
+    # they drop moneybags normally for some reason, and aborting if the type is 0x01 was the devs' way of "fixing" it.
+    # Allowing this function to drop enemy moneybags would produce two moneybags, so it's better to just not...
+    0x2A01,  # cmp  r2, 0x01
+    0xD102,  # bne  [forward 0x03]
+    0xBC03,  # pop  r0, r1
+    0x4C02,  # ldr  r4, 0x80196E4
+    0x46A7,  # mov  r15, r4
+    # Isolate the high byte from the pickup sub ID and see if it's a non-zero value. If it is, store it in our custom
+    # sprite info bytes.
+    0x4901,  # ldr  r1, 0x2018A40
+    0x0A18,  # lsr  r0, r3, 0x08
+    0x2800,  # cmp  r0, 0x00
+    0xD006,  # beq  [forward 0x07]
+    0x1E40,  # sub  r0, r0, 0x01
+    0x7088,  # strb r0, [r1, 0x02]
+    # Isolate the high nybble from the pickup type byte to get the custom palette ID and store it in our custom sprite
+    # info bytes.
+    0x0910,  # lsr  r0, r2, 0x04
+    0x70C8,  # strb r0, [r1, 0x03]
+    # Store a 1 in the first two bytes to ensure Part 2 of the hack will know that we want to change this pickup sprite.
+    0x2001,  # mov  r0, 0x01
+    0x8008,  # strh r0, [r1]
+    0xE001,  # B    [forward 0x02]
+    # If the high byte was NOT set in the sub ID, clear the custom sprite info bytes entirely. The item's default gfx
+    # and palette will be used for this sprite.
+    0x2000,  # mov  r0, 0x00
+    0x6008,  # str  r0, [r1]
+    # Clear the custom gfx and palette IDs from the input values and return to the function like normal.
+    0x200F,  # mov  r0, 0x0F
+    0x4002,  # and  r2, r0
+    0x20FF,  # mov  r0, 0xFF
+    0x4003,  # and  r3, r0
+    0x4692,  # mov  r10, r2
+    0xBC03,  # pop  r0, r1
+    0x4C00,  # ldr  r4, 0x80196E4
+    0x46A7,  # mov  r15, r4
+]
+pickup_sprite_switcher_pt1_ldr = [
+    0x080196E4,
+    0x02018A40,
+    0x080196EC,
+]
+
+pickup_sprite_switcher_pt2_asm = [
+    # Part 2 of the above hack. Right before the 080196D4 function tries to load the item GFX and palettes, this will
+    # interfere and repoint the sprite info to our custom buffer so the sprites will change to what we want.
+
+    # Check if our "custom sprite info" bytes are not 0. If so, repoint the sprite info pointer the game came up with
+    # to here instead.
+    0x4B01,  # ldr  r3, 0x2018A40
+    0x6819,  # ldr  r1, [r3]
+    0x2900,  # cmp  r1, 0x00
+    0xD000,  # beq  [forward 0x01]
+    0x1C1D,  # add  r5, r3, 0x00
+    # Return to the function like normal.
+    0x21A8,  # mov  r1, 0xA8
+    0x4308,  # orr  r0, r1
+    0x7010,  # strb r0, [r2]
+    0x78A8,  # ldrb r0, [r5, 0x02]
+    0x4B00,  # ldr  r3, 0x80197C0
+    0x469F,  # mov  r15, r3
+]
+pickup_sprite_switcher_pt2_ldr = [
+    0x080197C0,
+    0x02018A40,
+]
+
+new_game_extras_asm = [
     # When the player create function runs upon starting a new game, this will give the player their entire start
     # inventory. Item/equipment counts, relics, etc. will be copied into their respective inventories.
 
@@ -335,6 +401,10 @@ start_inventory_giver_asm = [
     0x3204,  # add  r2, 0x04
     0x2A1C,  # cmp  r2, 0x1C
     0xDBFA,  # blt [backward 0x05]
+    # Money
+    0x1F00,  # sub  r0, r0, 0x04
+    0x4914,  # ldr  r1, slot_patch_info["start inventory"]["money"]
+    0x6001,  # str  r1, [r0]
     # Equipment
     0x4801,  # ldr  r0, 0x20187BE
     0x490D,  # ldr  r1, start_inventory_equip_start
@@ -422,7 +492,7 @@ start_inventory_giver_asm = [
     0x480A,  # ldr  r0, 0x806B738
     0x4687,  # mov  r15, r0
 ]
-start_inventory_giver_ldr = [
+new_game_extras_ldr = [
     0x020187A0,
     0x020187BE,
     0x0201883E,

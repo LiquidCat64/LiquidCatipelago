@@ -183,8 +183,8 @@ class CVHoDisRomPatcher:
                                 subtype_id=self.read_byte(curr_addr + 0x5),
                                 y_offset=self.read_byte(curr_addr + 0x6),
                                 byte_8=self.read_byte(curr_addr + 0x7),
-                                var_a=self.read_bytes(curr_addr + 0x8, 2, "<h"),
-                                var_b=self.read_bytes(curr_addr + 0xA, 2, "<h"),
+                                var_a=self.read_bytes(curr_addr + 0x8, 2, "<H"),
+                                var_b=self.read_bytes(curr_addr + 0xA, 2, "<H"),
                                 start_addr=curr_addr | GBA_ROM_START,
                             )
                             # Check if the actor has a documented entry in the actor types enum.
@@ -747,8 +747,8 @@ def get_actor_list_bytes(actor_list: list[CVHoDisActorEntry]) -> bytearray:
                      struct.pack("<B", entry["subtype_id"]) + \
                      struct.pack("<B", entry["y_offset"]) + \
                      struct.pack("<B", entry["byte_8"]) + \
-                     struct.pack("<h", entry["var_a"]) + \
-                     struct.pack("<h", entry["var_b"])
+                     struct.pack("<H", entry["var_a"]) + \
+                     struct.pack("<H", entry["var_b"])
 
     # Return the list data with the list end entry for all normal actor lists appended.
     return list_data + b'\xFF\x7F\xFF\x7F\x00\x00\x00\x00\x00\x00\x00\x00'

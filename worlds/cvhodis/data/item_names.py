@@ -1,3 +1,23 @@
+# Heart definitions
+heart_s = "Small Heart"
+heart_b = "Big Heart"
+
+# Money definitions
+money_1 = "$1"
+money_5 = "$5"
+money_25 = "$25"
+money_100 = "$100"
+money_250 = "$250"
+money_400 = "$400"
+
+# Sub-weapon definitions
+sub_book = "Holy Book"
+sub_cross = "Cross"
+sub_axe = "Axe"
+sub_holy = "Holy Water"
+sub_fist = "Sacred Fist"
+sub_knife = "Knife"
+
 # Use Item definitions
 use_potion = "Potion"
 use_potion_h = "High Potion"
