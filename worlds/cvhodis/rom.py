@@ -19,7 +19,7 @@ from .entrances import SHUFFLEABLE_TRANSITIONS, VERTICAL_GROUPS, VERTICAL_SHAFT_
 from .items import EQUIPMENT
 from .locations import CVHODIS_LOCATIONS_INFO
 from .cvhodis_text import LEN_LIMIT_MENU_DESCRIPTION, LEN_LIMIT_CORNER_TEXTBOX_CUSTOM, DESCRIPTION_DISPLAY_LINES, \
-    cvhodis_text_wrap
+    cvhodis_text_wrap, cvhodis_get_string_len
 from .options import GateItems
 from .patcher import CVHoDisRomPatcher, CVHoDisActorEntry, GBA_ROM_START
 from settings import get_settings
@@ -349,7 +349,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Move the flag checks that occur while Juste is warping onto the new "can warp" flag, decoupled from the
         # Clock Tower Death cutscene's flag. These affect behavior.
         patcher.write_byte(0x1C072, 0xC5)  # Freezes Juste in place.
-        #patcher.write_byte(0x1BAE8, 0xC5)  # Starts the gate-closing animation and plays/stops the appropriate sounds.
+        patcher.write_byte(0x1BAE8, 0xC5)  # Starts the gate-closing animation and plays/stops the appropriate sounds.
 
         # If JB's Bracelet is a warp requirement, NOP the branch in the warp condition checker hack that skips the
         # bracelet check.
@@ -595,10 +595,19 @@ class CVHoDisPatchExtensions(APPatchExtension):
             if not text[1]:
                 continue
 
-            # Build the final string, properly wrapped and all.
-            multi_text_list[loc_id] = cvhodis_text_wrap(f"{text[0]} ({text[1]})\n", large_font=False,
-                                                        textbox_len_limit=LEN_LIMIT_CORNER_TEXTBOX_CUSTOM,
-                                                        max_lines=1, textbox_advance=False)
+            # Create the player name part of the string.
+            player_name = f" ({text[1]})"
+
+            # Create the item name part of the string. It will be truncated at the total available line length minus
+            # however much will be used by the player name portion.
+            item_name = cvhodis_text_wrap(f"{text[0]}", large_font=False,
+                                          textbox_len_limit=LEN_LIMIT_CORNER_TEXTBOX_CUSTOM - \
+                                                            cvhodis_get_string_len(player_name, large_font=False),
+                                          max_lines=1, textbox_advance=False)
+
+            # Put the final string together.
+            multi_text_list[loc_id] = item_name + player_name
+
         # Append the final text list onto the list of extracted texts to go back into the game.
         patcher.text += multi_text_list
 

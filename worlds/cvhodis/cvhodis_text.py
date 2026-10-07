@@ -412,6 +412,31 @@ def cvhodis_text_wrap(cvhodis_text: str, large_font: bool, textbox_len_limit: in
     return "".join(new_text)
 
 
+def cvhodis_get_string_len(cvhodis_text: str, large_font: bool) -> int:
+    """Calculates and returns the HoD in-game line length of a given string."""
+
+    # Loop over each character in the string and tally up the length.
+    string_len = 0
+    for char in cvhodis_text:
+        # If it's a command character, skip it; it contributes nothing.
+        if char in CVHODIS_COMMAND_CHARS:
+            continue
+
+        # If it has an entry in the variable widths dict, add the width of the character in the small or large font
+        # depending on which one we opted for.
+        if char in CVHODIS_VAR_WIDTH_CHARS:
+            if large_font:
+                string_len += CVHODIS_VAR_WIDTH_CHARS[char][1]
+            else:
+                string_len += CVHODIS_VAR_WIDTH_CHARS[char][2]
+        # Otherwise, add the default character width (it's the same width for both fonts).
+        else:
+            string_len += CVHODIS_DEFAULT_CHAR_WIDTH
+
+    # Return the result.
+    return string_len
+
+
 def cvhodis_command_scrubber(cvhodis_text: str) -> str:
     """Scrubs all command characters from a given text string, replacing them with the default text character.
     Good for any Archipelago player/item names that might try to be sneaky here..."""
