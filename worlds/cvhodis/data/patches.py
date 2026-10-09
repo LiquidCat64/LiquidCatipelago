@@ -990,6 +990,123 @@ post_intro_autosave_ldr = [
     0x0800BA0C,
 ]
 
+countdown_asm = [
+    # Everything that manages the Countdown number.
+
+    # Get the ID number of the current room's area name from the data associated with the room's top-right map square.
+    # We can find this out using the current room's top-right square coordinates that are always exposed to us.
+    0xB43F,  # push r0-r5
+    0x4803,  # ldr  r0, 0x2000070
+    0x7801,  # ldrb r1, [r0]
+    0x0849,  # lsr  r1, r1, 0x01
+    0x7842,  # ldrb r2, [r0, 0x01]
+    0x0192,  # lsl  r2, r2, 0x06
+    0x1852,  # add  r2, r2, r1
+    0x0052,  # lsl  r2, r2, 0x01
+    0x4804,  # ldr  r0, 0x80DAD94
+    0x1880,  # add  r0, r0, r2
+    0x8801,  # ldrh r1, [r0]
+    0x0A09,  # lsr  r1, r1, 0x08
+    0x220F,  # mov  r2, 0x0F
+    0x4011,  # and  r1, r2
+    # Advance only if the ID is 0xC or less. Otherwise, exit without drawing the number on the current frame at all.
+    # 0xC is the highest area name ID. We should only be hitting this in Boss Rush Mode.
+    0x290C,  # cmp  r1, 0x0C
+    0xDC3C,  # bgt  [forward 0x3D]
+    # Now that we have it, figure out which array of Countdown flag IDs we should be referencing.
+    # Add to the base address of the array of pointers to the flag ID arrays, the name ID left-shifted up by 3.
+    # Add +4 if we are in Castle B to arrive at the pointer to the Castle B area's ID array pointer.
+    0x4803,  # ldr  r0, 0x2000070
+    0x7802,  # ldrb r2, [r0]
+    0x2001,  # mov  r0, 0x01
+    0x4002,  # and  r2, r0
+    0x00C9,  # lsl  r1, r1, 0x03
+    0x0092,  # lsl  r2, r2, 0x02
+    0x4807,  # ldr  r0, countdown_idx_arrays_ptrs start
+    0x1840,  # add  r0, r0, r1
+    0x1880,  # add  r0, r0, r2
+    0x6800,  # ldr  r0, [r0]
+    # Now start looping over each pickup flag ID in the array and check to see how many are set.
+    # Keep looping until we hit a 0000 flag ID, signifying the end of the array.
+    0x2100,  # mov  r1, 0x00
+    0x2200,  # mov  r2, 0x00
+    0x4C05,  # ldr  r4, 0x2000330
+    0x8803,  # ldrh r3, [r0]
+    0x2B00,  # cmp  r3, 0x00
+    0xD011,  # beq  [forward 0x12]
+    # Right-shift the flag ID down by 5 to get the word index to offset to in the pickup flags array.
+    # AND it by 0x1F to get the bit index in the word.
+    0x095D,  # lsr  r5, r3, 0x05
+    0x00AD,  # lsl  r5, r5, 0x02
+    0x192C,  # add  r4, r5, r4
+    0x6824,  # ldr  r4, [r4]
+    0x251F,  # mov  r5, 0x1F
+    0x402B,  # and  r3, r5
+    0x2501,  # mov  r5, 0x01
+    0x409D,  # lsl  r5, r3
+    0x402C,  # and  r4, r5
+    # If the flag was un-set, increment the Countdown digits because we have an uncollected tracked location.
+    # Increment the low digit until 10 is reached, at which point it will reset to 0 and the high digit will increment.
+    0x1C80,  # add  r0, r0, 0x02
+    0x2C00,  # cmp  r4, 0x00
+    0xD1EF,  # bne  [backward 0x10]
+    0x1C49,  # add  r1, r1, 0x01
+    0x290A,  # cmp  r1, 0x0A
+    0xDBEC,  # blt  [backward 0x12]
+    0x2100,  # mov  r1, 0x00
+    0x1C52,  # add  r2, r2, 0x01
+    0xE7E9,  # b    [backward 0x14]
+    # Now that we have our two final digits, figure out which OBJ Tile IDs they correspond to in the VRAM. The base ID
+    # to add the digit number onto is 0xC0 by default. However, if a digit is higher than 5, we will need to subtract 6
+    # from it and use base ID 0xE0 instead.
+    0x20C0,  # mov  r0, 0xC0
+    0x2906,  # cmp  r1, 0x06
+    0xDB01,  # blt  [forward 0x02]
+    0x20E0,  # mov  r0, 0xE0
+    0x1F89,  # sub  r1, r1, 0x06
+    0x1840,  # add  r0, r0, r1
+    0x21C0,  # mov  r1, 0xC0
+    0x2A06,  # cmp  r2, 0x06
+    0xDB01,  # blt  [forward 0x02]
+    0x21E0,  # mov  r1, 0xE0
+    0x1F92,  # sub  r2, r2, 0x06
+    0x1889,  # add  r1, r1, r2
+    # Assemble the OAM data for each digit and store them in the final two OAM sprite slots; the two that the game is
+    # least likely to end up reaching, as every frame it fills them progressively starting from the first slot.
+    0x4A01,  # ldr  r2, 0x3000FF0
+    0x2360,  # mov  r3, 0x60   <- High digit X position
+    0x2404,  # mov  r4, 0x04   <- High digit Y position
+    0x8014,  # strh r4, [r2]
+    0x8053,  # strh r3, [r2, 0x02]
+    0x2365,  # mov  r3, 0x65   <- Low digit X position
+    0x2404,  # mov  r4, 0x04   <- Low digit Y position
+    0x8114,  # strh r4, [r2, 0x08]
+    0x8153,  # strh r3, [r2, 0x0A]
+    0x2350,  # mov  r3, 0x50   <- Palette info
+    0x021B,  # lsl  r3, r3, 0x08
+    0x4319,  # orr  r1, r3
+    0x4318,  # orr  r0, r3
+    0x8091,  # strh r1, [r2, 0x04]
+    0x8190,  # strh r0, [r2, 0x0C]
+    # Return to the function that adjusts the Heart counter digit positions.
+    0xBC3F,  # pop  r0-r5
+    0x4A06,  # ldr  r2, 0x18794
+    0x1880,  # add  r0, r0, r2
+    0x8800,  # ldrh r0, [r0]
+    0x2809,  # cmp  r0, 0x09
+    0x4B00,  # ldr  r3, 0x80082C8
+    0x469F,  # mov  r15, r3
+]
+countdown_ldr = [
+    0x080082C8,
+    0x03000FF0,
+    0x000050C0,
+    0x02000070,
+    0x080DAD94,
+    0x02000330,
+    0x00018794,
+]
+
 extra_item_sprites = {
     # The GFX data for any inserted extra item sprites, including the Archipelago Items. Graphics in this game are
     # arranged very differently from how they are in Circle of the Moon, with each VRAM tile row being separated out in

@@ -71,8 +71,12 @@ class CVHoDisRoomState(CVHoDisRoomDataEntry):
     loading_zone_list: list[CVHoDisLoadingZoneEntry]  # Loading zones in the room state.
     background_effect_id: int  # Int8 ID for what background effect to display.
     palette_shift_id: int  # Int8 ID for what palette shift effect to apply to the background with some bg effects.
-    area_info: int  # Information associated to what Area the room state is associated with. Used to know what song to
-                    # play and what area name to display if it's an area the player hasn't been to yet.
+    map_coords: int  # Information associated to the room's top-right square's position on the map screen.
+                     # Bits 0-6 = X coordinate.
+                     # Bits 7-D = Y coordinate.
+                     # Bit E = Which castle; A if un-set, B if set.
+                     # Bit F = Unknown. The only rooms that set this are...the Sky Walkway A and B save rooms, with the
+                     #         Crushing Stone block wall? More investigation needed.
 
 class CVHoDisRomPatcher:
     rom: bytearray
@@ -287,7 +291,7 @@ class CVHoDisRomPatcher:
                                 loading_zone_list=loading_zone_list,
                                 background_effect_id=self.read_byte(state_ptr + 0x20),
                                 palette_shift_id=self.read_byte(state_ptr + 0x21),
-                                area_info=self.read_bytes(state_ptr + 0x22, 2, "<H"),
+                                map_coords=self.read_bytes(state_ptr + 0x22, 2, "<H"),
                                 start_addr=state_ptr | GBA_ROM_START,
                             )
 
@@ -474,7 +478,7 @@ class CVHoDisRomPatcher:
         mov_ldr = 0x4687 | (hook_register << 3)
 
         # Generate and write the final hook code blob. If our hook address isn't 4-aligned, add +1 to the ldr
-        # lower byte and insert an extra 0000 between the instructions and the custom assembly address.
+        # lower byte and insert an extra 0000 between the instructions and the assembly start address.
         if hook_addr % 4:
             self.write_bytes(hook_addr, bytearray(struct.pack("<H", hook_ldr + 1)) + struct.pack("<H", mov_ldr) +
                              b"\x00\x00" + struct.pack("<I", GBA_ROM_START | asm_addr))
@@ -483,7 +487,7 @@ class CVHoDisRomPatcher:
             self.write_bytes(hook_addr, bytearray(struct.pack("<H", hook_ldr)) + struct.pack("<H", mov_ldr) +
                              struct.pack("<I", GBA_ROM_START | asm_addr))
 
-        # Return now with the custom assembly address.
+        # Return now with the assembly start address.
         return asm_addr
 
     def remove_free_space(self, remove_start: int, remove_len: int) -> None:
@@ -530,12 +534,22 @@ class CVHoDisRomPatcher:
         # Overwrite the old lookup with the newly-created one.
         self.free_space_lookup = new_free_space_lookup
 
-    def find_space_and_write_buffer(self, values: Collection[int]) -> int:
+    def find_space_and_write_buffer(self, values: Collection[int], struct_fmt: str = "") -> int:
         """Finds a space in the free space lookup to write a given buffer and writes it in the ROM, returning the start
         address the buffer was written to and updating the lookup in the process."""
 
+        # Convert the values to an array of whatever struct format we want to convert them to.
+        if struct_fmt:
+            values_to_write = bytearray(0)
+            for value in values:
+                values_to_write += struct.pack(struct_fmt, value)
+        # If the format is unspecified, we will try writing the values exactly as they are, assuming every value in the
+        # Collection is 255 or less.
+        else:
+            values_to_write = values
+
         # Pad the buffer size to find to be 4-aligned.
-        size_to_find = len(values)
+        size_to_find = len(values_to_write)
         if size_to_find % 4:
             size_to_find += 4 - size_to_find % 4
 
@@ -552,7 +566,7 @@ class CVHoDisRomPatcher:
                 # Write the buffer so that its end ends at where the free space ends, updating the free spaces lookup,
                 # and return the start address we wrote to.
                 write_spot = furthest_space_start + (unchecked_spaces[furthest_space_start] - size_to_find)
-                self.write_bytes(write_spot, values)
+                self.write_bytes(write_spot, values_to_write)
                 return write_spot
 
             # Otherwise, if the free space size is too small, remove it from the unchecked spaces lookup and try the
@@ -786,4 +800,4 @@ def get_room_state_bytes(room_state: CVHoDisRoomState) -> bytearray:
                      struct.pack("<I", room_state["loading_zone_list_ptr"]) + \
                      struct.pack("<B", room_state["background_effect_id"]) + \
                      struct.pack("<B", room_state["palette_shift_id"]) + \
-                     struct.pack("<H", room_state["area_info"]))
+                     struct.pack("<H", room_state["map_coords"]))

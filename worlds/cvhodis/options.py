@@ -282,13 +282,16 @@ class HintCardHints(Toggle):
 
 
 class Countdown(Choice):
-    """
-    Displays, below and near the right side of the MP bar, the number of un-found progression/useful-marked items or the total check locations remaining in the area you are currently in.
+    """Displays, to the right of the HUD health bar, the number of unobtained progression items, progression + useful items,
+    or the total check locations remaining in the place you are currently in.
+
+    If Area Divisions is Transitions, every named sub area will have its own count. Otherwise, it'll be one count for the whole area.
     """
     display_name = "Countdown"
     option_none = 0
-    option_majors = 1
-    option_all_locations = 2
+    option_progression_only = 1
+    option_progression_useful = 2
+    option_all_locations = 3
     default = 0
 
 
@@ -316,7 +319,7 @@ class CVHoDisOptions(PerGameCommonOptions):
     best_ending_required: BestEndingRequired
     furniture_amount_required: FurnitureAmountRequired
     # map_percent_requirement: MapPercentRequirement
-    # countdown: Countdown
+    countdown: Countdown
     # sub_weapon_shuffle: SubWeaponShuffle
     area_divisions: AreaDivisions
     castle_swapper: CastleSwapper
@@ -360,8 +363,7 @@ cvhodis_option_groups = [
         RemoveFurniture, StartWithLureKey
     ]),
     OptionGroup("Quality of Life", [
-        SpellboundBossLogic, CardboundBossLogic, EarlyLizard, HintCardHints, DoubleSidedWarps,
-    #    Countdown
+        SpellboundBossLogic, CardboundBossLogic, EarlyLizard, HintCardHints, DoubleSidedWarps, Countdown
     ]),
 ]
 

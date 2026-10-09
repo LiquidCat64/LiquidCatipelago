@@ -216,9 +216,8 @@ class CVHoDisWorld(World):
                 self.options.castle_swapper.value != CastleSwapper.option_transitions:
             classification = ItemClassification.useful
 
-        created_item = CVHoDisItem(name, classification, code, self.player)
-
-        return created_item
+        # Return the final Item.
+        return CVHoDisItem(name, classification, code, self.player)
 
     def create_items(self) -> None:
         # Set up the Items correctly and submit them to the multiworld's Item pool.
@@ -275,9 +274,10 @@ class CVHoDisWorld(World):
                                 "bracelet_warp_requirement": self.options.bracelet_warp_requirement.value,
                                 "double_sided_warps": self.options.double_sided_warps.value,
                                 "gate_items": self.options.gate_items.value,
-                                "death_link": self.options.death_link.value},
+                                "countdown": self.options.countdown.value,
+                                "area_divisions": self.options.area_divisions.value},
                            "start inventory": get_start_inventory_data(self.multiworld.precollected_items[self.player]),
-                           # "initial countdowns": get_countdown_numbers(self.options, active_locations),
+                           "countdown flags": get_countdown_flags(self.options, active_locations),
                            "location values": get_location_write_values(self, active_locations),
                            "location text": get_location_text(self, active_locations),
                            "card text": get_hint_card_hints(self, active_locations),

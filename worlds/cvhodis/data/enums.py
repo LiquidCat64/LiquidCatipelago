@@ -28,6 +28,34 @@ class Areas(IntEnum):
     TREASURY_A = 18
     TREASURY_B = 19
 
+class SubAreas(IntEnum):
+    ENTRANCE_A = 0
+    ENTRANCE_B = 1
+    MARBLE_A = 2
+    MARBLE_B = 3
+    SHRINE_A = 4
+    SHRINE_B = 5
+    TOP_A = 6
+    TOP_B = 7
+    SKELETON_A = 8
+    SKELETON_B = 9
+    LUMINOUS_A = 10
+    LUMINOUS_B = 11
+    AQUEDUCT_A = 12
+    AQUEDUCT_B = 13
+    SKY_A = 14
+    SKY_B = 15
+    CLOCK_A = 16
+    CLOCK_B = 17
+    TREASURY_A = 18
+    TREASURY_B = 19
+    ROOM_A = 20
+    ROOM_B = 21
+    WAILING_A = 22
+    WAILING_B = 23
+    CHAPEL_A = 24
+    CHAPEL_B = 25
+
 class AreaNames(StrEnum):
     ENTRANCE = "Entrance"
     MARBLE = "Marble Corridor"

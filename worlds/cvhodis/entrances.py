@@ -582,7 +582,7 @@ NORMAL_ENTRANCE_DESTINATIONS: dict[str, str] = {
     ent_names.lw_portal_exit_w: reg_names.swa_portal
 }
 
-def invert_castle_transitions(world: "CVHoDisWorld") -> tuple[dict[str: bool], dict[str: bool]]:
+def invert_castle_transitions(world: "CVHoDisWorld") -> tuple[dict[str, bool], dict[str, bool]]:
     """Figures out which area transitions link across the two castles.
     Returns a dict of every transition name mapped to either True or False. Transitions with True are the ones that should be changed to go to their other castle-equivalent destination."""
     inverted_transitions = {transition: False for transition in SHUFFLEABLE_TRANSITIONS}

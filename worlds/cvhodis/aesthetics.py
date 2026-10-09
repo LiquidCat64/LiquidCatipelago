@@ -1,10 +1,10 @@
 from BaseClasses import ItemClassification, Location, Item
-#from .options import Countdown
-#from .locations import CVHODIS_LOCATIONS_INFO, ALT_PICKUP_OFFSETS, GUARDIAN_GRINDER_LOCATIONS
+from .options import Countdown, CVHoDisOptions
+from .locations import CVHODIS_LOCATIONS_INFO, SUB_TO_MAIN_AREAS
 from .items import FURNITURE, SPELLBOOKS, RELICS, GATE_KEYS, ALL_CVHODIS_ITEMS
 from .cvhodis_text import cvhodis_command_scrubber
-from .data import item_names
-from .data.enums import PickupTypes
+from .data import item_names, loc_names
+from .data.enums import PickupTypes, SubAreas
 from .data.misc_names import GAME_NAME
 
 from typing import TYPE_CHECKING, Iterable, NamedTuple
@@ -104,12 +104,58 @@ def shuffle_sub_weapons(world: "CVHoDisWorld") -> dict[int, bytes]:
     return dict(zip(rom_sub_weapon_offsets, sub_bytes))
 
 
-def get_countdown_flags(world: "CVHoDisWorld", active_locations: Iterable[Location]) -> dict[int, bytes]:
-    """Figures out which Countdown numbers to increase for each Location after verifying the Item on the Location should
-    count towards a number.
+def get_countdown_flags(options: CVHoDisOptions, active_locations: Iterable[Location]) -> list[list[int]]:
+    """Figures out which Locations have Items that should count towards a Countdown number and assembles each array of
+    event flag IDs that will be checked to determine what the current on-screen number should be in each scene.
 
-    Which number to increase is determined by the Location's "countdown" attr in its CVCotMLocationData."""
-    pass
+    The exact number each Location contributes to is determined by the ID of the scene that said Location is in. Said
+    scene ID is an index in a table that, in turn, contains a pointer to the current map's array of event flag IDs to
+    check to determine what the current number on-screen should be."""
+
+    # Create the array of arrays. The number of countdown numbers is the highest number in the list of countdown numbers
+    # for each scene.
+    countdown_arrays = [[] for _ in range(len(SubAreas))]
+
+    # Loop over every Location, figure out which countdown number it is, and if it should count on it.
+    for loc in active_locations:
+        # If the Countdown option is set to Majors, then only Items with the Progression and/or Useful classifications
+        # set on them will count. Otherwise, all Locations will count, including those with filler/trap Items. Event
+        # Locations will never count no matter what.
+        if loc.address is not None and CVHODIS_LOCATIONS_INFO[loc.name].countdown is not None and \
+                (options.countdown == Countdown.option_all_locations or
+                 (options.countdown == Countdown.option_progression_only and loc.item.classification &
+                  ItemClassification.progression) or
+                 (options.countdown == Countdown.option_progression_useful and loc.item.classification &
+                  (ItemClassification.progression | ItemClassification.useful))):
+
+            # Get the Location's countdown array and add its Location ID to it
+            # (said Location ID is the event flag ID the game will check to see if you have it).
+
+            # If Area Divisions is Doors, check if the Location's Countdown area is a sub-area of a main area.
+            # If it is, add the Location ID to the main area's array instead.
+            if CVHODIS_LOCATIONS_INFO[loc.name].countdown in SUB_TO_MAIN_AREAS:
+                countdown_arrays[SUB_TO_MAIN_AREAS[CVHODIS_LOCATIONS_INFO[loc.name].countdown]] += [loc.address]
+            else:
+                countdown_arrays[CVHODIS_LOCATIONS_INFO[loc.name].countdown] += [loc.address]
+
+            # If the Location is the Room/Treasury portal, add it to Treasury B's array as well.
+            if loc.name == loc_names.portals_rt:
+                countdown_arrays[SubAreas.TREASURY_B] += [loc.address]
+            # If the Location is the Luminous/Sky portal, add it to Luminous B's array as well.
+            elif loc.name == loc_names.portals_lw:
+                countdown_arrays[SubAreas.LUMINOUS_B] += [loc.address]
+
+    # Add a 0 to the end of each array to indicate to the game that that's where the array terminates.
+    # A pickup flag of 0 in the game's code is often used to skip the flag check or other special behaviors.
+    for array in countdown_arrays:
+        array += [0]
+
+        # Add another 0 if the array length is now odd to keep it 4-aligned when it actually goes into the game.
+        if len(array) % 2:
+            array += [0]
+
+    # Return the final array.
+    return countdown_arrays
 
 
 def get_location_write_values(world: "CVHoDisWorld", active_locations: Iterable[Location]) -> \

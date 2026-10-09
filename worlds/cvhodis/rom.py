@@ -17,10 +17,10 @@ from .data.misc_names import GAME_NAME
 from .entrances import SHUFFLEABLE_TRANSITIONS, VERTICAL_GROUPS, VERTICAL_SHAFT_EXITS, \
     LEFT_GROUPS, RIGHT_GROUPS, TOP_GROUPS, BOTTOM_GROUPS
 from .items import EQUIPMENT
-from .locations import CVHODIS_LOCATIONS_INFO
+from .locations import CVHODIS_LOCATIONS_INFO, SUB_TO_MAIN_AREAS
 from .cvhodis_text import LEN_LIMIT_MENU_DESCRIPTION, LEN_LIMIT_CORNER_TEXTBOX_CUSTOM, DESCRIPTION_DISPLAY_LINES, \
     cvhodis_text_wrap, cvhodis_get_string_len
-from .options import GateItems
+from .options import GateItems, AreaDivisions
 from .patcher import CVHoDisRomPatcher, CVHoDisActorEntry, GBA_ROM_START
 from settings import get_settings
 
@@ -453,11 +453,8 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # This is how we set things like, say, the gate key flags at the beginning.
         for flag_index in slot_patch_info["start inventory"]["starting flags"]:
             starting_flag_words[(flag_index >> 5) + 1] |= 1 << (flag_index & 0x1F)
-        # Turn the array into a proper bytearray.
-        starting_flags_array = bytearray(0)
-        for word in starting_flag_words:
-            starting_flags_array += struct.pack("<I", word)
-        start_inventory_starting_flags_start = GBA_ROM_START | patcher.find_space_and_write_buffer(starting_flags_array)
+        start_inventory_starting_flags_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
+            starting_flag_words, "<I")
         # Write the start inventory giver hack with the above pointers to the start inventory arrays.
         patcher.generate_dynamic_asm(patches.new_game_extras_asm,
                                      patches.new_game_extras_ldr + [start_inventory_use_start,
@@ -611,8 +608,31 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Append the final text list onto the list of extracted texts to go back into the game.
         patcher.text += multi_text_list
 
+        # Everything related to the Countdown counters.
+        if slot_patch_info["options"]["countdown"]:
+            # Insert the Countdown index arrays and create the array of pointers to them in the process.
+            countdown_idx_arrays_ptrs = [GBA_ROM_START | patcher.find_space_and_write_buffer(idx_array, "<H")
+                                         for idx_array in slot_patch_info["countdown flags"]]
+            # If Area Divisions is Doors, repoint the sub-areas' pointers to their corresponding main areas' arrays
+            # instead.
+            if slot_patch_info["options"]["area_divisions"] == AreaDivisions.option_doors_only:
+                for sub_area_id, main_area_id in SUB_TO_MAIN_AREAS.items():
+                    countdown_idx_arrays_ptrs[sub_area_id] = countdown_idx_arrays_ptrs[main_area_id]
+            # Insert the Countdown number display hack and, with it, the array of pointers to the flag index arrays.
+            patcher.generate_dynamic_asm(patches.countdown_asm, patches.countdown_ldr +
+                                        [GBA_ROM_START |
+                                         patcher.find_space_and_write_buffer(countdown_idx_arrays_ptrs, "<I")],
+                                        hook_addr=0x82C0, hook_register=3)
+        # Adjust the area name definitions for the map square datas of the following rooms' top-right corners:
+        # Marble Corridor Grand Staircase room (top-right square's data is fully undefined as it's out of bounds)
+        patcher.write_int16(0xDB544, 0xF1FF)
+        # Castle Treasury Center room (top-right square's data is fully undefined as it's out of bounds)
+        patcher.write_int16(0xDB8D0, 0xF9FF)
+        # Room of Illusion portal room (area name is set as Marble Corridor, NOT Room of Illusion)
+        patcher.write_int16(0xDB7A8, 0x4A14)
+
         # Go anywhere
-        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x0849D758
+        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084A6160
         #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
 
         return patcher.get_output_rom()
