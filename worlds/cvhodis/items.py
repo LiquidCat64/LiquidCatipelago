@@ -1,6 +1,6 @@
 from BaseClasses import Item, ItemClassification
 from .data import item_names
-from .data.enums import PickupTypes, FillerTypes, EventFlags
+from .data.enums import PickupTypes, FillerTypes, EventFlags, SubWeaponPickups
 from .data.misc_names import GAME_NAME
 from .locations import CVHODIS_LOCATIONS_INFO
 
@@ -61,12 +61,12 @@ MONEY: dict[str, CVHoDisItemData] = {
 }
 
 SUB_WEAPONS: dict[str, CVHoDisItemData] = {
-    item_names.sub_book:  CVHoDisItemData(0x00, 0x01, 0x01),
-    item_names.sub_cross: CVHoDisItemData(0x01, 0x02, 0x01),
-    item_names.sub_axe:   CVHoDisItemData(0x02, 0x03, 0x01),
-    item_names.sub_holy:  CVHoDisItemData(0x03, 0x04, 0x01),
-    item_names.sub_fist:  CVHoDisItemData(0x04, 0x05, 0x01),
-    item_names.sub_knife: CVHoDisItemData(0x05, 0x06, 0x01),
+    item_names.sub_book:  CVHoDisItemData(SubWeaponPickups.HOLY_BOOK.value,   0x01, 0x01),
+    item_names.sub_cross: CVHoDisItemData(SubWeaponPickups.CROSS.value,       0x02, 0x01),
+    item_names.sub_axe:   CVHoDisItemData(SubWeaponPickups.AXE.value,         0x03, 0x01),
+    item_names.sub_holy:  CVHoDisItemData(SubWeaponPickups.HOLY_WATER.value,  0x04, 0x01),
+    item_names.sub_fist:  CVHoDisItemData(SubWeaponPickups.SACRED_FIST.value, 0x05, 0x01),
+    item_names.sub_knife: CVHoDisItemData(SubWeaponPickups.KNIFE.value,       0x06, 0x01),
 }
 
 USE_ITEMS: dict[str, CVHoDisItemData] = {

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from Options import OptionGroup, Choice, Range, Toggle, PerGameCommonOptions, StartInventoryPool, DeathLink,\
     DefaultOnToggle
+from .data.enums import SubWeaponPickups
 
 
 class MediumEndingRequired(Toggle):
@@ -295,12 +296,25 @@ class Countdown(Choice):
     default = 0
 
 
-class SubWeaponShuffle(Toggle):
+class SubWeaponRandomization(Choice):
     """
     Randomizes which sub-weapon candles have which sub-weapons.
-    The total available count of each sub-weapon will be consistent with that of the vanilla game.
+    Shuffle keeps the total counts of each weapon roughly equal, mystery does not.
     """
-    display_name = "Sub-weapon Shuffle"
+    display_name = "Sub-weapon Randomization"
+    option_none = 0
+    option_shuffle = 1
+    option_mystery = 2
+
+
+class SubWeaponsAvailable(Range):
+    """
+    How many Sub-weapon types are available throughout the game. Removed sub-weapons will be replaced with an equal count of others when Sub-weapon Randomization is Shuffle.
+    """
+    range_start = 1
+    range_end = len(SubWeaponPickups)
+    default = len(SubWeaponPickups)
+    display_name = "Sub-weapons available"
 
 
 class ProgressiveHeights(Toggle):
@@ -320,7 +334,8 @@ class CVHoDisOptions(PerGameCommonOptions):
     furniture_amount_required: FurnitureAmountRequired
     # map_percent_requirement: MapPercentRequirement
     countdown: Countdown
-    # sub_weapon_shuffle: SubWeaponShuffle
+    sub_weapon_randomization: SubWeaponRandomization
+    sub_weapons_available: SubWeaponsAvailable
     area_divisions: AreaDivisions
     castle_swapper: CastleSwapper
     transition_shuffler: TransitionShuffler
@@ -349,7 +364,7 @@ class CVHoDisOptions(PerGameCommonOptions):
 
 cvhodis_option_groups = [
     OptionGroup("Goal Options", [
-        MediumEndingRequired, WorstEndingRequired, BestEndingRequired, FurnitureAmountRequired,
+        MediumEndingRequired, WorstEndingRequired, BestEndingRequired, FurnitureAmountRequired
         # MapPercentRequired
     ]),
     OptionGroup("Entrance Randomization", [
@@ -362,8 +377,11 @@ cvhodis_option_groups = [
         FillerPool, ProgressiveHeights, GateItems, AddJBsBracelet, AddFloatingBoots, AddInfiniteBoots, AddNoonStar,
         RemoveFurniture, StartWithLureKey
     ]),
+    OptionGroup("World Options", [
+        SpellboundBossLogic, CardboundBossLogic, SubWeaponRandomization, SubWeaponsAvailable, EarlyLizard
+    ]),
     OptionGroup("Quality of Life", [
-        SpellboundBossLogic, CardboundBossLogic, EarlyLizard, HintCardHints, DoubleSidedWarps, Countdown
+        HintCardHints, DoubleSidedWarps, Countdown
     ]),
 ]
 

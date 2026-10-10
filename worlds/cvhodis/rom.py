@@ -14,6 +14,7 @@ from . import ALL_CVHODIS_ITEMS
 from .data import patches, loc_names, item_names
 from .data.enums import ActorTypes, PickupTypes, Areas
 from .data.misc_names import GAME_NAME
+from .aesthetics import SUB_WEAPON_CANDLES_INFO
 from .entrances import SHUFFLEABLE_TRANSITIONS, VERTICAL_GROUPS, VERTICAL_SHAFT_EXITS, \
     LEFT_GROUPS, RIGHT_GROUPS, TOP_GROUPS, BOTTOM_GROUPS
 from .items import EQUIPMENT
@@ -502,6 +503,16 @@ class CVHoDisPatchExtensions(APPatchExtension):
             for room_id in range(len(patcher.areas[area_id])):
                 for room_state in patcher.areas[area_id][room_id]:
                     for actor in room_state["actor_list"]:
+                        # If the actor is a sub-weapon candle, scan over our sub-weapon candles info and try to find
+                        # the index in the list with the matching area and room IDs.
+                        if actor["type_id"] == ActorTypes.CANDLE and actor["subtype_id"] == PickupTypes.SUB_WEAPON:
+                            for i in range(len(SUB_WEAPON_CANDLES_INFO)):
+                                # If we get a hit, place on this candle actor the weapon that is in the slot's
+                                # sub-weapon placements list at the index that we found.
+                                if SUB_WEAPON_CANDLES_INFO[i].area == area_id and \
+                                        SUB_WEAPON_CANDLES_INFO[i].room == room_id:
+                                    actor["var_b"] = slot_patch_info["sub weapon placements"][i]
+
                         # If the actor is not a pickup, or if it's already marked for deletion, skip it.
                         if actor["type_id"] != ActorTypes.PICKUP or "delete" in actor:
                             continue

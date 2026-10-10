@@ -1,10 +1,10 @@
 from BaseClasses import ItemClassification, Location, Item
-from .options import Countdown, CVHoDisOptions
+from .options import Countdown, CVHoDisOptions, SubWeaponRandomization
 from .locations import CVHODIS_LOCATIONS_INFO, SUB_TO_MAIN_AREAS
 from .items import FURNITURE, SPELLBOOKS, RELICS, GATE_KEYS, ALL_CVHODIS_ITEMS
 from .cvhodis_text import cvhodis_command_scrubber
 from .data import item_names, loc_names
-from .data.enums import PickupTypes, SubAreas
+from .data.enums import PickupTypes, SubAreas, SubWeaponPickups, Areas
 from .data.misc_names import GAME_NAME
 
 from typing import TYPE_CHECKING, Iterable, NamedTuple
@@ -80,7 +80,7 @@ class OtherHoDPlayerPickupInfo(NamedTuple):
     type_value: int
     index_value: int
 
-OTHER_HOD_PLAYER_TYPE_BYTES = {
+OTHER_HOD_PLAYER_TYPE_BYTES: dict[int, OtherHoDPlayerPickupInfo] = {
     PickupTypes.MONEY.value:           OtherHoDPlayerPickupInfo(PickupTypes.FURNITURE, FURN_AP_MONEY_INDEX),
     PickupTypes.SUB_WEAPON.value:      OtherHoDPlayerPickupInfo(PickupTypes.FURNITURE, FURN_AP_FILLER_INDEX),
     PickupTypes.USE_ITEM.value:        OtherHoDPlayerPickupInfo(PickupTypes.FURNITURE, FURN_AP_FILLER_INDEX),
@@ -92,17 +92,159 @@ OTHER_HOD_PLAYER_TYPE_BYTES = {
     PickupTypes.MAX_UP.value:          OtherHoDPlayerPickupInfo(PickupTypes.FURNITURE, FURN_AP_MAX_UP_INDEX),
 }
 
-rom_sub_weapon_offsets = {
+class CVHoDisSubWeaponCandleData(NamedTuple):
+    vanilla_weapon: int  # ID for the sub-weapon normally on this spot.
+    area: int  # ID for the area this sub-weapon is in.
+    room: int  # ID for the room in the area this sub-weapon is in.
 
-}
+SUB_WEAPON_CANDLES_INFO: list[CVHoDisSubWeaponCandleData] = [
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.ENTRANCE_A, 0x06),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.ENTRANCE_A, 0x08),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.ENTRANCE_A, 0x0A),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.ENTRANCE_A, 0x0C),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.ENTRANCE_A, 0x0D),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.ENTRANCE_B, 0x06),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.ENTRANCE_B, 0x08),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.ENTRANCE_B, 0x0A),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.ENTRANCE_B, 0x0C),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.ENTRANCE_B, 0x0D),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.MARBLE_A,   0x06),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.MARBLE_A,   0x08),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.MARBLE_A,   0x0C),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.MARBLE_A,   0x0D),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.MARBLE_A,   0x11),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.MARBLE_B,   0x08),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.MARBLE_B,   0x0D),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.MARBLE_B,   0x11),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.SHRINE_A,   0x00),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.SHRINE_A,   0x04),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.SHRINE_A,   0x0A),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.SHRINE_A,   0x0C),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.SHRINE_A,   0x0D),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.SHRINE_B,   0x00),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.SHRINE_B,   0x04),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.SHRINE_B,   0x0A),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.SHRINE_B,   0x0C),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.SHRINE_B,   0x0D),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.TOP_A,      0x01),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.TOP_A,      0x04),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.TOP_A,      0x06),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.TOP_A,      0x07),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.TOP_A,      0x09),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.TOP_B,      0x01),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.TOP_B,      0x04),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.TOP_B,      0x06),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.TOP_B,      0x07),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.TOP_B,      0x09),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.SKELETON_A, 0x00),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.SKELETON_A, 0x02),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.SKELETON_A, 0x07),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.SKELETON_A, 0x08),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.SKELETON_A, 0x0F),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.SKELETON_B, 0x00),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.SKELETON_B, 0x02),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.SKELETON_B, 0x07),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.SKELETON_B, 0x08),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.SKELETON_B, 0x0F),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.LUMINOUS_A, 0x00),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.LUMINOUS_A, 0x05),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.LUMINOUS_A, 0x06),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.LUMINOUS_A, 0x0E),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.LUMINOUS_A, 0x16),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.LUMINOUS_B, 0x00),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.LUMINOUS_B, 0x05),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.LUMINOUS_B, 0x06),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.LUMINOUS_B, 0x0E),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.LUMINOUS_B, 0x16),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.AQUEDUCT_A, 0x01),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.AQUEDUCT_A, 0x02),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.AQUEDUCT_A, 0x04),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.AQUEDUCT_A, 0x07),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.AQUEDUCT_A, 0x0A),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.AQUEDUCT_B, 0x01),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.AQUEDUCT_B, 0x02),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.AQUEDUCT_B, 0x04),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.AQUEDUCT_B, 0x07),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.AQUEDUCT_B, 0x0A),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.CHAPEL_A,   0x02),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.CHAPEL_A,   0x08),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.CHAPEL_A,   0x09),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.CHAPEL_A,   0x0C),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.CHAPEL_A,   0x10),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.CHAPEL_B,   0x02),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.CHAPEL_B,   0x08),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.CHAPEL_B,   0x09),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.CHAPEL_B,   0x0C),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.CHAPEL_B,   0x10),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.CLOCK_A,    0x00),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.CLOCK_A,    0x06),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.CLOCK_A,    0x10),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.CLOCK_A,    0x13),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.CLOCK_A,    0x15),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.CLOCK_B,    0x00),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.CLOCK_B,    0x06),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.CLOCK_B,    0x10),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.CLOCK_B,    0x13),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.CLOCK_B,    0x15),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.TREASURY_A, 0x03),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.TREASURY_A, 0x09),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.TREASURY_A, 0x0D),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.TREASURY_A, 0x13),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.TREASURY_A, 0x16),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.TREASURY_B, 0x03),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.TREASURY_B, 0x09),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.TREASURY_B, 0x0D),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.TREASURY_B, 0x13),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.TREASURY_B, 0x16),
+]
+# Fun fact: Marble B is the only area that is missing sub-weapon locations from its Castle A counterpart.
+# This is the only thing keeping the total count from a nice round 100...
 
 
-def shuffle_sub_weapons(world: "CVHoDisWorld") -> dict[int, bytes]:
-    """Shuffles the sub-weapons amongst themselves."""
-    sub_bytes = list(rom_sub_weapon_offsets.values())
-    world.random.shuffle(sub_bytes)
-    return dict(zip(rom_sub_weapon_offsets, sub_bytes))
+def get_sub_weapon_placements(world: "CVHoDisWorld") -> list[int]:
+    """Creates and returns the list of sub-weapon IDs to place in the sub-weapon candles throughout the game, depending
+    on the Sub-weapon mode chosen. Each position in the returned list corresponds to a specific sub-weapon candle."""
 
+    # Figure out which sub-weapons will be included in the slot by choosing a random sample of all the sub-weapon pickup
+    # IDs the size of what was chosen for the Sub Weapons Available option.
+    included_sub_weapons = world.random.sample([weapon_id for weapon_id in SubWeaponPickups],
+                                               world.options.sub_weapons_available.value)
+
+    # Make a list of vanilla sub-weapons in their vanilla positions by default.
+    sub_weapon_placements = [data.vanilla_weapon for data in SUB_WEAPON_CANDLES_INFO]
+
+    # If Sub-weapon Randomization is set to Mystery, choose a random available weapon for every weapon location in the
+    # game and return that list. We don't care about running the rest of the function to keep the weapon counts even.
+    if world.options.sub_weapon_randomization.value == SubWeaponRandomization.option_mystery:
+        for i in range(len(sub_weapon_placements)):
+            sub_weapon_placements[i] = world.random.choice(included_sub_weapons)
+        return sub_weapon_placements
+
+    # If we make it here, meaning we do want even counts, loop through the list and check to see if each spot's
+    # sub-weapon is included. If it isn't, replace it with a different sub-weapon.
+    next_weapon_id = SubWeaponPickups(0)
+    for i in range(len(sub_weapon_placements)):
+        if sub_weapon_placements[i] in included_sub_weapons:
+            continue
+        sub_weapon_placements[i] = next_weapon_id
+        # To keep the count of each sub-weapon even, increase the next replacement weapon ID to that of the next
+        # available sub-weapon until it gets over the highest ID. At which point we'll then reset it back to 0.
+        while True:
+            if next_weapon_id + 1 >= len(SubWeaponPickups):
+                next_weapon_id = SubWeaponPickups(0)
+            else:
+                next_weapon_id = SubWeaponPickups(next_weapon_id + 1)
+            # If the next weapon ID we've currently landed on is not an included sub-weapon, loop again until we
+            # eventually land on one. Otherwise, terminate the loop; the ID we currently have will be our final choice.
+            if next_weapon_id in included_sub_weapons:
+                break
+
+    # If Sub-weapon Randomization is set to shuffle, shuffle the current list exactly as it is.
+    if world.options.sub_weapon_randomization.value == SubWeaponRandomization.option_shuffle:
+        world.random.shuffle(sub_weapon_placements)
+
+    # Return the final list.
+    return sub_weapon_placements
 
 def get_countdown_flags(options: CVHoDisOptions, active_locations: Iterable[Location]) -> list[list[int]]:
     """Figures out which Locations have Items that should count towards a Countdown number and assembles each array of
@@ -197,20 +339,20 @@ def get_location_write_values(world: "CVHoDisWorld", active_locations: Iterable[
         else:
             if loc.item.classification & ItemClassification.progression and \
                     loc.item.classification & ItemClassification.useful:
-                type_value = PickupTypes.RELIC  # Relic causes the Item to float.
-                index_value = RELIC_AP_PROG_USEFUL_INDEX  # Progression + Useful
+                type_value = (AP_PALETTE_ID << 4) | PickupTypes.RELIC  # Relic causes the Item to float.
+                index_value = ((AP_PROG_USEFUL_GFX_ID + 1) << 8) | RELIC_AP_PROG_USEFUL_INDEX  # Progression + Useful
             elif loc.item.classification & ItemClassification.progression:
-                type_value = PickupTypes.FURNITURE
-                index_value = FURN_AP_USEFUL_INDEX  # Progression
+                type_value = (AP_PALETTE_ID << 4) | PickupTypes.FURNITURE
+                index_value = ((AP_PROGRESSION_GFX_ID + 1) << 8) | FURN_AP_USEFUL_INDEX  # Progression
             elif loc.item.classification & ItemClassification.useful:
-                type_value = PickupTypes.FURNITURE
-                index_value = FURN_AP_USEFUL_INDEX  # Useful
+                type_value = (AP_PALETTE_ID << 4) | PickupTypes.FURNITURE
+                index_value = ((AP_USEFUL_GFX_ID + 1) << 8) | FURN_AP_USEFUL_INDEX  # Useful
             elif loc.item.classification & ItemClassification.trap:
-                type_value = PickupTypes.FURNITURE
-                index_value = FURN_AP_TRAP_INDEX  # Trap
+                type_value = (AP_PALETTE_ID << 4) | PickupTypes.FURNITURE
+                index_value = ((AP_TRAP_GFX_ID + 1) << 8) | FURN_AP_TRAP_INDEX  # Trap
             else:
-                type_value = PickupTypes.FURNITURE
-                index_value = FURN_AP_FILLER_INDEX  # Filler
+                type_value = (AP_PALETTE_ID << 4) | PickupTypes.FURNITURE
+                index_value = ((AP_FILLER_GFX_ID + 1) << 8) | FURN_AP_FILLER_INDEX  # Filler
 
             # Check if the Item's game is in the other game item appearances' dict, and if so, if the Item is under that
             # game's name. If it is, change the appearance accordingly. These mostly apply to max ups in other games

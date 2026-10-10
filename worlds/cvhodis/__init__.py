@@ -8,14 +8,14 @@ import json
 from BaseClasses import Tutorial, ItemClassification, EntranceType
 from entrance_rando import disconnect_entrance_for_randomization, randomize_entrances
 from .data.enums import FillerTypes
-from .aesthetics import shuffle_sub_weapons, get_location_write_values, get_countdown_flags, get_start_inventory_data, \
-    get_hint_card_hints, get_location_text
+from .aesthetics import get_sub_weapon_placements, get_location_write_values, get_countdown_flags, \
+    get_start_inventory_data, get_hint_card_hints, get_location_text
 from .items import CVHoDisItem, ALL_CVHODIS_ITEMS, FURNITURE, get_item_names_to_ids, get_item_pool, get_pickup_type, \
     CVHODIS_FILLER_CATEGORIES
 from .locations import CVHoDisLocation, get_location_names_to_ids, get_locations_to_create, \
     get_location_name_groups
-from .options import cvhodis_option_groups, CVHoDisOptions, SubWeaponShuffle, TransitionShuffler, CastleSwapper, \
-    AreaDivisions, FillerPool, cvhodis_map_presets
+from .options import cvhodis_option_groups, CVHoDisOptions, TransitionShuffler, CastleSwapper, AreaDivisions, \
+    FillerPool, cvhodis_map_presets
 from .regions import get_all_region_names, CVHoDisRegion, ALL_CVHODIS_REGIONS
 from .entrances import SHUFFLEABLE_TRANSITIONS, ERGroups, TARGET_GROUP_RELATIONSHIPS, cvhodis_on_connect, \
     SORTED_TRANSITIONS, SKULL_DOOR_GROUPS, MK_DOOR_GROUPS, CVHoDisEntrance, invert_castle_transitions, \
@@ -257,15 +257,9 @@ class CVHoDisWorld(World):
         # Get out all the Locations that are not Events.
         active_locations = [loc for loc in self.multiworld.get_locations(self.player) if loc.address is not None]
 
-        # Sub-weapons
-        # if self.options.sub_weapon_shuffle:
-        #     offset_data.update(shuffle_sub_weapons(self))
         # Item drop randomization
         # if self.options.item_drop_randomization:
         #     offset_data.update(populate_enemy_drops(self))
-        # Countdown
-        # if self.options.countdown:
-        #     offset_data.update(get_countdown_flags(self, active_locations))
 
         # Prepare the slot info to write to a JSON inside the AP patch file.
         slot_patch_info = {"options":
@@ -282,6 +276,7 @@ class CVHoDisWorld(World):
                            "location text": get_location_text(self, active_locations),
                            "card text": get_hint_card_hints(self, active_locations),
                            "transition values": self.transition_pairings,
+                           "sub weapon placements": get_sub_weapon_placements(self),
                            "patch compatibility": ARCHIPELAGO_PATCH_COMPAT_VER,
                            "auth": base64.b64encode(self.auth).decode()}
 

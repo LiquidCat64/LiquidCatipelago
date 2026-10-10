@@ -436,6 +436,14 @@ class SpecialObjects(IntEnum):
     TOP_A_HAND_STATUE = 0x30
     FINAL_BOSS_SEQUENCE_MGR = 0x31
 
+class SubWeaponPickups(IntEnum):
+    HOLY_BOOK = 0
+    CROSS = 1
+    AXE = 2
+    HOLY_WATER = 3
+    SACRED_FIST = 4
+    KNIFE = 5
+
 class EventFlags(IntEnum):
     PRESSED_SHRINE_A_BUTTON = 0x00
     PRESSED_CLOCK_A_BUTTON = 0x01
