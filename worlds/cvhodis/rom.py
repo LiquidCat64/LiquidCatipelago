@@ -12,7 +12,7 @@ import os
 
 from . import ALL_CVHODIS_ITEMS
 from .data import patches, loc_names, item_names
-from .data.enums import ActorTypes, PickupTypes, Areas
+from .data.enums import ActorTypes, PickupTypes, Areas, Enemies
 from .data.misc_names import GAME_NAME
 from .aesthetics import SUB_WEAPON_CANDLES_INFO
 from .entrances import SHUFFLEABLE_TRANSITIONS, VERTICAL_GROUPS, VERTICAL_SHAFT_EXITS, \
@@ -40,6 +40,8 @@ FURNITURE_INFO_LENGTH = 0x7C
 TEXT_POINTERS_START = 0x495500
 ITEM_TEXT_IDS_START = 0x4B2D20
 ITEM_TEXT_IDS_LENGTH = 0x1AA
+ENEMY_DATA_START = 0xC7E38
+ENEMY_DATA_LENGTH = 0x24
 
 ARCHIPELAGO_IDENTIFIER_START = 0x7FFF00
 ARCHIPELAGO_PATCH_COMPAT_VER = 2
@@ -521,6 +523,20 @@ class CVHoDisPatchExtensions(APPatchExtension):
                         if actor["var_a"] in loc_values:
                             actor["subtype_id"] = loc_values[actor["var_a"]][0]
                             actor["var_b"] = loc_values[actor["var_a"]][1]
+
+        # Write the new Items and drop chances for every enemy.
+        for i in range(len(slot_patch_info["enemy drop data"])):
+            current_enemy_addr = ENEMY_DATA_START + (i * ENEMY_DATA_LENGTH)
+            patcher.write_int16(current_enemy_addr + 0x8, slot_patch_info["enemy drop data"][i][0])  # Common drop item
+            patcher.write_int16(current_enemy_addr + 0xA, slot_patch_info["enemy drop data"][i][1])  # Rare drop item
+            patcher.write_byte(current_enemy_addr + 0x12, slot_patch_info["enemy drop data"][i][2])  # Common drop %
+            patcher.write_byte(current_enemy_addr + 0x13, slot_patch_info["enemy drop data"][i][3])  # Rare drop %
+            # Write the data onto the Maxim Mode version of the enemy as well (yes, these are entirely separate).
+            current_enemy_addr += ENEMY_DATA_LENGTH * 0x7D
+            patcher.write_int16(current_enemy_addr + 0x8, slot_patch_info["enemy drop data"][i][0])  # Common drop item
+            patcher.write_int16(current_enemy_addr + 0xA, slot_patch_info["enemy drop data"][i][1])  # Rare drop item
+            patcher.write_byte(current_enemy_addr + 0x12, slot_patch_info["enemy drop data"][i][2])  # Common drop %
+            patcher.write_byte(current_enemy_addr + 0x13, slot_patch_info["enemy drop data"][i][3])  # Rare drop %
 
         # Loop over every transition in the player's transitions list and link them all together in-game.
         for trans_pair in slot_patch_info["transition values"]:

@@ -14,9 +14,14 @@ ORIG_TEXT_PTRS_START = 0x495500
 ORIG_NUMBER_OF_TEXTS = 0x2AB
 ORIG_STRINGS_START = 0xCA25C
 ORIG_STRINGS_END = 0xDAD94
+ORIG_SHOP_ITEM_INFOS_START = 0x4B15C0
+ORIG_NUMBER_OF_SHOP_ITEM_INFOS = 0x2D
+ORIG_SHOP_ITEM_LISTS_PTRS_START = 0x4B1714
+ORIG_NUMBER_OF_SHOP_ITEM_LISTS = 0x0A
 
 ACTOR_ENTRY_LENGTH = 0xC
 LOADING_ZONE_ENTRY_LENGTH = 0xC
+SHOP_ITEM_ENTRY_LENGTH = 0x4
 
 ROM_PADDING_START = 0x69D400
 ROM_PADDING_WORD = bytearray(b'\xFF\xFF\xFF\xFF')
@@ -78,9 +83,17 @@ class CVHoDisRoomState(CVHoDisRoomDataEntry):
                      # Bit F = Unknown. The only rooms that set this are...the Sky Walkway A and B save rooms, with the
                      #         Crushing Stone block wall? More investigation needed.
 
+
+class CVHoDisShopItemInfo(CVHoDisRoomDataEntry):
+    item_type: PickupTypes  # ID for which category the Item is a part of. Int8.
+    item_index: int  # ID for which Item in the category it is. Int8.
+    price: int  # How much the Item costs. Int16.
+
+
 class CVHoDisRomPatcher:
     rom: bytearray
     text: list[str]
+    shop_item_data: list[CVHoDisShopItemInfo]
     areas: list[list[list[CVHoDisRoomState]]]  # Room State lists within Room lists within Area lists.
     area_ptrs_start: int
     actor_lists: dict[int, list[CVHoDisActorEntry]]
@@ -138,6 +151,18 @@ class CVHoDisRomPatcher:
 
                 # Add the text character we read to what we extracted.
                 raw_text_data += text_char
+
+        # Extract all shop Item-related data.
+        self.shop_item_data = []
+        for shop_item_id in range(ORIG_NUMBER_OF_SHOP_ITEM_INFOS):
+            current_shop_item_info_addr = ORIG_SHOP_ITEM_INFOS_START + (shop_item_id * 4)
+            self.shop_item_data.append(
+                CVHoDisShopItemInfo(item_type=PickupTypes(self.read_byte(current_shop_item_info_addr)),
+                                    item_index=self.read_byte(current_shop_item_info_addr + 1),
+                                    price=self.read_bytes(current_shop_item_info_addr + 2, 2, "<H"))
+            )
+
+        # Extract the Item lists for each shop.
 
         # Grab a hardcoded pointer in the code to the start of the Area room pointer lists.
         # The same one that DSVania Editor grabs, to be consistent with it.

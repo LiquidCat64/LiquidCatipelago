@@ -314,7 +314,7 @@ class SubWeaponsAvailable(Range):
     range_start = 1
     range_end = len(SubWeaponPickups)
     default = len(SubWeaponPickups)
-    display_name = "Sub-weapons available"
+    display_name = "Sub-weapons Available"
 
 
 class ProgressiveHeights(Toggle):
@@ -323,6 +323,21 @@ class ProgressiveHeights(Toggle):
     The first one found will unlock the former Relic and then the second will unlock the latter.
     """
     display_name = "Progressive Heights"
+
+
+class ShuffleEnemyDrops(Toggle):
+    """Randomizes what items enemies drop, and what the drop chances are."""
+    display_name = "Shuffle Enemy Drops"
+
+
+class ShopShuffle(Choice):
+    """Randomizes what items are in the Merchant's shops throughout the game.
+    Simple: Changes only the kinds of items sold.
+    Chaotic: Changes every item in every shop to be unique."""
+    display_name = "Randomize Shop Items"
+    option_no = 0
+    option_simple = 1
+    option_chaotic = 2
 
 
 @dataclass
@@ -335,6 +350,7 @@ class CVHoDisOptions(PerGameCommonOptions):
     # map_percent_requirement: MapPercentRequirement
     countdown: Countdown
     sub_weapon_randomization: SubWeaponRandomization
+    shuffle_enemy_drops: ShuffleEnemyDrops
     sub_weapons_available: SubWeaponsAvailable
     area_divisions: AreaDivisions
     castle_swapper: CastleSwapper
@@ -367,7 +383,7 @@ cvhodis_option_groups = [
         MediumEndingRequired, WorstEndingRequired, BestEndingRequired, FurnitureAmountRequired
         # MapPercentRequired
     ]),
-    OptionGroup("Entrance Randomization", [
+    OptionGroup("Area Randomization", [
         MapPreset, CastleSwapper, TransitionShuffler, CastleSymmetry, AreaDivisions, LinkDoorTypes
     ]),
     OptionGroup("Castle Warp Requirements", [
@@ -379,6 +395,9 @@ cvhodis_option_groups = [
     ]),
     OptionGroup("World Options", [
         SpellboundBossLogic, CardboundBossLogic, SubWeaponRandomization, SubWeaponsAvailable, EarlyLizard
+    ]),
+    OptionGroup("Enemy Settings", [
+        ShuffleEnemyDrops
     ]),
     OptionGroup("Quality of Life", [
         HintCardHints, DoubleSidedWarps, Countdown

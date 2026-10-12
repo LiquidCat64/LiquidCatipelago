@@ -7,11 +7,10 @@ import json
 
 from BaseClasses import Tutorial, ItemClassification, EntranceType
 from entrance_rando import disconnect_entrance_for_randomization, randomize_entrances
-from .data.enums import FillerTypes
 from .aesthetics import get_sub_weapon_placements, get_location_write_values, get_countdown_flags, \
-    get_start_inventory_data, get_hint_card_hints, get_location_text
+    get_start_inventory_data, get_hint_card_hints, get_location_text, get_enemy_drop_data
 from .items import CVHoDisItem, ALL_CVHODIS_ITEMS, FURNITURE, get_item_names_to_ids, get_item_pool, get_pickup_type, \
-    CVHODIS_FILLER_CATEGORIES
+    draw_random_filler, CVHODIS_FILLER_CATEGORIES, FillerTypes
 from .locations import CVHoDisLocation, get_location_names_to_ids, get_locations_to_create, \
     get_location_name_groups
 from .options import cvhodis_option_groups, CVHoDisOptions, TransitionShuffler, CastleSwapper, AreaDivisions, \
@@ -67,7 +66,7 @@ class CVHoDisWorld(World):
     game = GAME_NAME
     topology_present = True
     item_name_groups = {
-        "Furniture": {name for name in FURNITURE},
+        "Furniture": {name for name in FURNITURE if ALL_CVHODIS_ITEMS[name].pickup_index < 0x1F},
         "Vlad": {item_names.relic_v_nail, item_names.relic_v_eye, item_names.relic_v_fang, item_names.relic_v_heart,
                  item_names.relic_v_rib, item_names.relic_v_ring},
     }
@@ -84,7 +83,7 @@ class CVHoDisWorld(World):
     transition_pairings: list[tuple]
     inverted_groups: dict[str, bool]
     inverted_transitions: dict[str, bool]
-    unchosen_filler_lists: dict[str, list[str]]
+    chosen_one_time_filler: list[str]
 
     # Default values to possibly be updated in generate_early
     furniture_amount_required: int = 0
@@ -110,10 +109,8 @@ class CVHoDisWorld(World):
 
         self.possible_hint_card_items = []
         self.transition_pairings = []
+        self.chosen_one_time_filler = []
         self.inverted_transitions, self.inverted_groups = invert_castle_transitions(self)
-        # Get the initial lists of nonrenewable filler type choices for when we create random filler.
-        self.unchosen_filler_lists = {name: category_data.choices.copy() for name, category_data in
-                                      CVHODIS_FILLER_CATEGORIES.items() if not category_data.renewable}
 
         # Generate the player's unique authentication
         self.auth = bytearray(self.random.getrandbits(8) for _ in range(16))
@@ -277,6 +274,7 @@ class CVHoDisWorld(World):
                            "card text": get_hint_card_hints(self, active_locations),
                            "transition values": self.transition_pairings,
                            "sub weapon placements": get_sub_weapon_placements(self),
+                           "enemy drop data": get_enemy_drop_data(self),
                            "patch compatibility": ARCHIPELAGO_PATCH_COMPAT_VER,
                            "auth": base64.b64encode(self.auth).decode()}
 
@@ -309,40 +307,21 @@ class CVHoDisWorld(World):
 
     def get_filler_item_name(self) -> str:
         # If the Filler Pool is vanilla, or if the slot this is being called on is an ItemLink group slot, return a
-        # random low-tier consumable. Otherwise, proceed to the FUN =) part!
+        # random low-tier consumable.
         if self.options.filler_pool == FillerPool.option_vanilla or self.player in self.multiworld.groups:
-            return self.random.choice(CVHODIS_FILLER_CATEGORIES[FillerTypes.CONSUMABLE].choices)
+            return self.random.choice(CVHODIS_FILLER_CATEGORIES[FillerTypes.CONSUMABLE].item_choices)
 
-        # Get the weights and lists of each filler category's possible choices that we will use for
-        # this random item draw.
-        filler_type_choices = {}
-        filler_type_weights = {}
-        for name, category_data in CVHODIS_FILLER_CATEGORIES.items():
-            # If the category is nonrenewable, use the world's list of currently unchosen choices for the category.
-            if name in self.unchosen_filler_lists:
-                # If the list is empty and fully exhausted, don't take the list and don't take the category's weight.
-                # It will not be involved in this draw at all.
-                if not self.unchosen_filler_lists[name]:
-                    continue
-                filler_type_choices[name] = self.unchosen_filler_lists[name]
-            # Otherwise, if it is renewable, use the category's unmodified list of possible choices.
-            else:
-                filler_type_choices[name] = category_data.choices
-            # Take the weight defined for the category.
-            filler_type_weights[name] = CVHODIS_FILLER_CATEGORIES[name].weight
+        # If we make it here, get an Item through the draw random filler function. All one-time filler Items that were
+        # already chosen will be exempt.
+        random_filler = draw_random_filler(self, exempt_categories=[], exempt_items=self.chosen_one_time_filler)
 
-        # Pick a filler type at random, using the weight defined for each one to affect its chance of being picked.
-        filler_type = self.random.choices(list(filler_type_weights), weights=list(filler_type_weights.values()), k=1)[0]
-        # Draw a random Item from our chosen filler type's list of possible choices.
-        filler_item = self.random.choice(filler_type_choices[filler_type])
-
-        # If the filler type is nonrenewable, remove the Item we just drew from the world's unchosen choices list
-        # so it won't be drawn again.
-        if filler_type in self.unchosen_filler_lists:
-            self.unchosen_filler_lists[filler_type].remove(filler_item)
+        # If the filler we drew is a one-time filler, add it to the chosen one time filler list so it won't be chosen
+        # again.
+        if CVHODIS_FILLER_CATEGORIES[ALL_CVHODIS_ITEMS[random_filler].filler_type].one_time:
+            self.chosen_one_time_filler += [random_filler]
 
         # Return the name of the Item we drew.
-        return filler_item
+        return random_filler
 
     def modify_multidata(self, multidata: dict):
         # Put the player's unique authentication in connect_names.
@@ -364,7 +343,7 @@ class CVHoDisWorld(World):
             spoiler_handle.write(
                 f"\n{self.player_name}'s castle "
                 f"{'area' if self.options.castle_swapper.value == CastleSwapper.option_areas else 'transition'} "
-                f"swap statuses:\n"
+                "swap statuses:\n"
             )
             # Loop over each Area and write it.
             for area_name, inverted in self.inverted_groups.items():

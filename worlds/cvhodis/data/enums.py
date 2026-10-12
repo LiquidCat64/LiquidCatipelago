@@ -514,11 +514,3 @@ class EventFlags(IntEnum):
     DEFEATED_WALKWAY_B_SPRIGGAN = 0x67
     DEFEATED_TREASURY_B_FEATHER_DEMON = 0x68
     MAXIM_MODE = 0x7F
-
-class FillerTypes(StrEnum):
-    ARMOR = "armor"
-    GOOD_ARMOR = "good armor"
-    ACCESSORY = "accessory"
-    MONEY = "money"
-    CONSUMABLE = "consumable"
-    GOOD_CONSUMABLE = "good consumable"

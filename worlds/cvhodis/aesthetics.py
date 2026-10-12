@@ -1,10 +1,10 @@
 from BaseClasses import ItemClassification, Location, Item
 from .options import Countdown, CVHoDisOptions, SubWeaponRandomization
 from .locations import CVHODIS_LOCATIONS_INFO, SUB_TO_MAIN_AREAS
-from .items import FURNITURE, SPELLBOOKS, RELICS, GATE_KEYS, ALL_CVHODIS_ITEMS
+from .items import FURNITURE, SPELLBOOKS, RELICS, GATE_KEYS, ALL_CVHODIS_ITEMS, draw_random_filler, get_pickup_type
 from .cvhodis_text import cvhodis_command_scrubber
 from .data import item_names, loc_names
-from .data.enums import PickupTypes, SubAreas, SubWeaponPickups, Areas
+from .data.enums import PickupTypes, SubAreas, SubWeaponPickups, Areas, Enemies
 from .data.misc_names import GAME_NAME
 
 from typing import TYPE_CHECKING, Iterable, NamedTuple
@@ -199,6 +199,14 @@ SUB_WEAPON_CANDLES_INFO: list[CVHoDisSubWeaponCandleData] = [
 ]
 # Fun fact: Marble B is the only area that is missing sub-weapon locations from its Castle A counterpart.
 # This is the only thing keeping the total count from a nice round 100...
+
+DROPLESS_ENEMIES: list[Enemies] = [Enemies.GIANT_BAT, Enemies.LIVING_ARMOR, Enemies.GATE_GUARDER, Enemies.GOLEM,
+                                   Enemies.SKULL_KNIGHT, Enemies.MINOTAUR, Enemies.DEVIL, Enemies.GUARDIAN_ARMOR,
+                                   Enemies.GIANT_MERMAN, Enemies.MAX_SLIMER, Enemies.BRONZE_GUARDER,
+                                   Enemies.PEEPING_BIG, Enemies.LEGION_SAINT, Enemies.SHADOW, Enemies.PAZUZU,
+                                   Enemies.MINOTAUR_LV2, Enemies.LEGION_CORPSE, Enemies.TALOS, Enemies.DEATH_1,
+                                   Enemies.DEATH_2]
+LAST_DROP_ENEMY: int = Enemies.PIKE_MASTER
 
 
 def get_sub_weapon_placements(world: "CVHoDisWorld") -> list[int]:
@@ -490,6 +498,46 @@ def get_hint_card_hints(world: "CVHoDisWorld", active_locations: Iterable[Locati
                 card_strings.append(f"{own_loc_group} contains {other_player_name}{own_hint_loc.item.name}.")
 
     return card_strings
+
+
+def get_enemy_drop_data(world: "CVHoDisWorld") -> list[tuple[int, int, int, int]]:
+    """Chooses random drops and base probabilities for every enemy and returns the data to go into the game."""
+    enemy_drop_data = []
+    # If Shuffle Enemy Drops is not on, return an empty list. Don't bother creating any enemy drop data.
+    if not world.options.shuffle_enemy_drops:
+        return []
+
+    # Decide all drops up until the last enemy that we care to set the drops for.
+    for i in range(LAST_DROP_ENEMY + 1):
+        # If the enemy we are looking at is an enemy we don't want to set drops for, force everything to 0.
+        if i in DROPLESS_ENEMIES:
+            enemy_drop_data += [(0, 0, 0, 0)]
+            continue
+
+        regular_item = 0
+        rare_item = 0
+        regular_drop_chance = 0
+        rare_drop_chance = 0
+
+        # 66% chance to have a common item.
+        if world.random.randint(1, 100) <= 66:
+            regular_item_name = draw_random_filler(world, exempt_items=[], exempt_categories=[])
+            regular_item = (get_pickup_type(regular_item_name) << 8) | ALL_CVHODIS_ITEMS[regular_item_name].pickup_index
+            # Pick a random number between 0x01 and 0xFF. 0xFF translates to an approximately 25% base chance.
+            regular_drop_chance = world.random.randint(0x01, 0xFF)
+
+        # 41% chance to have a rare item.
+        if world.random.randint(1, 100) <= 41:
+            rare_item_name = draw_random_filler(world, exempt_items=[], exempt_categories=[])
+            rare_item = (get_pickup_type(rare_item_name) << 8) | ALL_CVHODIS_ITEMS[rare_item_name].pickup_index
+            # Pick a random number between 0x01 and 0xFF. 0xFF translates to an approximately 25% base chance.
+            rare_drop_chance = world.random.randint(0x01, 0xFF)
+
+        # Add the chosen drops and drop chances for the current enemy to the final list.
+        enemy_drop_data.append((regular_item, rare_item, regular_drop_chance, rare_drop_chance))
+
+    # Return the final drops and drop chances arrays.
+    return enemy_drop_data
 
 
 def get_start_inventory_data(precollected_items: list[Item]) -> dict[str, dict[int, str] | int]:
