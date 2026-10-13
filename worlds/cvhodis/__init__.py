@@ -8,7 +8,7 @@ import json
 from BaseClasses import Tutorial, ItemClassification, EntranceType
 from entrance_rando import disconnect_entrance_for_randomization, randomize_entrances
 from .aesthetics import get_sub_weapon_placements, get_location_write_values, get_countdown_flags, \
-    get_start_inventory_data, get_hint_card_hints, get_location_text, get_enemy_drop_data
+    get_start_inventory_data, get_hint_card_hints, get_location_text, get_enemy_drop_data, get_shop_data
 from .items import CVHoDisItem, ALL_CVHODIS_ITEMS, FURNITURE, get_item_names_to_ids, get_item_pool, get_pickup_type, \
     draw_random_filler, CVHODIS_FILLER_CATEGORIES, FillerTypes
 from .locations import CVHoDisLocation, get_location_names_to_ids, get_locations_to_create, \
@@ -266,7 +266,8 @@ class CVHoDisWorld(World):
                                 "double_sided_warps": self.options.double_sided_warps.value,
                                 "gate_items": self.options.gate_items.value,
                                 "countdown": self.options.countdown.value,
-                                "area_divisions": self.options.area_divisions.value},
+                                "area_divisions": self.options.area_divisions.value,
+                                "shop_shuffle": self.options.shop_shuffle.value},
                            "start inventory": get_start_inventory_data(self.multiworld.precollected_items[self.player]),
                            "countdown flags": get_countdown_flags(self.options, active_locations),
                            "location values": get_location_write_values(self, active_locations),
@@ -275,6 +276,7 @@ class CVHoDisWorld(World):
                            "transition values": self.transition_pairings,
                            "sub weapon placements": get_sub_weapon_placements(self),
                            "enemy drop data": get_enemy_drop_data(self),
+                           "shop data": get_shop_data(self),
                            "patch compatibility": ARCHIPELAGO_PATCH_COMPAT_VER,
                            "auth": base64.b64encode(self.auth).decode()}
 

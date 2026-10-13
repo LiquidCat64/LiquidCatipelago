@@ -12,17 +12,17 @@ import os
 
 from . import ALL_CVHODIS_ITEMS
 from .data import patches, loc_names, item_names
-from .data.enums import ActorTypes, PickupTypes, Areas, Enemies
+from .data.enums import ActorTypes, PickupTypes, Areas
 from .data.misc_names import GAME_NAME
-from .aesthetics import SUB_WEAPON_CANDLES_INFO
+from .aesthetics import SUB_WEAPON_CANDLES_INFO, SHOP_JEWEL_SLOT_COUNT, SHOP_INVENTORY_COUNTS
 from .entrances import SHUFFLEABLE_TRANSITIONS, VERTICAL_GROUPS, VERTICAL_SHAFT_EXITS, \
     LEFT_GROUPS, RIGHT_GROUPS, TOP_GROUPS, BOTTOM_GROUPS
 from .items import EQUIPMENT
 from .locations import CVHODIS_LOCATIONS_INFO, SUB_TO_MAIN_AREAS
 from .cvhodis_text import LEN_LIMIT_MENU_DESCRIPTION, LEN_LIMIT_CORNER_TEXTBOX_CUSTOM, DESCRIPTION_DISPLAY_LINES, \
     cvhodis_text_wrap, cvhodis_get_string_len
-from .options import GateItems, AreaDivisions
-from .patcher import CVHoDisRomPatcher, CVHoDisActorEntry, GBA_ROM_START
+from .options import GateItems, AreaDivisions, ShopShuffle
+from .patcher import CVHoDisRomPatcher, CVHoDisActorEntry, CVHoDisShopItemInfo
 from settings import get_settings
 
 CVHODIS_CT_US_HASH = "ea589465486d15e91ba94165c8024b55"  # Original GBA cartridge ROM
@@ -218,8 +218,8 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Move the Spell Book info table and expand it with an extra entry for our Progression item.
         new_book_info_start = patcher.find_space_and_write_buffer(
             patcher.read_bytes(BOOK_INFO_START, BOOK_INFO_LENGTH) + bytes([0xD8, 0x00, 0xE0, 0x01]))  # Progression
-        patcher.write_int32(0x19798, new_book_info_start | GBA_ROM_START)
-        patcher.write_int32(0x1A020, new_book_info_start | GBA_ROM_START)
+        patcher.write_int32(0x19798, new_book_info_start)
+        patcher.write_int32(0x1A020, new_book_info_start)
 
         # Prevent auto-equipping Spell Books with a value higher than 5.
         patcher.write_int16(0x1A046, 0xE7ED)  # b    [backward 0x12]
@@ -232,11 +232,11 @@ class CVHoDisPatchExtensions(APPatchExtension):
         new_relic_info_start = patcher.find_space_and_write_buffer(
             patcher.read_bytes(RELIC_INFO_START, RELIC_INFO_LENGTH) + bytes([0xDD, 0x00, 0xE7, 0x01,    # Prog Height
                                                                              0xD9, 0x00, 0xE2, 0x01]))  # Prog + Useful
-        patcher.write_int32(0x197A4, new_relic_info_start | GBA_ROM_START)
-        patcher.write_int32(0x1A0F0, new_relic_info_start | GBA_ROM_START)
+        patcher.write_int32(0x197A4, new_relic_info_start)
+        patcher.write_int32(0x1A0F0, new_relic_info_start)
 
         # Move the furniture info table and expand it with the extra entries for all our rando-specific items.
-        new_furniture_info_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
+        new_furniture_info_start = patcher.find_space_and_write_buffer(
             patcher.read_bytes(FURNITURE_INFO_START, FURNITURE_INFO_LENGTH) + \
             bytes([0xDA, 0x00, 0xE4, 0x02,   # Living Armor key
                    0xDB, 0x00, 0xE5, 0x02,   # Clock key
@@ -260,7 +260,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
 
         # Move the array of string IDs that the pickup textbox can normally access and add the extra IDs for the
         # extra item pickups.
-        new_item_text_ids_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
+        new_item_text_ids_start = patcher.find_space_and_write_buffer(
             patcher.read_bytes(ITEM_TEXT_IDS_START, ITEM_TEXT_IDS_LENGTH) + bytes([0x30, 0x02, 0x31, 0x02, 0x32, 0x02,
                                                                                    0x33, 0x02, 0x34, 0x02, 0x35, 0x02,
                                                                                    0x36, 0x02, 0x37, 0x02, 0x38, 0x02]))
@@ -348,7 +348,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Make the round warp gates set the "can warp castles" flag if all the warp conditions are satisfied.
         warp_conditions_check_start = patcher.generate_dynamic_asm(patches.warp_conditions_checker_asm,
                                                                    patches.warp_conditions_checker_ldr)
-        patcher.write_int32(0x494F70, GBA_ROM_START | warp_conditions_check_start + 1)
+        patcher.write_int32(0x494F70, warp_conditions_check_start + 1)
         # Move the flag checks that occur while Juste is warping onto the new "can warp" flag, decoupled from the
         # Clock Tower Death cutscene's flag. These affect behavior.
         patcher.write_byte(0x1C072, 0xC5)  # Freezes Juste in place.
@@ -401,10 +401,11 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.write_byte(0x6B76E, 0xFF)
 
         # Insert the card text, wrapped to the game's INFORMATION description textbox specifications.
-        for i in range(6):
-            patcher.text[0x107 + i] = cvhodis_text_wrap(slot_patch_info["card text"][i], large_font=True,
-                                                        textbox_len_limit=LEN_LIMIT_MENU_DESCRIPTION,
-                                                        max_lines=DESCRIPTION_DISPLAY_LINES, textbox_advance=False)
+        if slot_patch_info["card text"]:
+            for i in range(6):
+                patcher.text[0x107 + i] = cvhodis_text_wrap(slot_patch_info["card text"][i], large_font=True,
+                                                            textbox_len_limit=LEN_LIMIT_MENU_DESCRIPTION,
+                                                            max_lines=DESCRIPTION_DISPLAY_LINES, textbox_advance=False)
 
         # Add the ability to set your spawn location to the start while saving.
         patcher.generate_dynamic_asm(patches.start_spawn_setter_asm,
@@ -427,26 +428,26 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Give the player their Start Inventory upon starting a new game.
         # Write the player start inventories and record where they start.
         # Use Items
-        start_inventory_use_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
+        start_inventory_use_start = patcher.find_space_and_write_buffer(
             slot_patch_info["start inventory"]["inv arrays"][str(PickupTypes.USE_ITEM)])
         # Equipment
-        start_inventory_equip_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
+        start_inventory_equip_start = patcher.find_space_and_write_buffer(
             slot_patch_info["start inventory"]["inv arrays"][str(PickupTypes.EQUIPMENT)])
         # Spellbooks and starting Spellbook
-        start_inventory_book_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
+        start_inventory_book_start = patcher.find_space_and_write_buffer(
             slot_patch_info["start inventory"]["inv arrays"][str(PickupTypes.SPELLBOOK)] + \
             struct.pack("<B", slot_patch_info["start inventory"]["spellbook"]))
         # Relics
-        start_inventory_relic_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
+        start_inventory_relic_start = patcher.find_space_and_write_buffer(
             slot_patch_info["start inventory"]["inv arrays"][str(PickupTypes.RELIC)])
         # Furniture
-        start_inventory_furn_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
+        start_inventory_furn_start = patcher.find_space_and_write_buffer(
             slot_patch_info["start inventory"]["inv arrays"][str(PickupTypes.FURNITURE)])
         # Whip attachments
-        start_inventory_whips_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
+        start_inventory_whips_start = patcher.find_space_and_write_buffer(
             slot_patch_info["start inventory"]["inv arrays"][str(PickupTypes.WHIP_ATTACHMENT)])
         # Stat maxes
-        start_inventory_max_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
+        start_inventory_max_start = patcher.find_space_and_write_buffer(
             bytearray(struct.pack("<H", slot_patch_info["start inventory"]["extra life"]) +
                       struct.pack("<H", slot_patch_info["start inventory"]["extra magic"]) +
                       struct.pack("<H", slot_patch_info["start inventory"]["extra hearts"])))
@@ -456,8 +457,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # This is how we set things like, say, the gate key flags at the beginning.
         for flag_index in slot_patch_info["start inventory"]["starting flags"]:
             starting_flag_words[(flag_index >> 5) + 1] |= 1 << (flag_index & 0x1F)
-        start_inventory_starting_flags_start = GBA_ROM_START | patcher.find_space_and_write_buffer(
-            starting_flag_words, "<I")
+        start_inventory_starting_flags_start = patcher.find_space_and_write_buffer(starting_flag_words, "<I")
         # Write the start inventory giver hack with the above pointers to the start inventory arrays.
         patcher.generate_dynamic_asm(patches.new_game_extras_asm,
                                      patches.new_game_extras_ldr + [start_inventory_use_start,
@@ -537,6 +537,25 @@ class CVHoDisPatchExtensions(APPatchExtension):
             patcher.write_int16(current_enemy_addr + 0xA, slot_patch_info["enemy drop data"][i][1])  # Rare drop item
             patcher.write_byte(current_enemy_addr + 0x12, slot_patch_info["enemy drop data"][i][2])  # Common drop %
             patcher.write_byte(current_enemy_addr + 0x13, slot_patch_info["enemy drop data"][i][3])  # Rare drop %
+
+        # Write the new shop data.
+        if slot_patch_info["options"]["shop_shuffle"]:
+            patcher.shop_item_data[SHOP_JEWEL_SLOT_COUNT:] = [CVHoDisShopItemInfo(item_type=shop_data[0],
+                                                                                  item_index=shop_data[1],
+                                                                                  price=shop_data[2])
+                                                              for shop_data in slot_patch_info["shop data"]]
+            # If Shop Shuffle is set to Chaotic, also update each shop's list of available items
+            # (as well as decouple the Entrance A/B and Clock Tower A/B shop lists).
+            if slot_patch_info["options"]["shop_shuffle"] == ShopShuffle.option_chaotic:
+                patcher.shop_item_lists += [[0 for _ in range(SHOP_INVENTORY_COUNTS[7])],
+                                            [0 for _ in range(SHOP_INVENTORY_COUNTS[9])]]
+                patcher.shop_list_ids[7] = 8
+                patcher.shop_list_ids[9] = 9
+                current_shop_item_index = 5
+                for shop_list in patcher.shop_item_lists:
+                    for i in range(len(shop_list)):
+                        shop_list[i] = current_shop_item_index
+                        current_shop_item_index += 1
 
         # Loop over every transition in the player's transitions list and link them all together in-game.
         for trans_pair in slot_patch_info["transition values"]:
@@ -638,7 +657,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Everything related to the Countdown counters.
         if slot_patch_info["options"]["countdown"]:
             # Insert the Countdown index arrays and create the array of pointers to them in the process.
-            countdown_idx_arrays_ptrs = [GBA_ROM_START | patcher.find_space_and_write_buffer(idx_array, "<H")
+            countdown_idx_arrays_ptrs = [patcher.find_space_and_write_buffer(idx_array, "<H")
                                          for idx_array in slot_patch_info["countdown flags"]]
             # If Area Divisions is Doors, repoint the sub-areas' pointers to their corresponding main areas' arrays
             # instead.
@@ -647,8 +666,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
                     countdown_idx_arrays_ptrs[sub_area_id] = countdown_idx_arrays_ptrs[main_area_id]
             # Insert the Countdown number display hack and, with it, the array of pointers to the flag index arrays.
             patcher.generate_dynamic_asm(patches.countdown_asm, patches.countdown_ldr +
-                                        [GBA_ROM_START |
-                                         patcher.find_space_and_write_buffer(countdown_idx_arrays_ptrs, "<I")],
+                                        [patcher.find_space_and_write_buffer(countdown_idx_arrays_ptrs, "<I")],
                                         hook_addr=0x82C0, hook_register=3)
         # Adjust the area name definitions for the map square datas of the following rooms' top-right corners:
         # Marble Corridor Grand Staircase room (top-right square's data is fully undefined as it's out of bounds)

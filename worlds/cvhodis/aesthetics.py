@@ -1,7 +1,10 @@
+import math
+
 from BaseClasses import ItemClassification, Location, Item
-from .options import Countdown, CVHoDisOptions, SubWeaponRandomization
+from .options import Countdown, CVHoDisOptions, SubWeaponRandomization, ShopShuffle
 from .locations import CVHODIS_LOCATIONS_INFO, SUB_TO_MAIN_AREAS
-from .items import FURNITURE, SPELLBOOKS, RELICS, GATE_KEYS, ALL_CVHODIS_ITEMS, draw_random_filler, get_pickup_type
+from .items import FURNITURE, SPELLBOOKS, RELICS, GATE_KEYS, ALL_CVHODIS_ITEMS, draw_random_filler, get_pickup_type, \
+    CVHoDisFillerCategoryData, FillerTypes
 from .cvhodis_text import cvhodis_command_scrubber
 from .data import item_names, loc_names
 from .data.enums import PickupTypes, SubAreas, SubWeaponPickups, Areas, Enemies
@@ -208,6 +211,11 @@ DROPLESS_ENEMIES: list[Enemies] = [Enemies.GIANT_BAT, Enemies.LIVING_ARMOR, Enem
                                    Enemies.DEATH_2]
 LAST_DROP_ENEMY: int = Enemies.PIKE_MASTER
 
+SHOP_INVENTORY_COUNTS = [15, 9, 15, 10, 15, 15, 12, 12, 15, 15]
+SHOP_JEWEL_SLOT_COUNT = 5
+SHOP_CONSUMABLE_SLOT_COUNT = 7
+SHOP_EQUIPMENT_SLOT_COUNT = 33
+
 
 def get_sub_weapon_placements(world: "CVHoDisWorld") -> list[int]:
     """Creates and returns the list of sub-weapon IDs to place in the sub-weapon candles throughout the game, depending
@@ -253,6 +261,7 @@ def get_sub_weapon_placements(world: "CVHoDisWorld") -> list[int]:
 
     # Return the final list.
     return sub_weapon_placements
+
 
 def get_countdown_flags(options: CVHoDisOptions, active_locations: Iterable[Location]) -> list[list[int]]:
     """Figures out which Locations have Items that should count towards a Countdown number and assembles each array of
@@ -309,7 +318,7 @@ def get_countdown_flags(options: CVHoDisOptions, active_locations: Iterable[Loca
 
 
 def get_location_write_values(world: "CVHoDisWorld", active_locations: Iterable[Location]) -> \
-        dict[int, tuple[int, bool]]:
+        dict[int | None, tuple[int, int]]:
     """Gets ALL the Item data to go into the ROM. Items consist of four main things; the first is the type ID for what
     category of pickup that it belongs to, and the second is the index value for which item within that category it is.
     The third is the GFX ID for the item's sprite, and the fourth is the palette ID; these go in the upper byte and
@@ -540,10 +549,47 @@ def get_enemy_drop_data(world: "CVHoDisWorld") -> list[tuple[int, int, int, int]
     return enemy_drop_data
 
 
+def get_shop_data(world: "CVHoDisWorld") -> list[tuple[int, int, int]]:
+    """Chooses random items and prices for the shops and returns the data that will go into the game."""
+    overall_shop_pool = []
+    prices = []
+    # If Shop Shuffle is set to Simple, pick random Items for each slot in the shop item data.
+    if world.options.shop_shuffle.value == ShopShuffle.option_simple:
+        # Take a random assortment of consumables for the first 7 slots.
+        for i in range(SHOP_CONSUMABLE_SLOT_COUNT):
+            overall_shop_pool += [draw_random_filler(world, [FillerTypes.ARMOR, FillerTypes.GOOD_CONSUMABLE,
+                                                             FillerTypes.ACCESSORY, FillerTypes.MONEY],
+                                                     overall_shop_pool)]
+        # For the remainder of the slots, pick random equipment with weighted random chances.
+        # Don't pick the same equipment twice.
+        for i in range(SHOP_EQUIPMENT_SLOT_COUNT):
+            overall_shop_pool += [draw_random_filler(world, [FillerTypes.CONSUMABLE, FillerTypes.GOOD_CONSUMABLE,
+                                                     FillerTypes.MONEY], overall_shop_pool)]
+        # Prices will be the regular set prices.
+        prices = [ALL_CVHODIS_ITEMS[shop_item].price for shop_item in overall_shop_pool]
+    # Otherwise, if Shop Shuffle is set to Chaotic, pick random Items for each slot in every single shop inventory.
+    elif world.options.shop_shuffle.value == ShopShuffle.option_chaotic:
+        for shop_inventory_count in SHOP_INVENTORY_COUNTS:
+            current_shop_pool = []
+            for i in range(shop_inventory_count):
+                current_shop_pool += [draw_random_filler(world, [FillerTypes.MONEY], current_shop_pool)]
+            overall_shop_pool += current_shop_pool
+
+        # Prices will be randomized between 50% and 150% of their set price.
+        prices = [world.random.randint(ALL_CVHODIS_ITEMS[shop_item].price // 2,
+                                       math.floor(ALL_CVHODIS_ITEMS[shop_item].price * 1.5))
+                  for shop_item in overall_shop_pool]
+
+    # Return the final data. In each tuple, the first element should be the pickup type, the second the pickup index,
+    # and the third the price of the item.
+    return [(get_pickup_type(overall_shop_pool[i]), ALL_CVHODIS_ITEMS[overall_shop_pool[i]].pickup_index, prices[i])
+            for i in range(len(overall_shop_pool))]
+
+
 def get_start_inventory_data(precollected_items: list[Item]) -> dict[str, dict[int, str] | int]:
     """Calculate and return the starting inventory values. Not every Item goes into a menu inventory, so they all have
     to be handled accordingly."""
-    start_inventory_data: dict[str, int | dict[int, bytearray] | list[int]] = \
+    start_inventory_data: dict[str, int | dict[int, str | bytearray] | list[int]] = \
         {"inv arrays": {inv_id: bytearray(CVHODIS_INVENTORIES[inv_id].length) for inv_id in CVHODIS_INVENTORIES},
          "starting flags": [],
          "spellbook": 0,

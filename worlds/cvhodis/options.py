@@ -332,8 +332,8 @@ class ShuffleEnemyDrops(Toggle):
 
 class ShopShuffle(Choice):
     """Randomizes what items are in the Merchant's shops throughout the game.
-    Simple: Changes only the kinds of items sold.
-    Chaotic: Changes every item in every shop to be unique."""
+    Simple: Changes only the kinds of items sold. Prices will be normal.
+    Chaotic: Changes every item in every shop to be unique. Prices will be randomized between 50% and 150% of their normal price per instance."""
     display_name = "Randomize Shop Items"
     option_no = 0
     option_simple = 1
@@ -351,6 +351,7 @@ class CVHoDisOptions(PerGameCommonOptions):
     countdown: Countdown
     sub_weapon_randomization: SubWeaponRandomization
     shuffle_enemy_drops: ShuffleEnemyDrops
+    shop_shuffle: ShopShuffle
     sub_weapons_available: SubWeaponsAvailable
     area_divisions: AreaDivisions
     castle_swapper: CastleSwapper
@@ -391,7 +392,7 @@ cvhodis_option_groups = [
     ]),
     OptionGroup("Item Options", [
         FillerPool, ProgressiveHeights, GateItems, AddJBsBracelet, AddFloatingBoots, AddInfiniteBoots, AddNoonStar,
-        RemoveFurniture, StartWithLureKey
+        RemoveFurniture, StartWithLureKey, ShopShuffle
     ]),
     OptionGroup("World Options", [
         SpellboundBossLogic, CardboundBossLogic, SubWeaponRandomization, SubWeaponsAvailable, EarlyLizard

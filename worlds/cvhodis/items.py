@@ -22,7 +22,7 @@ class CVHoDisItemData(NamedTuple):
     pickup_index: int
     gfx_id: int
     palette_id: int
-    price: int = 0
+    price: int
     default_classification: ItemClassification = ItemClassification.filler
     filler_type: str = ""
 # "pickup_index" = The lower half of the unique part of the Item's AP code attribute, as well as the value to write
@@ -62,8 +62,8 @@ class FillerTypes(StrEnum):
 
 
 HEARTS: dict[str, CVHoDisItemData] = {
-    item_names.heart_s:   CVHoDisItemData(0x00, 0x00, 0x00),
-    item_names.heart_b:   CVHoDisItemData(0x01, 0x00, 0x00),
+    item_names.heart_s:   CVHoDisItemData(0x00, 0x00, 0x00, 0),
+    item_names.heart_b:   CVHoDisItemData(0x01, 0x00, 0x00, 0),
 }
 
 MONEY: dict[str, CVHoDisItemData] = {
@@ -76,12 +76,12 @@ MONEY: dict[str, CVHoDisItemData] = {
 }
 
 SUB_WEAPONS: dict[str, CVHoDisItemData] = {
-    item_names.sub_book:  CVHoDisItemData(SubWeaponPickups.HOLY_BOOK.value,   0x01, 0x01),
-    item_names.sub_cross: CVHoDisItemData(SubWeaponPickups.CROSS.value,       0x02, 0x01),
-    item_names.sub_axe:   CVHoDisItemData(SubWeaponPickups.AXE.value,         0x03, 0x01),
-    item_names.sub_holy:  CVHoDisItemData(SubWeaponPickups.HOLY_WATER.value,  0x04, 0x01),
-    item_names.sub_fist:  CVHoDisItemData(SubWeaponPickups.SACRED_FIST.value, 0x05, 0x01),
-    item_names.sub_knife: CVHoDisItemData(SubWeaponPickups.KNIFE.value,       0x06, 0x01),
+    item_names.sub_book:  CVHoDisItemData(SubWeaponPickups.HOLY_BOOK.value,   0x01, 0x01, 0),
+    item_names.sub_cross: CVHoDisItemData(SubWeaponPickups.CROSS.value,       0x02, 0x01, 0),
+    item_names.sub_axe:   CVHoDisItemData(SubWeaponPickups.AXE.value,         0x03, 0x01, 0),
+    item_names.sub_holy:  CVHoDisItemData(SubWeaponPickups.HOLY_WATER.value,  0x04, 0x01, 0),
+    item_names.sub_fist:  CVHoDisItemData(SubWeaponPickups.SACRED_FIST.value, 0x05, 0x01, 0),
+    item_names.sub_knife: CVHoDisItemData(SubWeaponPickups.KNIFE.value,       0x06, 0x01, 0),
 }
 
 USE_ITEMS: dict[str, CVHoDisItemData] = {
@@ -98,19 +98,19 @@ USE_ITEMS: dict[str, CVHoDisItemData] = {
     item_names.use_uncurse:   CVHoDisItemData(0x08, 0x0F, 0x01, 20,   filler_type=FillerTypes.CONSUMABLE),
     item_names.use_medicine:  CVHoDisItemData(0x09, 0x82, 0x01, 10000, ItemClassification.useful,
                                               filler_type=FillerTypes.GOOD_CONSUMABLE),
-    item_names.use_key_l:     CVHoDisItemData(0x0A, 0x1F, 0x02, ItemClassification.progression),
-    item_names.use_key_s:     CVHoDisItemData(0x0B, 0x7F, 0x02, ItemClassification.progression),
-    item_names.use_key_f:     CVHoDisItemData(0x0C, 0x20, 0x08, ItemClassification.progression),
+    item_names.use_key_l:     CVHoDisItemData(0x0A, 0x1F, 0x02, 0, ItemClassification.progression),
+    item_names.use_key_s:     CVHoDisItemData(0x0B, 0x7F, 0x02, 0, ItemClassification.progression),
+    item_names.use_key_f:     CVHoDisItemData(0x0C, 0x20, 0x08, 0, ItemClassification.progression),
     item_names.use_map_1:     CVHoDisItemData(0x0D, 0x7E, 0x02, 105),
     item_names.use_map_2:     CVHoDisItemData(0x0E, 0x7E, 0x02, 105),
     item_names.use_map_3:     CVHoDisItemData(0x0F, 0x7E, 0x02, 105),
-    item_names.use_hint_1:    CVHoDisItemData(0x10, 0x10, 0x01, ItemClassification.useful),
-    item_names.use_hint_2:    CVHoDisItemData(0x11, 0x10, 0x01, ItemClassification.useful),
-    item_names.use_hint_3:    CVHoDisItemData(0x12, 0x10, 0x01, ItemClassification.useful),
-    item_names.use_hint_4:    CVHoDisItemData(0x13, 0x10, 0x01, ItemClassification.useful),
-    item_names.use_hint_5:    CVHoDisItemData(0x14, 0x10, 0x01, ItemClassification.useful),
-    item_names.use_hint_6:    CVHoDisItemData(0x15, 0x10, 0x01, ItemClassification.useful),
-    item_names.use_n_star:    CVHoDisItemData(0x16, 0x92, 0x01, ItemClassification.useful),
+    item_names.use_hint_1:    CVHoDisItemData(0x10, 0x10, 0x01, 0, ItemClassification.useful),
+    item_names.use_hint_2:    CVHoDisItemData(0x11, 0x10, 0x01, 0, ItemClassification.useful),
+    item_names.use_hint_3:    CVHoDisItemData(0x12, 0x10, 0x01, 0, ItemClassification.useful),
+    item_names.use_hint_4:    CVHoDisItemData(0x13, 0x10, 0x01, 0, ItemClassification.useful),
+    item_names.use_hint_5:    CVHoDisItemData(0x14, 0x10, 0x01, 0, ItemClassification.useful),
+    item_names.use_hint_6:    CVHoDisItemData(0x15, 0x10, 0x01, 0, ItemClassification.useful),
+    item_names.use_n_star:    CVHoDisItemData(0x16, 0x92, 0x01, 0, ItemClassification.useful),
     item_names.use_gem_o:     CVHoDisItemData(0x17, 0x90, 0x05, 125,  filler_type=FillerTypes.MONEY),
     item_names.use_gem_t:     CVHoDisItemData(0x18, 0x8F, 0x05, 200,  filler_type=FillerTypes.MONEY),
     item_names.use_gem_s:     CVHoDisItemData(0x19, 0x12, 0x03, 500,  filler_type=FillerTypes.MONEY),
@@ -119,16 +119,16 @@ USE_ITEMS: dict[str, CVHoDisItemData] = {
 }
 
 WHIP_ATTACHMENTS: dict[str, CVHoDisItemData] = {
-    item_names.whip_crush:  CVHoDisItemData(0x00, 0x1D, 0x01, ItemClassification.progression |
+    item_names.whip_crush:  CVHoDisItemData(0x00, 0x1D, 0x01, 0, ItemClassification.progression |
                                             ItemClassification.useful),
-    item_names.whip_steel:  CVHoDisItemData(0x01, 0xA4, 0x02, ItemClassification.useful),
-    item_names.whip_plat:   CVHoDisItemData(0x02, 0xA5, 0x02, ItemClassification.useful),
-    item_names.whip_circle: CVHoDisItemData(0x03, 0xA6, 0x02, ItemClassification.useful),
-    item_names.whip_bullet: CVHoDisItemData(0x04, 0xA7, 0x02, ItemClassification.useful),
-    item_names.whip_red:    CVHoDisItemData(0x05, 0x1E, 0x02, ItemClassification.useful),
-    item_names.whip_blue:   CVHoDisItemData(0x06, 0xA1, 0x03, ItemClassification.useful),
-    item_names.whip_yellow: CVHoDisItemData(0x07, 0xA2, 0x04, ItemClassification.useful),
-    item_names.whip_green:  CVHoDisItemData(0x08, 0xA3, 0x05, ItemClassification.useful),
+    item_names.whip_steel:  CVHoDisItemData(0x01, 0xA4, 0x02, 0, ItemClassification.useful),
+    item_names.whip_plat:   CVHoDisItemData(0x02, 0xA5, 0x02, 0, ItemClassification.useful),
+    item_names.whip_circle: CVHoDisItemData(0x03, 0xA6, 0x02, 0, ItemClassification.useful),
+    item_names.whip_bullet: CVHoDisItemData(0x04, 0xA7, 0x02, 0, ItemClassification.useful),
+    item_names.whip_red:    CVHoDisItemData(0x05, 0x1E, 0x02, 0, ItemClassification.useful),
+    item_names.whip_blue:   CVHoDisItemData(0x06, 0xA1, 0x03, 0, ItemClassification.useful),
+    item_names.whip_yellow: CVHoDisItemData(0x07, 0xA2, 0x04, 0, ItemClassification.useful),
+    item_names.whip_green:  CVHoDisItemData(0x08, 0xA3, 0x05, 0, ItemClassification.useful),
 }
 
 EQUIPMENT: dict[str, CVHoDisItemData] = {
@@ -187,10 +187,10 @@ EQUIPMENT: dict[str, CVHoDisItemData] = {
                                                   filler_type=FillerTypes.GOOD_ARMOR),
     item_names.equip_robe_a:      CVHoDisItemData(0x29, 0x46, 0x02, 2200, ItemClassification.useful,
                                                   filler_type=FillerTypes.GOOD_ARMOR),
-    item_names.equip_bracelet_jb: CVHoDisItemData(0x2A, 0x14, 0x02, ItemClassification.progression),
-    item_names.equip_goggles:     CVHoDisItemData(0x2B, 0x77, 0x02, ItemClassification.progression),
-    item_names.equip_bracelet_mk: CVHoDisItemData(0x2C, 0x13, 0x02, ItemClassification.progression),
-    item_names.equip_boots_c:     CVHoDisItemData(0x2D, 0x30, 0x02, ItemClassification.progression),
+    item_names.equip_bracelet_jb: CVHoDisItemData(0x2A, 0x14, 0x02, 0,    ItemClassification.progression),
+    item_names.equip_goggles:     CVHoDisItemData(0x2B, 0x77, 0x02, 0,    ItemClassification.progression),
+    item_names.equip_bracelet_mk: CVHoDisItemData(0x2C, 0x13, 0x02, 0,    ItemClassification.progression),
+    item_names.equip_boots_c:     CVHoDisItemData(0x2D, 0x30, 0x02, 0,    ItemClassification.progression),
     item_names.equip_bandana:     CVHoDisItemData(0x2E, 0x40, 0x02, 40,   filler_type=FillerTypes.ARMOR),
     item_names.equip_turban:      CVHoDisItemData(0x2F, 0x8A, 0x02, 70,   filler_type=FillerTypes.ARMOR),
     item_names.equip_circlet:     CVHoDisItemData(0x30, 0x3E, 0x05, 100,  filler_type=FillerTypes.ARMOR),
@@ -308,112 +308,112 @@ EQUIPMENT: dict[str, CVHoDisItemData] = {
 }
 
 SPELLBOOKS: dict[str, CVHoDisItemData] = {
-    item_names.book_fire:   CVHoDisItemData(0x00, 0x58, 0x02, ItemClassification.useful),
-    item_names.book_ice:    CVHoDisItemData(0x01, 0x58, 0x03, ItemClassification.useful),
-    item_names.book_bolt:   CVHoDisItemData(0x02, 0x58, 0x04, ItemClassification.useful),
-    item_names.book_wind:   CVHoDisItemData(0x03, 0x58, 0x05, ItemClassification.useful),
-    item_names.book_summon: CVHoDisItemData(0x04, 0x58, 0x06, ItemClassification.useful),
+    item_names.book_fire:   CVHoDisItemData(0x00, 0x58, 0x02, 0, ItemClassification.useful),
+    item_names.book_ice:    CVHoDisItemData(0x01, 0x58, 0x03, 0, ItemClassification.useful),
+    item_names.book_bolt:   CVHoDisItemData(0x02, 0x58, 0x04, 0, ItemClassification.useful),
+    item_names.book_wind:   CVHoDisItemData(0x03, 0x58, 0x05, 0, ItemClassification.useful),
+    item_names.book_summon: CVHoDisItemData(0x04, 0x58, 0x06, 0, ItemClassification.useful),
 }
 
 RELICS: dict[str, CVHoDisItemData] = {
-    item_names.relic_tail:    CVHoDisItemData(0x00, 0x59, 0x04, ItemClassification.progression |
+    item_names.relic_tail:    CVHoDisItemData(0x00, 0x59, 0x04, 0, ItemClassification.progression |
                                               ItemClassification.useful),
-    item_names.relic_feather: CVHoDisItemData(0x01, 0x4F, 0x02, ItemClassification.progression |
+    item_names.relic_feather: CVHoDisItemData(0x01, 0x4F, 0x02, 0, ItemClassification.progression |
                                               ItemClassification.useful),
-    item_names.relic_wing:    CVHoDisItemData(0x02, 0x4E, 0x02, ItemClassification.progression_skip_balancing |
+    item_names.relic_wing:    CVHoDisItemData(0x02, 0x4E, 0x02, 0, ItemClassification.progression_skip_balancing |
                                               ItemClassification.useful),
-    item_names.relic_orb:     CVHoDisItemData(0x03, 0x4D, 0x02, ItemClassification.useful),
-    item_names.relic_journal: CVHoDisItemData(0x04, 0x56, 0x05, ItemClassification.useful),
-    item_names.relic_tome:    CVHoDisItemData(0x05, 0x57, 0x01, ItemClassification.useful),
-    item_names.relic_v_eye:   CVHoDisItemData(0x06, 0x50, 0x02, ItemClassification.progression_skip_balancing |
+    item_names.relic_orb:     CVHoDisItemData(0x03, 0x4D, 0x02, 0, ItemClassification.useful),
+    item_names.relic_journal: CVHoDisItemData(0x04, 0x56, 0x05, 0, ItemClassification.useful),
+    item_names.relic_tome:    CVHoDisItemData(0x05, 0x57, 0x01, 0, ItemClassification.useful),
+    item_names.relic_v_eye:   CVHoDisItemData(0x06, 0x50, 0x02, 0, ItemClassification.progression_skip_balancing |
                                               ItemClassification.useful),
-    item_names.relic_v_heart: CVHoDisItemData(0x07, 0x51, 0x02, ItemClassification.progression_skip_balancing |
+    item_names.relic_v_heart: CVHoDisItemData(0x07, 0x51, 0x02, 0, ItemClassification.progression_skip_balancing |
                                               ItemClassification.useful),
-    item_names.relic_v_rib:   CVHoDisItemData(0x08, 0x52, 0x02, ItemClassification.progression_skip_balancing |
+    item_names.relic_v_rib:   CVHoDisItemData(0x08, 0x52, 0x02, 0, ItemClassification.progression_skip_balancing |
                                               ItemClassification.useful),
-    item_names.relic_v_nail:  CVHoDisItemData(0x09, 0x53, 0x02, ItemClassification.progression_skip_balancing |
+    item_names.relic_v_nail:  CVHoDisItemData(0x09, 0x53, 0x02, 0, ItemClassification.progression_skip_balancing |
                                               ItemClassification.useful),
-    item_names.relic_v_fang:  CVHoDisItemData(0x0A, 0x54, 0x02, ItemClassification.progression_skip_balancing |
+    item_names.relic_v_fang:  CVHoDisItemData(0x0A, 0x54, 0x02, 0, ItemClassification.progression_skip_balancing |
                                               ItemClassification.useful),
-    item_names.relic_v_ring:  CVHoDisItemData(0x0B, 0x55, 0x02, ItemClassification.progression_skip_balancing |
+    item_names.relic_v_ring:  CVHoDisItemData(0x0B, 0x55, 0x02, 0, ItemClassification.progression_skip_balancing |
                                               ItemClassification.useful),
     # Rando exclusive
-    item_names.relic_height:  CVHoDisItemData(0x0C, 0xE7, 0x01, ItemClassification.progression |
+    item_names.relic_height:  CVHoDisItemData(0x0C, 0xE7, 0x01, 0, ItemClassification.progression |
                                               ItemClassification.useful),
 }
 
 FURNITURE: dict[str, CVHoDisItemData] = {
-    item_names.furn_chan:      CVHoDisItemData(0x00, 0x5A, 0x02,
+    item_names.furn_chan:      CVHoDisItemData(0x00, 0x5A, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_clock:     CVHoDisItemData(0x01, 0x5B, 0x02,
+    item_names.furn_clock:     CVHoDisItemData(0x01, 0x5B, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_shelf:     CVHoDisItemData(0x02, 0x5C, 0x02,
+    item_names.furn_shelf:     CVHoDisItemData(0x02, 0x5C, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_radio:     CVHoDisItemData(0x03, 0x5D, 0x02,
+    item_names.furn_radio:     CVHoDisItemData(0x03, 0x5D, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_dishes:    CVHoDisItemData(0x04, 0x5E, 0x01,
+    item_names.furn_dishes:    CVHoDisItemData(0x04, 0x5E, 0x01, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_table_a:   CVHoDisItemData(0x05, 0x5F, 0x02,
+    item_names.furn_table_a:   CVHoDisItemData(0x05, 0x5F, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_chair:     CVHoDisItemData(0x06, 0x60, 0x02,
+    item_names.furn_chair:     CVHoDisItemData(0x06, 0x60, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_chair_r:   CVHoDisItemData(0x07, 0x61, 0x02,
+    item_names.furn_chair_r:   CVHoDisItemData(0x07, 0x61, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_curtain:   CVHoDisItemData(0x08, 0x62, 0x02,
+    item_names.furn_curtain:   CVHoDisItemData(0x08, 0x62, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_urn_a:     CVHoDisItemData(0x09, 0x63, 0x01,
+    item_names.furn_urn_a:     CVHoDisItemData(0x09, 0x63, 0x01, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_urn_w:     CVHoDisItemData(0x0A, 0x64, 0x02,
+    item_names.furn_urn_w:     CVHoDisItemData(0x0A, 0x64, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_vase:      CVHoDisItemData(0x0B, 0x65, 0x01,
+    item_names.furn_vase:      CVHoDisItemData(0x0B, 0x65, 0x01, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_table_s:   CVHoDisItemData(0x0C, 0x66, 0x02,
+    item_names.furn_table_s:   CVHoDisItemData(0x0C, 0x66, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_teacup:    CVHoDisItemData(0x0D, 0x67, 0x01,
+    item_names.furn_teacup:    CVHoDisItemData(0x0D, 0x67, 0x01, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_teapot:    CVHoDisItemData(0x0E, 0x68, 0x01,
+    item_names.furn_teapot:    CVHoDisItemData(0x0E, 0x68, 0x01, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_glass:     CVHoDisItemData(0x0F, 0x69, 0x01,
+    item_names.furn_glass:     CVHoDisItemData(0x0F, 0x69, 0x01, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_statue_h:  CVHoDisItemData(0x10, 0x6A, 0x01,
+    item_names.furn_statue_h:  CVHoDisItemData(0x10, 0x6A, 0x01, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_statue_sm: CVHoDisItemData(0x11, 0x6B, 0x01,
+    item_names.furn_statue_sm: CVHoDisItemData(0x11, 0x6B, 0x01, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_statue_sa: CVHoDisItemData(0x12, 0x6C, 0x01,
+    item_names.furn_statue_sa: CVHoDisItemData(0x12, 0x6C, 0x01, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_raccoon:   CVHoDisItemData(0x13, 0x6D, 0x02,
+    item_names.furn_raccoon:   CVHoDisItemData(0x13, 0x6D, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_cat:       CVHoDisItemData(0x14, 0x6E, 0x02,
+    item_names.furn_cat:       CVHoDisItemData(0x14, 0x6E, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_phono:     CVHoDisItemData(0x15, 0x6F, 0x02,
+    item_names.furn_phono:     CVHoDisItemData(0x15, 0x6F, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_stag:      CVHoDisItemData(0x16, 0x70, 0x02,
+    item_names.furn_stag:      CVHoDisItemData(0x16, 0x70, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_candle_h:  CVHoDisItemData(0x17, 0x71, 0x09,
+    item_names.furn_candle_h:  CVHoDisItemData(0x17, 0x71, 0x09, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_candle_s:  CVHoDisItemData(0x18, 0x71, 0x08,
+    item_names.furn_candle_s:  CVHoDisItemData(0x18, 0x71, 0x08, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_trinket_s: CVHoDisItemData(0x19, 0x72, 0x09,
+    item_names.furn_trinket_s: CVHoDisItemData(0x19, 0x72, 0x09, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_trinket_g: CVHoDisItemData(0x1A, 0x72, 0x08,
+    item_names.furn_trinket_g: CVHoDisItemData(0x1A, 0x72, 0x08, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_mirror:    CVHoDisItemData(0x1B, 0x73, 0x02,
+    item_names.furn_mirror:    CVHoDisItemData(0x1B, 0x73, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_drawing:   CVHoDisItemData(0x1C, 0x74, 0x05,
+    item_names.furn_drawing:   CVHoDisItemData(0x1C, 0x74, 0x05, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_bed:       CVHoDisItemData(0x1D, 0x75, 0x02,
+    item_names.furn_bed:       CVHoDisItemData(0x1D, 0x75, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    item_names.furn_closet:    CVHoDisItemData(0x1E, 0x76, 0x02,
+    item_names.furn_closet:    CVHoDisItemData(0x1E, 0x76, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
     # Rando exclusive
-    item_names.misc_key_la:    CVHoDisItemData(0x1F, 0xE4, 0x02, ItemClassification.progression),
-    item_names.misc_key_c:     CVHoDisItemData(0x20, 0xE5, 0x02, ItemClassification.progression),
-    item_names.misc_key_t:     CVHoDisItemData(0x21, 0xE6, 0x02, ItemClassification.progression),
+    item_names.misc_key_la:    CVHoDisItemData(0x1F, 0xE4, 0x02, 0, ItemClassification.progression),
+    item_names.misc_key_c:     CVHoDisItemData(0x20, 0xE5, 0x02, 0, ItemClassification.progression),
+    item_names.misc_key_t:     CVHoDisItemData(0x21, 0xE6, 0x02, 0, ItemClassification.progression),
 }
 
 MAX_UPS: dict[str, CVHoDisItemData] = {
-    item_names.max_life:  CVHoDisItemData(0x00, 0x0C, 0x01, ItemClassification.useful),
-    item_names.max_heart: CVHoDisItemData(0x01, 0x0D, 0x01, ItemClassification.useful),
+    item_names.max_life:  CVHoDisItemData(0x00, 0x0C, 0x01, 0, ItemClassification.useful),
+    item_names.max_heart: CVHoDisItemData(0x01, 0x0D, 0x01, 0, ItemClassification.useful),
 }
 
 PICKUP_TYPE_MAPPINGS = {
@@ -496,6 +496,11 @@ def draw_random_filler(world: "CVHoDisWorld", exempt_categories: list[FillerType
                 fully_exempt_category = False
         if fully_exempt_category:
             exempt_categories += [category_name]
+
+    # If literally ALL categories become exempt, throw an exception to let us know. We should not be hitting this.
+    if len(exempt_categories) == len(CVHODIS_FILLER_CATEGORIES):
+        raise Exception("Attempted to draw a random CVHoDis filler with ALL items/filler categories exempt. "
+                        "This isn't supposed to happen...")
 
     # Draw a random Item from the category we chose at random and return it.
     # Don't include any exempt Items in the drawing.
@@ -655,6 +660,10 @@ def get_item_pool(world: "CVHoDisWorld") -> list[CVHoDisItem]:
     # If Add Noon Star is on, add it.
     if world.options.add_floating_boots:
         replace_filler([world.create_item(item_names.use_n_star)])
+
+    # If Shop Shuffle is on, add Castle Map 2 to the regular item pool so it's not impossible to get.
+    if world.options.shop_shuffle:
+        replace_filler([world.create_item(item_names.use_map_2)])
 
     # Find all Progression Items that are not Furniture, and save them for the purposes of later making Hint Card text.
     final_item_list = tier_1_filler + tier_2_filler + tier_3_filler + non_filler

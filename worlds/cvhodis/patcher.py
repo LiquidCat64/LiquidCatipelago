@@ -9,15 +9,15 @@ GBA_ROM_START = 0x8000000
 GBA_EWRAM_START = 0x2000000
 IPS_EOF = 0x454F46
 
-AREA_PTRS_PTR_START = 0x1EC8
-ORIG_TEXT_PTRS_START = 0x495500
+AREA_PTRS_PTR_START = GBA_ROM_START | 0x1EC8
+ORIG_TEXT_PTRS_START = GBA_ROM_START | 0x495500
 ORIG_NUMBER_OF_TEXTS = 0x2AB
-ORIG_STRINGS_START = 0xCA25C
-ORIG_STRINGS_END = 0xDAD94
-ORIG_SHOP_ITEM_INFOS_START = 0x4B15C0
+ORIG_STRINGS_START = GBA_ROM_START | 0xCA25C
+ORIG_STRINGS_END = GBA_ROM_START | 0xDAD94
+ORIG_SHOP_ITEM_INFOS_START = GBA_ROM_START | 0x4B15C0
 ORIG_NUMBER_OF_SHOP_ITEM_INFOS = 0x2D
-ORIG_SHOP_ITEM_LISTS_PTRS_START = 0x4B1714
-ORIG_NUMBER_OF_SHOP_ITEM_LISTS = 0x0A
+ORIG_SHOP_ITEM_LISTS_PTRS_START = GBA_ROM_START | 0x4B1714
+ORIG_NUMBER_OF_SHOPS = 0x0A
 
 ACTOR_ENTRY_LENGTH = 0xC
 LOADING_ZONE_ENTRY_LENGTH = 0xC
@@ -94,6 +94,10 @@ class CVHoDisRomPatcher:
     rom: bytearray
     text: list[str]
     shop_item_data: list[CVHoDisShopItemInfo]
+    shop_item_lists: list[list[int]]
+    shop_item_list_starts: list[int]
+    shop_item_list_orig_lens: list[int]
+    shop_list_ids: list[int]
     areas: list[list[list[CVHoDisRoomState]]]  # Room State lists within Room lists within Area lists.
     area_ptrs_start: int
     actor_lists: dict[int, list[CVHoDisActorEntry]]
@@ -159,14 +163,36 @@ class CVHoDisRomPatcher:
             self.shop_item_data.append(
                 CVHoDisShopItemInfo(item_type=PickupTypes(self.read_byte(current_shop_item_info_addr)),
                                     item_index=self.read_byte(current_shop_item_info_addr + 1),
-                                    price=self.read_bytes(current_shop_item_info_addr + 2, 2, "<H"))
+                                    price=self.read_bytes(current_shop_item_info_addr + 2, 2, "<H"),
+                                    start_addr=current_shop_item_info_addr)
             )
 
         # Extract the Item lists for each shop.
+        self.shop_item_lists = []
+        self.shop_item_list_starts = []
+        self.shop_item_list_orig_lens = []
+        self.shop_list_ids = []
+        for shop_id in range(ORIG_NUMBER_OF_SHOPS):
+            current_shop_item_list_addr = self.read_bytes(ORIG_SHOP_ITEM_LISTS_PTRS_START + (shop_id * 4), 4, "<I")
+            # If it's a list we already extracted (read: we already have its start address),
+            # assign that list to the shop we're currently looking at.
+            if current_shop_item_list_addr in self.shop_item_list_starts:
+                self.shop_list_ids += [self.shop_item_list_starts.index(current_shop_item_list_addr)]
+            # Otherwise, extract the new list, save it, and assign it to the current shop.
+            else:
+                # The first byte in the shop list data is the length of the list. The subsequent bytes are the actual
+                # indexes in the shop item data list that the game looks up for the items and their pricing info.
+                self.shop_item_list_orig_lens += [self.read_byte(current_shop_item_list_addr)]
+                self.shop_item_lists += [[]]
+                for shop_item_list_index in range(self.shop_item_list_orig_lens[len(self.shop_item_list_orig_lens)-1]):
+                    self.shop_item_lists[len(self.shop_item_lists)-1] += [self.read_byte(current_shop_item_list_addr +
+                                                                                         shop_item_list_index + 1)]
+                self.shop_list_ids += [len(self.shop_item_lists)-1]
+                self.shop_item_list_starts += [current_shop_item_list_addr]
 
         # Grab a hardcoded pointer in the code to the start of the Area room pointer lists.
         # The same one that DSVania Editor grabs, to be consistent with it.
-        self.area_ptrs_start = self.read_bytes(AREA_PTRS_PTR_START, 4, "<I") & ~GBA_ROM_START
+        self.area_ptrs_start = self.read_bytes(AREA_PTRS_PTR_START, 4, "<I")
 
         # Read out the important common area data structs into a format that is easy to edit and then reinsert
         # (actor lists, loading zones, etc.).
@@ -178,8 +204,8 @@ class CVHoDisRomPatcher:
 
             # Grab the pointer to the start of the current Area's list of default room state pointers and use that to
             # grab the Area's first room's default state pointer.
-            area_room_ptr_list_start = self.read_bytes(self.area_ptrs_start + (area_id * 4), 4, "<I") & ~GBA_ROM_START
-            default_room_state_ptr = self.read_bytes(area_room_ptr_list_start, 4, "<I") & ~GBA_ROM_START
+            area_room_ptr_list_start = self.read_bytes(self.area_ptrs_start + (area_id * 4), 4, "<I")
+            default_room_state_ptr = self.read_bytes(area_room_ptr_list_start, 4, "<I")
 
             # Continue iterating over every default room pointer associated with the Area until we find a 00000000
             # pointer, signifying the end of the list.
@@ -203,7 +229,7 @@ class CVHoDisRomPatcher:
                         # Loop over each actor list entry and read it out. Continue looping until we reach the end of
                         # the list.
                         actor_list = []
-                        curr_addr = actor_list_ptr & ~GBA_ROM_START
+                        curr_addr = actor_list_ptr
                         while True:
                             actor = CVHoDisActorEntry(
                                 x_pos=self.read_bytes(curr_addr, 2, "<h"),
@@ -216,7 +242,7 @@ class CVHoDisRomPatcher:
                                 byte_8=self.read_byte(curr_addr + 0x7),
                                 var_a=self.read_bytes(curr_addr + 0x8, 2, "<H"),
                                 var_b=self.read_bytes(curr_addr + 0xA, 2, "<H"),
-                                start_addr=curr_addr | GBA_ROM_START,
+                                start_addr=curr_addr,
                             )
                             # Check if the actor has a documented entry in the actor types enum.
                             if actor["type_id"] in ActorTypes:
@@ -267,7 +293,7 @@ class CVHoDisRomPatcher:
                         # Loop over each loading zone list entry and read it out. Continue looping until we reach the
                         # end of the list.
                         loading_zone_list = []
-                        curr_addr = loading_zone_list_ptr & ~GBA_ROM_START
+                        curr_addr = loading_zone_list_ptr
                         while True:
                             loading_zone = CVHoDisLoadingZoneEntry(
                                 dest_room_ptr=self.read_bytes(curr_addr, 4, "<I"),
@@ -277,7 +303,7 @@ class CVHoDisRomPatcher:
                                 player_y_offset=self.read_bytes(curr_addr + 0x7, 1, "b"),
                                 camera_x_pos=self.read_bytes(curr_addr + 0x8, 2, "<h"),
                                 camera_y_pos=self.read_bytes(curr_addr + 0xA, 2, "<h"),
-                                start_addr=curr_addr | GBA_ROM_START,
+                                start_addr=curr_addr,
                             )
 
                             # If the loading zone we extracted has a destination room pointer that is not a valid
@@ -317,7 +343,7 @@ class CVHoDisRomPatcher:
                                 background_effect_id=self.read_byte(state_ptr + 0x20),
                                 palette_shift_id=self.read_byte(state_ptr + 0x21),
                                 map_coords=self.read_bytes(state_ptr + 0x22, 2, "<H"),
-                                start_addr=state_ptr | GBA_ROM_START,
+                                start_addr=state_ptr,
                             )
 
                     # Append the room state info we just extracted to the current room's list of room states.
@@ -327,29 +353,29 @@ class CVHoDisRomPatcher:
                     # alternate room state. If there's no pointer to an alternate room state in the state we just
                     # extracted, then we have reached the "deepest" room state in the chain. In which case, the loop
                     # for this room will terminate, and we will move onto the next.
-                    state_ptr = room_state["alt_state_ptr"] & ~GBA_ROM_START
+                    state_ptr = room_state["alt_state_ptr"]
 
                 # Increment the room ID by 1 and grab the pointer to the next room's default state. If we grab a
                 # 00000000 pointer, then we've reached the end of the area's room list and the loop for the current area
                 # will end.
                 room_id += 1
-                default_room_state_ptr = \
-                    self.read_bytes(area_room_ptr_list_start + (room_id * 4), 4, "<I") & ~GBA_ROM_START
+                default_room_state_ptr = self.read_bytes(area_room_ptr_list_start + (room_id * 4), 4, "<I")
 
     def read_byte(self, address: int) -> int:
         """Return a byte at a specified address."""
-        return self.rom[address]
+        return self.rom[address & ~GBA_ROM_START]
 
     def read_bytes(self, start_address: int, length: int, struct_format: str = "") -> bytearray | int:
         """Return a string of bytes of a specified length beginning at a specified address in a specified format.
         If no format was specified, it will be returned as bytes."""
         if struct_format:
-            return struct.unpack(struct_format, self.rom[start_address:start_address + length])[0]
-        return self.rom[start_address:start_address + length]
+            return struct.unpack(struct_format,
+                                 self.rom[start_address & ~GBA_ROM_START:(start_address & ~GBA_ROM_START) + length])[0]
+        return self.rom[start_address & ~GBA_ROM_START:(start_address & ~GBA_ROM_START) + length]
 
     def write_byte(self, address: int, value: int, update_free_space: bool = True) -> None:
         """Write a given byte at a specified address."""
-        self.rom[address] = value & 0xFF
+        self.rom[address & ~GBA_ROM_START] = value & 0xFF
 
         # Update the free space lookup if we are opting to.
         if update_free_space:
@@ -357,7 +383,7 @@ class CVHoDisRomPatcher:
 
     def write_bytes(self, start_address: int, values: Collection[int], update_free_space: bool = True) -> None:
         """Write a given string of bytes beginning at a specified address."""
-        self.rom[start_address:start_address + len(values)] = values
+        self.rom[start_address & ~GBA_ROM_START:(start_address & ~GBA_ROM_START) + len(values)] = values
 
         # Update the free space lookup if we are opting to.
         if update_free_space:
@@ -506,11 +532,11 @@ class CVHoDisRomPatcher:
         # lower byte and insert an extra 0000 between the instructions and the assembly start address.
         if hook_addr % 4:
             self.write_bytes(hook_addr, bytearray(struct.pack("<H", hook_ldr + 1)) + struct.pack("<H", mov_ldr) +
-                             b"\x00\x00" + struct.pack("<I", GBA_ROM_START | asm_addr))
+                             b"\x00\x00" + struct.pack("<I", asm_addr))
         # Otherwise, there'll be nothing separating the instructions and the address.
         else:
             self.write_bytes(hook_addr, bytearray(struct.pack("<H", hook_ldr)) + struct.pack("<H", mov_ldr) +
-                             struct.pack("<I", GBA_ROM_START | asm_addr))
+                             struct.pack("<I", asm_addr))
 
         # Return now with the assembly start address.
         return asm_addr
@@ -520,8 +546,8 @@ class CVHoDisRomPatcher:
         new_free_space_lookup = {}
 
         # Pad the start address and length to both be 4-aligned.
-        padded_remove_start = remove_start - remove_start % 4
-        padded_remove_len = remove_len + (remove_start - padded_remove_start)
+        padded_remove_start = (remove_start & ~GBA_ROM_START) - (remove_start & ~GBA_ROM_START) % 4
+        padded_remove_len = remove_len + ((remove_start & ~GBA_ROM_START) - padded_remove_start)
         if padded_remove_len % 4:
             padded_remove_len += 4 - padded_remove_len % 4
 
@@ -592,7 +618,7 @@ class CVHoDisRomPatcher:
                 # and return the start address we wrote to.
                 write_spot = furthest_space_start + (unchecked_spaces[furthest_space_start] - size_to_find)
                 self.write_bytes(write_spot, values_to_write)
-                return write_spot
+                return write_spot | GBA_ROM_START
 
             # Otherwise, if the free space size is too small, remove it from the unchecked spaces lookup and try the
             # next furthest-out space...
@@ -618,12 +644,12 @@ class CVHoDisRomPatcher:
             # Strings should be written back starting at where they start normally up until where they end normally,
             # at which point we'll start inserting them using the find free space method.
             if curr_string_start + len(cvhodis_encoded_text) <= ORIG_STRINGS_END:
-                new_text_ptrs.append(curr_string_start | GBA_ROM_START)
+                new_text_ptrs.append(curr_string_start)
                 self.write_bytes(curr_string_start, cvhodis_encoded_text, update_free_space=False)
                 # Add the length of the encoded string to the current string start for the next iteration.
                 curr_string_start += len(cvhodis_encoded_text)
             else:
-                new_text_ptrs.append(self.find_space_and_write_buffer(cvhodis_encoded_text) | GBA_ROM_START)
+                new_text_ptrs.append(self.find_space_and_write_buffer(cvhodis_encoded_text))
 
         # If we have the same number of strings as the vanilla game or fewer, write the text pointers back at where they
         # start in the ROM normally.
@@ -637,7 +663,7 @@ class CVHoDisRomPatcher:
             new_text_ptr_buffer = bytearray(0)
             for text_ptr in new_text_ptrs:
                 new_text_ptr_buffer += struct.pack("<I", text_ptr)
-            new_text_ptrs_start = self.find_space_and_write_buffer(new_text_ptr_buffer) | GBA_ROM_START
+            new_text_ptrs_start = self.find_space_and_write_buffer(new_text_ptr_buffer)
             # Update EVERY pointer to the start of the text pointers array in the ROM
             # to be where the new text pointers array starts.
             self.write_int32(0x339C, new_text_ptrs_start)
@@ -675,6 +701,60 @@ class CVHoDisRomPatcher:
             self.write_int32(0x2BCF8, new_text_ptrs_start)
             self.write_int32(0x2C72C, new_text_ptrs_start)
 
+        # # # SHOP DATA # # #
+        # Reinsert the shop item data into the ROM. If it's expanded, move and repoint it.
+        if len(self.shop_item_data) > ORIG_NUMBER_OF_SHOP_ITEM_INFOS:
+            new_shop_item_info_start = self.find_space_and_write_buffer(get_shop_item_data_bytes(self.shop_item_data))
+            self.write_int32(0x2C37C, new_shop_item_info_start)
+            self.write_int32(0x2C650, new_shop_item_info_start)
+            self.write_int32(0x2C738, new_shop_item_info_start)
+            self.write_int32(0x2C770, new_shop_item_info_start)
+            self.write_int32(0x2C7C0, new_shop_item_info_start)
+            self.write_int32(0x2C7FC, new_shop_item_info_start)
+            self.write_int32(0x2CA70, new_shop_item_info_start)
+            self.write_int32(0x2CBCC, new_shop_item_info_start)
+            self.write_int32(0x2CC38, new_shop_item_info_start)
+            self.write_int32(0x2CCFC, new_shop_item_info_start)
+            self.write_int32(0x2CD44, new_shop_item_info_start)
+        # Otherwise, write it right back where it was.
+        else:
+            self.write_bytes(ORIG_SHOP_ITEM_INFOS_START, get_shop_item_data_bytes(self.shop_item_data))
+
+        # Reinsert each individual shop's item list.
+        for item_list_index in range(len(self.shop_item_lists)):
+            # Convert the list we're currently looking at into the format the game expects. One length byte followed by
+            # each ID in the shop item info list.
+            new_shop_list_data = bytearray([len(self.shop_item_lists[item_list_index])] +
+                                      self.shop_item_lists[item_list_index])
+            # Pad the data to be 4-aligned if it's not.
+            if len(new_shop_list_data) % 4:
+                new_shop_list_data += bytearray(4 - len(new_shop_list_data) % 4)
+            # If it's a preexisting data (read: it has a recorded original length), check to see if the list is larger
+            # or the same/smaller than it was originally. If it's larger, find a new space for it and repoint it.
+            if item_list_index < len(self.shop_item_list_orig_lens):
+                if len(self.shop_item_lists[item_list_index]) > self.shop_item_list_orig_lens[item_list_index]:
+                    self.shop_item_list_starts[item_list_index] = self.find_space_and_write_buffer(new_shop_list_data)
+                # Otherwise, write it right back where it was before.
+                else:
+                    self.write_bytes(self.shop_item_list_starts[item_list_index], new_shop_list_data)
+            # If we are completely outside the range of the recorded original lengths, it is a new list. In which case,
+            # find a new space for it and save a new pointer.
+            else:
+                self.shop_item_list_starts += [self.find_space_and_write_buffer(new_shop_list_data)]
+
+        # Create and reinsert the list of pointers to the shop item lists for every shop.
+        shop_ptrs_list = [self.shop_item_list_starts[shop_list_id] for shop_list_id in self.shop_list_ids]
+        # If the list of shops is larger than it was before, find a new space and repoint the list.
+        # Otherwise, put it back where it normally lies.
+        if len(shop_ptrs_list) > ORIG_NUMBER_OF_SHOPS:
+            new_shop_ptrs_start = self.find_space_and_write_buffer(shop_ptrs_list, "<I")
+            self.write_int32(0x2CB04, new_shop_ptrs_start)
+            self.write_int32(0x2CB74, new_shop_ptrs_start)
+        else:
+            self.write_int32s(ORIG_SHOP_ITEM_LISTS_PTRS_START, shop_ptrs_list)
+
+        # If a list is expanded, move and repoint it.
+
         # # # ACTOR LISTS # # #
         # Loop over all the actor lists and reinsert them in the ROM.
         expanded_actor_list_ptrs = {}
@@ -687,12 +767,12 @@ class CVHoDisRomPatcher:
             # than it was before, write it back where it was originally (if we even have a list to begin with).
             if len(new_actor_list) <= len([orig_entry for orig_entry in actor_list if "start_addr" in orig_entry]):
                 if new_actor_list:
-                    self.write_bytes(~GBA_ROM_START & address, get_actor_list_bytes(new_actor_list))
+                    self.write_bytes(address, get_actor_list_bytes(new_actor_list))
             # If it's larger, however, find a new free space in the ROM to put it, write it there, and save the new
             # pointer to it.
             else:
-                expanded_actor_list_ptrs[address] = \
-                    GBA_ROM_START | self.find_space_and_write_buffer(get_actor_list_bytes(new_actor_list))
+                expanded_actor_list_ptrs[address] = self.find_space_and_write_buffer(
+                    get_actor_list_bytes(new_actor_list))
 
         # # # LOADING ZONE LISTS # # #
         # Loop over all the loading zone lists and reinsert them in the ROM.
@@ -708,14 +788,14 @@ class CVHoDisRomPatcher:
             if len(new_loading_zone_list) <= len([orig_entry for orig_entry in loading_zone_list
                                                   if "start_addr" in orig_entry]):
                 if new_loading_zone_list:
-                    self.write_bytes(~GBA_ROM_START & address, get_loading_zone_list_bytes(new_loading_zone_list))
+                    self.write_bytes(address, get_loading_zone_list_bytes(new_loading_zone_list))
             # If it's larger, however, find a new free space in the ROM to put it, write it there, and save the new
             # pointer to it.
             else:
                 # Add a 0x00000000 word to the end of the list data in case another extractor (like DSVania Editor)
                 # needs to extract the loading zone data (we check for not a valid GBA ROM pointer in the next entry's
                 # dest room pointer to see if the end of the list has or hasn't been reached).
-                expanded_loading_zone_list_ptrs[address] = GBA_ROM_START | self.find_space_and_write_buffer(
+                expanded_loading_zone_list_ptrs[address] = self.find_space_and_write_buffer(
                     get_loading_zone_list_bytes(new_loading_zone_list) + bytearray(b"\x00\x00\x00\x00"))
 
         # # # ROOM STATES # # #
@@ -730,13 +810,13 @@ class CVHoDisRomPatcher:
                         # said pointer is not in the mapping of pointers to actor lists, then said list should be
                         # written along with the state's actor list being pointer updated.
                         if not room_state["actor_list_ptr"] or room_state["actor_list_ptr"] not in self.actor_lists:
-                            room_state["actor_list_ptr"] = GBA_ROM_START | self.find_space_and_write_buffer(
+                            room_state["actor_list_ptr"] = self.find_space_and_write_buffer(
                                 get_actor_list_bytes(room_state["actor_list"]))
                         else:
                             # If the state's actor list doesn't match the one assigned to its actor list pointer in the
                             # actor list pointers mapping, then write the list and update the state's pointer.
                             if room_state["actor_list"] != self.actor_lists[room_state["actor_list_ptr"]]:
-                                room_state["actor_list_ptr"] = GBA_ROM_START | self.find_space_and_write_buffer(
+                                room_state["actor_list_ptr"] = self.find_space_and_write_buffer(
                                     get_actor_list_bytes(room_state["actor_list"]))
                             # Otherwise, meaning we modified its vanilla list instead of replacing it outright, check
                             # if the list's size increased and, if it did, update the state's pointer with the new
@@ -752,7 +832,7 @@ class CVHoDisRomPatcher:
                         # should be written along with the state's loading zone list being pointer updated.
                         if not room_state["loading_zone_list_ptr"] or \
                                 room_state["loading_zone_list_ptr"] not in self.loading_zone_lists:
-                            room_state["loading_zone_list_ptr"] = GBA_ROM_START | self.find_space_and_write_buffer(
+                            room_state["loading_zone_list_ptr"] = self.find_space_and_write_buffer(
                                 get_loading_zone_list_bytes(room_state["loading_zone_list"]) +
                                 bytearray(b"\x00\x00\x00\x00"))
                         else:
@@ -761,7 +841,7 @@ class CVHoDisRomPatcher:
                             # state's pointer.
                             if room_state["loading_zone_list"] != \
                                     self.loading_zone_lists[room_state["loading_zone_list_ptr"]]:
-                                room_state["loading_zone_list_ptr"] = GBA_ROM_START | self.find_space_and_write_buffer(
+                                room_state["loading_zone_list_ptr"] = self.find_space_and_write_buffer(
                                     get_loading_zone_list_bytes(room_state["loading_zone_list"]) +
                                     bytearray(b"\x00\x00\x00\x00"))
                             # Otherwise, meaning we modified its vanilla list instead of replacing it outright, check
@@ -775,10 +855,11 @@ class CVHoDisRomPatcher:
                         room_state["loading_zone_list_ptr"] = 0
 
                     # Write the final room state data.
-                    self.write_bytes(~GBA_ROM_START & room_state["start_addr"], get_room_state_bytes(room_state))
+                    self.write_bytes(room_state["start_addr"], get_room_state_bytes(room_state))
 
         # Return the final output ROM.
         return bytes(self.rom)
+
 
 def get_actor_list_bytes(actor_list: list[CVHoDisActorEntry]) -> bytearray:
     """Converts a given actor list into data to be inserted into the ROM."""
@@ -796,6 +877,7 @@ def get_actor_list_bytes(actor_list: list[CVHoDisActorEntry]) -> bytearray:
     # Return the list data with the list end entry for all normal actor lists appended.
     return list_data + b'\xFF\x7F\xFF\x7F\x00\x00\x00\x00\x00\x00\x00\x00'
 
+
 def get_loading_zone_list_bytes(loading_zone_list: list[CVHoDisLoadingZoneEntry]) -> bytearray:
     """Converts a given loading zone list into data to be inserted into the ROM."""
     list_data = bytearray(0)
@@ -812,6 +894,7 @@ def get_loading_zone_list_bytes(loading_zone_list: list[CVHoDisLoadingZoneEntry]
     # NOTE: Loading zone lists don't have a list end entry.
     return list_data
 
+
 def get_room_state_bytes(room_state: CVHoDisRoomState) -> bytearray:
     """Converts a given room state into data to be inserted into the ROM."""
     return bytearray(struct.pack("<H", room_state["display_flags"]) + \
@@ -826,3 +909,16 @@ def get_room_state_bytes(room_state: CVHoDisRoomState) -> bytearray:
                      struct.pack("<B", room_state["background_effect_id"]) + \
                      struct.pack("<B", room_state["palette_shift_id"]) + \
                      struct.pack("<H", room_state["map_coords"]))
+
+
+def get_shop_item_data_bytes(shop_item_info_list: list[CVHoDisShopItemInfo]) -> bytearray:
+    """Converts a given list of shop item info into data to be inserted into the ROM."""
+    list_data = bytearray(0)
+    for entry in shop_item_info_list:
+        list_data += struct.pack("<b", entry["item_type"]) + \
+                     struct.pack("<b", entry["item_index"]) + \
+                     struct.pack("<H", entry["price"])
+
+    # Return the list data.
+    # NOTE: Shop item info lists don't have a list end entry.
+    return list_data
