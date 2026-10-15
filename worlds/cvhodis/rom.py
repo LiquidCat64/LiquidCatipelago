@@ -538,6 +538,13 @@ class CVHoDisPatchExtensions(APPatchExtension):
             patcher.write_byte(current_enemy_addr + 0x12, slot_patch_info["enemy drop data"][i][2])  # Common drop %
             patcher.write_byte(current_enemy_addr + 0x13, slot_patch_info["enemy drop data"][i][3])  # Rare drop %
 
+        # Apply the Luck fix hacks if the player opted for it.
+        if slot_patch_info["options"]["fix_luck"]:
+            patcher.generate_dynamic_asm(patches.luck_fix_rare_drop_asm, patches.luck_fix_rare_drop_ldr,
+                                         hook_addr=0x3144E, hook_register=1)
+            patcher.generate_dynamic_asm(patches.luck_fix_common_drop_asm, patches.luck_fix_common_drop_ldr,
+                                         hook_addr=0x31498, hook_register=1)
+
         # Write the new shop data.
         if slot_patch_info["options"]["shop_shuffle"]:
             patcher.shop_item_data[SHOP_JEWEL_SLOT_COUNT:] = [CVHoDisShopItemInfo(item_type=shop_data[0],
@@ -677,7 +684,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.write_int16(0xDB7A8, 0x4A14)
 
         # Go anywhere
-        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084A6160
+        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x0849A350
         #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
 
         return patcher.get_output_rom()

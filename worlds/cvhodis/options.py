@@ -296,6 +296,12 @@ class Countdown(Choice):
     default = 0
 
 
+class FixLuck(DefaultOnToggle):
+    """Allows the Luck stat to affect the appearance rate of dropped items; in the vanilla game it does not affect drops at all.
+       With the fix applied, each point of luck gives approximately +0.1% to any drop."""
+    display_name = "Fix Luck"
+
+
 class SubWeaponRandomization(Choice):
     """
     Randomizes which sub-weapon candles have which sub-weapons.
@@ -375,6 +381,7 @@ class CVHoDisOptions(PerGameCommonOptions):
     death_warp_requirement: DeathWarpRequirement
     bracelet_warp_requirement: BraceletWarpRequirement
     hint_card_hints: HintCardHints
+    fix_luck: FixLuck
     death_link: DeathLink
     double_sided_warps: DoubleSidedWarps
 
@@ -401,7 +408,7 @@ cvhodis_option_groups = [
         ShuffleEnemyDrops
     ]),
     OptionGroup("Quality of Life", [
-        HintCardHints, DoubleSidedWarps, Countdown
+        HintCardHints, DoubleSidedWarps, Countdown, FixLuck
     ]),
 ]
 

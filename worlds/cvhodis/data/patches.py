@@ -1107,6 +1107,59 @@ countdown_ldr = [
     0x00018794,
 ]
 
+luck_fix_rare_drop_asm = [
+    # Adds the player's Luck stat to the drop rate of a killed enemy's rare item when the game loads the latter.
+    # Each point in the enemy's drop rate translates to roughly 0.1%, so adding the player's Luck as-is lends itself
+    # naturally to replicating how later Castlevanias make Luck affect drops (1 Luck = +0.1%).
+
+    # Add the Luck stat to the drop rate.
+    0x4900,  # ldr  r1, 0x2018558
+    0x8809,  # ldrh r1, [r1]
+    0x1876,  # add  r6, r6, r1
+    # Run the RNG function the game was trying to run where we hooked this and then return, at where the game checks
+    # for the Rare Ring being equipped.
+    0x4A01,  # ldr  r2, 0x8000A78
+    0x467B,  # mov  r3, r15
+    0x3305,  # add  r3, 0x05
+    0x469E,  # mov  r14, r3
+    0x4697,  # mov  r15, r2
+    0x0480,  # lsl  r0, r0, 0x12
+    0x0D84,  # lsr  r4, r0, 0x16
+    0x2079,  # mov  r0, 0x79
+    0x4902,  # ldr  r1, 0x8031458
+    0x468F,  # mov  r15, r1
+]
+luck_fix_rare_drop_ldr = [
+    0x02018558,
+    0x08000A78,
+    0x08031458,
+]
+
+luck_fix_common_drop_asm = [
+    # The same hack as the one above, but for the common drop rate instead.
+
+    # Add the Luck stat to the drop rate.
+    0x4900,  # ldr  r1, 0x2018558
+    0x8809,  # ldrh r1, [r1]
+    0x1876,  # add  r6, r6, r1
+    # Run the RNG function the game was trying to run where we hooked this and then return, at where the game checks
+    # for the Rare Ring being equipped.
+    0x4A01,  # ldr  r2, 0x8000A78
+    0x467B,  # mov  r3, r15
+    0x3305,  # add  r3, 0x05
+    0x469E,  # mov  r14, r3
+    0x4697,  # mov  r15, r2
+    0x0500,  # lsl  r0, r0, 0x14
+    0x0D84,  # lsr  r4, r0, 0x16
+    0x4902,  # ldr  r1, 0x80314A0
+    0x468F,  # mov  r15, r1
+]
+luck_fix_common_drop_ldr = [
+    0x02018558,
+    0x08000A78,
+    0x080314A0,
+]
+
 extra_item_sprites = {
     # The GFX data for any inserted extra item sprites, including the Archipelago Items. Graphics in this game are
     # arranged very differently from how they are in Circle of the Moon, with each VRAM tile row being separated out in
