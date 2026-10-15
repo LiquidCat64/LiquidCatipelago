@@ -12,7 +12,7 @@ import os
 
 from . import ALL_CVHODIS_ITEMS
 from .data import patches, loc_names, item_names
-from .data.enums import ActorTypes, PickupTypes, Areas
+from .data.enums import ActorTypes, PickupTypes, Areas, Enemies
 from .data.misc_names import GAME_NAME
 from .aesthetics import SUB_WEAPON_CANDLES_INFO, SHOP_JEWEL_SLOT_COUNT, SHOP_INVENTORY_COUNTS
 from .entrances import SHUFFLEABLE_TRANSITIONS, VERTICAL_GROUPS, VERTICAL_SHAFT_EXITS, \
@@ -538,6 +538,21 @@ class CVHoDisPatchExtensions(APPatchExtension):
             patcher.write_byte(current_enemy_addr + 0x12, slot_patch_info["enemy drop data"][i][2])  # Common drop %
             patcher.write_byte(current_enemy_addr + 0x13, slot_patch_info["enemy drop data"][i][3])  # Rare drop %
 
+        # If Experience Percent is 501, force the new game initialization check that sets the player's starting level
+        # to 79 if they're Simon in Boss Rush Mode to always pass.
+        if slot_patch_info["options"]["experience_percent"] == 501:
+            patcher.write_int16(0x6B6E0, 0xE018)
+        # Otherwise, change every enemy's base EXP values according to what was put for the Experience Percent option.
+        else:
+            for enemy_index in Enemies:
+                patcher.write_int16(ENEMY_DATA_START + (enemy_index * ENEMY_DATA_LENGTH) + 0x0E, patcher.read_bytes(
+                    ENEMY_DATA_START + (enemy_index * ENEMY_DATA_LENGTH) + 0x0E, 2, "<H") *
+                                    int(min(0xFFFF, (slot_patch_info["options"]["experience_percent"] / 100))))
+            # If Experience Percent is 0 or 200+, add +1 to the minimum 1 EXP per kill for every 100 percentage points the
+            # option has.
+            if not 0 < slot_patch_info["options"]["experience_percent"] < 200:
+                patcher.write_byte(0x31588, slot_patch_info["options"]["experience_percent"] // 100)
+
         # Apply the Luck fix hacks if the player opted for it.
         if slot_patch_info["options"]["fix_luck"]:
             patcher.generate_dynamic_asm(patches.luck_fix_rare_drop_asm, patches.luck_fix_rare_drop_ldr,
@@ -684,7 +699,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.write_int16(0xDB7A8, 0x4A14)
 
         # Go anywhere
-        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x0849A350
+        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x0849A350
         #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
 
         return patcher.get_output_rom()

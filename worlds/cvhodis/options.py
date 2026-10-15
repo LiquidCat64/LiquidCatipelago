@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from Options import OptionGroup, Choice, Range, Toggle, PerGameCommonOptions, StartInventoryPool, DeathLink,\
-    DefaultOnToggle
+    DefaultOnToggle, NamedRange
 from .data.enums import SubWeaponPickups
 
 
@@ -336,6 +336,28 @@ class ShuffleEnemyDrops(Toggle):
     display_name = "Shuffle Enemy Drops"
 
 
+class ExperiencePercent(NamedRange):
+    """What percentage of EXP enemies give you. This is a percent of their original EXP amount.
+    The minimum of 1 EXP when 10 levels above an enemy will also be affected if this is 200 or higher.
+
+    If 0, you will gain no EXP and be on Level 1 for the entire run.
+    If 501, your starting level will be set to Level 79."""
+    display_name = "Experience Percentage"
+    range_start = 0
+    range_end = 501
+    default = 100
+    special_range_names = {
+        "level 1": 0,
+        "quarter": 25,
+        "half": 50,
+        "normal": 100,
+        "double": 200,
+        "quadruple": 400,
+        "quintuple": 500,
+        "level 79": 501,
+    }
+
+
 class ShopShuffle(Choice):
     """Randomizes what items are in the Merchant's shops throughout the game.
     Simple: Changes only the kinds of items sold. Prices will be normal.
@@ -357,6 +379,7 @@ class CVHoDisOptions(PerGameCommonOptions):
     countdown: Countdown
     sub_weapon_randomization: SubWeaponRandomization
     shuffle_enemy_drops: ShuffleEnemyDrops
+    experience_percent: ExperiencePercent
     shop_shuffle: ShopShuffle
     sub_weapons_available: SubWeaponsAvailable
     area_divisions: AreaDivisions
@@ -405,7 +428,7 @@ cvhodis_option_groups = [
         SpellboundBossLogic, CardboundBossLogic, SubWeaponRandomization, SubWeaponsAvailable, EarlyLizard
     ]),
     OptionGroup("Enemy Settings", [
-        ShuffleEnemyDrops
+        ShuffleEnemyDrops, ExperiencePercent
     ]),
     OptionGroup("Quality of Life", [
         HintCardHints, DoubleSidedWarps, Countdown, FixLuck
