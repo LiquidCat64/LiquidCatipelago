@@ -146,6 +146,27 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Allow the corner name textboxes to extend all the way across the screen.
         patcher.write_byte(0x889A, 0x26)
 
+        # Fix the game softlocking when super jumping out of dark rooms at certain elevations.
+        patcher.generate_dynamic_asm(patches.dark_room_softlock_fix_asm,
+                                     patches.dark_room_softlock_fix_ldr,
+                                     hook_addr=0x1A84, hook_register=1)
+        # Fix furniture pickups brightening up dark rooms when picked up.
+        patcher.generate_dynamic_asm(patches.dark_room_furniture_fix_asm,
+                                     patches.dark_room_furniture_fix_ldr,
+                                     hook_addr=0x1A1EC, hook_register=1)
+        # Fix relics, whip attachments, and spellbooks brightening up dark rooms when picked up.
+        patcher.generate_dynamic_asm(patches.dark_room_gray_textbox_open_fix_asm,
+                                     patches.dark_room_gray_textbox_open_fix_ldr,
+                                     hook_addr=0x2B394, hook_register=2)
+        patcher.generate_dynamic_asm(patches.dark_room_gray_textbox_close_fix_asm,
+                                     patches.dark_room_gray_textbox_close_fix_ldr,
+                                     hook_addr=0x2B604, hook_register=4)
+        # Fix the "SKY WALKWAY" area name text brightening up dark rooms when entering the area for the first time
+        # through there.
+        patcher.generate_dynamic_asm(patches.dark_room_area_name_fix_asm,
+                                     patches.dark_room_area_name_fix_ldr,
+                                     hook_addr=0x97CC, hook_register=0)
+
         # Fix the MK's Bracelet check cutscene softlocking you if it gives you something that isn't MK's Bracelet.
         # NOP the calls to the spawn pickup function so that the cutscene spawns nothing.
         # Useless fun fact: you can get two MK Bracelets in the vanilla game by only skipping the cutscene after the
@@ -538,6 +559,11 @@ class CVHoDisPatchExtensions(APPatchExtension):
             patcher.write_byte(current_enemy_addr + 0x12, slot_patch_info["enemy drop data"][i][2])  # Common drop %
             patcher.write_byte(current_enemy_addr + 0x13, slot_patch_info["enemy drop data"][i][3])  # Rare drop %
 
+        # Nerf the JP Bonepillar EXP if it was opted for. Should be done prior to Experience Percent modifications.
+        if slot_patch_info["options"]["nerf_jp_bonepillar_exp"]:
+            patcher.write_int16(ENEMY_DATA_START + (Enemies.JP_BONE_PILLAR * ENEMY_DATA_LENGTH) + 0x0E, 47)
+            patcher.write_int16(ENEMY_DATA_START + (Enemies.MAXIM_MODE_JP_BONE_PILLAR * ENEMY_DATA_LENGTH) + 0x0E, 47)
+
         # If Experience Percent is 501, force the new game initialization check that sets the player's starting level
         # to 79 if they're Simon in Boss Rush Mode to always pass.
         if slot_patch_info["options"]["experience_percent"] == 501:
@@ -548,8 +574,8 @@ class CVHoDisPatchExtensions(APPatchExtension):
                 patcher.write_int16(ENEMY_DATA_START + (enemy_index * ENEMY_DATA_LENGTH) + 0x0E, patcher.read_bytes(
                     ENEMY_DATA_START + (enemy_index * ENEMY_DATA_LENGTH) + 0x0E, 2, "<H") *
                                     int(min(0xFFFF, (slot_patch_info["options"]["experience_percent"] / 100))))
-            # If Experience Percent is 0 or 200+, add +1 to the minimum 1 EXP per kill for every 100 percentage points the
-            # option has.
+            # If Experience Percent is 0 or 200+, add +1 to the minimum 1 EXP per kill for every 100 percentage points
+            # the option has.
             if not 0 < slot_patch_info["options"]["experience_percent"] < 200:
                 patcher.write_byte(0x31588, slot_patch_info["options"]["experience_percent"] // 100)
 
@@ -699,7 +725,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.write_int16(0xDB7A8, 0x4A14)
 
         # Go anywhere
-        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x0849A350
+        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084A7BCC
         #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
 
         return patcher.get_output_rom()

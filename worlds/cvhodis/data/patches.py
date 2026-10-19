@@ -697,10 +697,10 @@ warp_conditions_checker_asm = [
     # If the actor doesn't have a Type ID of 1, it's not a Special Object that cutscene events fall under.
     # Go to the next one.
     0x790A,  # ldrb r2, [r1, 0x04]
-    0x2340,  # mov  r3, 0x40
+    0x23C0,  # mov  r3, 0xC0
     0x401A,  # and  r2, r3
-    0x2A00,  # cmp  r2, 0x00
-    0xD0F5,  # beq  [backward 0x0A]
+    0x2A40,  # cmp  r2, 0x40
+    0xD1F5,  # bne  [backward 0x0A]
     # If it doesn't have a subtype of 0x26, it's not a cutscene event. Go to the next one.
     0x794A,  # ldrb r2, [r1, 0x05]
     0x2326,  # mov  r3, 0x26
@@ -766,10 +766,10 @@ portal_death_room_checker_asm = [
     # If the actor doesn't have a Type ID of 1, it's not a Special Object that cutscene events fall under.
     # Go to the next one.
     0x790A,  # ldrb r2, [r1, 0x04]
-    0x2340,  # mov  r3, 0x40
+    0x23C0,  # mov  r3, 0xC0
     0x401A,  # and  r2, r3
-    0x2A00,  # cmp  r2, 0x00
-    0xD0F5,  # beq  [backward 0x0A]
+    0x2A40,  # cmp  r2, 0x40
+    0xD1F5,  # bne  [backward 0x0A]
     # If it doesn't have a subtype of 0x26, it's not a cutscene event. Go to the next one.
     0x794A,  # ldrb r2, [r1, 0x05]
     0x2326,  # mov  r3, 0x26
@@ -1158,6 +1158,213 @@ luck_fix_common_drop_ldr = [
     0x02018558,
     0x08000A78,
     0x080314A0,
+]
+
+dark_room_softlock_fix_asm = [
+    # Prevents the game from softlocking when the player super jumps out of a dark room from specific elevations.
+    # In the code that determines where to place the spotlight effect on the screen, if the calculated next position is
+    # too high up and thus negative, it can cause problems to happen due to how the game does calculations with this,
+    # including a buffer overflow that overwrites essential player data...so, we need to add a safety check that sets
+    # it to 0 if negative.
+
+    0x0400,  # lsl  r0, r0, 0x10
+    0x0C05,  # lsr  r5, r0, 0x10
+    0x1898,  # add  r0, r3, r2
+    0x3001,  # add  r0, 0x01
+    # If the next Y position number is lower than 0, set it to 0.
+    0x2800,  # cmp  r0, 0x00
+    0xD500,  # bpl  [forward 0x01]
+    0x2000,  # mov  r0, 0x00
+    # Return to the function.
+    0x4900,  # ldr  r1, 0x801BB44
+    0x468F,  # mov  r15, r1
+]
+dark_room_softlock_fix_ldr = [
+    0x08001A8C
+]
+
+dark_room_furniture_fix_asm = [
+    # Prevents the game from brightening up dark rooms when the player picks up a piece of furniture while in them.
+    # The pickup's type ID will be checked and, if it's furniture, overwrite the variable that tells the game to set the
+    # "setup GBA Windows" flag on the pickup prior to its deletion, which sets things up for the center-screen textboxes
+    # normally seen when picking up Relics, Whip attachments, and Spellbooks. The Furniture type ID is among those,
+    # causing it to get lumped into the code that always runs when the type ID is above a certain number...
+    0x1C31,  # add  r1, r6, 0x00
+    0x313E,  # add  r1, 0x3E
+    0x7809,  # ldrb r1, [r1]
+    0x2908,  # cmp  r1, 0x08
+    0xD100,  # bne  [forward 0x01]
+    0x2500,  # mov  r5, r0
+    # Run the function the game was trying to run and return.
+    0x4640,  # mov  r0, r8
+    0x4A01,  # ldr  r2, 0x80BB560
+    0x467B,  # mov  r3, r15
+    0x3305,  # add  r3, 0x05
+    0x469E,  # mov  r14, r3
+    0x4697,  # mov  r15, r2
+    0x8F33,  # ldrh r3, [r6, 0x38]
+    0x4900,  # ldr  r1, 0x801A1F4
+    0x468F,  # mov  r15, r1
+]
+dark_room_furniture_fix_ldr = [
+    0x0801A1F4,
+    0x080BB560
+]
+
+dark_room_gray_textbox_open_fix_asm = [
+    # When the "prepare center-screen gray textbox background" function runs, this will check to see if we're in a dark
+    # room and prepare it a bit differently so the room doesn't get brightened up.
+    0x7008,  # strb r0, [r1]
+    0x3102,  # add  r1, 0x02
+    0x201F,  # mov  r0, 0x1F
+    0x7008,  # strb r0, [r1]
+    # Check the current room's actor list to see if any darkness actors are in it.
+    0x4903,  # ldr  r1, 0x20003B8
+    0x6809,  # ldr  r1, [r1]
+    0xE000,  # b    [forward 0x01]
+    0x310C,  # add  r1, 0x0C
+    0x680A,  # ldr  r2, [r1]
+    # If the current actor we're looking at has both an X and Y pos of 0x7FFF, then we've reached the end of the list
+    # without finding a darkness actor.
+    0x4B04,  # ldr  r3, 0x7FFF7FFF
+    0x429A,  # cmp  r2, r3
+    0xD00A,  # beq  [forward 0x0B]
+    # If the actor doesn't have a Type ID of 1, it's not a Special Object that darkness falls under.
+    # Go to the next one.
+    0x790A,  # ldrb r2, [r1, 0x04]
+    0x23C0,  # mov  r3, 0xC0
+    0x401A,  # and  r2, r3
+    0x2A40,  # cmp  r2, 0x40
+    0xD1F5,  # bne  [backward 0x0A]
+    # If it doesn't have a subtype of 0x07, it's not darkness. Go to the next actor.
+    0x794A,  # ldrb r2, [r1, 0x05]
+    0x2A07,  # cmp  r2, 0x07
+    0xD1F2,  # bne  [backward 0x0D]
+    # If we made it here, we found a darkness actor. At which point, set the LCD window visibility registers in a way
+    # that the darkness effect will still be visible.
+    0x4A01,  # ldr  r2, 0x3002B60
+    0x4B02,  # ldr  r3, 0x3F213F31
+    0x6013,  # str  r3, [r2]
+    # Return to the function like normal.
+    0x4B00,  # ldr  r3, 0x802B39C
+    0x469F,  # mov  r15, r3
+]
+dark_room_gray_textbox_open_fix_ldr = [
+    0x0802B39C,
+    0x03002B60,
+    0x3F213F31,
+    0x020003B8,
+    0x7FFF7FFF,
+]
+
+dark_room_gray_textbox_close_fix_asm = [
+    # When the "clear center gray textbox" function runs, this will check to see if we're in a dark room and set things
+    # a bit differently so the room doesn't get brightened up.
+    0x801D,  # strh r5, [r3]
+    0x3242,  # add  r2, 0x42
+    0x233F,  # mov  r3, 0x3F
+    0x7013,  # strb r3, [r2]
+    0xB403,  # push r0, r1
+    # Check the current room's actor list to see if any darkness actors are in it.
+    0x4903,  # ldr  r1, 0x20003B8
+    0x6809,  # ldr  r1, [r1]
+    0xE000,  # b    [forward 0x01]
+    0x310C,  # add  r1, 0x0C
+    0x680A,  # ldr  r2, [r1]
+    # If the current actor we're looking at has both an X and Y pos of 0x7FFF, then we've reached the end of the list
+    # without finding a darkness actor.
+    0x4B04,  # ldr  r3, 0x7FFF7FFF
+    0x429A,  # cmp  r2, r3
+    0xD014,  # beq  [forward 0x15]
+    # If the actor doesn't have a Type ID of 1, it's not a Special Object that darkness falls under.
+    # Go to the next one.
+    0x790A,  # ldrb r2, [r1, 0x04]
+    0x23C0,  # mov  r3, 0xC0
+    0x401A,  # and  r2, r3
+    0x2A40,  # cmp  r2, 0x40
+    0xD1F5,  # bne  [backward 0x0A]
+    # If it doesn't have a subtype of 0x07, it's not darkness. Go to the next actor.
+    0x794A,  # ldrb r2, [r1, 0x05]
+    0x2A07,  # cmp  r2, 0x07
+    0xD1F2,  # bne  [backward 0x0D]
+    # If we made it here, we found a darkness actor. At which point, set the LCD window visibility registers in a way
+    # that the darkness effect will still be visible, and set the Window 1 Y size, color, and opacity registers to get
+    # rid of the window on the screen properly.
+    0x4A01,  # ldr  r2, 0x3002B60
+    0x4B02,  # ldr  r3, 0x3F213F31
+    0x6013,  # str  r3, [r2]
+    0x3A08,  # sub  r2, 0x08
+    0x4B05,  # ldr  r3, 0x30F
+    0x8013,  # strh r3, [r2]
+    0x3210,  # add  r2, 0x10
+    0x4B06,  # ldr  r3, 0x3FFF
+    0x8013,  # strh r3, [r2]
+    0x3208,  # add  r2, 0x08
+    0x23FF,  # mov  r3, 0xFF
+    0x021B,  # lsl  r3, 0x08
+    0x8013,  # strh r3, [r2]
+    # Return to the function like normal.
+    0xBC03,  # pop  r0, r1
+    0x4B00,  # ldr  r3, 0x802B60C
+    0x469F,  # mov  r15, r3
+]
+dark_room_gray_textbox_close_fix_ldr = [
+    0x0802B60C,
+    0x03002B60,
+    0x3F213F31,
+    0x020003B8,
+    0x7FFF7FFF,
+    0x0000030F,
+    0x00003FFF,
+]
+
+dark_room_area_name_fix_asm = [
+    # When the "display area name" function runs, this will check to see if we're in a dark room and prepare it a bit
+    # differently so the room doesn't get brightened up.
+
+    # Check the current room's actor list to see if any darkness actors are in it.
+    0x4903,  # ldr  r1, 0x20003B8
+    0x6809,  # ldr  r1, [r1]
+    0xE000,  # b    [forward 0x01]
+    0x310C,  # add  r1, 0x0C
+    0x680A,  # ldr  r2, [r1]
+    # If the current actor we're looking at has both an X and Y pos of 0x7FFF, then we've reached the end of the list
+    # without finding a darkness actor.
+    0x4B04,  # ldr  r3, 0x7FFF7FFF
+    0x429A,  # cmp  r2, r3
+    0xD00A,  # beq  [forward 0x0B]
+    # If the actor doesn't have a Type ID of 1, it's not a Special Object that darkness falls under.
+    # Go to the next one.
+    0x790A,  # ldrb r2, [r1, 0x04]
+    0x23C0,  # mov  r3, 0xC0
+    0x401A,  # and  r2, r3
+    0x2A40,  # cmp  r2, 0x40
+    0xD1F5,  # bne  [backward 0x0A]
+    # If it doesn't have a subtype of 0x07, it's not darkness. Go to the next actor.
+    0x794A,  # ldrb r2, [r1, 0x05]
+    0x2A07,  # cmp  r2, 0x07
+    0xD1F2,  # bne  [backward 0x0D]
+    # If we made it here, we found a darkness actor. At which point, set the LCD window visibility registers in a way
+    # that the darkness effect will still be visible.
+    0x4A01,  # ldr  r2, 0x3002B60
+    0x4B02,  # ldr  r3, 0x3F213F31
+    0x6013,  # str  r3, [r2]
+    # Return to the function like normal.
+    0x4805,  # ldr  r0, 0x8494580
+    0x6800,  # ldr  r0, [r0]
+    0x4906,  # ldr  r1, 0x7C18
+    0x1840,  # add  r0, r0, r1
+    0x4B00,  # ldr  r3, 0x80097D4
+    0x469F,  # mov  r15, r3
+]
+dark_room_area_name_fix_ldr = [
+    0x080097D4,
+    0x03002B60,
+    0x3F213F31,
+    0x020003B8,
+    0x7FFF7FFF,
+    0x08494580,
+    0x00007C18,
 ]
 
 extra_item_sprites = {

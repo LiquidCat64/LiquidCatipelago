@@ -358,6 +358,11 @@ class ExperiencePercent(NamedRange):
     }
 
 
+class NerfJPBonepillarEXP(Toggle):
+    """Reduces the base EXP value of Jp Bonepillars from 441 per kill to 47, the same as a Scarecrow, to discourage farming them for levels."""
+    display_name = "Nerf JP Bonepillar Experience"
+
+
 class ShopShuffle(Choice):
     """Randomizes what items are in the Merchant's shops throughout the game.
     Simple: Changes only the kinds of items sold. Prices will be normal.
@@ -380,6 +385,7 @@ class CVHoDisOptions(PerGameCommonOptions):
     sub_weapon_randomization: SubWeaponRandomization
     shuffle_enemy_drops: ShuffleEnemyDrops
     experience_percent: ExperiencePercent
+    nerf_jp_bonepillar_exp: NerfJPBonepillarEXP
     shop_shuffle: ShopShuffle
     sub_weapons_available: SubWeaponsAvailable
     area_divisions: AreaDivisions
@@ -428,7 +434,7 @@ cvhodis_option_groups = [
         SpellboundBossLogic, CardboundBossLogic, SubWeaponRandomization, SubWeaponsAvailable, EarlyLizard
     ]),
     OptionGroup("Enemy Settings", [
-        ShuffleEnemyDrops, ExperiencePercent
+        ShuffleEnemyDrops, ExperiencePercent, NerfJPBonepillarEXP
     ]),
     OptionGroup("Quality of Life", [
         HintCardHints, DoubleSidedWarps, Countdown, FixLuck
