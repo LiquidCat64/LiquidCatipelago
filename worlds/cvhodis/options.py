@@ -363,6 +363,11 @@ class NerfJPBonepillarEXP(Toggle):
     display_name = "Nerf JP Bonepillar Experience"
 
 
+class LuminousElevatorSpeedup(DefaultOnToggle):
+    """Increases the speed of the elevator in Luminous Cavern B after Golem and prevents needing to wait for it if the top is reached early."""
+    display_name = "Luminous Elevator Speedup"
+
+
 class ShopShuffle(Choice):
     """Randomizes what items are in the Merchant's shops throughout the game.
     Simple: Changes only the kinds of items sold. Prices will be normal.
@@ -411,6 +416,7 @@ class CVHoDisOptions(PerGameCommonOptions):
     bracelet_warp_requirement: BraceletWarpRequirement
     hint_card_hints: HintCardHints
     fix_luck: FixLuck
+    luminous_elevator_speedup: LuminousElevatorSpeedup
     death_link: DeathLink
     double_sided_warps: DoubleSidedWarps
 
@@ -437,7 +443,7 @@ cvhodis_option_groups = [
         ShuffleEnemyDrops, ExperiencePercent, NerfJPBonepillarEXP
     ]),
     OptionGroup("Quality of Life", [
-        HintCardHints, DoubleSidedWarps, Countdown, FixLuck
+        HintCardHints, DoubleSidedWarps, Countdown, FixLuck, LuminousElevatorSpeedup
     ]),
 ]
 

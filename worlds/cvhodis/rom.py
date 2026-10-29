@@ -586,6 +586,32 @@ class CVHoDisPatchExtensions(APPatchExtension):
             patcher.generate_dynamic_asm(patches.luck_fix_common_drop_asm, patches.luck_fix_common_drop_ldr,
                                          hook_addr=0x31498, hook_register=1)
 
+        # Speed up the Luminous Cavern B elevator if it was opted for
+        if slot_patch_info["options"]["luminous_elevator_speedup"]:
+            patcher.write_int32(0x1E548, 0xFFFF0000)
+            # Disable the screen lock when the player reaches the top regardless of where the elevator is by checking
+            # to see if the screen Y position is higher than 0x4200, instead of if the elevator reached that height.
+            patcher.write_int16s(0x1E710, [0x2142,   # mov  r1, 0x42
+                                           0x0409,   # lsl  r1, r1, 0x10
+                                           0x0000,
+                                           0x0000,
+                                           0x0000,
+                                           0x0000])
+        # Add platforms to the elevator room's alternate state so it can be climbed without double jump or higher.
+        # This change is applied regardless of whether the elevator speedup was opted for or not.
+        patcher.write_int16s(0x1772BA, [0x0036, 0x0036])
+        patcher.write_int16s(0x1772DA, [0x0063, 0x0063])
+        patcher.write_int16s(0x1772FA, [0x0036, 0x0036])
+        patcher.write_int16s(0x17733A, [0x007E, 0x004C])
+        patcher.write_int16s(0x17737A, [0x0063, 0x0063])
+        patcher.write_int16s(0x17739A, [0x0036, 0x0036])
+        patcher.write_int16s(0x1773DA, [0x007E, 0x004C])
+        patcher.write_int16s(0x17743A, [0x007E, 0x004C])
+        patcher.write_int16s(0x17749A, [0x0036, 0x0036])
+        patcher.write_int16(0x1774DC, 0x004C)
+        patcher.write_int16s(0x17753A, [0x0036, 0x0036])
+        patcher.write_int16s(0x17757A, [0x007E, 0x004C])
+
         # Write the new shop data.
         if slot_patch_info["options"]["shop_shuffle"]:
             patcher.shop_item_data[SHOP_JEWEL_SLOT_COUNT:] = [CVHoDisShopItemInfo(item_type=shop_data[0],
@@ -725,8 +751,9 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.write_int16(0xDB7A8, 0x4A14)
 
         # Go anywhere
-        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084A7BCC
-        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
+        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084A4AF8
+        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
+        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["camera_y_pos"] = 0x330
 
         return patcher.get_output_rom()
 
