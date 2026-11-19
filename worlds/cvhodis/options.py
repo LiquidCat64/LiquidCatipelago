@@ -71,7 +71,7 @@ class GateItems(Choice):
     Defines how the 3 one-way switch gates act.
     Normal: Normal behavior. Gates can only be opened by pressing the respective button.
     Add Keys: The same as normal behavior, but also adds keys to the item pool that can open the gate from the other side.
-    Buttonsanity: Adds keys to each gate, and the corresponding button will grant a check.
+    Buttonsanity: Adds keys to each gate, and the corresponding button will grant a check. Adds 3 locations.
 
     The following keys correspond to the following gates:
     Living Armor Key -> Shrine A post-Living Armor gate
@@ -83,6 +83,22 @@ class GateItems(Choice):
     option_buttonsanity = 2
     default = 0
     display_name = "Gate Items"
+
+
+class PermanentSubWeapons(Choice):
+    """
+    Adds a Perma version of each sub-weapon to the item pool. Each weapon instance, when found, will allow switching to that weapon at will.
+    To compensate, all regular sub-weapon pickups will be removed from the game; no candle or enemy will drop them.
+    Hold B and use the L and R buttons to switch between unlocked weapons while dangling the whip.
+
+    Add: Adds the Perma weapons to the item pool. All candles that would drop sub-weapons will only drop big hearts instead.
+    Subweaponsanity: In addition to adding the Perma weapons, all sub-weapon candles will be additional location checks. Adds 100 locations.
+    """
+    option_off = 0
+    option_add = 1
+    option_subweaponsanity = 2
+    default = 0
+    display_name = "Permanent Sub-weapons"
 
 
 class AddFloatingBoots(Toggle):
@@ -115,11 +131,24 @@ class StartWithLureKey(Toggle):
     display_name = "Start With Lure Key"
 
 
-class RemoveFurniture(Toggle):
+class FurnitureAvailable(Range):
     """
-    Removes all furniture from the pool and replaces them with other random filler. Will be ignored if placing more than 0 furniture is a required goal condition.
+    How many pieces of furniture are in the pool. Will auto-adjust if more furniture is required to send the goal than there is in total.
     """
-    display_name = "Remove Furniture"
+    range_start = 0
+    range_end = 31
+    default = 31
+    display_name = "Furniture Available"
+
+
+class SpellBooksAvailable(Range):
+    """
+    How many spell books are in the pool.
+    """
+    range_start = 0
+    range_end = 5
+    default = 5
+    display_name = "Spell Books Available"
 
 
 class EarlyLizard(Toggle):
@@ -131,26 +160,16 @@ class EarlyLizard(Toggle):
 
 class SpellboundBossLogic(Choice):
     """
-    Makes certain bosses that are considered "medium" or "hard" in difficulty logically expect spell books to get past. See the Game Page for information on which bosses are considered what difficulty.
+    Makes certain bosses that are considered "medium" or "hard" in difficulty logically expect spell books and, if added, Perma sub-weapons to get past.
+    See the Game Page for information on which bosses are considered what difficulty.
+
     None: No boss expects any number of spell books.
-    Normal: Medium bosses expect 1 spell book and hard bosses expect 2 spell books.
-    Easy: Medium bosses expect 2 spell books and hard bosses expect 3 spell books.
+    Normal: Medium bosses expect 1 spell book and 1 sub-weapon, and hard bosses expect 2 spell books and 2 sub-weapons.
+    Easy: Medium bosses expect 2 spell books and 2 sub-weapons, and hard bosses expect 3 spell books and 3 sub-weapons.
+
+    If not enough spell books and/or sub-weapons are available to logically fight hard bosses on the chosen setting, this will scale down automatically.
     """
     display_name = "Spellbound Boss Logic"
-    option_none = 0
-    option_normal = 1
-    option_easy = 2
-    default = 1
-
-
-class CardboundBossLogic(Choice):
-    """
-    Makes certain bosses that are considered "medium" or "hard" in difficulty logically expect Hint Cards to get past. See the Game Page for information on which bosses are considered what difficulty.
-    None: No boss expects any number of spell books.
-    Normal: Medium bosses expect 1 Hint Card and hard bosses expect 2 Hint Cards.
-    Easy: Medium bosses expect 2 Hint Cards and hard bosses expect 3 Hint Cards.
-    """
-    display_name = "Cardbound Boss Logic"
     option_none = 0
     option_normal = 1
     option_easy = 2
@@ -306,6 +325,8 @@ class SubWeaponRandomization(Choice):
     """
     Randomizes which sub-weapon candles have which sub-weapons.
     Shuffle keeps the total counts of each weapon roughly equal, mystery does not.
+
+    If Permanent Sub-weapons are on, this will affect how many Perma Weapons are added to the pool.
     """
     display_name = "Sub-weapon Randomization"
     option_none = 0
@@ -316,6 +337,8 @@ class SubWeaponRandomization(Choice):
 class SubWeaponsAvailable(Range):
     """
     How many Sub-weapon types are available throughout the game. Removed sub-weapons will be replaced with an equal count of others when Sub-weapon Randomization is Shuffle.
+
+    If Permanent Sub-weapons are on, this will control how many are available.
     """
     range_start = 1
     range_end = len(SubWeaponPickups)
@@ -364,7 +387,7 @@ class NerfJPBonepillarEXP(Toggle):
 
 
 class LuminousElevatorSpeedup(DefaultOnToggle):
-    """Increases the speed of the elevator in Luminous Cavern B after Golem and prevents needing to wait for it if the top is reached early."""
+    """Increases the speed at which the elevator after Golem in Luminous Cavern B rises and prevents needing to wait for it if you reach the top first."""
     display_name = "Luminous Elevator Speedup"
 
 
@@ -402,15 +425,16 @@ class CVHoDisOptions(PerGameCommonOptions):
     filler_pool: FillerPool
     progressive_heights: ProgressiveHeights
     gate_items: GateItems
+    permanent_sub_weapons: PermanentSubWeapons
     add_jbs_bracelet: AddJBsBracelet
     add_floating_boots: AddFloatingBoots
     add_infinite_boots: AddInfiniteBoots
     add_noon_star: AddNoonStar
-    remove_furniture: RemoveFurniture
+    furniture_available: FurnitureAvailable
+    spell_books_available: SpellBooksAvailable
     start_with_lure_key: StartWithLureKey
     early_lizard: EarlyLizard
     spellbound_boss_logic: SpellboundBossLogic
-    cardbound_boss_logic: CardboundBossLogic
     card_amount_warp_requirement: CardAmountWarpRequirement
     death_warp_requirement: DeathWarpRequirement
     bracelet_warp_requirement: BraceletWarpRequirement
@@ -433,11 +457,12 @@ cvhodis_option_groups = [
         CardAmountWarpRequirement, DeathWarpRequirement, BraceletWarpRequirement
     ]),
     OptionGroup("Item Options", [
-        FillerPool, ProgressiveHeights, GateItems, AddJBsBracelet, AddFloatingBoots, AddInfiniteBoots, AddNoonStar,
-        RemoveFurniture, StartWithLureKey, ShopShuffle
+        FillerPool, ProgressiveHeights, GateItems, PermanentSubWeapons, AddJBsBracelet, AddFloatingBoots,
+        AddInfiniteBoots, AddNoonStar, SpellBooksAvailable, FurnitureAvailable, StartWithLureKey, ShopShuffle,
+        SubWeaponRandomization, SubWeaponsAvailable
     ]),
     OptionGroup("World Options", [
-        SpellboundBossLogic, CardboundBossLogic, SubWeaponRandomization, SubWeaponsAvailable, EarlyLizard
+        SpellboundBossLogic, EarlyLizard
     ]),
     OptionGroup("Enemy Settings", [
         ShuffleEnemyDrops, ExperiencePercent, NerfJPBonepillarEXP

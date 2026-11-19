@@ -337,9 +337,17 @@ RELICS: dict[str, CVHoDisItemData] = {
                                               ItemClassification.useful),
     item_names.relic_v_ring:  CVHoDisItemData(0x0B, 0x55, 0x02, 0, ItemClassification.progression_skip_balancing |
                                               ItemClassification.useful),
-    # Rando exclusive
+}
+RELICS_EXTENDED: dict[str, CVHoDisItemData] = {
+    **RELICS,
     item_names.relic_height:  CVHoDisItemData(0x0C, 0xE7, 0x01, 0, ItemClassification.progression |
                                               ItemClassification.useful),
+    item_names.perma_bible:   CVHoDisItemData(0x0D, 0x01, 0x01, 0, ItemClassification.useful),
+    item_names.perma_cross:   CVHoDisItemData(0x0E, 0x02, 0x01, 0, ItemClassification.useful),
+    item_names.perma_axe:     CVHoDisItemData(0x0F, 0x03, 0x01, 0, ItemClassification.useful),
+    item_names.perma_water:   CVHoDisItemData(0x10, 0x04, 0x01, 0, ItemClassification.useful),
+    item_names.perma_fist:    CVHoDisItemData(0x11, 0x05, 0x01, 0, ItemClassification.useful),
+    item_names.perma_knife:   CVHoDisItemData(0x12, 0x06, 0x01, 0, ItemClassification.useful),
 }
 
 FURNITURE: dict[str, CVHoDisItemData] = {
@@ -405,7 +413,9 @@ FURNITURE: dict[str, CVHoDisItemData] = {
                                                ItemClassification.progression_deprioritized_skip_balancing),
     item_names.furn_closet:    CVHoDisItemData(0x1E, 0x76, 0x02, 0,
                                                ItemClassification.progression_deprioritized_skip_balancing),
-    # Rando exclusive
+}
+FURNITURE_EXTENDED: dict[str, CVHoDisItemData] = {
+    **FURNITURE,
     item_names.misc_key_la:    CVHoDisItemData(0x1F, 0xE4, 0x02, 0, ItemClassification.progression),
     item_names.misc_key_c:     CVHoDisItemData(0x20, 0xE5, 0x02, 0, ItemClassification.progression),
     item_names.misc_key_t:     CVHoDisItemData(0x21, 0xE6, 0x02, 0, ItemClassification.progression),
@@ -417,13 +427,15 @@ MAX_UPS: dict[str, CVHoDisItemData] = {
 }
 
 PICKUP_TYPE_MAPPINGS = {
-    PickupTypes.MONEY:  MONEY,
+    # PickupTypes.HEART: HEARTS,
+    PickupTypes.MONEY: MONEY,
+    # PickupTypes.SUB_WEAPON: SUB_WEAPONS,
     PickupTypes.USE_ITEM: USE_ITEMS,
     PickupTypes.WHIP_ATTACHMENT: WHIP_ATTACHMENTS,
     PickupTypes.EQUIPMENT: EQUIPMENT,
     PickupTypes.SPELLBOOK: SPELLBOOKS,
-    PickupTypes.RELIC: RELICS,
-    PickupTypes.FURNITURE: FURNITURE,
+    PickupTypes.RELIC: RELICS_EXTENDED,
+    PickupTypes.FURNITURE: FURNITURE_EXTENDED,
     PickupTypes.MAX_UP: MAX_UPS
 }
 
@@ -435,13 +447,19 @@ VLADS = frozenset({item_names.relic_v_eye, item_names.relic_v_rib, item_names.re
 
 HEIGHTS = frozenset({item_names.relic_feather, item_names.relic_wing})
 
+PERMA_WEAPONS = [item_names.perma_bible, item_names.perma_cross, item_names.perma_axe, item_names.perma_water,
+                 item_names.perma_fist, item_names.perma_knife]
+
 HINT_CARDS = frozenset({item_names.use_hint_1, item_names.use_hint_2, item_names.use_hint_3, item_names.use_hint_4,
                         item_names.use_hint_5, item_names.use_hint_6})
 
 # All Gate Keys mapped to the event flags corresponding to them.
-GATE_KEYS = {item_names.misc_key_la: EventFlags.PRESSED_SHRINE_A_BUTTON,
-             item_names.misc_key_c: EventFlags.PRESSED_CLOCK_A_BUTTON,
-             item_names.misc_key_t: EventFlags.PRESSED_TOP_A_BUTTON}
+GATE_KEYS: dict[str, EventFlags] = {item_names.misc_key_la: EventFlags.PRESSED_SHRINE_A_BUTTON,
+                                    item_names.misc_key_c: EventFlags.PRESSED_CLOCK_A_BUTTON,
+                                    item_names.misc_key_t: EventFlags.PRESSED_TOP_A_BUTTON}
+
+# The index of a sub-weapon's "equipped" ID in this list is the pickup ID for that sub-weapon.
+SUB_WEAPON_EQUIP_IDS: list[int] = [5, 3, 2, 4, 6, 1]
 
 CVHODIS_FILLER_CATEGORIES: dict[str, CVHoDisFillerCategoryData] = {
     FillerTypes.ACCESSORY:       CVHoDisFillerCategoryData(18, [name for name, data in ALL_CVHODIS_ITEMS.items()
@@ -469,7 +487,6 @@ def get_pickup_type(item_name: str) -> int | None:
     for pickup_type in PICKUP_TYPE_MAPPINGS:
         if item_name in PICKUP_TYPE_MAPPINGS[pickup_type]:
             return pickup_type
-    return None
 
 
 def get_item_names_to_ids() -> dict[str, int]:
@@ -564,13 +581,15 @@ def get_item_pool(world: "CVHoDisWorld") -> list[CVHoDisItem]:
         if loc.address is None:
             continue
 
-        # Get the vanilla Item name defined for the Location. If it's an Item with a filler type and Item Pool Fill is
-        # Mystery, or if it's a piece of Furniture when Remove Furniture is enabled, draw a random filler for the
-        # Location instead. Otherwise, we'll add the vanilla Item as-is.
+        # Get the vanilla Item name defined for the Location. If it's a sub-weapon, or if it's an Item with a filler
+        # type and Item Pool Fill is Mystery, or if it's spell book or piece of Furniture that is not included, draw a
+        # random filler for the Location instead. Otherwise, we'll add the vanilla Item as-is.
         item_name = CVHODIS_LOCATIONS_INFO[loc.name].item
-        if (ALL_CVHODIS_ITEMS[item_name].filler_type and world.options.filler_pool == FillerPool.option_mystery) or \
-                item_name in FURNITURE and ALL_CVHODIS_ITEMS[item_name].pickup_index < 0x1F and \
-                world.options.remove_furniture:
+        if item_name in SUB_WEAPONS:
+            item_name = world.get_filler_item_name()
+        elif (ALL_CVHODIS_ITEMS[item_name].filler_type and world.options.filler_pool == FillerPool.option_mystery) or \
+                (item_name in FURNITURE and item_name not in world.included_furniture) or \
+                (item_name in SPELLBOOKS and item_name not in world.included_books):
             item_name = world.get_filler_item_name()
         # If the Item is the Lure Key, and we are opting to start with it, push it precollected and draw a random
         # filler Item instead.
@@ -592,8 +611,7 @@ def get_item_pool(world: "CVHoDisWorld") -> list[CVHoDisItem]:
 
         # If the Item is a piece of furniture and no furniture amount is required for goal completion at all, submit
         # it as Filler instead of Progression Skip Balancing. Be wary of the gate keys!
-        if (item_name in FURNITURE and ALL_CVHODIS_ITEMS[item_name].pickup_index < 0x1F) and \
-                not world.furniture_amount_required:
+        if item_name in FURNITURE and not world.options.furniture_amount_required:
             item_class = ItemClassification.filler
         # If the Item is a spell book, and Spellbound Boss Logic is not disabled, submit it as Progression + Useful
         # instead of just Useful.
@@ -601,11 +619,11 @@ def get_item_pool(world: "CVHoDisWorld") -> list[CVHoDisItem]:
             item_class = ItemClassification.useful | ItemClassification.progression
         # If the Item is a Hint Card, check some additional things to get its actual classification.
         elif item_name in HINT_CARDS:
-            # If Cardbound Boss Logic and/or Card Amount Warp Requirement are on, classify it as Progression.
-            if world.options.cardbound_boss_logic or world.options.card_amount_warp_requirement:
+            # If the Card Amount Warp Requirement is on, classify it as Progression.
+            if world.options.card_amount_warp_requirement:
                 item_class = ItemClassification.progression
-            # Otherwise, meaning they were both off, check if Hint Card Hints are on. If they aren't, then classify it
-            # as Filler. Otherwise, leave it as Useful.
+            # Otherwise, meaning it was off, check if Hint Card Hints are on. If they aren't, then classify it as
+            # Filler. Otherwise, leave it as Useful.
             elif not world.options.hint_card_hints:
                 item_class = ItemClassification.filler
         # If the Item is a Vlad Relic and neither the Worst nor Best Ending is required, submit it as just Useful
@@ -624,7 +642,7 @@ def get_item_pool(world: "CVHoDisWorld") -> list[CVHoDisItem]:
         # If the Item's classification is Progression, or it's a Spellbook, Whip Tip, Furniture, Max Up, or Relic, add
         # it to the Non-Filler list. These Items should NEVER be replaced.
         if item_to_add.advancement or item_name in SPELLBOOKS or item_name in WHIP_ATTACHMENTS or \
-                item_name in FURNITURE or item_name in MAX_UPS or item_name in RELICS:
+                item_name in FURNITURE_EXTENDED or item_name in MAX_UPS or item_name in RELICS_EXTENDED:
             non_filler.append(item_to_add)
         # Otherwise, add it to one of the three Filler lists. If it's Good Armor or a Useful Accessory, put it in
         # Tier 3. These are most desired and as such shouldn't be replaced until there's nothing else to replace.
@@ -645,9 +663,18 @@ def get_item_pool(world: "CVHoDisWorld") -> list[CVHoDisItem]:
     # If Gate Keys is Add Keys (NOT full Buttonsanity, which causes the keys to be added with their unfilled Locations),
     # add a set of gate keys to be in the pool separate from the locked ones we placed on the button Locations.
     if world.options.gate_items == GateItems.option_add_keys:
-        replace_filler([world.create_item(item_names.misc_key_la),
-                        world.create_item(item_names.misc_key_c),
-                        world.create_item(item_names.misc_key_t)])
+        replace_filler([world.create_item(gate_key) for gate_key in GATE_KEYS])
+
+    # If we are opting for the Perma Weapons, add them.
+    if world.options.permanent_sub_weapons:
+        perma_weapon_classification = ItemClassification.useful
+        # If Spellbound Boss Logic is enabled, classify them as Prog + Useful instead of just Useful so boss logic will
+        # properly account for them.
+        if world.options.spellbound_boss_logic:
+            perma_weapon_classification = ItemClassification.progression | ItemClassification.useful
+        # Add only the included Perma Weapons.
+        replace_filler([world.create_item(perma_weapon, force_classification=perma_weapon_classification) for
+                        perma_weapon in PERMA_WEAPONS if perma_weapon in world.included_perma_weapons])
 
     # If Add Floating Boots is on, add them.
     if world.options.add_floating_boots:

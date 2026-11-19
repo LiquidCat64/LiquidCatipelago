@@ -10,11 +10,11 @@ from entrance_rando import disconnect_entrance_for_randomization, randomize_entr
 from .aesthetics import get_sub_weapon_placements, get_location_write_values, get_countdown_flags, \
     get_start_inventory_data, get_hint_card_hints, get_location_text, get_enemy_drop_data, get_shop_data
 from .items import CVHoDisItem, ALL_CVHODIS_ITEMS, FURNITURE, get_item_names_to_ids, get_item_pool, get_pickup_type, \
-    draw_random_filler, CVHODIS_FILLER_CATEGORIES, FillerTypes
+    draw_random_filler, CVHODIS_FILLER_CATEGORIES, FillerTypes, VLADS, SPELLBOOKS, PERMA_WEAPONS
 from .locations import CVHoDisLocation, get_location_names_to_ids, get_locations_to_create, \
     get_location_name_groups
 from .options import cvhodis_option_groups, CVHoDisOptions, TransitionShuffler, CastleSwapper, AreaDivisions, \
-    FillerPool, cvhodis_map_presets
+    FillerPool, cvhodis_map_presets, SpellboundBossLogic
 from .regions import get_all_region_names, CVHoDisRegion, ALL_CVHODIS_REGIONS
 from .entrances import SHUFFLEABLE_TRANSITIONS, ERGroups, TARGET_GROUP_RELATIONSHIPS, cvhodis_on_connect, \
     SORTED_TRANSITIONS, SKULL_DOOR_GROUPS, MK_DOOR_GROUPS, CVHoDisEntrance, invert_castle_transitions, \
@@ -66,9 +66,8 @@ class CVHoDisWorld(World):
     game = GAME_NAME
     topology_present = True
     item_name_groups = {
-        "Furniture": {name for name in FURNITURE if ALL_CVHODIS_ITEMS[name].pickup_index < 0x1F},
-        "Vlad": {item_names.relic_v_nail, item_names.relic_v_eye, item_names.relic_v_fang, item_names.relic_v_heart,
-                 item_names.relic_v_rib, item_names.relic_v_ring},
+        "Furniture": {name for name in FURNITURE},
+        "Vlad": VLADS,
     }
     location_name_groups = get_location_name_groups()
     options_dataclass = CVHoDisOptions
@@ -84,10 +83,9 @@ class CVHoDisWorld(World):
     inverted_groups: dict[str, bool]
     inverted_transitions: dict[str, bool]
     chosen_one_time_filler: list[str]
-
-    # Default values to possibly be updated in generate_early
-    furniture_amount_required: int = 0
-    # map_percentage_required: int = 0
+    included_furniture: list[str]
+    included_books: list[str]
+    included_perma_weapons: list[str]
 
     auth: bytearray
 
@@ -115,15 +113,83 @@ class CVHoDisWorld(World):
         # Generate the player's unique authentication
         self.auth = bytearray(self.random.getrandbits(8) for _ in range(16))
 
-        self.furniture_amount_required = self.options.furniture_amount_required.value
-        # If Remove Furniture is on when we require more than 0 furniture, force the former to be off.
-        if self.furniture_amount_required and self.options.remove_furniture:
-            self.options.remove_furniture.value = False
-            logging.warning(f"{self.player_name} requires more than 0 furniture to goal. The Remove Furniture option "
-                            "cannot be enabled.")
+        # If we have more furniture required than we are opting to have, increase the available furniture up to the
+        # required amount of furniture.
+        if self.options.furniture_amount_required.value > self.options.furniture_available.value:
+            logging.warning(f"{self.player_name} requires more furniture to goal "
+                            f"({self.options.furniture_amount_required.value}) than the amount available "
+                            f"({self.options.furniture_available.value}). "
+                            "The amount available will be increased to the amount required.")
+            self.options.furniture_available.value = self.options.furniture_amount_required.value
+
+        # Figure out which spell books, pieces of furniture, and Perma weapons we plan to create based on their
+        # respective "available" options. Start by getting said Items out of the player's start_inventory_from_pool
+        # that we know we want to add.
+        self.included_furniture = []
+        self.included_books = []
+        self.included_perma_weapons = []
+        for item in self.options.start_inventory_from_pool.value:
+            if item in FURNITURE:
+                self.included_furniture.append(item)
+            elif item in SPELLBOOKS:
+                self.included_books.append(item)
+            elif item in PERMA_WEAPONS:
+                self.included_perma_weapons.append(item)
+
+        # If any of the starting lists' lengths are greater than the Available options chosen for the lists' Items,
+        # increase the options' values up to the number of those Items SIFP is starting us with.
+        if len(self.included_furniture) > self.options.furniture_available.value:
+            logging.warning(f"{self.player_name} has too many furniture pieces in Start Inventory From Pool "
+                            f"({len(self.included_furniture)}) to satisfy the Furniture Available option "
+                            f"({self.options.furniture_available.value}). Furniture Available will be raised to "
+                            f"the amount they are starting with from the pool.")
+            self.options.furniture_available.value = len(self.included_furniture)
+        if len(self.included_books) > self.options.spell_books_available.value:
+            logging.warning(f"{self.player_name} has too many spell books in Start Inventory From Pool "
+                            f"({len(self.included_books)}) to satisfy the Spell Books Available option "
+                            f"({self.options.spell_books_available.value}). Spell Books Available will be raised to "
+                            f"the amount they are starting with from the pool.")
+            self.options.spell_books_available.value = len(self.included_books)
+        if len(self.included_perma_weapons) > self.options.sub_weapons_available.value:
+            logging.warning(f"{self.player_name} has too many perma weapons in Start Inventory From Pool "
+                            f"({len(self.included_perma_weapons)}) to satisfy the Sub-weapons Available option "
+                            f"({self.options.sub_weapons_available.value}). Sub-weapons Available will be raised to "
+                            f"the amount they are starting with from the pool.")
+            self.options.sub_weapons_available.value = len(self.included_perma_weapons)
+
+        # Fill out the included lists with other Items at random that we did not opt to start with from the pool.
+        self.included_furniture += self.random.sample([furn_name for furn_name in FURNITURE
+                                                       if furn_name not in self.included_furniture],
+                                                      self.options.furniture_available.value -
+                                                      len(self.included_furniture))
+        self.included_books += self.random.sample([book_name for book_name in SPELLBOOKS
+                                                   if book_name not in self.included_books],
+                                                  self.options.spell_books_available.value - len(self.included_books))
+        self.included_perma_weapons += self.random.sample([weapon_name for weapon_name in PERMA_WEAPONS
+                                                           if weapon_name not in self.included_perma_weapons],
+                                                          self.options.sub_weapons_available.value -
+                                                          len(self.included_perma_weapons))
+
+        # If there are fewer than 2 books or Perma sub-weapons available, and Spellbound Boss Logic is on at all,
+        # force the latter to be off.
+        if self.options.spellbound_boss_logic and (self.options.spell_books_available.value < 2 or (
+                self.options.permanent_sub_weapons and self.options.sub_weapons_available.value < 2)):
+            self.options.spellbound_boss_logic.value = SpellboundBossLogic.option_none
+            logging.warning(f"{self.player_name} has fewer than 2 spell books and/or Perma sub-weapons available. "
+                            "Spellbound Boss Logic will be changed to None so all bosses are logically passable with "
+                            "all available items under these conditions.")
+        # If there are fewer than 3 books or Perma sub-weapons available, and Spellbound Boss Logic is Easy, force the
+        # latter to be Normal instead.
+        elif self.options.spellbound_boss_logic.value == SpellboundBossLogic.option_easy and (
+                self.options.spell_books_available.value < 3 or (self.options.permanent_sub_weapons and
+                                                                self.options.sub_weapons_available.value < 3)):
+            self.options.spellbound_boss_logic.value = SpellboundBossLogic.option_normal
+            logging.warning(f"{self.player_name} has fewer than 3 spell books and/or Perma sub-weapons available. "
+                            "Spellbound Boss Logic will be changed to Normal so all bosses are logically passable with "
+                            "all available items under these conditions.")
 
         # If the player has no goal requirements enabled at all, throw a warning and enable the Best Ending requirement.
-        if not self.furniture_amount_required and not self.options.best_ending_required and not \
+        if not self.options.furniture_amount_required and not self.options.best_ending_required and not \
                 self.options.worst_ending_required and not self.options.medium_ending_required:
             logging.warning(f"{self.player_name} has no goal requirements enabled. The Best Ending requirement will be "
                             "enabled for them.")
@@ -271,7 +337,9 @@ class CVHoDisWorld(World):
                                 "fix_luck": self.options.fix_luck.value,
                                 "experience_percent": self.options.experience_percent.value,
                                 "nerf_jp_bonepillar_exp": self.options.nerf_jp_bonepillar_exp.value,
-                                "luminous_elevator_speedup": self.options.luminous_elevator_speedup.value},
+                                "luminous_elevator_speedup": self.options.luminous_elevator_speedup.value,
+                                "permanent_sub_weapons": self.options.permanent_sub_weapons.value,
+                                "sub_weapons_available": self.options.sub_weapons_available.value},
                            "start inventory": get_start_inventory_data(self.multiworld.precollected_items[self.player]),
                            "countdown flags": get_countdown_flags(self.options, active_locations),
                            "location values": get_location_write_values(self, active_locations),
@@ -297,9 +365,8 @@ class CVHoDisWorld(World):
                 "medium_ending_required": self.options.medium_ending_required.value,
                 "worst_ending_required": self.options.worst_ending_required.value,
                 "best_ending_required": self.options.best_ending_required.value,
-                "furniture_amount_required": self.furniture_amount_required,
+                "furniture_amount_required": self.options.furniture_amount_required.value,
                 "spellbound_boss_logic": self.options.spellbound_boss_logic.value,
-                "cardbound_boss_logic": self.options.cardbound_boss_logic.value,
                 "gate_items": self.options.gate_items.value,
                 "area_divisions": self.options.area_divisions.value,
                 "castle_swapper": self.options.castle_swapper.value,

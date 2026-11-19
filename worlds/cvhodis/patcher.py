@@ -41,7 +41,8 @@ class CVHoDisActorEntry(CVHoDisRoomDataEntry):
     x_pos: int  # How far right horizontally from the left edge of the map the actor is located. Int16.
     y_pos: int  # How far down vertically from the top edge of the map the actor is located. Int16.
     type_id: int  # ID for which "category" of actor the actor belongs to. Upper 2 bits in the object ID byte.
-    unique_id: int  # Unique number assigned to this specific actor instance. Lower 6 bits in the object ID byte.
+    unique_id: int  # Unique number assigned to this actor instance so the game knows whether it already spawned it
+                    # when it tries to spawn it by proximity. Lower 6 bits in the object ID byte.
     subtype_id: int  # Sub-ID for which actor in the main actor "category" it is. Int8.
     y_offset: int  # If it's a candle actor, determines how high to offset it. Unknown purpose for other actors. Int8.
     byte_8: int  # Unknown purpose.

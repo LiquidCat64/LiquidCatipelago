@@ -252,6 +252,12 @@ max_heart = "Heart Max Up"
 misc_key_la = "Living Armor Key"
 misc_key_c =  "Clock Key"
 misc_key_t =  "Throne Key"
+perma_bible = "Perma Bible"
+perma_cross = "Perma Cross"
+perma_axe = "Perma Axe"
+perma_water = "Perma Water"
+perma_fist = "Perma Fist"
+perma_knife = "Perma Knife"
 
 # Event definitions
 event_ending_m = "Lydie All To Yourself"

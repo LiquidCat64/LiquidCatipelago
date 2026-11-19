@@ -243,6 +243,32 @@ relic_pickup_customizer_asm = [
     # Return to the function at the call to the "update abilities" function, skipping giving any Relics normally.
     0x4A01,  # ldr  r2, 0x801A122
     0x4697,  # mov  r15, r2
+    # If the index is higher than 0xC but lower than 0x13, meaning it's a Perma Weapon, unlock that weapon for usage
+    # and give it to them if they have no weapon equipped at the moment.
+    0x2912,  # cmp  r1, 0x12
+    0xDC10,  # bgt  [forward 0x11]
+    # Subtract 0x0D from the pickup ID and use that to index into the game's list of sub-weapon equip IDs. This will be
+    # the actual bit ID we set to unlock and whatnot.
+    0x390D,  # sub  r1, 0x0D
+    0x4A06,  # ldr  r2, 0x84B0854
+    0x5C51,  # ldrb r1, [r2, r1]
+    # If our equipped sub-weapon ID is 0, give the weapon we just picked up to the player.
+    0x4A08,  # ldr  r2, 0x201877E
+    0x7810,  # ldrb r0, [r2]
+    0x2800,  # cmp  r0, 0x00
+    0xD100,  # bne  [forward 0x01]
+    0x7011,  # strb r1, [r2]
+    # Set the bit for the weapon in our custom "perma weapons owned" bitfield.
+    0x3901,  # sub  r1, 0x01
+    0x2001,  # mov  r0, 0x01
+    0x4A07,  # ldr  r2, 0x2018882
+    0x4088,  # lsl  r0, r1
+    0x7813,  # ldrb r3, [r2]
+    0x4303,  # orr  r3, r0
+    0x7013,  # strb r3, [r2]
+    # Return to the function at the call to the "update abilities" function, skipping giving any Relics normally.
+    0x4A01,  # ldr  r2, 0x801A122
+    0x4697,  # mov  r15, r2
     # If we jumped to here, call the blue corner textbox with an outgoing multiworld item message based on the pickup's
     # flag and skip calling the gray transparent textbox completely.
     0x4803,  # ldr  r0, 0x2AB
@@ -264,6 +290,9 @@ relic_pickup_customizer_ldr = [
     0x000002AB,
     0x08008980,
     0x0801A1EA,
+    0x084B0854,
+    0x02018882,
+    0x0201877E,
 ]
 
 furniture_pickup_customizer_asm = [
@@ -498,6 +527,13 @@ new_game_extras_asm = [
     0x4911,  # ldr  r1, start_inventory_whips_start
     0x880B,  # ldrh r3, [r1]
     0x8003,  # strh r3, [r0]
+    # Starting sub-weapon and perma weapons
+    0x383E,  # sub  r0, 0x3E
+    0x4915,  # ldr  r1, starting_sub_weapon_info_start
+    0x7001,  # strb r1, [r0]
+    0x30F2,  # add  r0, 0xF2
+    0x0A09,  # lsr  r1, r1, 0x08
+    0x7481,  # strb r1, [r0, 0x12]
     # Extra HP, MP, and Hearts
     0x4807,  # ldr  r0, 0x2018786
     0x4912,  # ldr  r1, start_inventory_max_start
@@ -1022,7 +1058,7 @@ countdown_asm = [
     0x4002,  # and  r2, r0
     0x00C9,  # lsl  r1, r1, 0x03
     0x0092,  # lsl  r2, r2, 0x02
-    0x4807,  # ldr  r0, countdown_idx_arrays_ptrs start
+    0x4809,  # ldr  r0, countdown_idx_arrays_ptrs start
     0x1840,  # add  r0, r0, r1
     0x1880,  # add  r0, r0, r2
     0x6800,  # ldr  r0, [r0]
@@ -1032,6 +1068,20 @@ countdown_asm = [
     0x2200,  # mov  r2, 0x00
     0x4C05,  # ldr  r4, 0x2000330
     0x8803,  # ldrh r3, [r0]
+    # Use different flag array base addresses in the map square data depending on how high the ID is.
+    # If the flag ID is 0x240 or higher, make the base flag array address 0x020002A8.
+    0x2590,  # mov  r5, 0x90
+    0x00AD,  # lsl  r5, r5, 0x02
+    0x42AB,  # cmp  r3, r5
+    0xDB01,  # blt  [forward 0x02]
+    0x4C07,  # ldr  r4, 0x20002A8
+    0xE004,  # b    [forward 0x05]
+    # If the flag ID is 0x140 or higher but lower than 0x240, make the base flag array address 0x02000184.
+    0x2550,  # mov  r5, 0x50
+    0x00AD,  # lsl  r5, r5, 0x02
+    0x42AB,  # cmp  r3, r5
+    0xDB00,  # blt  [forward 0x01]
+    0x4C08,  # ldr  r4, 0x2000184
     0x2B00,  # cmp  r3, 0x00
     0xD011,  # beq  [forward 0x12]
     # Right-shift the flag ID down by 5 to get the word index to offset to in the pickup flags array.
@@ -1049,13 +1099,13 @@ countdown_asm = [
     # Increment the low digit until 10 is reached, at which point it will reset to 0 and the high digit will increment.
     0x1C80,  # add  r0, r0, 0x02
     0x2C00,  # cmp  r4, 0x00
-    0xD1EF,  # bne  [backward 0x10]
+    0xD1E4,  # bne  [backward 0x1B]
     0x1C49,  # add  r1, r1, 0x01
     0x290A,  # cmp  r1, 0x0A
-    0xDBEC,  # blt  [backward 0x12]
+    0xDBE1,  # blt  [backward 0x1E]
     0x2100,  # mov  r1, 0x00
     0x1C52,  # add  r2, r2, 0x01
-    0xE7E9,  # b    [backward 0x14]
+    0xE7DE,  # b    [backward 0x21]
     # Now that we have our two final digits, figure out which OBJ Tile IDs they correspond to in the VRAM. The base ID
     # to add the digit number onto is 0xC0 by default. However, if a digit is higher than 5, we will need to subtract 6
     # from it and use base ID 0xE0 instead.
@@ -1105,6 +1155,8 @@ countdown_ldr = [
     0x080DAD94,
     0x02000330,
     0x00018794,
+    0x020002A8,
+    0x02000184,
 ]
 
 luck_fix_rare_drop_asm = [
@@ -1365,6 +1417,105 @@ dark_room_area_name_fix_ldr = [
     0x7FFF7FFF,
     0x08494580,
     0x00007C18,
+]
+
+pickup_flag_check_map_redirect_asm = [
+    # When the game checks a pickup's flag, if it's above 0x13F, this will redirect the base flag array address it
+    # checks from to instead be in one of the (now freed) flag arrays for the bottom two rows of the map screen.
+
+    0x0948,  # lsr  r0, r1, 0x05
+    0x0080,  # lsl  r0, r0, 0x02
+    0x26CC,  # mov  r6, 0xCC
+    0xB401,  # push r0
+    # If the flag ID is 0x240 or higher, make the base flag array address 0x020002A8.
+    0x2090,  # mov  r0, 0x90
+    0x0080,  # lsl  r0, r0, 0x02
+    0x4281,  # cmp  r1, r0
+    0xDB01,  # blt  [forward 0x02]
+    0x26A9,  # mov  r6, 0xA9
+    0xE004,  # b    [forward 0x05]
+    # If the flag ID is 0x140 or higher but lower than 0x240, make the base flag array address 0x02000184.
+    0x2050,  # mov  r0, 0x50
+    0x0080,  # lsl  r0, r0, 0x02
+    0x4281,  # cmp  r1, r0
+    0xDB00,  # blt  [forward 0x01]
+    0x2661,  # mov  r6, 0x61
+    # Return to the function like normal.
+    0xBC01,  # pop  r0
+    0x4F00,  # ldr  r7, 0x8008F0C
+    0x46BF,  # mov  r15, r7
+]
+pickup_flag_check_map_redirect_ldr = [
+    0x08008F0C,
+]
+
+pickup_flag_set_map_redirect_asm = [
+    # When the game sets a pickup's flag, if it's above 0x13F, this will redirect the base flag array address it
+    # sets from to instead be in one of the (now freed) flag arrays for the bottom two rows of the map screen.
+
+    0x6802,  # ldr  r2, [r0]
+    0x1548,  # asr  r0, r1, 0x15
+    0x0080,  # lsl  r0, r0, 0x02
+    0x21CC,  # mov  r1, 0xCC
+    0xB401,  # push r0
+    # If the flag ID is 0x240 or higher, make the base flag array address 0x020002A8.
+    0x2090,  # mov  r0, 0x90
+    0x0080,  # lsl  r0, r0, 0x02
+    0x4283,  # cmp  r3, r0
+    0xDB01,  # blt  [forward 0x02]
+    0x21A9,  # mov  r1, 0xA9
+    0xE004,  # b    [forward 0x05]
+    # If the flag ID is 0x140 or higher but lower than 0x240, make the base flag array address 0x02000184.
+    0x2050,  # mov  r0, 0x50
+    0x0080,  # lsl  r0, r0, 0x02
+    0x4283,  # cmp  r3, r0
+    0xDB00,  # blt  [forward 0x01]
+    0x2161,  # mov  r1, 0x61
+    # Return to the function like normal.
+    0xBC01,  # pop  r0
+    0x4C00,  # ldr  r4, 0x801A204
+    0x46A7,  # mov  r15, r4
+]
+pickup_flag_set_map_redirect_ldr = [
+    0x0801A204,
+]
+
+perma_subweapon_switcher_asm = [
+    # Hooked into the code that checks for pressing Down + L + R for toggling spell books, this will allow switching the
+    # player's current sub-weapon with Down + R depending on what perma sub-weapons they currently have.
+
+    # Check if we have any perma weapons at all. If not, skip running this hack entirely.
+    0x4800,  # ldr  r0, 0x2018882
+    0x7801,  # ldrb r1, [r0]
+    0x2900,  # cmp  r1, 0x00
+    0xD00D,  # beq  [forward 0x0E]
+    # If we do have perma weapons, search for the next one we have in the weapon order starting from the one the player
+    # has equipped.
+    0x4A01,  # ldr  r2, 0x201877E
+    0x7813,  # ldrb r3, [r2]
+    # Add +1 to the player's current sub-weapon ID. If it's greater than 6, set it back down to 1 for the knife.
+    0x3301,  # add  r3, 0x01
+    0x2B07,  # cmp  r3, 0x07
+    0xDB00,  # blt  [forward 0x01]
+    0x2301,  # mov  r3, 0x01
+    # Check the save bitflag that we set to indicate we have the weapon of the ID we're currently looking at.
+    # If we have it, set the player's sub-weapon to it and exit the loop. Otherwise, keep going...
+    0x2001,  # mov  r0, 0x01
+    0x3B01,  # sub  r3, 0x01
+    0x4098,  # lsl  r0, r3
+    0x3301,  # add  r3, 0x01
+    0x4008,  # and  r0, r1
+    0x2800,  # cmp  r0, 0x00
+    0xD0F4,  # beq  [backward 0x0B]
+    0x7013,  # strb r3, [r2]
+    # Return to the player controller function like normal.
+    0x4B02,  # ldr  r3, 0x802B39C
+    0x469F,  # mov  r15, r3
+]
+perma_subweapon_switcher_ldr = [
+    0x02018882,
+    0x0201877E,
+    0x08072B92,
 ]
 
 extra_item_sprites = {

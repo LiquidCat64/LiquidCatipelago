@@ -3,8 +3,8 @@ from typing import Dict, TYPE_CHECKING
 from BaseClasses import CollectionState
 from worlds.generic.Rules import CollectionRule
 from .data import item_names, loc_names,  ent_names
-from .items import FURNITURE, SPELLBOOKS, HINT_CARDS
-from .options import SpellboundBossLogic, CardboundBossLogic
+from .items import FURNITURE, SPELLBOOKS, HINT_CARDS, PERMA_WEAPONS
+from .options import SpellboundBossLogic
 
 if TYPE_CHECKING:
     from . import CVHoDisWorld
@@ -19,17 +19,17 @@ class CVHoDisRules:
     worst_ending_required: int
     best_ending_required: int
     spellbound_bosses: int
-    cardbound_bosses: int
+    permanent_sub_weapons: int
 
     def __init__(self, world: "CVHoDisWorld") -> None:
         self.player = world.player
         self.world = world
-        self.furniture_amount_required = world.furniture_amount_required
+        self.furniture_amount_required = world.options.furniture_amount_required.value
         self.medium_ending_required = world.options.medium_ending_required.value
         self.worst_ending_required = world.options.worst_ending_required.value
         self.best_ending_required = world.options.best_ending_required.value
         self.spellbound_bosses = world.options.spellbound_boss_logic.value
-        self.cardbound_bosses = world.options.cardbound_boss_logic.value
+        self.permanent_sub_weapons = world.options.permanent_sub_weapons.value
         self.card_amount_warp_requirement = world.options.card_amount_warp_requirement.value
         self.death_warp_requirement = world.options.death_warp_requirement.value
         self.bracelet_warp_requirement = world.options.bracelet_warp_requirement.value
@@ -38,6 +38,7 @@ class CVHoDisRules:
             # Entrance A
             loc_names.eta2: lambda state: self.can_break_ceilings(state) and self.can_cross_drawbridges(state),
             loc_names.eta3: lambda state: self.can_break_ceilings(state) and self.can_cross_drawbridges(state),
+            loc_names.eta8: self.can_super_jump,
             loc_names.eta9: self.can_super_jump,
             loc_names.eta18: self.can_super_jump,
             loc_names.eta17: self.can_open_lure_doors,
@@ -50,6 +51,7 @@ class CVHoDisRules:
             loc_names.wwa0c: self.can_double_jump,
             loc_names.wwa4a: self.can_double_jump,
             loc_names.wwa4b: self.can_double_jump,
+            loc_names.wwa4c: self.can_double_jump,
             # Shrine of the Apostates A
             loc_names.saa16: self.can_slide,
             # Castle Treasury A
@@ -58,10 +60,12 @@ class CVHoDisRules:
             loc_names.cya20b: self.can_open_lure_doors,
             loc_names.event_ending_m: self.can_open_center_a_gate,
             # Skeleton Cave A
-            loc_names.sca2: self.can_double_jump,
+            loc_names.sca2a: self.can_double_jump,
+            loc_names.sca2b: self.can_double_jump,
             loc_names.sca4: self.can_double_jump,
             loc_names.sca12a: self.can_super_jump,
             loc_names.sca12b: self.can_super_jump,
+            loc_names.sca15: self.can_double_jump,
             loc_names.sca10: self.can_beat_hard_bosses,  # VS Legion (corpse)
             # Luminous Cavern A
             loc_names.lca11: self.can_break_walls,
@@ -72,6 +76,7 @@ class CVHoDisRules:
             loc_names.swa7: self.can_pass_sky_a_wall,
             loc_names.swa12a: self.can_double_jump,
             loc_names.swa12b: self.can_double_jump,
+            loc_names.swa12c: self.can_double_jump,
             loc_names.swa14: self.can_double_jump,
             loc_names.swa10a: self.can_double_jump,
             loc_names.swa15a: self.can_break_walls,
@@ -84,46 +89,54 @@ class CVHoDisRules:
             loc_names.cda0b: self.can_double_jump,
             loc_names.cda0d: self.can_super_jump,
             # Clock Tower A
+            loc_names.cra21: self.can_pass_clock_a_wall,
             loc_names.cra22a: self.can_win_ball_race_a,
             loc_names.cra22d: self.can_win_ball_race_a,
             loc_names.cra22c: self.can_win_ball_race_a,
             loc_names.cra22b: self.can_win_ball_race_a,
             # Top Floor A
+            loc_names.tfa4:  self.can_double_jump,
             loc_names.tfa1b: self.can_double_jump,
             loc_names.tfa1a: self.can_double_jump,
+            loc_names.tfa1c: self.can_double_jump,
             loc_names.tfa11: self.can_beat_hard_bosses,  # VS Minotaur Lv2
             # Entrance B
             loc_names.etb0: self.can_cross_drawbridges,
             loc_names.etb2b: lambda state: self.can_break_ceilings(state) and self.can_cross_drawbridges(state),
             loc_names.etb2a: lambda state: self.can_break_ceilings(state) and self.can_cross_drawbridges(state),
             loc_names.etb3: self.can_break_ceilings,
+            loc_names.etb8: self.can_super_jump,
             loc_names.etb9: self.can_super_jump,
             # Marble Corridor B
             loc_names.mcb9: self.can_slide,
             loc_names.mcb11: self.can_double_jump,
             # The Wailing Way B
-            loc_names.wwb0b: self.can_double_jump,
+            loc_names.wwb0c: self.can_double_jump,
             loc_names.wwb4a: self.can_super_jump,
             loc_names.wwb4b: self.can_super_jump,
+            loc_names.wwb4c: self.can_super_jump,
             # Treasury B
             loc_names.cyb20: self.can_open_lure_doors,
             loc_names.event_ending_b: self.can_open_center_b_gate,
             loc_names.event_ending_g: self.can_free_maxim,
             # Skeleton Cave B
             loc_names.scb3: self.can_pass_skeleton_b_wall,
-            loc_names.scb2: self.can_double_jump,
+            loc_names.scb2a: self.can_double_jump,
+            loc_names.scb2b: self.can_double_jump,
             loc_names.scb12a: self.can_super_jump,
             loc_names.scb12b: self.can_super_jump,
+            loc_names.scb15: self.can_double_jump,
             loc_names.scb11: self.can_double_jump,
             # Luminous Cavern B
             loc_names.lcb8b: self.can_super_jump,
             loc_names.lcb8a: self.can_super_jump,
             # Sky Walkway B
-            loc_names.swb8: self.can_break_walls,
+            loc_names.swb8a: self.can_break_walls,
             loc_names.swb12a: self.can_double_jump,
             loc_names.swb12b: self.can_double_jump,
+            loc_names.swb12c: self.can_double_jump,
             loc_names.swb14: self.can_double_jump,
-            loc_names.swb16: self.can_double_jump,
+            loc_names.swb16a: self.can_double_jump,
             loc_names.swb15: self.can_break_walls,
             # Chapel of Dissonance B
             loc_names.cdb0e: self.can_double_jump,
@@ -133,6 +146,9 @@ class CVHoDisRules:
             loc_names.cdb0c: self.can_super_jump,
             # Clock Tower B
             loc_names.crb10: self.can_pass_under_crank,
+            # Top Floor B
+            loc_names.tfb4: self.can_double_jump,
+            loc_names.tfb1: self.can_double_jump,
 
             # The Empty Room
             loc_names.event_furniture: self.can_place_required_furniture
@@ -319,7 +335,7 @@ class CVHoDisRules:
 
     def can_beat_medium_bosses(self, state: CollectionState) -> bool:
         """1 spell book if Spellbound Boss Logic is Normal, 2 if Easy, or none if Disabled.
-        Also, 1 hint card if Cardbound Boss Logic is Normal, 2 if Easy, or none if Disabled."""
+        Also, the same number of Perma weapons if Permanent Sub-weapons is also enabled."""
 
         # If spellbound logic is on, set the book rule. Otherwise, leave it as always True.
         book_rule = True
@@ -328,18 +344,23 @@ class CVHoDisRules:
         elif self.spellbound_bosses == SpellboundBossLogic.option_easy:
             book_rule = state.has_from_list_unique([book for book in SPELLBOOKS], self.player, 2)
 
-        # If cardbound logic is on, set the card rule. Otherwise, leave it as always True.
-        card_rule = True
-        if self.cardbound_bosses == CardboundBossLogic.option_normal:
-            card_rule = state.has_from_list_unique(HINT_CARDS, self.player, 1)
-        elif self.cardbound_bosses == CardboundBossLogic.option_easy:
-            card_rule = state.has_from_list_unique(HINT_CARDS, self.player, 2)
+        # If Perma weapons are off, return just the book rule. Otherwise, proceed to the second part...
+        if not self.permanent_sub_weapons:
+            return book_rule
 
-        return book_rule and card_rule
+        # Set the sub-weapon rule.
+        sub_weapon_rule = True
+        if self.spellbound_bosses == SpellboundBossLogic.option_normal:
+            sub_weapon_rule = state.has_from_list_unique(PERMA_WEAPONS, self.player, 1)
+        elif self.spellbound_bosses == SpellboundBossLogic.option_easy:
+            sub_weapon_rule = state.has_from_list_unique(PERMA_WEAPONS, self.player, 2)
+
+        # Return both the book rule AND the sub-weapon rule.
+        return book_rule and sub_weapon_rule
 
     def can_beat_hard_bosses(self, state: CollectionState) -> bool:
         """2 spell books if Spellbound Boss Logic is Normal, 3 if Easy, or none if Disabled.
-        Also, 2 hint card if Cardbound Boss Logic is Normal, 3 if Easy, or none if Disabled."""
+        Also, the same number of Perma weapons if Permanent Sub-weapons is also enabled."""
 
         # If spellbound logic is on, set the book rule. Otherwise, leave it as always True.
         book_rule = True
@@ -348,14 +369,19 @@ class CVHoDisRules:
         elif self.spellbound_bosses == SpellboundBossLogic.option_easy:
             book_rule = state.has_from_list_unique([book for book in SPELLBOOKS], self.player, 3)
 
-        # If cardbound logic is on, set the card rule. Otherwise, leave it as always True.
-        card_rule = True
-        if self.cardbound_bosses == CardboundBossLogic.option_normal:
-            card_rule = state.has_from_list_unique(HINT_CARDS, self.player, 2)
-        elif self.cardbound_bosses == CardboundBossLogic.option_easy:
-            card_rule = state.has_from_list_unique(HINT_CARDS, self.player, 3)
+        # If Perma weapons are off, return just the book rule. Otherwise, proceed to the second part...
+        if not self.permanent_sub_weapons:
+            return book_rule
 
-        return book_rule and card_rule
+        # Set the sub-weapon rule.
+        sub_weapon_rule = True
+        if self.spellbound_bosses == SpellboundBossLogic.option_normal:
+            sub_weapon_rule = state.has_from_list_unique(PERMA_WEAPONS, self.player, 2)
+        elif self.spellbound_bosses == SpellboundBossLogic.option_easy:
+            sub_weapon_rule = state.has_from_list_unique(PERMA_WEAPONS, self.player, 3)
+
+        # Return both the book rule AND the sub-weapon rule.
+        return book_rule and sub_weapon_rule
 
     def can_open_center_a_gate(self, state: CollectionState) -> bool:
         """Broke the hand statue in the Castle Top Floor A attic."""

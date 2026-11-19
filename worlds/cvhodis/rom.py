@@ -17,11 +17,11 @@ from .data.misc_names import GAME_NAME
 from .aesthetics import SUB_WEAPON_CANDLES_INFO, SHOP_JEWEL_SLOT_COUNT, SHOP_INVENTORY_COUNTS
 from .entrances import SHUFFLEABLE_TRANSITIONS, VERTICAL_GROUPS, VERTICAL_SHAFT_EXITS, \
     LEFT_GROUPS, RIGHT_GROUPS, TOP_GROUPS, BOTTOM_GROUPS
-from .items import EQUIPMENT
+from .items import EQUIPMENT, HEARTS
 from .locations import CVHODIS_LOCATIONS_INFO, SUB_TO_MAIN_AREAS
 from .cvhodis_text import LEN_LIMIT_MENU_DESCRIPTION, LEN_LIMIT_CORNER_TEXTBOX_CUSTOM, DESCRIPTION_DISPLAY_LINES, \
     cvhodis_text_wrap, cvhodis_get_string_len
-from .options import GateItems, AreaDivisions, ShopShuffle
+from .options import GateItems, AreaDivisions, ShopShuffle, PermanentSubWeapons
 from .patcher import CVHoDisRomPatcher, CVHoDisActorEntry, CVHoDisShopItemInfo
 from settings import get_settings
 
@@ -146,6 +146,30 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Allow the corner name textboxes to extend all the way across the screen.
         patcher.write_byte(0x889A, 0x26)
 
+        # Prevent the game from reading the bottom 2 rows of the map screen both for visible map tiles and the map %.
+        # We will be storing additional pickup flags here.
+        patcher.write_byte(0xA6F8, 0x23)
+        patcher.write_byte(0xAE82, 0x23)
+        patcher.write_byte(0xB0AE, 0x23)
+        # Allow pickup flags above 0x13F to be stored and retrieved from the above-mentioned map screen bytes.
+        patcher.generate_dynamic_asm(patches.pickup_flag_check_map_redirect_asm,
+                                     patches.pickup_flag_check_map_redirect_ldr,
+                                     hook_addr=0x8F04, hook_register=0)
+        patcher.generate_dynamic_asm(patches.pickup_flag_set_map_redirect_asm,
+                                     patches.pickup_flag_set_map_redirect_ldr,
+                                     hook_addr=0x1A1FC, hook_register=2)
+
+        # Make turning on/off spellbooks work by merely pressing L while crouched instead of L + R at the same time.
+        patcher.write_byte(0x72AFA, 0x1F)
+        # Enable cycling through unlocked perma sub-weapons by pressing R while crouched.
+        patcher.write_int16(0x72B18, 0xD13B)  # bne  [forward 0x3C]
+        patcher.write_int16(0x72B1C, 0x4038)  # and  r0, r7
+        patcher.write_int16(0x72B20, 0xD037)  # beq  [forward 0x38]
+        patcher.generate_dynamic_asm(patches.perma_subweapon_switcher_asm,
+                                     patches.perma_subweapon_switcher_ldr,
+                                     hook_addr=0x72B22, hook_register=1)
+
+        # # # DARK ROOM FIXES # # #
         # Fix the game softlocking when super jumping out of dark rooms at certain elevations.
         patcher.generate_dynamic_asm(patches.dark_room_softlock_fix_asm,
                                      patches.dark_room_softlock_fix_ldr,
@@ -226,19 +250,21 @@ class CVHoDisPatchExtensions(APPatchExtension):
             patcher.write_bytes(offset, data)
 
         # Add the custom pickups' text.
-        patcher.text[0x230] = "Filler Item\n"
-        patcher.text[0x231] = "Useful Item\n"
-        patcher.text[0x232] = "Trap Item\n"
-        patcher.text[0x233] = "Progression Item\n"
-        patcher.text[0x234] = "Prog-Useful Item\n"
-        patcher.text[0x235] = item_names.misc_key_la + "\n"
-        patcher.text[0x236] = item_names.misc_key_c + "\n"
-        patcher.text[0x237] = item_names.misc_key_t + "\n"
-        patcher.text[0x238] = item_names.relic_height + "\n"
+        patcher.text[0x230] = item_names.misc_key_la + "\n"
+        patcher.text[0x231] = item_names.misc_key_c + "\n"
+        patcher.text[0x232] = item_names.misc_key_t + "\n"
+        patcher.text[0x233] = item_names.relic_height + "\n"
+        patcher.text[0x234] = item_names.perma_bible + "\n"
+        patcher.text[0x235] = item_names.perma_cross + "\n"
+        patcher.text[0x236] = item_names.perma_axe + "\n"
+        patcher.text[0x237] = item_names.perma_water + "\n"
+        patcher.text[0x238] = item_names.perma_fist + "\n"
+        patcher.text[0x239] = item_names.perma_knife + "\n"
+        patcher.text[0x23A] = "AP Item\n"
 
         # Move the Spell Book info table and expand it with an extra entry for our Progression item.
         new_book_info_start = patcher.find_space_and_write_buffer(
-            patcher.read_bytes(BOOK_INFO_START, BOOK_INFO_LENGTH) + bytes([0xD8, 0x00, 0xE0, 0x01]))  # Progression
+            patcher.read_bytes(BOOK_INFO_START, BOOK_INFO_LENGTH) + bytes([0xDF, 0x00, 0xE0, 0x01]))  # AP Progression
         patcher.write_int32(0x19798, new_book_info_start)
         patcher.write_int32(0x1A020, new_book_info_start)
 
@@ -249,24 +275,31 @@ class CVHoDisPatchExtensions(APPatchExtension):
                                        0x73F8,   # strb r0, [r7, 0x0F]
                                        0xE00D])  # b    [forward 0x0E]
 
-        # Move the relic info table and expand it with an extra entry for our Prog + Useful item.
+        # Move the relic info table and expand it with the extra entries for our new relics.
         new_relic_info_start = patcher.find_space_and_write_buffer(
-            patcher.read_bytes(RELIC_INFO_START, RELIC_INFO_LENGTH) + bytes([0xDD, 0x00, 0xE7, 0x01,    # Prog Height
-                                                                             0xD9, 0x00, 0xE2, 0x01]))  # Prog + Useful
+            patcher.read_bytes(RELIC_INFO_START, RELIC_INFO_LENGTH) + \
+            bytes([0xD8, 0x00, 0xE7, 0x01,    # Prog Height
+                   0xD9, 0x00, 0x01, 0x01,    # Perma Bible
+                   0xDA, 0x00, 0x02, 0x01,    # Perma Cross
+                   0xDB, 0x00, 0x03, 0x01,    # Perma Axe
+                   0xDC, 0x00, 0x04, 0x01,    # Perma Water
+                   0xDD, 0x00, 0x05, 0x01,    # Perma Fist
+                   0xDE, 0x00, 0x06, 0x01,    # Perma Knife
+                   0xDF, 0x00, 0xE2, 0x01]))  # AP Prog + Useful
         patcher.write_int32(0x197A4, new_relic_info_start)
         patcher.write_int32(0x1A0F0, new_relic_info_start)
 
         # Move the furniture info table and expand it with the extra entries for all our rando-specific items.
         new_furniture_info_start = patcher.find_space_and_write_buffer(
             patcher.read_bytes(FURNITURE_INFO_START, FURNITURE_INFO_LENGTH) + \
-            bytes([0xDA, 0x00, 0xE4, 0x02,   # Living Armor key
-                   0xDB, 0x00, 0xE5, 0x02,   # Clock key
-                   0xDC, 0x00, 0xE6, 0x02,   # Throne key
-                   0xD5, 0x00, 0xDF, 0x01,   # Filler (plays minor pickup sound)
-                   0xD6, 0x00, 0xE1, 0x01,   # Useful (plays major pickup sound)
-                   0xD7, 0x00, 0xE3, 0x01,   # Trap (plays Juste's "Doh!" voice)
-                   0xD7, 0x00, 0xE3, 0x01,   # Filler (plays money pickup sound)
-                   0xD7, 0x00, 0xE3, 0x01])) # Filler (plays max up pickup sond)
+            bytes([0xD5, 0x00, 0xE4, 0x02,   # Living Armor key
+                   0xD6, 0x00, 0xE5, 0x02,   # Clock key
+                   0xD7, 0x00, 0xE6, 0x02,   # Throne key
+                   0xDF, 0x00, 0xDF, 0x01,   # Filler (plays minor pickup sound)
+                   0xDF, 0x00, 0xE1, 0x01,   # Useful (plays major pickup sound)
+                   0xDF, 0x00, 0xE3, 0x01,   # Trap (plays Juste's "Doh!" voice)
+                   0xDF, 0x00, 0xE3, 0x01,   # Filler (plays money pickup sound)
+                   0xDF, 0x00, 0xE3, 0x01])) # Filler (plays max up pickup sond)
         patcher.write_int32(0x197E4, new_furniture_info_start)
         patcher.write_int32(0x19E30, new_furniture_info_start)
         patcher.write_int32(0x19EE8, new_furniture_info_start)
@@ -284,7 +317,8 @@ class CVHoDisPatchExtensions(APPatchExtension):
         new_item_text_ids_start = patcher.find_space_and_write_buffer(
             patcher.read_bytes(ITEM_TEXT_IDS_START, ITEM_TEXT_IDS_LENGTH) + bytes([0x30, 0x02, 0x31, 0x02, 0x32, 0x02,
                                                                                    0x33, 0x02, 0x34, 0x02, 0x35, 0x02,
-                                                                                   0x36, 0x02, 0x37, 0x02, 0x38, 0x02]))
+                                                                                   0x36, 0x02, 0x37, 0x02, 0x38, 0x02,
+                                                                                   0x39, 0x02, 0x3A, 0x02]))
         # Update all the pointers to the above array of string IDs.
         patcher.write_int32(0x19E34, new_item_text_ids_start)
         patcher.write_int32(0x19FA8, new_item_text_ids_start)
@@ -329,6 +363,27 @@ class CVHoDisPatchExtensions(APPatchExtension):
                                      hook_addr=0x197B8, hook_register=3)
         # Enable money pickups to be placed via map actor lists normally.
         patcher.write_int16(0x196E8, 0xE003)  # b    [forward 0x04]
+
+        # Make O always drop big hearts if the perma weapons are on or fewer than all 6 sub-weapons are available.
+        if slot_patch_info["options"]["permanent_sub_weapons"] or \
+                slot_patch_info["options"]["sub_weapons_available"] < 6:
+            patcher.write_int16s(0x56EDA, [0x2201,  # mov r2, 0x01
+                                           0x2300,  # mov r3, 0x00
+                                           0x0000])
+            patcher.write_int16s(0x56EF0, [0xF7C2, 0xF96E])  # bl  0x80191D0
+
+        # If Permanent Sub-weapons is Subweaponsanity, add the two extra pickups to O's room that will serve as the two
+        # missing sub-weapon locations for the area. We MUST insert them at these specific spots in the list before
+        # and after O to ensure they spawn properly arriving from either direction.
+        if slot_patch_info["options"]["permanent_sub_weapons"] == PermanentSubWeapons.option_subweaponsanity:
+            patcher.areas[Areas.MARBLE_B][12][0]["actor_list"].insert(
+                2, CVHoDisActorEntry(x_pos=374, y_pos=144, type_id=ActorTypes.PICKUP, unique_id=8,
+                                     subtype_id=PickupTypes.USE_ITEM, y_offset=0, byte_8=0,
+                                     var_a=CVHODIS_LOCATIONS_INFO[loc_names.mcb12b].code, var_b=0))
+            patcher.areas[Areas.MARBLE_B][12][0]["actor_list"].insert(
+                4, CVHoDisActorEntry(x_pos=400, y_pos=144, type_id=ActorTypes.PICKUP, unique_id=9,
+                                     subtype_id=PickupTypes.USE_ITEM, y_offset=0, byte_8=0,
+                                     var_a=CVHODIS_LOCATIONS_INFO[loc_names.mcb12c].code, var_b=0))
 
         # If Gate Items is set to Buttonsanity, place new pickups where every button affected by the option would be.
         if slot_patch_info["options"]["gate_items"] == GateItems.option_buttonsanity:
@@ -489,7 +544,10 @@ class CVHoDisPatchExtensions(APPatchExtension):
                                                                     start_inventory_whips_start,
                                                                     start_inventory_max_start,
                                                                     start_inventory_starting_flags_start,
-                                                                    slot_patch_info["start inventory"]["money"]],
+                                                                    slot_patch_info["start inventory"]["money"],
+                                                                    (slot_patch_info["start inventory"]["perma weapons"]
+                                                                     << 8) | slot_patch_info["start inventory"][
+                                                                        "sub weapon"]],
                                      hook_addr=0x6B730, hook_register=1)
 
         # Terraform the left side of the Entrance -> Skeleton Cave floor transition to allow being placed there in ER.
@@ -530,11 +588,50 @@ class CVHoDisPatchExtensions(APPatchExtension):
                         # the index in the list with the matching area and room IDs.
                         if actor["type_id"] == ActorTypes.CANDLE and actor["subtype_id"] == PickupTypes.SUB_WEAPON:
                             for i in range(len(SUB_WEAPON_CANDLES_INFO)):
-                                # If we get a hit, place on this candle actor the weapon that is in the slot's
-                                # sub-weapon placements list at the index that we found.
+                                # If we get a hit, write different things onto the candle actor depending on what the
+                                # Permanent Sub-weapons option is.
                                 if SUB_WEAPON_CANDLES_INFO[i].area == area_id and \
                                         SUB_WEAPON_CANDLES_INFO[i].room == room_id:
-                                    actor["var_b"] = slot_patch_info["sub weapon placements"][i]
+                                    # If Permanent Sub-weapons is off, place on this candle actor the weapon that is in
+                                    # the slot's sub-weapon placements list at the index that we found.
+                                    if not slot_patch_info["options"]["permanent_sub_weapons"]:
+                                        actor["var_b"] = slot_patch_info["sub weapon placements"][i]
+                                    # If Permanent sub-weapons is Add, change it to drop a big heart instead.
+                                    elif slot_patch_info["options"]["permanent_sub_weapons"] == \
+                                            PermanentSubWeapons.option_add:
+                                        actor["var_a"] = PickupTypes.HEART
+                                        actor["var_b"] = HEARTS[item_names.heart_b].pickup_index
+                                    # Otherwise, meaning full Subweaponsanity should be on, replace the candle entirely
+                                    # with the pickup that should be on that candle, proper flag set on it and all.
+                                    else:
+                                        actor["type_id"] = ActorTypes.PICKUP
+                                        actor["subtype_id"] = loc_values[CVHODIS_LOCATIONS_INFO[
+                                            SUB_WEAPON_CANDLES_INFO[i].loc_name].code][0]
+                                        actor["var_a"] = CVHODIS_LOCATIONS_INFO[
+                                            SUB_WEAPON_CANDLES_INFO[i].loc_name].code
+                                        actor["var_b"] = loc_values[CVHODIS_LOCATIONS_INFO[
+                                            SUB_WEAPON_CANDLES_INFO[i].loc_name].code][1]
+                                        # Subtract the Y position by the Y offset and set the latter to 0.
+                                        actor["y_pos"] -= actor["y_offset"] & 0xF0
+                                        actor["y_offset"] = 0
+
+                                        # If we're looking at the Luminous path to sky portal or Death start candles,
+                                        # move it over slightly so it won't fall into the floor transition.
+                                        if SUB_WEAPON_CANDLES_INFO[i].loc_name in [loc_names.lca5, loc_names.lcb5]:
+                                            actor["x_pos"] = 0x60
+                                            # If it's the path to Death candle, also copy this actor into the room's
+                                            # alternate state's actor list.
+                                            if SUB_WEAPON_CANDLES_INFO[i].loc_name == loc_names.lca5:
+                                                patcher.areas[Areas.LUMINOUS_A][5][1]["actor_list"] += [actor.copy()]
+                                                del patcher.areas[Areas.LUMINOUS_A][5][1]["actor_list"][len(
+                                                    patcher.areas[Areas.LUMINOUS_A][5][1]["actor_list"]) - 1][
+                                                    "start_addr"]
+                                        # If we're looking at one of the castle center elevator shaft candles, move it
+                                        # down if it's a relic so we can reach it without flight.
+                                        elif SUB_WEAPON_CANDLES_INFO[i].loc_name in [loc_names.cya22, loc_names.cyb22] \
+                                                and actor["subtype_id"] & 0xF == PickupTypes.RELIC:
+                                            actor["y_pos"] = 0x2A0
+                                    break
 
                         # If the actor is not a pickup, or if it's already marked for deletion, skip it.
                         if actor["type_id"] != ActorTypes.PICKUP or "delete" in actor:
@@ -597,7 +694,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
                                            0x0000,
                                            0x0000,
                                            0x0000])
-        # Add platforms to the elevator room's alternate state so it can be climbed without double jump or higher.
+        # Add platforms to the elevator room's alternate state so it can be climbed with just the base jump.
         # This change is applied regardless of whether the elevator speedup was opted for or not.
         patcher.write_int16s(0x1772BA, [0x0036, 0x0036])
         patcher.write_int16s(0x1772DA, [0x0063, 0x0063])
@@ -706,7 +803,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
                 source_zone["player_x_offset"] = 0
 
         # Write the item/player names for other game items.
-        multi_text_list = ["\n" for _ in range(0x120)]
+        multi_text_list = ["\n" for _ in range(0x15F)]
         for loc_id, text in loc_text.items():
             # If the player name text is an empty string, don't write the text for this Location as it has a local Item.
             if not text[1]:
@@ -751,9 +848,9 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.write_int16(0xDB7A8, 0x4A14)
 
         # Go anywhere
-        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084A4AF8
-        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
-        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["camera_y_pos"] = 0x330
+        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x0849C524
+        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
+        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["camera_y_pos"] = 0x330
 
         return patcher.get_output_rom()
 

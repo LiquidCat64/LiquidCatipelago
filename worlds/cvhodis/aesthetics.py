@@ -3,8 +3,8 @@ import math
 from BaseClasses import ItemClassification, Location, Item
 from .options import Countdown, CVHoDisOptions, SubWeaponRandomization, ShopShuffle
 from .locations import CVHODIS_LOCATIONS_INFO, SUB_TO_MAIN_AREAS
-from .items import FURNITURE, SPELLBOOKS, RELICS, GATE_KEYS, ALL_CVHODIS_ITEMS, draw_random_filler, get_pickup_type, \
-    CVHoDisFillerCategoryData, FillerTypes
+from .items import FURNITURE_EXTENDED, SPELLBOOKS, RELICS_EXTENDED, GATE_KEYS, PERMA_WEAPONS, ALL_CVHODIS_ITEMS, \
+    draw_random_filler, get_pickup_type, FillerTypes, SUB_WEAPON_EQUIP_IDS
 from .cvhodis_text import cvhodis_command_scrubber
 from .data import item_names, loc_names
 from .data.enums import PickupTypes, SubAreas, SubWeaponPickups, Areas, Enemies
@@ -15,13 +15,13 @@ from typing import TYPE_CHECKING, Iterable, NamedTuple
 if TYPE_CHECKING:
     from . import CVHoDisWorld
 
-FURN_AP_FILLER_INDEX = len(FURNITURE)
-FURN_AP_USEFUL_INDEX = len(FURNITURE) + 1
-FURN_AP_TRAP_INDEX = len(FURNITURE) + 2
-FURN_AP_MONEY_INDEX = len(FURNITURE) + 3
-FURN_AP_MAX_UP_INDEX = len(FURNITURE) + 4
+FURN_AP_FILLER_INDEX = len(FURNITURE_EXTENDED)
+FURN_AP_USEFUL_INDEX = len(FURNITURE_EXTENDED) + 1
+FURN_AP_TRAP_INDEX = len(FURNITURE_EXTENDED) + 2
+FURN_AP_MONEY_INDEX = len(FURNITURE_EXTENDED) + 3
+FURN_AP_MAX_UP_INDEX = len(FURNITURE_EXTENDED) + 4
 BOOK_AP_PROGRESSION_INDEX = len(SPELLBOOKS)
-RELIC_AP_PROG_USEFUL_INDEX = len(RELICS)
+RELIC_AP_PROG_USEFUL_INDEX = len(RELICS_EXTENDED)
 AP_FILLER_GFX_ID = 0xDF
 AP_PROGRESSION_GFX_ID = 0xE0
 AP_USEFUL_GFX_ID = 0xE1
@@ -99,106 +99,107 @@ class CVHoDisSubWeaponCandleData(NamedTuple):
     vanilla_weapon: int  # ID for the sub-weapon normally on this spot.
     area: int  # ID for the area this sub-weapon is in.
     room: int  # ID for the room in the area this sub-weapon is in.
+    loc_name: str  # Name of the AP Location associated with the candle.
 
 SUB_WEAPON_CANDLES_INFO: list[CVHoDisSubWeaponCandleData] = [
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.ENTRANCE_A, 0x06),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.ENTRANCE_A, 0x08),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.ENTRANCE_A, 0x0A),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.ENTRANCE_A, 0x0C),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.ENTRANCE_A, 0x0D),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.ENTRANCE_B, 0x06),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.ENTRANCE_B, 0x08),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.ENTRANCE_B, 0x0A),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.ENTRANCE_B, 0x0C),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.ENTRANCE_B, 0x0D),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.MARBLE_A,   0x06),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.MARBLE_A,   0x08),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.MARBLE_A,   0x0C),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.MARBLE_A,   0x0D),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.MARBLE_A,   0x11),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.MARBLE_B,   0x08),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.MARBLE_B,   0x0D),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.MARBLE_B,   0x11),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.SHRINE_A,   0x00),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.SHRINE_A,   0x04),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.SHRINE_A,   0x0A),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.SHRINE_A,   0x0C),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.SHRINE_A,   0x0D),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.SHRINE_B,   0x00),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.SHRINE_B,   0x04),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.SHRINE_B,   0x0A),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.SHRINE_B,   0x0C),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.SHRINE_B,   0x0D),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.TOP_A,      0x01),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.TOP_A,      0x04),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.TOP_A,      0x06),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.TOP_A,      0x07),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.TOP_A,      0x09),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.TOP_B,      0x01),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.TOP_B,      0x04),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.TOP_B,      0x06),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.TOP_B,      0x07),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.TOP_B,      0x09),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.SKELETON_A, 0x00),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.SKELETON_A, 0x02),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.SKELETON_A, 0x07),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.SKELETON_A, 0x08),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.SKELETON_A, 0x0F),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.SKELETON_B, 0x00),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.SKELETON_B, 0x02),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.SKELETON_B, 0x07),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.SKELETON_B, 0x08),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.SKELETON_B, 0x0F),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.LUMINOUS_A, 0x00),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.LUMINOUS_A, 0x05),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.LUMINOUS_A, 0x06),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.LUMINOUS_A, 0x0E),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.LUMINOUS_A, 0x16),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.LUMINOUS_B, 0x00),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.LUMINOUS_B, 0x05),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.LUMINOUS_B, 0x06),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.LUMINOUS_B, 0x0E),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.LUMINOUS_B, 0x16),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.AQUEDUCT_A, 0x01),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.AQUEDUCT_A, 0x02),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.AQUEDUCT_A, 0x04),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.AQUEDUCT_A, 0x07),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.AQUEDUCT_A, 0x0A),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.AQUEDUCT_B, 0x01),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.AQUEDUCT_B, 0x02),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.AQUEDUCT_B, 0x04),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.AQUEDUCT_B, 0x07),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.AQUEDUCT_B, 0x0A),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.CHAPEL_A,   0x02),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.CHAPEL_A,   0x08),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.CHAPEL_A,   0x09),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.CHAPEL_A,   0x0C),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.CHAPEL_A,   0x10),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.CHAPEL_B,   0x02),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.CHAPEL_B,   0x08),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.CHAPEL_B,   0x09),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.CHAPEL_B,   0x0C),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.CHAPEL_B,   0x10),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.CLOCK_A,    0x00),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.CLOCK_A,    0x06),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.CLOCK_A,    0x10),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.CLOCK_A,    0x13),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.CLOCK_A,    0x15),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.CLOCK_B,    0x00),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.CLOCK_B,    0x06),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.CLOCK_B,    0x10),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.CLOCK_B,    0x13),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.CLOCK_B,    0x15),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.TREASURY_A, 0x03),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.TREASURY_A, 0x09),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.TREASURY_A, 0x0D),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.TREASURY_A, 0x13),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.TREASURY_A, 0x16),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.TREASURY_B, 0x03),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.TREASURY_B, 0x09),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.TREASURY_B, 0x0D),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.TREASURY_B, 0x13),
-    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.TREASURY_B, 0x16),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.ENTRANCE_A, 0x06, loc_names.eta6),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.ENTRANCE_A, 0x08, loc_names.eta8),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.ENTRANCE_A, 0x0A, loc_names.eta10b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.ENTRANCE_A, 0x0C, loc_names.eta12),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.ENTRANCE_A, 0x0D, loc_names.eta13a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.ENTRANCE_B, 0x06, loc_names.etb6),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.ENTRANCE_B, 0x08, loc_names.etb8),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.ENTRANCE_B, 0x0A, loc_names.etb10),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.ENTRANCE_B, 0x0C, loc_names.etb12),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.ENTRANCE_B, 0x0D, loc_names.etb13a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.MARBLE_A,   0x06, loc_names.mca6),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.MARBLE_A,   0x08, loc_names.mca8),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.MARBLE_A,   0x0C, loc_names.mca12a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.MARBLE_A,   0x0D, loc_names.mca13a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.MARBLE_A,   0x11, loc_names.ria17b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.MARBLE_B,   0x08, loc_names.mcb8),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.MARBLE_B,   0x0D, loc_names.mcb13),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.MARBLE_B,   0x11, loc_names.rib17),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.SHRINE_A,   0x00, loc_names.wwa0a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.SHRINE_A,   0x04, loc_names.wwa4b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.SHRINE_A,   0x0A, loc_names.saa10a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.SHRINE_A,   0x0C, loc_names.saa12b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.SHRINE_A,   0x0D, loc_names.saa13),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.SHRINE_B,   0x00, loc_names.wwb0a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.SHRINE_B,   0x04, loc_names.wwb4b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.SHRINE_B,   0x0A, loc_names.sab10),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.SHRINE_B,   0x0C, loc_names.sab12b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.SHRINE_B,   0x0D, loc_names.sab13),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.TOP_A,      0x01, loc_names.tfa1c),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.TOP_A,      0x04, loc_names.tfa4),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.TOP_A,      0x06, loc_names.tfa6),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.TOP_A,      0x07, loc_names.tfa7a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.TOP_A,      0x09, loc_names.tfa9a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.TOP_B,      0x01, loc_names.tfb1),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.TOP_B,      0x04, loc_names.tfb4),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.TOP_B,      0x06, loc_names.tfb6),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.TOP_B,      0x07, loc_names.tfb7a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.TOP_B,      0x09, loc_names.tfb9),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.SKELETON_A, 0x00, loc_names.sca0),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.SKELETON_A, 0x02, loc_names.sca2b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.SKELETON_A, 0x07, loc_names.sca7),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.SKELETON_A, 0x08, loc_names.sca8),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.SKELETON_A, 0x0F, loc_names.sca15),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.SKELETON_B, 0x00, loc_names.scb0),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.SKELETON_B, 0x02, loc_names.scb2b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.SKELETON_B, 0x07, loc_names.scb7),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.SKELETON_B, 0x08, loc_names.scb8),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.SKELETON_B, 0x0F, loc_names.scb15),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.LUMINOUS_A, 0x00, loc_names.lca0),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.LUMINOUS_A, 0x05, loc_names.lca5),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.LUMINOUS_A, 0x06, loc_names.lca6),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.LUMINOUS_A, 0x0E, loc_names.lca14b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.LUMINOUS_A, 0x16, loc_names.lca22b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.LUMINOUS_B, 0x00, loc_names.lcb0),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.LUMINOUS_B, 0x05, loc_names.lcb5),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.LUMINOUS_B, 0x06, loc_names.lcb6),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.LUMINOUS_B, 0x0E, loc_names.lcb14),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.LUMINOUS_B, 0x16, loc_names.lcb22b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.AQUEDUCT_A, 0x01, loc_names.ada1b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.AQUEDUCT_A, 0x02, loc_names.ada2a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.AQUEDUCT_A, 0x04, loc_names.ada4b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.AQUEDUCT_A, 0x07, loc_names.ada7),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.AQUEDUCT_A, 0x0A, loc_names.ada10a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.AQUEDUCT_B, 0x01, loc_names.adb1b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.AQUEDUCT_B, 0x02, loc_names.adb2b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.AQUEDUCT_B, 0x04, loc_names.adb4b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.AQUEDUCT_B, 0x07, loc_names.adb7),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.AQUEDUCT_B, 0x0A, loc_names.adb10),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.CHAPEL_A,   0x02, loc_names.cda2a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.CHAPEL_A,   0x08, loc_names.swa8),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.CHAPEL_A,   0x09, loc_names.swa9),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.CHAPEL_A,   0x0C, loc_names.swa12c),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.CHAPEL_A,   0x10, loc_names.swa16),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.CHAPEL_B,   0x02, loc_names.cdb2),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.CHAPEL_B,   0x08, loc_names.swb8b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.CHAPEL_B,   0x09, loc_names.swb9),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.CHAPEL_B,   0x0C, loc_names.swb12c),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.CHAPEL_B,   0x10, loc_names.swb16b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.CLOCK_A,    0x00, loc_names.cra0a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.CLOCK_A,    0x06, loc_names.cra6),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.CLOCK_A,    0x10, loc_names.cra16),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.CLOCK_A,    0x13, loc_names.cra19),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.CLOCK_A,    0x15, loc_names.cra21),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.CLOCK_B,    0x00, loc_names.crb0),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.CLOCK_B,    0x06, loc_names.crb6b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.CLOCK_B,    0x10, loc_names.crb16),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_BOOK,   Areas.CLOCK_B,    0x13, loc_names.crb19),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.CLOCK_B,    0x15, loc_names.crb21),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.TREASURY_A, 0x03, loc_names.cya3),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.TREASURY_A, 0x09, loc_names.cya9a),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.TREASURY_A, 0x0D, loc_names.cya13),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.TREASURY_A, 0x13, loc_names.cya19b),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.TREASURY_A, 0x16, loc_names.cya22),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.AXE,         Areas.TREASURY_B, 0x03, loc_names.cyb3),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.SACRED_FIST, Areas.TREASURY_B, 0x09, loc_names.cyb9),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.KNIFE,       Areas.TREASURY_B, 0x0D, loc_names.cyb13),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.HOLY_WATER,  Areas.TREASURY_B, 0x13, loc_names.cyb19),
+    CVHoDisSubWeaponCandleData(SubWeaponPickups.CROSS,       Areas.TREASURY_B, 0x16, loc_names.cyb22),
 ]
 # Fun fact: Marble B is the only area that is missing sub-weapon locations from its Castle A counterpart.
 # This is the only thing keeping the total count from a nice round 100...
@@ -331,6 +332,8 @@ def get_location_write_values(world: "CVHoDisWorld", active_locations: Iterable[
         # If it's one of the player's own Items, set the type and index values to what they should be in-game.
         if loc.item.player == world.player:
             # The upper byte in the Item's AP ID is the type byte. The lower byte is the index byte.
+            if loc.item.code is None:
+                print("Yes")
             type_value = (loc.item.code >> 8) & 0xFF
             index_value = loc.item.code & 0xFF
             # Set the appearance values to the Item's GFX and Palette values so they will actually show up in-game as
@@ -593,6 +596,8 @@ def get_start_inventory_data(precollected_items: list[Item]) -> dict[str, dict[i
         {"inv arrays": {inv_id: bytearray(CVHODIS_INVENTORIES[inv_id].length) for inv_id in CVHODIS_INVENTORIES},
          "starting flags": [],
          "spellbook": 0,
+         "sub weapon": 0,
+         "perma weapons": 0,
          "extra life": 0,
          "extra magic": 0,  # MP is not currently supported, but it's here if needed!
          "extra hearts": 0,
@@ -619,6 +624,12 @@ def get_start_inventory_data(precollected_items: list[Item]) -> dict[str, dict[i
         if item.name in GATE_KEYS:
             if GATE_KEYS[item.name] not in start_inventory_data["starting flags"]:
                 start_inventory_data["starting flags"].append(GATE_KEYS[item.name])
+        # If the Item is a Perma weapon, set the bitflag indicating we have it.
+        elif item.name in PERMA_WEAPONS:
+            start_inventory_data["perma weapons"] |= 1 << (SUB_WEAPON_EQUIP_IDS[index_byte - 0xD] - 1)
+            # Set the starting sub-weapon if we don't have one.
+            if not start_inventory_data["sub weapon"]:
+                start_inventory_data["sub weapon"] = SUB_WEAPON_EQUIP_IDS[index_byte - 0xD]
         # If the Item is a moneybag, increment the starting money count.
         elif type_byte == PickupTypes.MONEY:
             # The number after the dollar sign in the name is the amount of money to increment by.

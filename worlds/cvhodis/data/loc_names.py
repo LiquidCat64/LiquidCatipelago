@@ -2,32 +2,49 @@
 portals_rt = "Connecting portal: Room A and Treasury B"
 portals_lw = "Connecting portal: Luminous B and Walkway A"
 
-# Entrance A names
-eta2  = "Entrance A: Gatehouse tower top"
-eta3  = "Entrance A: Gatehouse tower break room"
-eta5a = "Entrance A: Sea chicken chamber - Upper"
-eta5b = "Entrance A: Sea chicken chamber - Lower"
-eta7  = "Entrance A: Upper guard hall"
-eta9  = "Entrance A: Warp winery"
-eta10 = "Entrance A: Hangman's hall"
-eta11 = "Entrance A: Hangman's patio"
-eta13 = "Entrance A: Subterranean shaft top"
-eta17 = "Entrance A: Subterranean warp room"
-eta18 = "Entrance A: Upper floor warp room"
-eta19 = "Entrance A: Triple skull table"
 
-# Entrance B names
+# Entrance A main locations
+eta2   = "Entrance A: Gatehouse tower top"
+eta3   = "Entrance A: Gatehouse tower break room"
+eta5a  = "Entrance A: Sea chicken chamber - Upper"
+eta5b  = "Entrance A: Sea chicken chamber - Lower"
+eta7   = "Entrance A: Upper guard hall"
+eta9   = "Entrance A: Warp winery"
+eta10a = "Entrance A: Hangman's hall - Left"
+eta11  = "Entrance A: Hangman's patio"
+eta13b = "Entrance A: Subterranean shaft top"
+eta17  = "Entrance A: Subterranean warp room"
+eta18  = "Entrance A: Upper floor warp room"
+eta19  = "Entrance A: Triple skull table"
+
+# Entrance A sub-weapon locations
+eta6   = "Entrance A: Skeleton save hall"
+eta8   = "Entrance A: Warp tower top"
+eta10b = "Entrance A: Hangman's hall - Right"
+eta12  = "Entrance A: Zombie breeding ground"
+eta13a = "Entrance A: Subterranean shaft top exit"
+
+
+# Entrance B main locations
 etb0   = "Entrance B: Start of the Other's adventure"
 etb2a  = "Entrance B: Observation tower - Upper"
 etb2b  = "Entrance B: Observation tower - Lower"
 etb3   = "Entrance B: Observation tower atlas chamber"
 etb9   = "Entrance B: Warped wine cellar"
 etb11  = "Entrance B: Double hangman's patio"
-etb13a = "Entrance B: Secret skeletal passage - Upper"
-etb13b = "Entrance B: Secret skeletal passage - Middle"
-etb13c = "Entrance B: Secret skeletal passage - Lower"
+etb13b = "Entrance B: Secret skeletal passage - Upper"
+etb13c = "Entrance B: Secret skeletal passage - Middle"
+etb13d = "Entrance B: Secret skeletal passage - Lower"
 
-# Marble Corridor A names
+# Entrance B sub-weapon locations
+etb6   = "Entrance B: Silent save hall"
+etb8   = "Entrance B: Warped tower top"
+etb10  = "Entrance B: Double hangman's hall"
+etb12  = "Entrance B: Spriggan brooding ground"
+etb13a = "Entrance B: Secret skeletal passage top exit"
+
+
+# Marble Corridor A main locations
 mca2a  = "Marble Corridor A: Push crate storage - Left"
 mca2b  = "Marble Corridor A: Push crate storage - Right"
 mca4   = "Marble Corridor A: West common room"
@@ -41,79 +58,134 @@ mca11c = "Marble Corridor A: Grand staircase bottom bunker - Left"
 mca11d = "Marble Corridor A: Grand staircase bottom bunker - Right"
 mca11e = "Marble Corridor A: Grand staircase top storage - Upper"
 mca11f = "Marble Corridor A: Grand staircase top storage - Lower"
-mca12  = "Marble Corridor A: Hope of victory hall"
-mca13  = "Marble Corridor A: Wailing exit"
+mca12b = "Marble Corridor A: Hope of victory hall - Right"
+mca13b = "Marble Corridor A: Wailing exit - Right"
 mca14  = "Marble Corridor A: Descent of illusion"
 
-# Room of Illusion A names
-ria15 = "Room of Illusion A: Lava flow chamber"
-ria16 = "Room of Illusion A: Lizard-man turf"
-ria17 = "Room of Illusion A: Crawlspace to the Other World"
+# Marble Corridor A sub-weapon locations
+mca6   = "Marble Corridor A: Pre-Giant Bat hall"
+mca8   = "Marble Corridor A: Save slide outside"
+mca12a = "Marble Corridor A: Hope of victory hall - Left"
+mca13a = "Marble Corridor A: Wailing exit - Left"
 
-# Marble Corridor B names
-mcb2  = "Marble Corridor B: Lizard family reunion"
-mcb9  = "Marble Corridor B: Save secret crawlspace"
-mcb10 = "Marble Corridor B: East uncommon room"
-mcb11 = "Marble Corridor B: Flea Man armory"
-mcb12 = "Marble Corridor B: 0 hope of victory hall"
 
-# Room of Illusion B names
+# Room of Illusion A main locations
+ria15  = "Room of Illusion A: Lava flow chamber"
+ria16  = "Room of Illusion A: Lizard-man turf"
+ria17a = "Room of Illusion A: Crawlspace to the Other World - Left"
+
+# Room of Illusion A sub-weapon location
+ria17b = "Room of Illusion A: Crawlspace to the Other World - Right"
+
+
+# Marble Corridor B main locations
+mcb2   = "Marble Corridor B: Lizard family reunion"
+mcb9   = "Marble Corridor B: Save secret crawlspace"
+mcb10  = "Marble Corridor B: East uncommon room"
+mcb11  = "Marble Corridor B: Flea Man armory"
+mcb12a = "Marble Corridor B: 0 hope of victory hall"
+
+# Marble Corridor B sub-weapon locations
+mcb8   = "Marble Corridor B: Secret crawlspace outside"
+mcb13  = "Marble Corridor B: Wailing entrance"
+# These locations are added to O's room to compensate for Marble B having 2 less sub-weapons.
+mcb12b = "Marble Corridor B: O's weapon hoard - Left"
+mcb12c = "Marble Corridor B: O's weapon hoard - Right"
+
+
+# Room of Illusion B main locations
 rib16 = "Room of Illusion B: Battlegrounds of many victories"
 rib19 = "Room of Illusion B: Spriggan into action"
 
-# The Wailing Way A names
-wwa0a = "The Wailing Way A: Ghostly graveyard left ground tomb"
-wwa0b = "The Wailing Way A: Ghostly graveyard pedestal"
-wwa0c = "The Wailing Way A: Ghostly graveyard ceiling tomb"
-wwa0d = "The Wailing Way A: Ghostly graveyard right ground tomb"
+# Room of Illusion B sub-weapon location
+rib17 = "Room of Illusion B: The party room"
+
+
+# The Wailing Way A main locations
+wwa0b = "The Wailing Way A: Ghostly graveyard left ground tomb - Right"
+wwa0c = "The Wailing Way A: Ghostly graveyard pedestal"
+wwa0d = "The Wailing Way A: Ghostly graveyard ceiling tomb"
+wwa0e = "The Wailing Way A: Ghostly graveyard right ground tomb"
 wwa1  = "The Wailing Way A: Griffin crossroads ceiling tomb"
 wwa3  = "The Wailing Way A: West of crossroads ceiling tomb"
-wwa4a = "The Wailing Way A: U-bendy passages - Left"
-wwa4b = "The Wailing Way A: U-bendy passages - Right"
+wwa4a = "The Wailing Way A: U-bendy passages - Top-left left"
+wwa4c = "The Wailing Way A: U-bendy passages - Top-right"
 wwa8  = "The Wailing Way A: Lone lizard skull door"
 
-# Shrine of the Apostates A names
-saa6a =  "Shrine of the Apostates A: Lizard land storerooms - Left"
-saa6b =  "Shrine of the Apostates A: Lizard land storerooms - Right"
-saa7  =  "Shrine of the Apostates A: Dead victory casket"
-saa10 =  "Shrine of the Apostates A: Wailing exit"
-saa12 =  "Shrine of the Apostates A: White Dragon's treasure"
-saa15a = "Shrine of the Apostates A: Living Armor's button"
+# The Wailing Way A sub-weapon locations
+wwa0a = "The Wailing Way A: Ghostly graveyard left ground tomb - Left"
+wwa4b = "The Wailing Way A: U-bendy passages - Top-left right"
+
+
+# Shrine of the Apostates A main locations
+saa6a  = "Shrine of the Apostates A: Lizard land storerooms - Left"
+saa6b  = "Shrine of the Apostates A: Lizard land storerooms - Right"
+saa7   = "Shrine of the Apostates A: Dead victory casket"
+saa10b = "Shrine of the Apostates A: Wailing exit - Right"
+saa12a = "Shrine of the Apostates A: White Dragon's treasure"
 saa15b = "Shrine of the Apostates A: Behind Living Armor"
-saa16 =  "Shrine of the Apostates A: Lower lizard crawlspace"
+saa16  = "Shrine of the Apostates A: Lower lizard crawlspace"
 
-# The Wailing Way B names
-wwb0a = "The Wailing Way B: Deserted cemetery pedestal"
-wwb0b = "The Wailing Way B: Deserted cemetery top alcove"
+# Shrine of the Apostates A sub-weapon locations
+saa10a = "Shrine of the Apostates A: Wailing exit - Left"
+saa12b = "Shrine of the Apostates A: White Dragon boneyard"
+saa13  = "Shrine of the Apostates A: Before Living Armor"
+
+# Shrine of the Apostates A gate button location
+saa15a = "Shrine of the Apostates A: Living Armor's button"
+
+
+# The Wailing Way B main locations
+wwb0b = "The Wailing Way B: Deserted cemetery pedestal"
+wwb0c = "The Wailing Way B: Deserted cemetery top alcove"
 wwb3  = "The Wailing Way B: Silent stairs top balcony"
-wwb4a = "The Wailing Way B: Contorted pants room - Top-left"
-wwb4b = "The Wailing Way B: Contorted pants room - Top-right"
-wwb4c = "The Wailing Way B: Contorted pants room - Bottom-right"
+wwb4a = "The Wailing Way B: Contorted pants room - Top-left left"
+wwb4c = "The Wailing Way B: Contorted pants room - Top-right"
+wwb4d = "The Wailing Way B: Contorted pants room - Bottom-right"
 
-# Shrine of the Apostates B names
-sab5  = "Shrine of the Apostates B: Bouncing bone zone above coffin"
-sab7  = "Shrine of the Apostates B: Bouncing bone zone coffin"
-sab11 = "Shrine of the Apostates B: Simon says square"
-sab12 = "Shrine of the Apostates B: Left owl house"
-sab15 = "Shrine of the Apostates B: Before Cyclops"
+# The Wailing Way B sub-weapon locations
+wwb0a = "The Wailing Way B: Deserted cemetery left ground tomb"
+wwb4b = "The Wailing Way B: Contorted pants room - Top-left right"
 
-# Castle Treasury A names
+
+# Shrine of the Apostates B main locations
+sab5   = "Shrine of the Apostates B: Bouncing bone zone above coffin"
+sab7   = "Shrine of the Apostates B: Bouncing bone zone coffin"
+sab11  = "Shrine of the Apostates B: Simon says square"
+sab12a = "Shrine of the Apostates B: East owl house - Left"
+sab15  = "Shrine of the Apostates B: Before Cyclops"
+
+# Shrine of the Apostates B sub-weapon locations
+sab10  = "Shrine of the Apostates B: Wailing entrance"
+sab12b = "Shrine of the Apostates B: East owl house - Middle"
+sab13  = "Shrine of the Apostates A: Behind Cyclops"
+
+
+# Castle Treasury A main locations
 cya0a  = "Castle Treasury A: West spectral hangout - Left"
 cya0b  = "Castle Treasury A: West spectral hangout - Right"
 cya1   = "Castle Treasury A: West chapel save room dead end"
 cya4   = "Castle Treasury A: West chapel warp room"
 cya6   = "Castle Treasury A: Hall of the Ruler"
 cya8   = "Castle Treasury A: Stairs of the Ruler"
-cya9   = "Castle Treasury A: Prase quartz mine upper tunnel"
+cya9b  = "Castle Treasury A: Prase quartz mine upper tunnel - Right"
 cya10  = "Castle Treasury A: Merchant's open hideout"
 cya11  = "Castle Treasury A: Prase quartz mine lower tunnel"
 cya12  = "Castle Treasury A: Prase quartz mine top chamber"
 cya18  = "Castle Treasury A: Above elevator guarded stairs"
-cya19  = "Castle Treasury A: Entrance to center"
+cya19a = "Castle Treasury A: Entrance to center - Left"
 cya20a = "Castle Treasury A: Moonlit elevator warp room - Right"
 cya20b = "Castle Treasury A: Moonlit elevator warp room - Left"
 
-# Castle Treasury B names
+# Castle Treasury A sub-weapon locations
+cya3   = "Castle Treasury A: West chapel hall"
+cya9a  = "Castle Treasury A: Prase quartz mine upper tunnel - Left"
+cya13  = "Castle Treasury A: Golden statue corridor"
+cya19b = "Castle Treasury A: Entrance to center - Right"
+cya22  = "Castle Treasury A: Atop castle core"
+
+
+# Castle Treasury B main locations
 cyb0a  = "Castle Treasury B: West volcano shelter - Left"
 cyb0b  = "Castle Treasury B: West volcano shelter - Right"
 cyb1   = "Castle Treasury B: West volcanic save room"
@@ -125,10 +197,18 @@ cyb18a = "Castle Treasury B: Above elevator unguarded stairs - Left"
 cyb18b = "Castle Treasury B: Above elevator unguarded stairs - Right"
 cyb20  = "Castle Treasury B: Sunny elevator warp room"
 
-# Skeleton Cave A names
+# Castle Treasury B sub-weapon locations
+cyb3  = "Castle Treasury B: West volcanic upper hall"
+cyb9  = "Castle Treasury B: Rose quartz mine upper tunnel"
+cyb13 = "Castle Treasury B: Silver statue corridor"
+cyb19 = "Castle Treasury B: Entrance to heart"
+cyb22 = "Castle Treasury B: Atop castle heart"
+
+
+# Skeleton Cave A main locations
 sca1a  = "Skeleton Cave A: Medusa's remains chamber - Lower"
 sca1b  = "Skeleton Cave A: Medusa's remains chamber - Upper"
-sca2   = "Skeleton Cave A: Monument to the Evil God"
+sca2a  = "Skeleton Cave A: Monument to the Evil God - Right"
 sca4   = "Skeleton Cave A: Far-right push crate challenge"
 sca5   = "Skeleton Cave A: Outside skeleton testing chamber"
 sca10  = "Skeleton Cave A: Behind Legion (corpse)"
@@ -138,35 +218,59 @@ sca12b = "Skeleton Cave A: Secret attic above save room - Right"
 sca13  = "Skeleton Cave A: Crate balancing act chamber"
 sca19  = "Skeleton Cave A: Museum of Mimics above end room"
 
-# Skeleton Cave B names
+# Skeleton Cave B sub-weapon locations
+sca0  = "Skeleton Cave A: Treasury exit"
+sca2b = "Skeleton Cave A: Monument to the Evil God - Left"
+sca7  = "Skeleton Cave A: Bloody tearing statue chamber"
+sca8  = "Skeleton Cave A: Before Legion (corpse)"
+sca15 = "Skeleton Cave A: Museum of Mimics entrance"
+
+
+# Skeleton Cave B main locations
 scb1a  = "Skeleton Cave B: Giant Ghost's remains chamber - Lower"
 scb1b  = "Skeleton Cave B: Giant Ghost's remains chamber - Upper"
-scb2   = "Skeleton Cave B: Monument to Carmilla"
+scb2a  = "Skeleton Cave B: Monument to Carmilla - Right"
 scb3   = "Skeleton Cave B: Lower spider den wall"
 scb4   = "Skeleton Cave B: Rolling skull chamber"
 scb5   = "Skeleton Cave B: Crocomire graveyard"
 scb10  = "Skeleton Cave B: Behind Skull Knight"
-scb11  = "Skeleton Cave B: Museum of skulls"
+scb11  = "Skeleton Cave B: Museum of skulls end room"
 scb12a = "Skeleton Cave B: Hidden chamber above save room - Left"
 scb12b = "Skeleton Cave B: Hidden chamber above save room - Right"
 scb13  = "Skeleton Cave B: Castle entrance ascent point"
 
-# Luminous Cavern A names
-lca3  = "Luminous Cavern A: Near aqueduct exit"
-lca7a = "Luminous Cavern A: Outside destructible wall warp - Left"
-lca7b = "Luminous Cavern A: Outside destructible wall warp - Right"
-lca8a = "Luminous Cavern A: Beneath Hammer-Hammer's home shaft"
-lca8b = "Luminous Cavern A: Behind Talos - Left"
-lca8c = "Luminous Cavern A: Behind Talos - Right"
-lca10 = "Luminous Cavern A: Hammer-Hammer's home"
-lca11 = "Luminous Cavern A: Destructible wall warp room"
-lca14 = "Luminous Cavern A: Path to floodgate"
-lca17 = "Luminous Cavern A: Death's flooded upper cavern"
-lca18 = "Luminous Cavern A: Death's flooded lower cavern"
-lca22 = "Luminous Cavern A: Dead end chamber above Talos"
-lca23 = "Luminous Cavern A: Behind Death"
+# Skeleton Cave B sub-weapon locations
+scb0  = "Skeleton Cave B: Treasury entrance"
+scb2b = "Skeleton Cave B: Monument to Carmilla - Left"
+scb7  = "Skeleton Cave B: Lifeless statue chamber"
+scb8  = "Skeleton Cave B: Before Skull Knight"
+scb15 = "Skeleton Cave B: Museum of skulls entrance"
 
-# Luminous Cavern B names
+
+# Luminous Cavern A main locations
+lca3   = "Luminous Cavern A: Near aqueduct exit"
+lca7a  = "Luminous Cavern A: Outside destructible wall warp - Left"
+lca7b  = "Luminous Cavern A: Outside destructible wall warp - Right"
+lca8a  = "Luminous Cavern A: Beneath Hammer-Hammer's home shaft"
+lca8b  = "Luminous Cavern A: Behind Talos - Left"
+lca8c  = "Luminous Cavern A: Behind Talos - Right"
+lca10  = "Luminous Cavern A: Hammer-Hammer's home"
+lca11  = "Luminous Cavern A: Destructible wall warp room"
+lca14a = "Luminous Cavern A: Path to floodgate start - Left"
+lca17  = "Luminous Cavern A: Death's flooded upper cavern"
+lca18  = "Luminous Cavern A: Death's flooded lower cavern"
+lca22a = "Luminous Cavern A: Dead end chamber above Talos - Bottom-left"
+lca23  = "Luminous Cavern A: Behind Death"
+
+# Luminous Cavern A sub-weapon locations
+lca0   = "Luminous Cavern A: Treasury exit"
+lca5   = "Luminous Cavern A: Death's flooded caverns start"
+lca6   = "Luminous Cavern A: Pre-Talos tunnel"
+lca14b = "Luminous Cavern A: Path to floodgate start - Middle"
+lca22b = "Luminous Cavern A: Dead end chamber above Talos - Top"
+
+
+# Luminous Cavern B main locations
 lcb3   = "Luminous Cavern B: Near aqueduct entrance"
 lcb7a  = "Luminous Cavern B: Outside indestructible wall warp - Left"
 lcb7b  = "Luminous Cavern B: Outside indestructible wall warp - Right"
@@ -178,17 +282,25 @@ lcb13  = "Luminous Cavern B: Path to push crates"
 lcb16  = "Luminous Cavern B: Push crate puzzle reward"
 lcb17  = "Luminous Cavern B: Path to sky portal upper cavern"
 lcb18  = "Luminous Cavern B: Path to sky portal lower cavern"
-lcb22a = "Luminous Cavern B: Dead end chamber above Golem - Left"
-lcb22b = "Luminous Cavern B: Dead end chamber above Golem - Right"
+lcb22a = "Luminous Cavern B: Dead end chamber above Golem - Bottom-left"
+lcb22c = "Luminous Cavern B: Dead end chamber above Golem - Bottom-right"
 
-# Sky Walkway A names
+# Luminous Cavern B sub-weapon locations
+lcb0   = "Luminous Cavern B: Treasury entrance"
+lcb5   = "Luminous Cavern B: Path to sky portal start"
+lcb6   = "Luminous Cavern B: Pre-Golem tunnel"
+lcb14  = "Luminous Cavern B: Path to push crates start"
+lcb22b = "Luminous Cavern B: Dead end chamber above Golem - Top"
+
+
+# Sky Walkway A main locations
 swa7   = "Sky Walkway A: Maxim's memento"
 swa10a = "Sky Walkway A: Under construction chamber - Upper"
 swa10b = "Sky Walkway A: Under construction chamber - Middle"
 swa10c = "Sky Walkway A: Under construction chamber - Lower"
-swa12a = "Sky Walkway A: Above Devil right tower"
+swa12a = "Sky Walkway A: Above Devil right tower - Left"
 swa12b = "Sky Walkway A: Above Devil left tower"
-swa12c = "Sky Walkway A: Above Devil White Dragon"
+swa12d = "Sky Walkway A: Above Devil White Dragon"
 swa14  = "Sky Walkway A: Behind Devil"
 swa15a = "Sky Walkway A: Save room wall hot spring - Left"
 swa15b = "Sky Walkway A: Save room wall hot spring - Right"
@@ -196,27 +308,45 @@ swa17  = "Sky Walkway A: Upper dark hallway"
 swa18a = "Sky Walkway A: Lower dark hallway - Left crawlspace"
 swa18b = "Sky Walkway A: Lower dark hallway - Right crawlspace"
 
-# Chapel of Dissonance A names
+# Sky Walkway A sub-weapon locations
+swa8   = "Sky Walkway A: Blocking wall to Maxim"
+swa9   = "Sky Walkway A: Portal hallway"
+swa12c = "Sky Walkway A: Above Devil right tower - Right"
+swa16  = "Sky Walkway A: Fountain of Youth"
+
+
+# Chapel of Dissonance A main locations
 cda0a = "Chapel of Dissonance A: Main building highest tower - Left"
 cda0b = "Chapel of Dissonance A: Main building highest tower - Right"
 cda0c = "Chapel of Dissonance A: Main building central stairs ledge"
 cda0d = "Chapel of Dissonance A: Main building middle tower"
 cda0e = "Chapel of Dissonance A: Main building lowest tower"
-cda2  = "Chapel of Dissonance A: Walkway passage"
+cda2b = "Chapel of Dissonance A: Walkway passage - Right"
 
-# Sky Walkway B names
-swb8   = "Sky Walkway B: Before Shadow"
+# Chapel of Dissonance A sub-weapon location
+cda2a = "Chapel of Dissonance A: Walkway passage - Middle"
+
+
+# Sky Walkway B main locations
+swb8a  = "Sky Walkway B: Before Shadow - Left"
 swb10a = "Sky Walkway B: Over construction chamber - Middle"
 swb10b = "Sky Walkway B: Over construction chamber - Bottom-left"
 swb10c = "Sky Walkway B: Over construction chamber - Bottom-right"
-swb12a = "Sky Walkway B: Above Legion (saint) left tower"
-swb12b = "Sky Walkway B: Above Legion (saint) right tower"
+swb12a = "Sky Walkway B: Above Legion (saint) right tower - Left"
+swb12b = "Sky Walkway B: Above Legion (saint) left tower"
 swb14  = "Sky Walkway B: Before Legion (saint)"
 swb15  = "Sky Walkway B: Save room wall dried spring"
-swb16  = "Sky Walkway B: Hall of mirrors entrance"
-swb19  = "Sky Walkway B: Museum of murder"
+swb16a = "Sky Walkway B: Hall of mirrors entrance"
+swb19  = "Sky Walkway B: Museum of murder end"
 
-# Chapel of Dissonance B names
+# Sky Walkway A sub-weapon locations
+swb8b  = "Sky Walkway B: Before Shadow - Right"
+swb9   = "Sky Walkway B: Museum of murder hall"
+swb12c = "Sky Walkway B: Above Legion (saint) right tower - Right"
+swb16b = "Sky Walkway B: Fountain of Elderly"
+
+
+# Chapel of Dissonance B main locations
 cdb0a = "Chapel of Dissonance B: Main construct tallest tower"
 cdb0b = "Chapel of Dissonance B: Main construct middle stairs ledge"
 cdb0c = "Chapel of Dissonance B: Main construct center tower - Upper"
@@ -224,27 +354,46 @@ cdb0d = "Chapel of Dissonance B: Main construct center tower - Lower"
 cdb0e = "Chapel of Dissonance B: Main construct shortest tower"
 cdb4  = "Chapel of Dissonance B: Corridors of frightening lightning"
 
-# Aqueduct of Dragons A names
-ada1   = "Aqueduct of Dragons A: Goddess's illusory wall"
-ada2   = "Aqueduct of Dragons A: Slimy pipe shaft"
-ada4   = "Aqueduct of Dragons A: Marauding Mermen territory"
+# Chapel of Dissonance A sub-weapon location
+cdb2 = "Chapel of Dissonance B: Connecting walkway"
+
+
+# Aqueduct of Dragons A main locations
+ada1a  = "Aqueduct of Dragons A: Beyond goddess's illusory wall"
+ada2b  = "Aqueduct of Dragons A: Slimy pipe shaft - Left"
+ada4a  = "Aqueduct of Dragons A: Marauding Mermen territory - Left"
 ada8   = "Aqueduct of Dragons A: Guillotine corridor"
+ada10b = "Aqueduct of Dragons A: Behind Giant Merman - Middle"
+ada10c = "Aqueduct of Dragons A: Behind Giant Merman - Right"
+
+# Aqueduct of Dragons A sub-weapon locations
+ada1b  = "Aqueduct of Dragons A: Before goddess's illusory wall"
+ada2a  = "Aqueduct of Dragons A: Slimy pipe shaft - Right"
+ada4b  = "Aqueduct of Dragons A: Marauding Mermen territory - Middle"
+ada7   = "Aqueduct of Dragons A: Before Giant Merman"
 ada10a = "Aqueduct of Dragons A: Behind Giant Merman - Left"
-ada10b = "Aqueduct of Dragons A: Behind Giant Merman - Right"
+
 
 # Aqueduct of Dragons B names
-adb0 = "Aqueduct of Dragons B: Luminous Cavern shortcut"
-adb1 = "Aqueduct of Dragons B: Godless illusory wall"
-adb2 = "Aqueduct of Dragons B: Dry pipe shaft"
-adb4 = "Aqueduct of Dragons B: West zombie zone"
-adb8 = "Aqueduct of Dragons B: East zombie zone"
+adb0  = "Aqueduct of Dragons B: Luminous Cavern shortcut"
+adb1a = "Aqueduct of Dragons B: Before godless illusory wall"
+adb2b = "Aqueduct of Dragons B: Dry pipe shaft"
+adb4a = "Aqueduct of Dragons B: West zombie zone - Left"
+adb8  = "Aqueduct of Dragons B: East zombie zone"
 
-# Clock Tower A names
-cra0   = "Clock Tower A: West entrance shaft bottom"
+# Aqueduct of Dragons B sub-weapon locations
+adb1b = "Aqueduct of Dragons B: Beyond godless illusory wall"
+adb2a = "Aqueduct of Dragons B: Dry pipe shaft - Right"
+adb4b = "Aqueduct of Dragons B: West zombie zone - Middle"
+adb7  = "Aqueduct of Dragons B: Noclipped Mermen settlement"
+adb10 = "Aqueduct of Dragons B: Clock Tower entrance"
+
+
+# Clock Tower A main locations
+cra0b  = "Clock Tower A: West entrance shaft bottom - Right"
 cra1   = "Clock Tower A: Medusa's home attic"
 cra2   = "Clock Tower A: Attic engine room"
 cra3   = "Clock Tower A: Above grandfather Ruler"
-cra7   = "Clock Tower A: Basement passage button"
 cra9   = "Clock Tower A: Skull painting room attic"
 cra10  = "Clock Tower A: Flea Man fleapit"
 cra14  = "Clock Tower A: Bottom east shaft White Dragon"
@@ -259,13 +408,24 @@ cra22c = "Clock Tower A: Pinball zone end - Middle"
 cra22d = "Clock Tower A: Pinball zone end - Bottom-right"
 cra23  = "Clock Tower A: Pinball zone illusory crawlspace"
 
-# Clock Tower B names
+# Clock Tower A sub-weapon locations
+cra0a = "Clock Tower A: West entrance shaft bottom - Left"
+cra6  = "Clock Tower A: Peculiar pendulum pits"
+cra16 = "Clock Tower A: Spare gear passage"
+cra19 = "Clock Tower A: Before Death warp"
+cra21 = "Clock Tower A: Pinball passage"
+
+# Clock Tower A gate button location
+cra7 = "Clock Tower A: Basement passage button"
+
+
+# Clock Tower B main locations
 crb1   = "Clock Tower B: Skeleton fatality attic"
 crb2   = "Clock Tower B: Wrecked attic"
 crb3   = "Clock Tower B: Above Peeping Big"
 crb4   = "Clock Tower B: Behind Peeping Big"
-crb6a  = "Clock Tower B: Perilous pendulum passage - Middle"
-crb6b  = "Clock Tower B: Perilous pendulum passage - Right"
+crb6a  = "Clock Tower B: Perilous pendulum passage - Left"
+crb6c  = "Clock Tower B: Perilous pendulum passage - Right"
 crb8   = "Clock Tower B: Near lower crankshaft"
 crb10  = "Clock Tower B: Upper crankshaft crawlspace"
 crb13  = "Clock Tower B: Peeping lookout"
@@ -276,7 +436,15 @@ crb22b = "Clock Tower B: Steel ball run end - Bottom"
 crb23a = "Clock Tower B: Steel ball run side chamber - Left"
 crb23b = "Clock Tower B: Steel ball run side chamber - Right"
 
-# Castle Top Floor A names
+# Clock Tower B sub-weapon locations
+crb0  = "Clock Tower B: Left gear shaft bottom"
+crb6b = "Clock Tower B: Perilous pendulum passage - Middle"
+crb16 = "Clock Tower B: Gear-jammed passage"
+crb19 = "Clock Tower B: After Death warp"
+crb21 = "Clock Tower B: Steel ball shaft"
+
+
+# Castle Top Floor A main locations
 tfa0a = "Castle Top Floor A: Handy statue attic - Left"
 tfa0b = "Castle Top Floor A: Handy statue attic stairs"
 tfa0c = "Castle Top Floor A: Handy statue attic - Middle"
@@ -284,14 +452,24 @@ tfa0d = "Castle Top Floor A: Handy statue attic - Right"
 tfa0e = "Castle Top Floor A: Handy statue attic stairs ledge"
 tfa1a = "Castle Top Floor A: Lydie's balcony tower - Left"
 tfa1b = "Castle Top Floor A: Lydie's balcony tower - Right"
-tfa1c = "Castle Top Floor A: Lydie's balcony button"
-tfa7  = "Castle Top Floor A: Above Minotaur Lv2 corridor"
+tfa7b = "Castle Top Floor A: Above Minotaur Lv2 corridor - Right"
 tfa8  = "Castle Top Floor A: Elevator room stairs"
-tfa9  = "Castle Top Floor A: Corridor griffin passage"
+tfa9b = "Castle Top Floor A: Corridor griffin passage - Left"
 tfa15 = "Castle Top Floor A: Before Pazuzu warp room"
 tfa11 = "Castle Top Floor A: Behind Minotaur Lv2"
 
-# Castle Top Floor B names
+# Castle Top Floor A sub-weapon locations
+tfa1c = "Castle Top Floor A: Lydie's balcony tower - Center"
+tfa4  = "Castle Top Floor A: Full moon stairs"
+tfa6  = "Castle Top Floor A: Upper keep ascent"
+tfa7a = "Castle Top Floor A: Above Minotaur Lv2 corridor - left"
+tfa9a = "Castle Top Floor A: Corridor griffin passage - Right"
+
+# Castle Top Floor A gate button location
+tfa1d = "Castle Top Floor A: Lydie's balcony button"
+
+
+# Castle Top Floor B main locations
 tfb0a  = "Castle Top Floor B: Kaiser's attic storage left"
 tfb0b  = "Castle Top Floor B: Kaiser's attic storage center - Left"
 tfb0c  = "Castle Top Floor B: Kaiser's attic storage center - Right"
@@ -299,9 +477,16 @@ tfb0d  = "Castle Top Floor B: Kaiser's attic storage right - Left"
 tfb0e  = "Castle Top Floor B: Kaiser's attic storage right - Right"
 tfb3   = "Castle Top Floor B: Wrecked throne room"
 tfb5   = "Castle Top Floor B: Below throne room corridor"
-tfb7   = "Castle Top Floor B: Above Minotaur corridor"
+tfb7b  = "Castle Top Floor B: Above Minotaur corridor - Right"
 tfb11a = "Castle Top Floor B: Behind Minotaur - Left"
 tfb11b = "Castle Top Floor B: Behind Minotaur - Right"
+
+# Castle Top Floor B sub-weapon locations
+tfb1  = "Castle Top Floor B: Deserted balcony tower"
+tfb4  = "Castle Top Floor B: Blood moon stairs"
+tfb6  = "Castle Top Floor B: Upper keep descent"
+tfb7a = "Castle Top Floor B: Above Minotaur corridor - Left"
+tfb9  = "Castle Top Floor B: Corridor griffin shortcut"
 
 # Event location names
 event_ending_m = "Medium Ending"

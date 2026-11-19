@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Set
 
 from . import ALL_CVHODIS_ITEMS
 from .locations import get_location_names_to_ids, CVHODIS_LOCATIONS_INFO
-from .items import GATE_KEYS
+from .items import GATE_KEYS, PERMA_WEAPONS, SUB_WEAPON_EQUIP_IDS
 from .options import GateItems
 # from .locations import CVHODIS_LOCATIONS_INFO
 from .cvhodis_text import cvhodis_string_to_bytearray, LEN_LIMIT_CORNER_TEXTBOX_CUSTOM
@@ -24,7 +24,10 @@ if TYPE_CHECKING:
 
 GAME_STATE_ADDRESS = 0xC
 FLAGS_BITFIELD_START = 0x310
+EXTRA_PICKUP_FLAGS_1_START = 0x1AC
+EXTRA_PICKUP_FLAGS_2_START = 0x2EC
 NUM_RECEIVED_ITEMS_ADDRESS = 0x18872
+PERMA_WEAPONS_BITFIELD_ADDRESS = 0x18882
 RELICS_EQUIPPED_BITFIELD_START = 0x18841
 FURN_PLACED_BITFIELD_START = 0x18847
 QUEUED_TEXTBOX_SMALL_ADDRESS = 0x18A00
@@ -42,6 +45,7 @@ CURRENT_MP_ADDRESS = 0x18550
 CURRENT_HEARTS_ADDRESS = 0x18794
 CURRENT_MONEY_ADDRESS = 0x1879C
 CURRENT_BOOK_ADDRESS = 0x1877F
+CURRENT_SUB_WEAPON_ADDRESS = 0x1877E
 # CURRENT_LOCATION_VALUES_START = 0x253FC TODO: Find a good way to tell the player's area.
 ROM_NAME_START = 0xA0
 
@@ -50,9 +54,9 @@ GAME_STATE_CREDITS = 0x09
 FROZEN_TEXTBOX_BITS = 0x03
 CAN_PAUSE_BIT = 0x04
 OUT_OF_MENU_VALUE = 0x01
-FIRST_GATE_KEY_TEXT_ID = 0x235
+FIRST_GATE_KEY_TEXT_ID = 0x230
 FIRST_MONEY_TEXT_ID = 0x249
-PROG_JUMP_ITEM_TEXT_ID = b"\xDD"
+# PROG_JUMP_ITEM_TEXT_ID = b"\xD8"
 TEXT_ID_MULTIWORLD_MESSAGE = b"\xAB\x02"
 SOUND_ID_PICKUP_MINOR = b"\x2D"
 SOUND_ID_PICKUP_MONEY = b"\x2E"
@@ -237,7 +241,11 @@ class CastlevaniaHoDisClient(BizHawkClient):
                                                               (FURN_PLACED_BITFIELD_START,
                                                                CVHODIS_INVENTORIES[PickupTypes.FURNITURE].length,
                                                                "EWRAM"),
-                                                              (CURRENT_MONEY_ADDRESS, 4, "EWRAM")])
+                                                              (CURRENT_MONEY_ADDRESS, 4, "EWRAM"),
+                                                              (EXTRA_PICKUP_FLAGS_1_START, 32, "EWRAM"),
+                                                              (EXTRA_PICKUP_FLAGS_2_START, 32, "EWRAM"),
+                                                              (CURRENT_SUB_WEAPON_ADDRESS, 1, "EWRAM"),
+                                                              (PERMA_WEAPONS_BITFIELD_ADDRESS, 1, "EWRAM")])
 
             curr_invs = {INV_NUMBERS[i]: bytearray(read_state[i]) for i in range(len(INV_NUMBERS))}
 
@@ -256,6 +264,8 @@ class CastlevaniaHoDisClient(BizHawkClient):
             curr_book = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 12]), "little")
             placed_furniture_flags = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 13]), "little")
             curr_money = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 14]), "little")
+            curr_sub_weapon = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 17]), "little")
+            curr_perma_weapons = int.from_bytes(bytearray(read_state[len(CVHODIS_INVENTORIES) + 18]), "little")
 
             # Get out each of the individual max stat values.
             max_hp = int.from_bytes(max_stats_array[0:2], "little")
@@ -273,7 +283,11 @@ class CastlevaniaHoDisClient(BizHawkClient):
                 event_flags_array[7] |= 0x80000000
 
             pickup_flags_array = [int.from_bytes(all_flags[0x20:0x48][i:i + 4], "little") for i in
-                                  range(0, len(all_flags[0x20:0x48]), 4)]
+                                  range(0, len(all_flags[0x20:0x48]), 4)] + \
+                                 [int.from_bytes(read_state[len(CVHODIS_INVENTORIES) + 15][i:i + 4], "little") for i in
+                                  range(0, len(read_state[len(CVHODIS_INVENTORIES) + 15]), 4)] + \
+                                 [int.from_bytes(read_state[len(CVHODIS_INVENTORIES) + 16][i:i + 4], "little") for i in
+                                  range(0, len(read_state[len(CVHODIS_INVENTORIES) + 16]), 4)]
 
             # If there's no receive sound queued, the delay timer is 0, we are not in a cutscene, not frozen due to an
             # item textbox, are able to pause, and are not currently paused, it should be safe to call a textbox.
@@ -353,39 +367,6 @@ class CastlevaniaHoDisClient(BizHawkClient):
             # to alive. The player likely loaded a savestate before the game state changed to Game Over.
             elif curr_hp > 0 and self.currently_dead:
                 self.currently_dead = False
-
-            # If we have a queue of Locations to inject "sent" messages with, do so before giving any subsequent Items.
-            #elif self.sent_message_queue and ok_to_inject and not self.currently_dead and ctx.locations_info:
-            #    loc = self.sent_message_queue[0]
-                # Truncate the Item name. ArchipIDLE's FFXIV Item is 214 characters, for comparison.
-            #    item_name = ctx.item_names.lookup_in_slot(ctx.locations_info[loc].item, ctx.locations_info[loc].player)
-            #    if len(item_name) > ITEM_NAME_LIMIT:
-            #        item_name = item_name[:ITEM_NAME_LIMIT]
-                # Truncate the player name. Player names are normally capped at 16 characters, but there is no limit on
-                # ItemLink group names.
-            #    player_name = ctx.player_names[ctx.locations_info[loc].player]
-            #    if len(player_name) > PLAYER_NAME_LIMIT:
-            #        player_name = player_name[:PLAYER_NAME_LIMIT]
-
-            #    sent_text = cvhodis_string_to_bytearray(f"「{item_name}」 sent to 「{player_name}」◊", "big middle", 0)
-
-                # Set the correct sound to play depending on the Item's classification.
-            #    if ctx.slot_info[ctx.locations_info[loc].player].game == GAME_NAME:
-            #        mssg_sfx_id = SOUND_ID_MAIDEN_BREAKING
-            #        sent_text = cvhodis_string_to_bytearray(f"「Iron Maidens」 broken for 「{player_name}」◊",
-            #                                                "big middle", 0)
-            #    elif ctx.locations_info[loc].flags & ItemClassification.progression:
-            #        mssg_sfx_id = SOUND_ID_MAJOR_PICKUP
-            #    elif ctx.locations_info[loc].flags & ItemClassification.trap:
-            #        mssg_sfx_id = SOUND_ID_BAD_CONFIG
-            #    else:  # Filler
-            #        mssg_sfx_id = SOUND_ID_MINOR_PICKUP
-
-            #    await bizhawk.write(ctx.bizhawk_ctx, [(QUEUED_TEXTBOX_1_ADDRESS, TEXT_ID_MULTIWORLD_MESSAGE, "EWRAM"),
-            #                                          (QUEUED_SOUND_ID_ADDRESS, mssg_sfx_id, "EWRAM"),
-            #                                          (QUEUED_TEXT_STRING_START, sent_text, "ROM")])
-
-            #    del(self.sent_message_queue[0])
 
             # If the game hasn't received all items yet, it's ok to inject, and the current number of received items
             # still matches what we read before, then write the next incoming item into the inventory and, separately,
@@ -468,8 +449,23 @@ class CastlevaniaHoDisClient(BizHawkClient):
                 # If they do, don't increase their count of that Item any further.
                 if pickup_type in CVHODIS_INVENTORIES:
                     # If the Item is a Gate Key, set its corresponding event flag.
-                    if pickup_type == PickupTypes.FURNITURE and item_name in GATE_KEYS:
+                    if item_name in GATE_KEYS:
                         event_flag_indexes.append(GATE_KEYS[item_name])
+                    # If the Item is a Perma Weapon, set the flag indicating we have it.
+                    elif item_name in PERMA_WEAPONS:
+                        inv_guards += [(PERMA_WEAPONS_BITFIELD_ADDRESS, int.to_bytes(curr_perma_weapons, 1, "little"),
+                                        "EWRAM")]
+                        test = curr_perma_weapons | (1 << (SUB_WEAPON_EQUIP_IDS[pickup_index - 0xD] - 1))
+                        inv_writes += [(PERMA_WEAPONS_BITFIELD_ADDRESS,
+                                        int.to_bytes(curr_perma_weapons |
+                                                     (1 << (SUB_WEAPON_EQUIP_IDS[pickup_index - 0xD] - 1)),
+                                                     1, "little"),
+                                        "EWRAM")]
+                        # If the player has no sub-weapon right now, give them the sub-weapon as well.
+                        if not curr_sub_weapon:
+                            inv_guards += [(CURRENT_SUB_WEAPON_ADDRESS, b'\x00', "EWRAM")]
+                            inv_writes += [(CURRENT_SUB_WEAPON_ADDRESS, int.to_bytes(
+                                SUB_WEAPON_EQUIP_IDS[pickup_index - 0xD], 1, "little"), "EWRAM")]
                     # If the Item is stored in an array of counts, increment its counter (if it's not at 99 already).
                     elif not CVHODIS_INVENTORIES[pickup_type].is_bitfield:
                         if inv_array[pickup_index] + 1 <= 99:
