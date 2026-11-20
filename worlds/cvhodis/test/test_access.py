@@ -9,7 +9,7 @@ class Sphere1FromEntranceATest(CVHoDisTestBase):
         self.assertTrue(self.can_reach_location(loc_names.eta5a))
         self.assertTrue(self.can_reach_location(loc_names.eta5b))
         self.assertTrue(self.can_reach_location(loc_names.eta7))
-        self.assertTrue(self.can_reach_location(loc_names.eta10))
+        self.assertTrue(self.can_reach_location(loc_names.eta10b))
         self.assertTrue(self.can_reach_location(loc_names.eta11))
         self.assertTrue(self.can_reach_location(loc_names.eta19))
         self.assertTrue(self.can_reach_location(loc_names.mca2a))
@@ -20,8 +20,8 @@ class Sphere1FromEntranceATest(CVHoDisTestBase):
         self.assertTrue(self.can_reach_location(loc_names.mca11a))
         self.assertTrue(self.can_reach_location(loc_names.mca11c))
         self.assertTrue(self.can_reach_location(loc_names.mca11f))
-        self.assertTrue(self.can_reach_location(loc_names.mca12))
-        self.assertTrue(self.can_reach_location(loc_names.mca13))
+        self.assertTrue(self.can_reach_location(loc_names.mca12b))
+        self.assertTrue(self.can_reach_location(loc_names.mca13b))
         self.assertTrue(self.can_reach_location(loc_names.mca14))
         self.assertTrue(self.can_reach_location(loc_names.ria15))
         self.assertTrue(self.can_reach_location(loc_names.ria16))
@@ -34,8 +34,8 @@ class Sphere1FromEntranceATest(CVHoDisTestBase):
         self.assertTrue(self.can_reach_location(loc_names.saa6a))
         self.assertTrue(self.can_reach_location(loc_names.saa6b))
         self.assertTrue(self.can_reach_location(loc_names.saa7))
-        self.assertTrue(self.can_reach_location(loc_names.saa10))
-        self.assertTrue(self.can_reach_location(loc_names.saa12))
+        self.assertTrue(self.can_reach_location(loc_names.saa10b))
+        self.assertTrue(self.can_reach_location(loc_names.saa12a))
         self.assertTrue(self.can_reach_location(loc_names.saa15a))
         self.assertTrue(self.can_reach_location(loc_names.saa15b))
 
@@ -48,7 +48,8 @@ class TreasuryAAccessibilityTest(CVHoDisTestBase):
     def test_treasury_a_access(self) -> None:
         self.assertFalse(self.can_reach_location(loc_names.cya1))
 
-        self.collect_by_name([item_names.relic_wing, item_names.relic_tail, item_names.book_fire, item_names.book_ice, item_names.equip_bracelet_mk])
+        self.collect_by_name([item_names.relic_wing, item_names.relic_tail, item_names.book_fire, item_names.book_ice,
+                              item_names.equip_bracelet_mk])
 
         self.assertFalse(self.can_reach_location(loc_names.cya1))
 

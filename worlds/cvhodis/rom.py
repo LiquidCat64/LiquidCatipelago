@@ -50,16 +50,6 @@ AUTH_NUMBER_START = 0x7FFF10
 QUEUED_TEXT_STRING_START = 0x7CEB00
 ROM_PADDING_START = 0x69D400
 
-# All Location IDs spat out by Guardian Armor when he gets ground up into scrap spaghetti, mapped to their hardcoded
-# addresses in the code that runs during that. Leaving and reentering the room puts it in an alternate state that has
-# these pickups just naturally placed in it, which are handled by the regular pickup placement system, but they have to
-# be handled separately for when the cutscene spawns them specifically.
-GUARDIAN_GRINDER_LOCATIONS: dict[int, int] = {
-    CVHODIS_LOCATIONS_INFO[loc_names.cra17a].code: 0x1A2DA,
-    CVHODIS_LOCATIONS_INFO[loc_names.cra17b].code: 0x1A304,
-    CVHODIS_LOCATIONS_INFO[loc_names.cra17c].code: 0x1A2AE,
-    CVHODIS_LOCATIONS_INFO[loc_names.cra17d].code: 0x1A280,
-}
 
 class CVHoDisPatchExtensions(APPatchExtension):
     game = GAME_NAME
@@ -146,6 +136,25 @@ class CVHoDisPatchExtensions(APPatchExtension):
         # Allow the corner name textboxes to extend all the way across the screen.
         patcher.write_byte(0x889A, 0x26)
 
+        # Fix the bottom of the item textboxes appearing in the top-left corner of the screen when receiving items in
+        # save rooms by moving the "Save?", "Yes", and "No" box graphic tiles a row down each on BG 0, so the sliding
+        # "window" that reveals said tiles will not encompass the bottom row of said item textbox also on BG 0.
+        # "Save?"
+        patcher.write_int32(0x1B234, 0x0600E55A)
+        patcher.write_int32(0x1B23C, 0x0600E59A)
+        # "Yes"
+        patcher.write_int32(0x1B214, 0x0600E5CE)
+        patcher.write_int32(0x1B21C, 0x0600E60E)
+        # "No"
+        patcher.write_int32(0x1B224, 0x0600E5E8)
+        patcher.write_int32(0x1B22C, 0x0600E628)
+        # Adjust the base Y offsets of the two "windows".
+        patcher.write_byte(0x1B266, 0x7C)
+        patcher.write_byte(0x1B296, 0x6C)
+        # Purge the call to the "clear text buffers" function so the small textbox text will not be erased on-screen
+        # when pressing up to activate the save point
+        patcher.write_int32(0x1B0B2, 0x00000000)
+
         # Prevent the game from reading the bottom 2 rows of the map screen both for visible map tiles and the map %.
         # We will be storing additional pickup flags here.
         patcher.write_byte(0xA6F8, 0x23)
@@ -158,6 +167,12 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.generate_dynamic_asm(patches.pickup_flag_set_map_redirect_asm,
                                      patches.pickup_flag_set_map_redirect_ldr,
                                      hook_addr=0x1A1FC, hook_register=2)
+
+        # Prevent sometimes being given map squares in rooms we've never been in when hitting a transition that doesn't
+        # lead to the next room over.
+        patcher.generate_dynamic_asm(patches.map_room_inbounds_checker_asm,
+                                     patches.map_room_inbounds_checker_ldr,
+                                     hook_addr=0xAD9C, hook_register=1)
 
         # Make turning on/off spellbooks work by merely pressing L while crouched instead of L + R at the same time.
         patcher.write_byte(0x72AFA, 0x1F)
@@ -277,7 +292,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
 
         # Move the relic info table and expand it with the extra entries for our new relics.
         new_relic_info_start = patcher.find_space_and_write_buffer(
-            patcher.read_bytes(RELIC_INFO_START, RELIC_INFO_LENGTH) + \
+            patcher.read_bytes(RELIC_INFO_START, RELIC_INFO_LENGTH) +
             bytes([0xD8, 0x00, 0xE7, 0x01,    # Prog Height
                    0xD9, 0x00, 0x01, 0x01,    # Perma Bible
                    0xDA, 0x00, 0x02, 0x01,    # Perma Cross
@@ -291,15 +306,15 @@ class CVHoDisPatchExtensions(APPatchExtension):
 
         # Move the furniture info table and expand it with the extra entries for all our rando-specific items.
         new_furniture_info_start = patcher.find_space_and_write_buffer(
-            patcher.read_bytes(FURNITURE_INFO_START, FURNITURE_INFO_LENGTH) + \
-            bytes([0xD5, 0x00, 0xE4, 0x02,   # Living Armor key
-                   0xD6, 0x00, 0xE5, 0x02,   # Clock key
-                   0xD7, 0x00, 0xE6, 0x02,   # Throne key
-                   0xDF, 0x00, 0xDF, 0x01,   # Filler (plays minor pickup sound)
-                   0xDF, 0x00, 0xE1, 0x01,   # Useful (plays major pickup sound)
-                   0xDF, 0x00, 0xE3, 0x01,   # Trap (plays Juste's "Doh!" voice)
-                   0xDF, 0x00, 0xE3, 0x01,   # Filler (plays money pickup sound)
-                   0xDF, 0x00, 0xE3, 0x01])) # Filler (plays max up pickup sond)
+            patcher.read_bytes(FURNITURE_INFO_START, FURNITURE_INFO_LENGTH) +
+            bytes([0xD5, 0x00, 0xE4, 0x02,    # Living Armor key
+                   0xD6, 0x00, 0xE5, 0x02,    # Clock key
+                   0xD7, 0x00, 0xE6, 0x02,    # Throne key
+                   0xDF, 0x00, 0xDF, 0x01,    # Filler (plays minor pickup sound)
+                   0xDF, 0x00, 0xE1, 0x01,    # Useful (plays major pickup sound)
+                   0xDF, 0x00, 0xE3, 0x01,    # Trap (plays Juste's "Doh!" voice)
+                   0xDF, 0x00, 0xE3, 0x01,    # Filler (plays money pickup sound)
+                   0xDF, 0x00, 0xE3, 0x01]))  # Filler (plays max up pickup sond)
         patcher.write_int32(0x197E4, new_furniture_info_start)
         patcher.write_int32(0x19E30, new_furniture_info_start)
         patcher.write_int32(0x19EE8, new_furniture_info_start)
@@ -511,7 +526,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
             slot_patch_info["start inventory"]["inv arrays"][str(PickupTypes.EQUIPMENT)])
         # Spellbooks and starting Spellbook
         start_inventory_book_start = patcher.find_space_and_write_buffer(
-            slot_patch_info["start inventory"]["inv arrays"][str(PickupTypes.SPELLBOOK)] + \
+            slot_patch_info["start inventory"]["inv arrays"][str(PickupTypes.SPELLBOOK)] +
             struct.pack("<B", slot_patch_info["start inventory"]["spellbook"]))
         # Relics
         start_inventory_relic_start = patcher.find_space_and_write_buffer(
@@ -563,20 +578,28 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.write_bytes(0x188A16, [0x8C, 0x00, 0x89, 0x00, 0x52, 0x00])
 
         # Make Guardian Armor drop the Items it should.
-        for guardian_loc_id, guardian_loc_address in GUARDIAN_GRINDER_LOCATIONS.items():
-            # Write the new Item values in the Guardian Armor's drop code.
-            patcher.write_byte(guardian_loc_address, loc_values[guardian_loc_id][0])
-            patcher.write_byte(guardian_loc_address+2, loc_values[guardian_loc_id][1])
-            # Check if the Item type we just wrote is a Max Up. If it is, then that item's hardcoded spawn function call
-            # will have to be changed to instead be the specific spawn function meant for Max Ups.
-            # Max Ups CANNOT go through the regular spawn function meant for most other pickups.
-            if loc_values[guardian_loc_id][0] == PickupTypes.MAX_UP:
-                # Change the mov instruction to put the Max Up's pickup index in the r2 register instead of r3, where
-                # the "Spawn Max Up" function expects it to be.
-                patcher.write_byte(guardian_loc_address + 3, 0x22)
-                # Make the bl instruction go further backward by 0x54, where the "Spawn Max Up" function begins.
-                patcher.write_int16(guardian_loc_address + 6,
-                                    patcher.read_bytes(guardian_loc_address + 6, 2, "<H") - 0x54)
+        patcher.write_int16(0x1A270, 0xB5F0)  # push r4-r7, r14
+        patcher.write_int16(0x1A340, 0xBCF0)  # pop  r4-r7
+        patcher.generate_dynamic_asm(patches.guardian_grinder_fr_prep_asm,
+                                     patches.guardian_grinder_fr_prep_ldr +
+                                     [(loc_values[CVHODIS_LOCATIONS_INFO[loc_names.cra17d].code][1] << 8) |
+                                      loc_values[CVHODIS_LOCATIONS_INFO[loc_names.cra17d].code][0]],
+                                     hook_addr=0x1A27C, hook_register=7)
+        patcher.generate_dynamic_asm(patches.guardian_grinder_mr_prep_asm,
+                                     patches.guardian_grinder_mr_prep_ldr +
+                                     [(loc_values[CVHODIS_LOCATIONS_INFO[loc_names.cra17c].code][1] << 8) |
+                                      loc_values[CVHODIS_LOCATIONS_INFO[loc_names.cra17c].code][0]],
+                                     hook_addr=0x1A2A8, hook_register=7)
+        patcher.generate_dynamic_asm(patches.guardian_grinder_fl_prep_asm,
+                                     patches.guardian_grinder_fl_prep_ldr +
+                                     [(loc_values[CVHODIS_LOCATIONS_INFO[loc_names.cra17a].code][1] << 8) |
+                                      loc_values[CVHODIS_LOCATIONS_INFO[loc_names.cra17a].code][0]],
+                                     hook_addr=0x1A2D4, hook_register=7)
+        patcher.generate_dynamic_asm(patches.guardian_grinder_ml_prep_asm,
+                                     patches.guardian_grinder_ml_prep_ldr +
+                                     [(loc_values[CVHODIS_LOCATIONS_INFO[loc_names.cra17b].code][1] << 8) |
+                                      loc_values[CVHODIS_LOCATIONS_INFO[loc_names.cra17b].code][0]],
+                                     hook_addr=0x1A300, hook_register=7)
 
         # Loop over EVERY room state and overwrite all pickups in their actor lists to be what they should be in the
         # player's slot.
@@ -761,7 +784,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
                 # Take the difference between this value and the destination Y position to get the Y shift value to put
                 # in the source loading zone's data.
                 source_zone["player_y_offset"] = SHUFFLEABLE_TRANSITIONS[trans_pair[1]].player_arrive_y_pos - \
-                                                 player_y_entrance
+                    player_y_entrance
 
                 # If the value is outside the (-)128-(+)127 range, set it to the range min or max as that's as far as
                 # we are allowed to go.
@@ -772,7 +795,8 @@ class CVHoDisPatchExtensions(APPatchExtension):
 
             # If the entrance is a vertical transition and the exit is in a 1-wide vertical room,
             # set -8 as the player X offset.
-            if SHUFFLEABLE_TRANSITIONS[trans_pair[0]].er_group in VERTICAL_GROUPS and trans_pair[1] in VERTICAL_SHAFT_EXITS:
+            if SHUFFLEABLE_TRANSITIONS[trans_pair[0]].er_group in VERTICAL_GROUPS and \
+                    trans_pair[1] in VERTICAL_SHAFT_EXITS:
                 source_zone["player_x_offset"] = -8
             # If the entrance is a vertical transition and the exit is on the left, set -104 as the player X offset.
             elif SHUFFLEABLE_TRANSITIONS[trans_pair[0]].er_group in VERTICAL_GROUPS and \
@@ -815,8 +839,8 @@ class CVHoDisPatchExtensions(APPatchExtension):
             # Create the item name part of the string. It will be truncated at the total available line length minus
             # however much will be used by the player name portion.
             item_name = cvhodis_text_wrap(f"{text[0]}", large_font=False,
-                                          textbox_len_limit=LEN_LIMIT_CORNER_TEXTBOX_CUSTOM - \
-                                                            cvhodis_get_string_len(player_name, large_font=False),
+                                          textbox_len_limit=LEN_LIMIT_CORNER_TEXTBOX_CUSTOM -
+                                          cvhodis_get_string_len(player_name, large_font=False),
                                           max_lines=1, textbox_advance=False)
 
             # Put the final string together.
@@ -837,8 +861,8 @@ class CVHoDisPatchExtensions(APPatchExtension):
                     countdown_idx_arrays_ptrs[sub_area_id] = countdown_idx_arrays_ptrs[main_area_id]
             # Insert the Countdown number display hack and, with it, the array of pointers to the flag index arrays.
             patcher.generate_dynamic_asm(patches.countdown_asm, patches.countdown_ldr +
-                                        [patcher.find_space_and_write_buffer(countdown_idx_arrays_ptrs, "<I")],
-                                        hook_addr=0x82C0, hook_register=3)
+                                         [patcher.find_space_and_write_buffer(countdown_idx_arrays_ptrs, "<I")],
+                                         hook_addr=0x82C0, hook_register=3)
         # Adjust the area name definitions for the map square datas of the following rooms' top-right corners:
         # Marble Corridor Grand Staircase room (top-right square's data is fully undefined as it's out of bounds)
         patcher.write_int16(0xDB544, 0xF1FF)
@@ -848,7 +872,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.write_int16(0xDB7A8, 0x4A14)
 
         # Go anywhere
-        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x0849C524
+        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084A9FFC
         #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
         #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["camera_y_pos"] = 0x330
 

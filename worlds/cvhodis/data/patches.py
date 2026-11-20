@@ -1518,6 +1518,133 @@ perma_subweapon_switcher_ldr = [
     0x08072B92,
 ]
 
+guardian_grinder_fr_prep_asm = [
+    # Puts the item type ID and index ID for the far-right guardian grinder item in the r2 and r3 registers before
+    # the spawn pickup function is called. Doing this for ALL FOUR hardcoded guardian grinder spawns is necessary simply
+    # because, with item appearance switching enabled, the index ID in this randomizer is using 2 bytes instead of 1 and
+    # the THUMB mov the game's assembly normally gets said index ID from can only put a 1-byte number in the register...
+    0x20C8,  # mov  r0, 0xC8
+    0x2150,  # mov  r1, 0x50
+    0x4A01,  # ldr  r2, far-right item info
+    0x0A13,  # lsr  r3, r2, 0x08
+    0x0612,  # lsl  r2, r2, 0x18
+    0x0E12,  # lsr  r2, r2, 0x18
+    # Return to the part of the function that calls the spawn function for the far-right item.
+    0x4F00,  # ldr  r7, 0x801A284
+    0x46BF,  # mov  r7, r15
+]
+guardian_grinder_fr_prep_ldr = [
+    0x0801A284
+]
+
+guardian_grinder_mr_prep_asm = [
+    # Same as the above but for the mid-right item.
+    0x9600,  # str  r6, [sp]
+    0x20C8,  # mov  r0, 0xC8
+    0x2150,  # mov  r1, 0x50
+    0x4A01,  # ldr  r2, mid-right item info
+    0x0A13,  # lsr  r3, r2, 0x08
+    0x0612,  # lsl  r2, r2, 0x18
+    0x0E12,  # lsr  r2, r2, 0x18
+    # Return to the part of the function that calls the spawn function for the mid-right item.
+    0x4F00,  # ldr  r7, 0x801A2B2
+    0x46BF,  # mov  r7, r15
+]
+guardian_grinder_mr_prep_ldr = [
+    0x0801A2B2
+]
+
+guardian_grinder_fl_prep_asm = [
+    # Same as the above but for the far-left item.
+    0x9600,  # str  r6, [sp]
+    0x20C8,  # mov  r0, 0xC8
+    0x2150,  # mov  r1, 0x50
+    0x4A01,  # ldr  r2, far-left item info
+    0x0A13,  # lsr  r3, r2, 0x08
+    0x0612,  # lsl  r2, r2, 0x18
+    0x0E12,  # lsr  r2, r2, 0x18
+    # Return to the part of the function that calls the spawn function for the mid-right item.
+    0x4F00,  # ldr  r7, 0x801A2DE
+    0x46BF,  # mov  r7, r15
+]
+guardian_grinder_fl_prep_ldr = [
+    0x0801A2DE
+]
+
+guardian_grinder_ml_prep_asm = [
+    # Same as the above but for the mid-left item.
+    0x20C8,  # mov  r0, 0xC8
+    0x2150,  # mov  r1, 0x50
+    0x4A01,  # ldr  r2, mid-left item info
+    0x0A13,  # lsr  r3, r2, 0x08
+    0x0612,  # lsl  r2, r2, 0x18
+    0x0E12,  # lsr  r2, r2, 0x18
+    # Return to the part of the function that calls the spawn function for the mid-right item.
+    0x4F00,  # ldr  r7, 0x801A308
+    0x46BF,  # mov  r7, r15
+]
+guardian_grinder_ml_prep_ldr = [
+    0x0801A308
+]
+
+map_room_inbounds_checker_asm = [
+    # When the game determines which map square the player is currently in and should be filled out, this will check
+    # to see if the player is actually inside the room's current boundaries when it gets their room XY coordinates
+    # to ensure it doesn't give us any map squares for adjacent rooms we've never been in. Useful for ER wherein we can
+    # be sent to arbitrary places on the map when entering transitions and not just the next room over.
+
+    # Finish the operation the game was doing to get the player's current room X square from their room X coordinate and
+    # push the result for later.
+    0x1600,  # asr  r0, r0, 0x18
+    0xB401,  # push r0
+    # Run the function that gets the player's current room Y coordinate.
+    0x1C38,  # add  r0, r7, 0x00
+    0x4A01,  # ldr  r2, 0x8001984
+    0x467B,  # mov  r3, r15
+    0x3305,  # add  r3, 0x05
+    0x469E,  # mov  r14, r3
+    0x4697,  # mov  r15, r2
+    # With the player's Y coordinate, isolate the second-lowest byte in it to get their current room Y square.
+    # Then retrieve their room X square from earlier.
+    0x0400,  # lsl  r0, r0, 0x18
+    0x1600,  # asr  r0, r0, 0x18
+    0x1C01,  # add  r1, r0, 0x00
+    0xBC01,  # pop  r0
+    # If either are 0x80 or greater (aka negative), set them to 0.
+    # This is how we know the player is outside the left and/or top room boundaries.
+    0x2880,  # cmp  r0, 0x80
+    0xDB00,  # blt  [forward 0x01]
+    0x2000,  # mov  r0, 0x00
+    0x2980,  # cmp  r1, 0x80
+    0xDB00,  # blt  [forward 0x01]
+    0x2100,  # mov  r1, 0x00
+    # Get the current room's width and height in map squares from its layer info.
+    0x4A02,  # ldr  r2, 0x2000068
+    0x6812,  # ldr  r2, [r2]
+    0x6892,  # ldr  r2, [r2, 0x08]
+    0x6852,  # ldr  r2, [r2, 0x04]
+    # If either the player's room X or Y square is equal to or greater than the room's width or height respectively, cap
+    # them at their respective room values minus 1, for they are outside the room's right and/or bottom boundaries.
+    0x7813,  # ldrb r3, [r2]
+    0x4298,  # cmp  r0, r3
+    0xDB00,  # blt  [forward 0x01]
+    0x1E58,  # sub  r0, r3, 0x01
+    0x7853,  # ldrb r3, [r2, 0x01]
+    0x4299,  # cmp  r1, r3
+    0xDB00,  # blt  [forward 0x01]
+    0x1E59,  # sub  r1, r3, 0x01
+    # Add the final player room X and Y squares to the correct values and return to the function like normal.
+    0x182D,  # add  r5, r5, r0
+    0x1864,  # add  r4, r4, r1
+    0x4800,  # ldr  r0, 0x800ADAC
+    0x4687,  # mov  r15, r0
+]
+map_room_inbounds_checker_ldr = [
+    0x0800ADAC,
+    0x08001984,
+    0x02000068,
+]
+
 extra_item_sprites = {
     # The GFX data for any inserted extra item sprites, including the Archipelago Items. Graphics in this game are
     # arranged very differently from how they are in Circle of the Moon, with each VRAM tile row being separated out in
