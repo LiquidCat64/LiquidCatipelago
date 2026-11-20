@@ -48,7 +48,7 @@ class CVHoDisRules:
             loc_names.mca11b: self.can_double_jump,
             loc_names.mca11e: self.can_double_jump,
             # The Wailing Way A
-            loc_names.wwa0c: self.can_double_jump,
+            loc_names.wwa0d: self.can_double_jump,
             loc_names.wwa4a: self.can_double_jump,
             loc_names.wwa4b: self.can_double_jump,
             loc_names.wwa4c: self.can_double_jump,
