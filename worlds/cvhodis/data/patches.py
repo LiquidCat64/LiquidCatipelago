@@ -856,8 +856,15 @@ cross_castle_warp_blocker_asm = [
     0x2120,  # mov  r1, 0x20
     0x4008,  # and  r0, r1
     0x2800,  # cmp  r0, 0x00
-    0xD101,  # bne  [forward 0x02]
-    # Abort the "activate round gate" function.
+    0xD107,  # bne  [forward 0x08]
+    # Run the "start dialogue sequence" function to let the player know what still needs to be done and abort the
+    # "activate round gate" function.
+    0x4805,  # ldr  r0, 0x28A
+    0x4A04,  # ldr  r2, 0x802D050
+    0x467B,  # mov  r3, r15
+    0x3305,  # add  r3, 0x05
+    0x469E,  # mov  r14, r3
+    0x4697,  # mov  r15, r2
     0x4902,  # ldr  r1, 0x801BCB8
     0x468F,  # mov  r15, r1
     # Return to the function like normal.
@@ -873,6 +880,8 @@ cross_castle_warp_blocker_ldr = [
     0x0001848C,
     0x0801BCB8,
     0x02000317,
+    0x0802D050,
+    0x0000028A,
 ]
 
 unvisited_warp_destination_blocker_asm = [

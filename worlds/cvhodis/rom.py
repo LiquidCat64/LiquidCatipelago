@@ -429,6 +429,33 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.generate_dynamic_asm(patches.cross_castle_warp_blocker_asm,
                                      patches.cross_castle_warp_blocker_ldr,
                                      hook_addr=0x1BC34, hook_register=2)
+        # Add the custom text to the warp gate explaining what needs to be done to unlock it.
+        patcher.text[0x28A] = ("❖1/⬘0/Huh!? There's a note\n"
+                               "stuck here...🅰\f"
+                               "❖4/⬘5/“If you wish to enter\n"
+                               "through here, you must do\n"
+                               "the following:🅰\r")
+        # If JB's Bracelet is needed, add the text for it.
+        if slot_patch_info["options"]["bracelet_warp_requirement"]:
+            patcher.text[0x28A] += ("･ Recover ✨15/your bracelet✨8/\n"
+                                    "that I took before you\n"
+                                    "even arrived.🅰\r")
+        # If Hint Cards are needed, add the text for them.
+        if slot_patch_info["options"]["card_amount_warp_requirement"]:
+            patcher.text[0x28A] += (f"･ Find ✨12/{slot_patch_info['options']['card_amount_warp_requirement']}✨8/ of "
+                                    "the six\n"
+                                    "Hint Cards scattered about.🅰\r")
+        # If the Clock Tower Death cutscene is needed, add the text for it.
+        if slot_patch_info["options"]["death_warp_requirement"]:
+            patcher.text[0x28A] += ("･ Meet me at the pinnacle\n"
+                                    "of the ✨4/Clock Tower✨8/\n"
+                                    "on the ✨4/front✨8/ side.🅰\r")
+        # Add the closing part of the message.
+        patcher.text[0x28A] += ("Give up now, mortal!\n"
+                                "There's no hope for you!\n"
+                                "Sincerely, Death”🅰\f"
+                                "❖1/⬘0/...*sigh*🅰\f")
+
 
         # Block warping to a warp room the player hasn't been to yet in the current castle if they don't have the
         # cross-castle warp condition(s) satisfied.
@@ -886,7 +913,7 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.write_int16(0xDB7A8, 0x4A14)
 
         # Go anywhere
-        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084A6160
+        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x08499668
         patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
         #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["camera_y_pos"] = 0x330
 
