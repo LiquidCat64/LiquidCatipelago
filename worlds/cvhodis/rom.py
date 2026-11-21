@@ -863,6 +863,20 @@ class CVHoDisPatchExtensions(APPatchExtension):
             patcher.generate_dynamic_asm(patches.countdown_asm, patches.countdown_ldr +
                                          [patcher.find_space_and_write_buffer(countdown_idx_arrays_ptrs, "<I")],
                                          hook_addr=0x82C0, hook_register=3)
+            # Fix the guillotine room in Aqueduct A so the number displays properly.
+            # Enable the OBJ Window in addition to Window 1.
+            patcher.write_int16s(0x22D8C, [0x23C0,   # mov  r3, 0xC0
+                                           0x021B])  # lsl  r3, r3, 0x08
+            # Make objects inside Window 1 visible instead of invisible.
+            patcher.write_int16(0x22DDC, 0x3F3F)
+            # Make objects outside all windows invisible instead of visible. This will allow the Countdown to show in
+            # the ceiling as it will be using OBJ Window digits on top of them.
+            patcher.write_int16(0x22DD8, 0x3F2F)
+            patcher.write_int16(0x22E20, 0x3F2F)
+            # Change Window 1's Y dimensions to encompass everything below the ceiling instead of everything inside it.
+            patcher.generate_dynamic_asm(patches.guillotine_window_size_changer_asm,
+                                         patches.guillotine_window_size_changer_ldr, 0x22DB4, 0)
+
         # Adjust the area name definitions for the map square datas of the following rooms' top-right corners:
         # Marble Corridor Grand Staircase room (top-right square's data is fully undefined as it's out of bounds)
         patcher.write_int16(0xDB544, 0xF1FF)
@@ -872,8 +886,8 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.write_int16(0xDB7A8, 0x4A14)
 
         # Go anywhere
-        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084A9FFC
-        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
+        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084A6160
+        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
         #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["camera_y_pos"] = 0x330
 
         return patcher.get_output_rom()

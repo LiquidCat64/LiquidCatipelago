@@ -1048,7 +1048,7 @@ countdown_asm = [
     # Advance only if the ID is 0xC or less. Otherwise, exit without drawing the number on the current frame at all.
     # 0xC is the highest area name ID. We should only be hitting this in Boss Rush Mode.
     0x290C,  # cmp  r1, 0x0C
-    0xDC3C,  # bgt  [forward 0x3D]
+    0xDC5E,  # bgt  [forward 0x5F]
     # Now that we have it, figure out which array of Countdown flag IDs we should be referencing.
     # Add to the base address of the array of pointers to the flag ID arrays, the name ID left-shifted up by 3.
     # Add +4 if we are in Castle B to arrive at the pointer to the Castle B area's ID array pointer.
@@ -1058,7 +1058,7 @@ countdown_asm = [
     0x4002,  # and  r2, r0
     0x00C9,  # lsl  r1, r1, 0x03
     0x0092,  # lsl  r2, r2, 0x02
-    0x4809,  # ldr  r0, countdown_idx_arrays_ptrs start
+    0x480B,  # ldr  r0, countdown_idx_arrays_ptrs start
     0x1840,  # add  r0, r0, r1
     0x1880,  # add  r0, r0, r2
     0x6800,  # ldr  r0, [r0]
@@ -1123,21 +1123,46 @@ countdown_asm = [
     0x1889,  # add  r1, r1, r2
     # Assemble the OAM data for each digit and store them in the final two OAM sprite slots; the two that the game is
     # least likely to end up reaching, as every frame it fills them progressively starting from the first slot.
-    0x4A01,  # ldr  r2, 0x3000FF0
+    0x4A01,  # ldr  r2, 0x3000FE0
     0x2360,  # mov  r3, 0x60   <- High digit X position
     0x2404,  # mov  r4, 0x04   <- High digit Y position
-    0x8014,  # strh r4, [r2]
-    0x8053,  # strh r3, [r2, 0x02]
+    0x8214,  # strh r4, [r2, 0x10]
+    0x8253,  # strh r3, [r2, 0x12]
     0x2365,  # mov  r3, 0x65   <- Low digit X position
     0x2404,  # mov  r4, 0x04   <- Low digit Y position
-    0x8114,  # strh r4, [r2, 0x08]
-    0x8153,  # strh r3, [r2, 0x0A]
+    0x8314,  # strh r4, [r2, 0x18]
+    0x8353,  # strh r3, [r2, 0x1A]
     0x2350,  # mov  r3, 0x50   <- Palette info
     0x021B,  # lsl  r3, r3, 0x08
     0x4319,  # orr  r1, r3
     0x4318,  # orr  r0, r3
+    0x8291,  # strh r1, [r2, 0x14]
+    0x8390,  # strh r0, [r2, 0x1C]
+    # If we're in one of the Sky Walkway A dark rooms, or the Aqueduct A guillotine room, also store OBJ Window versions
+    # in the two slots prior to the last two so the number will show properly in these rooms.
+    0x4D03,  # ldr  r5, 0x2000070
+    0x882D,  # ldrh r5, [r5]
+    0x4C09,  # ldr  r4, 0x13521452
+    0x0C24,  # lsr  r4, r4, 0x10
+    0x42A5,  # cmp  r5, r4
+    0xD007,  # beq  [forward 0x08]
+    0x4C09,  # ldr  r4, 0x13521452
+    0x0424,  # lsl  r4, r4, 0x10
+    0x0C24,  # lsr  r4, r4, 0x10
+    0x42A5,  # cmp  r5, r4
+    0xD002,  # beq  [forward 0x03]
+    0x4C0A,  # ldr  r4, 0x175A
+    0x42A5,  # cmp  r5, r4
+    0xD108,  # bne  [forward 0x09]
     0x8091,  # strh r1, [r2, 0x04]
     0x8190,  # strh r0, [r2, 0x0C]
+    0x6910,  # ldr  r0, [r2, 0x10]
+    0x6010,  # str  r0, [r2]
+    0x6990,  # ldr  r0, [r2, 0x18]
+    0x6090,  # str  r0, [r2, 0x08]
+    0x2008,  # mov  r0, 0x08
+    0x7050,  # strb r0, [r2, 0x01]
+    0x7250,  # strb r0, [r2, 0x09]
     # Return to the function that adjusts the Heart counter digit positions.
     0xBC3F,  # pop  r0-r5
     0x4A06,  # ldr  r2, 0x18794
@@ -1149,7 +1174,7 @@ countdown_asm = [
 ]
 countdown_ldr = [
     0x080082C8,
-    0x03000FF0,
+    0x03000FE0,
     0x000050C0,
     0x02000070,
     0x080DAD94,
@@ -1157,6 +1182,31 @@ countdown_ldr = [
     0x00018794,
     0x020002A8,
     0x02000184,
+    0x13521452,
+    0x0000175A,
+]
+
+guillotine_window_size_changer_asm = [
+    # When the Aqueduct A guillotines run their init function, this will enable the function the game normally calls to
+    # set the Window 1 vertical dimensions to receive a 2-byte number. All because the THUMB mov the game normally
+    # gets this value from can only do 1-byte numbers, ugh.
+    0x2003,  # mov  r0, 0x03
+    0x2146,  # mov  r1, 0x46
+    0x4A01,  # ldr  r2, 0x10A0
+    # Run the function.
+    0x4B02,  # ldr  r3, 0x8001984
+    0x467C,  # mov  r4, r15
+    0x3405,  # add  r4, 0x05
+    0x46A6,  # mov  r14, r4
+    0x469F,  # mov  r15, r3
+    # Return to the regularly-scheduled execution...
+    0x4B00,  # ldr  r3, 0x80082C8
+    0x469F,  # mov  r15, r3
+]
+guillotine_window_size_changer_ldr = [
+    0x08022DE8,
+    0x000010A0,
+    0x08013F28,
 ]
 
 luck_fix_rare_drop_asm = [
@@ -1265,7 +1315,8 @@ dark_room_furniture_fix_ldr = [
 
 dark_room_gray_textbox_open_fix_asm = [
     # When the "prepare center-screen gray textbox background" function runs, this will check to see if we're in a dark
-    # room and prepare it a bit differently so the room doesn't get brightened up.
+    # room and prepare it a bit differently so the room doesn't get brightened up. Also, if we're in the Aqueduct A
+    # guillotine room, this will disable Window 1 so we don't get more gray box than we want.
     0x7008,  # strb r0, [r1]
     0x3102,  # add  r1, 0x02
     0x201F,  # mov  r0, 0x1F
@@ -1280,7 +1331,7 @@ dark_room_gray_textbox_open_fix_asm = [
     # without finding a darkness actor.
     0x4B04,  # ldr  r3, 0x7FFF7FFF
     0x429A,  # cmp  r2, r3
-    0xD00A,  # beq  [forward 0x0B]
+    0xD013,  # beq  [forward 0x14]
     # If the actor doesn't have a Type ID of 1, it's not a Special Object that darkness falls under.
     # Go to the next one.
     0x790A,  # ldrb r2, [r1, 0x04]
@@ -1288,15 +1339,27 @@ dark_room_gray_textbox_open_fix_asm = [
     0x401A,  # and  r2, r3
     0x2A40,  # cmp  r2, 0x40
     0xD1F5,  # bne  [backward 0x0A]
-    # If it doesn't have a subtype of 0x07, it's not darkness. Go to the next actor.
+    # Subtype of 0x07 means it's darkness.
     0x794A,  # ldrb r2, [r1, 0x05]
     0x2A07,  # cmp  r2, 0x07
-    0xD1F2,  # bne  [backward 0x0D]
+    0xD002,  # beq  [forward 0x03]
+    # Subtype of 0x2B means it's a guillotine.
+    0x2A2B,  # cmp  r2, 0x2B
+    0xD004,  # beq  [forward 0x05]
+    # Go to the next actor if we make it here.
+    0xE0EF,  # b    [backward 0x10]
     # If we made it here, we found a darkness actor. At which point, set the LCD window visibility registers in a way
     # that the darkness effect will still be visible.
     0x4A01,  # ldr  r2, 0x3002B60
     0x4B02,  # ldr  r3, 0x3F213F31
     0x6013,  # str  r3, [r2]
+    0xE004,  # b    [forward 0x05]
+    # If we made it here, we found a guillotine actor. In which case, disable Window 1.
+    0x4905,  # ldr  r1, 0x3002B70
+    0x784A,  # ldrb r2, [r1, 1]
+    0x23BF,  # mov  r3, 0xBF
+    0x401A,  # and  r2, r3
+    0x704A,  # strb r2, [r1, 1]
     # Return to the function like normal.
     0x4B00,  # ldr  r3, 0x802B39C
     0x469F,  # mov  r15, r3
@@ -1307,11 +1370,13 @@ dark_room_gray_textbox_open_fix_ldr = [
     0x3F213F31,
     0x020003B8,
     0x7FFF7FFF,
+    0x03002B70,
 ]
 
 dark_room_gray_textbox_close_fix_asm = [
     # When the "clear center gray textbox" function runs, this will check to see if we're in a dark room and set things
-    # a bit differently so the room doesn't get brightened up.
+    # a bit differently so the room doesn't get brightened up. Also, if we're in the Aqueduct A guillotine room, this
+    # will reenable Window 1 so things don't look weird exiting.
     0x801D,  # strh r5, [r3]
     0x3242,  # add  r2, 0x42
     0x233F,  # mov  r3, 0x3F
@@ -1327,7 +1392,7 @@ dark_room_gray_textbox_close_fix_asm = [
     # without finding a darkness actor.
     0x4B04,  # ldr  r3, 0x7FFF7FFF
     0x429A,  # cmp  r2, r3
-    0xD014,  # beq  [forward 0x15]
+    0xD01D,  # beq  [forward 0x1E]
     # If the actor doesn't have a Type ID of 1, it's not a Special Object that darkness falls under.
     # Go to the next one.
     0x790A,  # ldrb r2, [r1, 0x04]
@@ -1335,10 +1400,15 @@ dark_room_gray_textbox_close_fix_asm = [
     0x401A,  # and  r2, r3
     0x2A40,  # cmp  r2, 0x40
     0xD1F5,  # bne  [backward 0x0A]
-    # If it doesn't have a subtype of 0x07, it's not darkness. Go to the next actor.
+    # Subtype of 0x07 means it's darkness.
     0x794A,  # ldrb r2, [r1, 0x05]
     0x2A07,  # cmp  r2, 0x07
-    0xD1F2,  # bne  [backward 0x0D]
+    0xD002,  # beq  [forward 0x03]
+    # Subtype of 0x2B means it's a guillotine.
+    0x2A2B,  # cmp  r2, 0x2B
+    0xD00E,  # beq  [forward 0x0F]
+    # Go to the next actor if we make it here.
+    0xE0EF,  # b    [backward 0x10]
     # If we made it here, we found a darkness actor. At which point, set the LCD window visibility registers in a way
     # that the darkness effect will still be visible, and set the Window 1 Y size, color, and opacity registers to get
     # rid of the window on the screen properly.
@@ -1355,6 +1425,13 @@ dark_room_gray_textbox_close_fix_asm = [
     0x23FF,  # mov  r3, 0xFF
     0x021B,  # lsl  r3, 0x08
     0x8013,  # strh r3, [r2]
+    0xE004,  # b    [forward 0x05]
+    # If we made it here, we found a guillotine actor. In which case, enable Window 1.
+    0x4907,  # ldr  r1, 0x3002B70
+    0x784A,  # ldrb r2, [r1, 1]
+    0x2340,  # mov  r3, 0x40
+    0x431A,  # orr  r2, r3
+    0x704A,  # strb r2, [r1, 1]
     # Return to the function like normal.
     0xBC03,  # pop  r0, r1
     0x4B00,  # ldr  r3, 0x802B60C
@@ -1368,6 +1445,7 @@ dark_room_gray_textbox_close_fix_ldr = [
     0x7FFF7FFF,
     0x0000030F,
     0x00003FFF,
+    0x03002B70,
 ]
 
 dark_room_area_name_fix_asm = [
