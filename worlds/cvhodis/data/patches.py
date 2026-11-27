@@ -847,7 +847,8 @@ portal_death_room_checker_ldr = [
 
 cross_castle_warp_blocker_asm = [
     # Blocks usage of the warp room cross-castle warp gates if the player doesn't have the cross-castle condition
-    # satisfied. This is necessary to have due to the change of making said gate always spawn in its closed state.
+    # satisfied and displays a custom dialogue sequence telling the player of their warp condition.
+    # This is necessary to have due to the change of making said gate always spawn in its closed state.
 
     # Check to see if the "can warp castles" flag is set. If the cross-castle warp condition is satisfied, it should
     # be set.
@@ -856,7 +857,14 @@ cross_castle_warp_blocker_asm = [
     0x2120,  # mov  r1, 0x20
     0x4008,  # and  r0, r1
     0x2800,  # cmp  r0, 0x00
-    0xD107,  # bne  [forward 0x08]
+    0xD10C,  # bne  [forward 0x0D]
+    # Check if the "player frozen in place" byte is set to a non-zero. If it is, abort the function without running the
+    # "start dialogue sequence" function, as we should be looking at the custom Death note text.
+    0x2002,  # mov  r0, 0x02
+    0x0600,  # lsl  r0, r0, 0x18
+    0x7EC0,  # ldrb r0, [r0, 0x1B]
+    0x2800,  # cmp  r0, 0x00
+    0xD105,  # bne  [forward 0x06]
     # Run the "start dialogue sequence" function to let the player know what still needs to be done and abort the
     # "activate round gate" function.
     0x4805,  # ldr  r0, 0x28A
@@ -1356,7 +1364,7 @@ dark_room_gray_textbox_open_fix_asm = [
     0x2A2B,  # cmp  r2, 0x2B
     0xD004,  # beq  [forward 0x05]
     # Go to the next actor if we make it here.
-    0xE0EF,  # b    [backward 0x10]
+    0xE7EF,  # b    [backward 0x10]
     # If we made it here, we found a darkness actor. At which point, set the LCD window visibility registers in a way
     # that the darkness effect will still be visible.
     0x4A01,  # ldr  r2, 0x3002B60
@@ -1417,7 +1425,7 @@ dark_room_gray_textbox_close_fix_asm = [
     0x2A2B,  # cmp  r2, 0x2B
     0xD00E,  # beq  [forward 0x0F]
     # Go to the next actor if we make it here.
-    0xE0EF,  # b    [backward 0x10]
+    0xE7EF,  # b    [backward 0x10]
     # If we made it here, we found a darkness actor. At which point, set the LCD window visibility registers in a way
     # that the darkness effect will still be visible, and set the Window 1 Y size, color, and opacity registers to get
     # rid of the window on the screen properly.
@@ -1730,6 +1738,197 @@ map_room_inbounds_checker_ldr = [
     0x0800ADAC,
     0x08001984,
     0x02000068,
+]
+
+floor_gate_furniture_checker_asm = [
+    # If the flag ID set on a floor gate actor is 0x00, this will check to see if we have a specific amount of furniture
+    # set in the furniture room to decide if we should delete the gate or not to let the player into the final fight
+    # rooms with Maxim. If we don't, custom Maxim dialogue will play to tell the player how much furniture they need.
+
+    # Check if the flag index is 0x00. If it's not, continue running the flag check function like normal.
+    0x8F71,  # ldrh r1, [r6, 0x3A]
+    0x2900,  # cmp  r1, 0x00
+    0xD004,  # beq  [forward 0x05]
+    0x0408,  # lsl  r0, r1, 0x10
+    0x1540,  # asr  r0, r0, 0x15
+    0x0080,  # lsl  r0, r0, 0x02
+    0x4C00,  # ldr  r4, 0x80196E4
+    0x46A7,  # mov  r15, r4
+    # Count the number of set furniture bits and see if it's equal to or higher than the goal threshold.
+    # (Yes, the furniture bitfields are 1-aligned 4-byte bitfields, so we have to do this funky trickery to get the
+    # whole thing in one register properly...)
+    0x4802,  # ldr  r0, 0x2018846
+    0x7901,  # ldrb r1, [r0, 0x04]
+    0x0409,  # lsl  r1, r1, 0x10
+    0x8842,  # ldrh r2, [r0, 0x02]
+    0x4311,  # orr  r1, r2
+    0x0209,  # lsl  r1, r1, 0x08
+    0x7842,  # ldrb r2, [r0, 0x01]
+    0x4311,  # orr  r1, r2
+    0x2000,  # mov  r0, 0x00
+    0x2900,  # cmp  r1, 0x00
+    0xD006,  # beq  [forward 0x07]
+    0x2201,  # mov  r2, 0x01
+    0x400A,  # and  r2, r1
+    0x2A00,  # cmp  r2, 0x00
+    0xD000,  # beq  [forward 0x01]
+    0x3001,  # add  r0, 0x01
+    0x0849,  # lsr  r1, r1, 0x01
+    0xE7F6,  # b    [backward 0x09]
+    0x211F,  # mov  r1, 0x1F  <- Insert furniture amount required here
+    0x4288,  # cmp  r0, r1
+    0xDA0A,  # bge  [forward 0x0B]
+    # If we don't have enough furniture, allow the floor gate actor to spawn and run the "start dialogue sequence"
+    # function to play the Maxim message telling us such. To avoid running this twice for both gate halves, we will
+    # only run it if it's the left half.
+    0x8F30,  # ldrh r0, [r6, 0x38]
+    0x2800,  # cmp  r0, 0x00
+    0xD105,  # bne  [forward 0x06]
+    0x4803,  # ldr  r0, 0x247
+    0x4A04,  # ldr  r2, 0x802D050
+    0x467B,  # mov  r3, r15
+    0x3305,  # add  r3, 0x05
+    0x469E,  # mov  r14, r3
+    0x4697,  # mov  r15, r2
+    0x4905,  # ldr  r1, 0x80257A8
+    0x468F,  # mov  r15, r1
+    # If we have enough furniture, abort spawning the actor by going to where the game calls the actor delete function
+    # when the flag check passes.
+    0x4801,  # ldr  r0, 0x80196E4
+    0x4687,  # mov  r15, r0
+]
+floor_gate_furniture_checker_ldr = [
+    0x0802575C,
+    0x0802579A,
+    0x02018846,
+    0x00000247,
+    0x0802D050,
+    0x080257A8,
+]
+
+elevator_furniture_checker_asm = [
+    # Blocks losing control of Juste when getting close to the Castle Center elevator if the player doesn't have the
+    # required furniture amount, and said elevator rising.
+
+    0x9E00,  # ldr  r6, [sp]
+    0x364E,  # add  r6, 0x4E
+    0x46B1,  # mov  r9, r6
+    # Count the number of set furniture bits and see if it's equal to or higher than the goal threshold.
+    # (Yes, the furniture bitfields are 1-aligned 4-byte bitfields, so we have to do this funky trickery to get the
+    # whole thing in one register properly...)
+    0x4800,  # ldr  r0, 0x2018846
+    0x7901,  # ldrb r1, [r0, 0x04]
+    0x0409,  # lsl  r1, r1, 0x10
+    0x8842,  # ldrh r2, [r0, 0x02]
+    0x4311,  # orr  r1, r2
+    0x0209,  # lsl  r1, r1, 0x08
+    0x7842,  # ldrb r2, [r0, 0x01]
+    0x4311,  # orr  r1, r2
+    0x2000,  # mov  r0, 0x00
+    0x2900,  # cmp  r1, 0x00
+    0xD006,  # beq  [forward 0x07]
+    0x2201,  # mov  r2, 0x01
+    0x400A,  # and  r2, r1
+    0x2A00,  # cmp  r2, 0x00
+    0xD000,  # beq  [forward 0x01]
+    0x3001,  # add  r0, 0x01
+    0x0849,  # lsr  r1, r1, 0x01
+    0xE7F6,  # b    [backward 0x09]
+    0x211F,  # mov  r1, 0x1F  <- Insert furniture amount required here
+    0x4288,  # cmp  r0, r1
+    0xDA01,  # bge  [forward 0x02]
+    # If we don't have enough furniture, skip the checks to see if Juste is in the correct position to start the Castle
+    # Center entering sequence.
+    0x4901,  # ldr  r1, 0x80224A2
+    0x468F,  # mov  r15, r1
+    # If we do have enough furniture, allow the Juste position checks to run, and thus the entering to start.
+    0x4802,  # ldr  r0, 0x8022456
+    0x4687,  # mov  r15, r0
+]
+elevator_furniture_checker_ldr = [
+    0x02018846,
+    0x080224A2,
+    0x08022456,
+]
+
+furniture_count_displayer_asm = [
+    # When the Secret Info menu checks if we have any furniture collected, this will count the number of collected
+    # and placed furniture and display the numbers next to the "Collectibles" option so there's no need for the player
+    # to manually count how many they have at the moment.
+
+    # Count the number of furniture collected.
+    0x4800,  # ldr  r0, 0x2018842
+    0x7901,  # ldrb r1, [r0, 0x04]
+    0x0409,  # lsl  r1, r1, 0x10
+    0x8842,  # ldrh r2, [r0, 0x02]
+    0x4311,  # orr  r1, r2
+    0x0209,  # lsl  r1, r1, 0x08
+    0x7842,  # ldrb r2, [r0, 0x01]
+    0x4311,  # orr  r1, r2
+    0x2000,  # mov  r0, 0x00
+    0x2900,  # cmp  r1, 0x00
+    0xD006,  # beq  [forward 0x07]
+    0x2201,  # mov  r2, 0x01
+    0x400A,  # and  r2, r1
+    0x2A00,  # cmp  r2, 0x00
+    0xD000,  # beq  [forward 0x01]
+    0x3001,  # add  r0, 0x01
+    0x0849,  # lsr  r1, r1, 0x01
+    0xE7F6,  # b    [backward 0x09]
+    # Call the "Draw menu number" function with the correct variables.
+    0x1C02,  # add  r2, r0, 0x00   <- The number(tm)
+    0x2014,  # mov  r0, 0x14       <- Tile X location of lowest digit
+    0x2107,  # mov  r1, 0x07       <- Tile Y location of lowest digit
+    0x2302,  # mov  r3, 0x02       <- Minimum number of digits
+    0x4C01,  # ldr  r4, 0x800AF38
+    0x467D,  # mov  r5, r15
+    0x3505,  # add  r5, 0x05
+    0x46AE,  # mov  r14, r5
+    0x46A7,  # mov  r15, r4
+    # Count the number of furniture placed.
+    0x4800,  # ldr  r0, 0x2018842
+    0x1D00,  # add  r0, r0, 0x04
+    0x7901,  # ldrb r1, [r0, 0x04]
+    0x0409,  # lsl  r1, r1, 0x10
+    0x8842,  # ldrh r2, [r0, 0x02]
+    0x4311,  # orr  r1, r2
+    0x0209,  # lsl  r1, r1, 0x08
+    0x7842,  # ldrb r2, [r0, 0x01]
+    0x4311,  # orr  r1, r2
+    0x2000,  # mov  r0, 0x00
+    0x2900,  # cmp  r1, 0x00
+    0xD006,  # beq  [forward 0x07]
+    0x2201,  # mov  r2, 0x01
+    0x400A,  # and  r2, r1
+    0x2A00,  # cmp  r2, 0x00
+    0xD000,  # beq  [forward 0x01]
+    0x3001,  # add  r0, 0x01
+    0x0849,  # lsr  r1, r1, 0x01
+    0xE7F6,  # b    [backward 0x09]
+    # Call the "Draw menu number" function with the correct variables.
+    0x1C02,  # add  r2, r0, 0x00   <- The number(tm)
+    0x2017,  # mov  r0, 0x17       <- Tile X location of lowest digit
+    0x2107,  # mov  r1, 0x07       <- Tile Y location of lowest digit
+    0x2302,  # mov  r3, 0x02       <- Minimum number of digits
+    0x4C01,  # ldr  r4, 0x800AF38
+    0x467D,  # mov  r5, r15
+    0x3505,  # add  r5, 0x05
+    0x46AE,  # mov  r14, r5
+    0x46A7,  # mov  r15, r4
+    # Return to the function in a way that ensures the check to see if we have more than 0 furniture always passes,
+    # so the "COLLECTIBLES" option will always display even with 0.
+    0x2200,  # mov  r2, 0x00
+    0x2100,  # mov  r1, 0x00
+    0x4802,  # ldr  r0, 0x8494580
+    0x6800,  # ldr  r0, [r0]
+    0x4B03,  # ldr  r3, 0x802AB48
+    0x469F,  # mov  r15, r3
+]
+furniture_count_displayer_ldr = [
+    0x02018842,
+    0x08027720,
+    0x08494580,
+    0x0802AB48,
 ]
 
 extra_item_sprites = {

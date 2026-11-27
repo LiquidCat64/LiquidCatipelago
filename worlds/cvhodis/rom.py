@@ -12,7 +12,7 @@ import os
 
 from . import ALL_CVHODIS_ITEMS
 from .data import patches, loc_names, item_names
-from .data.enums import ActorTypes, PickupTypes, Areas, Enemies
+from .data.enums import ActorTypes, PickupTypes, Areas, Enemies, SpecialObjects
 from .data.misc_names import GAME_NAME
 from .aesthetics import SUB_WEAPON_CANDLES_INFO, SHOP_JEWEL_SLOT_COUNT, SHOP_INVENTORY_COUNTS
 from .entrances import SHUFFLEABLE_TRANSITIONS, VERTICAL_GROUPS, VERTICAL_SHAFT_EXITS, \
@@ -260,6 +260,70 @@ class CVHoDisPatchExtensions(APPatchExtension):
             CVHODIS_LOCATIONS_INFO[loc_names.portals_lw].code
         patcher.areas[Areas.CHAPEL_A][19][0]["actor_list"] = patcher.areas[Areas.LUMINOUS_B][23][0]["actor_list"]
 
+        # Add floor gates to the Castle Center rooms to prevent the player from entering the structure without the
+        # elevator.
+        patcher.areas[Areas.TREASURY_A][22][0]["actor_list"] += [
+            CVHoDisActorEntry(x_pos=0x180, y_pos=0x3F8, type_id=ActorTypes.SPECIAL_OBJECT, unique_id=0x1F,
+                              subtype_id=SpecialObjects.TREASURY_FLOOR_GATE_HALF, y_offset=0, byte_8=0,
+                              var_a=0, var_b=0),
+            CVHoDisActorEntry(x_pos=0x180, y_pos=0x3F8, type_id=ActorTypes.SPECIAL_OBJECT, unique_id=0x20,
+                              subtype_id=SpecialObjects.TREASURY_FLOOR_GATE_HALF, y_offset=0, byte_8=0,
+                              var_a=1, var_b=0),
+        ]
+        patcher.areas[Areas.TREASURY_B][22][0]["actor_list"] += [
+            CVHoDisActorEntry(x_pos=0x180, y_pos=0x3F8, type_id=ActorTypes.SPECIAL_OBJECT, unique_id=0x1F,
+                              subtype_id=SpecialObjects.TREASURY_FLOOR_GATE_HALF, y_offset=0, byte_8=0,
+                              var_a=0, var_b=0),
+            CVHoDisActorEntry(x_pos=0x180, y_pos=0x3F8, type_id=ActorTypes.SPECIAL_OBJECT, unique_id=0x20,
+                              subtype_id=SpecialObjects.TREASURY_FLOOR_GATE_HALF, y_offset=0, byte_8=0,
+                              var_a=1, var_b=0),
+        ]
+        # Ensure only the floor gates outside the Castle Center room in Treasury B specifically can play the "all Vlads"
+        # opening cutscene. It'll now check specifically for that room instead of just being in Castle B.
+        patcher.write_int16s(0x25894, [0x8801,   # ldrh r1, [r0]
+                                       0x2315,   # mov  r3, 0x15
+                                       0x0218,   # lsl  r0, r3, 0x08
+                                       0x303F,   # add  r0, 0x3F
+                                       0x4288,   # cmp  r0, r1
+                                       0xD127])  # bne  [forward 0x28]
+        patcher.write_int16s(0x258AC, [0x4C08,   # ldr  0x0201883F
+                                       0x2301])  # mov  r3, 0x01
+        patcher.write_int32(0x258D0, 0x0201883F)
+        patcher.write_byte(
+            patcher.generate_dynamic_asm(patches.floor_gate_furniture_checker_asm,
+                                         patches.floor_gate_furniture_checker_ldr,
+                                         hook_addr=0x25754, hook_register=1) + 0x34,
+            slot_patch_info["options"]["furniture_amount_required"]
+        )
+        elevator_furniture_check_start = patcher.generate_dynamic_asm(patches.elevator_furniture_checker_asm,
+                                                                      patches.elevator_furniture_checker_ldr)
+        patcher.write_int32(0x22420, elevator_furniture_check_start)
+        patcher.write_byte(elevator_furniture_check_start + 0x2A,
+                           slot_patch_info["options"]["furniture_amount_required"])
+        # Make the Secret Info menu display the number of collected furniture.
+        patcher.generate_dynamic_asm(patches.furniture_count_displayer_asm,
+                                     patches.furniture_count_displayer_ldr,
+                                     hook_addr=0x2AB2C, hook_register=0)
+        # Replace the text that appears when hovering on the "COLLECTIBLES" option with text explaining how much
+        # furniture needed.
+        patcher.text[0x263] = (f"Must place at least {slot_patch_info["options"]["furniture_amount_required"]} of "
+                               f"{slot_patch_info["options"]["furniture_available"]} furniture.\n"
+                               "Left number = collected, right = placed.\n")
+
+        # Custom message for if we don't have enough furniture.
+        patcher.text[0x247] = ("❖3/⬘1/Sorry \b0/, but I only\n"
+                               "answer to REAL certified\n"
+                               "interior decorators!🅰\r"
+                               "Come back when you've placed\n"
+                               f"✨12/{slot_patch_info['options']['furniture_amount_required']}✨8/ of the "
+                               f"{slot_patch_info['options']['furniture_available']} pieces of furniture\n"
+                               f"in the Treasury's lowest room.🅰\r"
+                               "Yes, you MUST place them!\n"
+                               "Having them is not enough!\n"
+                               "Now, get to it!🅰\f"
+                               "❖1/⬘0/You can't be serious, \b1/...\n"
+                               "Fine, I'll show you my interior\n"
+                               "decorating skills!🅰\f")
         # Add the GFX for the AP Items.
         for offset, data in patches.extra_item_sprites.items():
             patcher.write_bytes(offset, data)
@@ -434,28 +498,26 @@ class CVHoDisPatchExtensions(APPatchExtension):
                                "stuck here...🅰\f"
                                "❖4/⬘5/“If you wish to enter\n"
                                "through here, you must do\n"
-                               "the following:🅰\r")
+                               "each of the following:🅰\r")
         # If JB's Bracelet is needed, add the text for it.
         if slot_patch_info["options"]["bracelet_warp_requirement"]:
             patcher.text[0x28A] += ("･ Recover ✨15/your bracelet✨8/\n"
-                                    "that I took before you\n"
-                                    "even arrived.🅰\r")
+                                    "  that I took before you\n"
+                                    "  even arrived.🅰\r")
         # If Hint Cards are needed, add the text for them.
         if slot_patch_info["options"]["card_amount_warp_requirement"]:
             patcher.text[0x28A] += (f"･ Find ✨12/{slot_patch_info['options']['card_amount_warp_requirement']}✨8/ of "
                                     "the six\n"
-                                    "Hint Cards scattered about.🅰\r")
+                                    "  Hint Cards scattered about.🅰\r")
         # If the Clock Tower Death cutscene is needed, add the text for it.
         if slot_patch_info["options"]["death_warp_requirement"]:
-            patcher.text[0x28A] += ("･ Meet me at the pinnacle\n"
-                                    "of the ✨4/Clock Tower✨8/\n"
-                                    "on the ✨4/front✨8/ side.🅰\r")
+            patcher.text[0x28A] += ("･ Meet me at the pinnacle of\n"
+                                    "  the ✨4/A-side Clock Tower✨8/.🅰\r")
         # Add the closing part of the message.
         patcher.text[0x28A] += ("Give up now, mortal!\n"
                                 "There's no hope for you!\n"
-                                "Sincerely, Death”🅰\f"
+                                "~~Sincerely, \b5/”🅰\f"
                                 "❖1/⬘0/...*sigh*🅰\f")
-
 
         # Block warping to a warp room the player hasn't been to yet in the current castle if they don't have the
         # cross-castle warp condition(s) satisfied.
@@ -913,9 +975,9 @@ class CVHoDisPatchExtensions(APPatchExtension):
         patcher.write_int16(0xDB7A8, 0x4A14)
 
         # Go anywhere
-        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x08499668
-        patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x54
-        #patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["camera_y_pos"] = 0x330
+        # patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["dest_room_ptr"] = 0x084AD354
+        # patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["player_x_offset"] = 0x7F
+        # patcher.areas[Areas.ENTRANCE_A][4][0]["loading_zone_list"][1]["camera_y_pos"] = 0x330
 
         return patcher.get_output_rom()
 

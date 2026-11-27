@@ -339,7 +339,9 @@ class CVHoDisWorld(World):
                                 "nerf_jp_bonepillar_exp": self.options.nerf_jp_bonepillar_exp.value,
                                 "luminous_elevator_speedup": self.options.luminous_elevator_speedup.value,
                                 "permanent_sub_weapons": self.options.permanent_sub_weapons.value,
-                                "sub_weapons_available": self.options.sub_weapons_available.value},
+                                "sub_weapons_available": self.options.sub_weapons_available.value,
+                                "furniture_amount_required": self.options.furniture_amount_required.value,
+                                "furniture_available": self.options.furniture_available.value},
                            "start inventory": get_start_inventory_data(self.multiworld.precollected_items[self.player]),
                            "countdown flags": get_countdown_flags(self.options, active_locations),
                            "location values": get_location_write_values(self, active_locations),
@@ -351,7 +353,6 @@ class CVHoDisWorld(World):
                            "shop data": get_shop_data(self),
                            "patch compatibility": ARCHIPELAGO_PATCH_COMPAT_VER,
                            "auth": base64.b64encode(self.auth).decode()}
-
 
         # Create and write the patch file.
         patch = CVHoDisProcedurePatch(player=self.player, player_name=self.player_name)

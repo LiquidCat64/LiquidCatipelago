@@ -28,6 +28,7 @@ ROM_PADDING_WORD = bytearray(b'\xFF\xFF\xFF\xFF')
 
 QUEUED_TEXT_STRING_START = 0x18A40
 
+
 class CVHoDisRoomDataEntry(TypedDict):
     """Base class that all CVHoDis room data entries inherit from."""
 
@@ -42,7 +43,7 @@ class CVHoDisActorEntry(CVHoDisRoomDataEntry):
     y_pos: int  # How far down vertically from the top edge of the map the actor is located. Int16.
     type_id: int  # ID for which "category" of actor the actor belongs to. Upper 2 bits in the object ID byte.
     unique_id: int  # Unique number assigned to this actor instance so the game knows whether it already spawned it
-                    # when it tries to spawn it by proximity. Lower 6 bits in the object ID byte.
+    # when it tries to spawn it by proximity. Lower 6 bits in the object ID byte.
     subtype_id: int  # Sub-ID for which actor in the main actor "category" it is. Int8.
     y_offset: int  # If it's a candle actor, determines how high to offset it. Unknown purpose for other actors. Int8.
     byte_8: int  # Unknown purpose.
@@ -65,7 +66,7 @@ class CVHoDisLoadingZoneEntry(CVHoDisRoomDataEntry):
 class CVHoDisRoomState(CVHoDisRoomDataEntry):
     display_flags: int  # 16 bitflags that tell the game what to display in the room. Player, health bar, etc.
     alt_state_flag_id: int  # Int16 event flag ID that will set the room to an alternate state if said flag is set
-                            # instead of this one. Will be 0xFFFF if there's no alternate state.
+    # instead of this one. Will be 0xFFFF if there's no alternate state.
     alt_state_ptr: int  # Ptr to the alternate state if the above alternate state flag is set. 0x00000000 if N/A.
     layer_info_ptr: int  # Ptr to the state's layer info.
     gfx_info_ptr: int  # Ptr to the state's GFX info.
@@ -78,11 +79,11 @@ class CVHoDisRoomState(CVHoDisRoomDataEntry):
     background_effect_id: int  # Int8 ID for what background effect to display.
     palette_shift_id: int  # Int8 ID for what palette shift effect to apply to the background with some bg effects.
     map_coords: int  # Information associated to the room's top-right square's position on the map screen.
-                     # Bits 0-6 = X coordinate.
-                     # Bits 7-D = Y coordinate.
-                     # Bit E = Which castle; A if un-set, B if set.
-                     # Bit F = Unknown. The only rooms that set this are...the Sky Walkway A and B save rooms, with the
-                     #         Crushing Stone block wall? More investigation needed.
+    # Bits 0-6 = X coordinate.
+    # Bits 7-D = Y coordinate.
+    # Bit E = Which castle; A if un-set, B if set.
+    # Bit F = Unknown. The only rooms that set this are...the Sky Walkway A and B save rooms, with the Crushing Stone
+    # block wall? More investigation needed.
 
 
 class CVHoDisShopItemInfo(CVHoDisRoomDataEntry):
@@ -446,7 +447,7 @@ class CVHoDisRomPatcher:
             self.remove_free_space(start_address, len(values))
 
     def apply_ips(self, ips_file: bytes) -> None:
-        """Apply a supplied IPS Patch to the ROM data."""
+        """Applies a supplied IPS Patch to the ROM data."""
 
         file_pos = 5
         while True:
@@ -501,7 +502,7 @@ class CVHoDisRomPatcher:
                 # If that is the case, refer to the lower byte to determine which index in the input ldr_num list we
                 # are actually trying to link to, and add that to the number of words separating this instruction from
                 # the end of the list to get what number the byte should REALLY be.
-                assembly += struct.pack("<H", asm_instructions[i] & 0xFF00 | \
+                assembly += struct.pack("<H", asm_instructions[i] & 0xFF00 |
                                         ((asm_instructions[i] & 0xFF) + ((len(asm_instructions) - (i + 1)) // 2)))
             else:
                 # Otherwise, append the instruction as-is.
@@ -521,7 +522,8 @@ class CVHoDisRomPatcher:
         # Otherwise, start generating the hook code here.
         # Assert that the hook address is 2-aligned. If not, raise an exception.
         if hook_addr % 2:
-            raise Exception(f"Hook address {hook_addr} needs to be 2-aligned, ideally 4-aligned. Try again!")
+            raise Exception(f"Hook address {hook_addr} needs to be 2-aligned, ideally 4-aligned. "
+                            "If you're a developer, try again! If you're a player, please report this...")
 
         # Generate the ldr instruction. The upper byte should be 0x48 + whichever register number we're using.
         hook_ldr = (0x48 + hook_register) << 8
@@ -712,7 +714,7 @@ class CVHoDisRomPatcher:
             self.write_int32(0x2C770, new_shop_item_info_start)
             self.write_int32(0x2C7C0, new_shop_item_info_start)
             self.write_int32(0x2C7FC, new_shop_item_info_start)
-            self.write_int32(0x2CA70, new_shop_item_info_start)
+            self.write_int32(0x2CA74, new_shop_item_info_start)
             self.write_int32(0x2CBCC, new_shop_item_info_start)
             self.write_int32(0x2CC38, new_shop_item_info_start)
             self.write_int32(0x2CCFC, new_shop_item_info_start)
@@ -726,7 +728,7 @@ class CVHoDisRomPatcher:
             # Convert the list we're currently looking at into the format the game expects. One length byte followed by
             # each ID in the shop item info list.
             new_shop_list_data = bytearray([len(self.shop_item_lists[item_list_index])] +
-                                      self.shop_item_lists[item_list_index])
+                                           self.shop_item_lists[item_list_index])
             # Pad the data to be 4-aligned if it's not.
             if len(new_shop_list_data) % 4:
                 new_shop_list_data += bytearray(4 - len(new_shop_list_data) % 4)
@@ -821,7 +823,7 @@ class CVHoDisRomPatcher:
                                     get_actor_list_bytes(room_state["actor_list"]))
                             # Otherwise, meaning we modified its vanilla list instead of replacing it outright, check
                             # if the list's size increased and, if it did, update the state's pointer with the new
-                            # list's address (that we already wrote earlier.
+                            # list's address (that we already wrote earlier).
                             elif room_state["actor_list_ptr"] in expanded_actor_list_ptrs:
                                 room_state["actor_list_ptr"] = expanded_actor_list_ptrs[room_state["actor_list_ptr"]]
 
@@ -847,7 +849,7 @@ class CVHoDisRomPatcher:
                                     bytearray(b"\x00\x00\x00\x00"))
                             # Otherwise, meaning we modified its vanilla list instead of replacing it outright, check
                             # if the list's size increased and, if it did, update the state's pointer with the new
-                            # list's address (that we already wrote earlier.
+                            # list's address (that we already wrote earlier).
                             elif room_state["loading_zone_list_ptr"] in expanded_loading_zone_list_ptrs:
                                 room_state["loading_zone_list_ptr"] = \
                                     expanded_loading_zone_list_ptrs[room_state["loading_zone_list_ptr"]]
@@ -898,17 +900,17 @@ def get_loading_zone_list_bytes(loading_zone_list: list[CVHoDisLoadingZoneEntry]
 
 def get_room_state_bytes(room_state: CVHoDisRoomState) -> bytearray:
     """Converts a given room state into data to be inserted into the ROM."""
-    return bytearray(struct.pack("<H", room_state["display_flags"]) + \
-                     struct.pack("<H", room_state["alt_state_flag_id"]) + \
-                     struct.pack("<I", room_state["alt_state_ptr"]) + \
-                     struct.pack("<I", room_state["layer_info_ptr"]) + \
-                     struct.pack("<I", room_state["gfx_info_ptr"]) + \
-                     struct.pack("<I", room_state["unknown_ptr"]) + \
-                     struct.pack("<I", room_state["palette_info_ptr"]) + \
-                     struct.pack("<I", room_state["actor_list_ptr"]) + \
-                     struct.pack("<I", room_state["loading_zone_list_ptr"]) + \
-                     struct.pack("<B", room_state["background_effect_id"]) + \
-                     struct.pack("<B", room_state["palette_shift_id"]) + \
+    return bytearray(struct.pack("<H", room_state["display_flags"]) +
+                     struct.pack("<H", room_state["alt_state_flag_id"]) +
+                     struct.pack("<I", room_state["alt_state_ptr"]) +
+                     struct.pack("<I", room_state["layer_info_ptr"]) +
+                     struct.pack("<I", room_state["gfx_info_ptr"]) +
+                     struct.pack("<I", room_state["unknown_ptr"]) +
+                     struct.pack("<I", room_state["palette_info_ptr"]) +
+                     struct.pack("<I", room_state["actor_list_ptr"]) +
+                     struct.pack("<I", room_state["loading_zone_list_ptr"]) +
+                     struct.pack("<B", room_state["background_effect_id"]) +
+                     struct.pack("<B", room_state["palette_shift_id"]) +
                      struct.pack("<H", room_state["map_coords"]))
 
 

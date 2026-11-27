@@ -28,7 +28,10 @@ class BestEndingRequired(DefaultOnToggle):
 
 class FurnitureAmountRequired(Range):
     """
-    How many pieces of furniture are required to be found and set for goal completion. Furniture will be irrelevant if set to 0.
+    How many pieces of furniture are required to be found and set for goal completion.
+    The elevators that rise you up into the Maxim fight rooms in both castles will not function until this is satisfied.
+    Must be satisfied for the goal to send even if you glitch into the rooms somehow.
+    If no endings are required, the goal will send upon placing the required furniture.
     """
     range_start = 0
     range_end = 31
